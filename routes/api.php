@@ -246,9 +246,9 @@ Route::post('v1/insert-auto-sales-customers', [CustomerController::class, 'inser
 }); */
 
 /* IMPORTANTISIMO */
-Route::get('v2/tenant/{subdomain}', [TenantController::class, 'showBySubdomain']);
+Route::get('v2/public/tenant/{subdomain}', [TenantController::class, 'showBySubdomain']);
 
-
+/* Comprobar el tenant ya que esta aplicado de manera global */
 Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], function () {
     // Rutas públicas (sin autenticación)
     Route::post('login', [V2AuthController::class, 'login'])->name('v2.login');

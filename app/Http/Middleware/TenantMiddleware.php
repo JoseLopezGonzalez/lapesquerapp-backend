@@ -14,6 +14,18 @@ class TenantMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
+
+        $excluded = [
+            'api/v2/public/*',
+        ];
+
+        foreach ($excluded as $route) {
+            if ($request->is($route)) {
+                return $next($request);
+            }
+        }
+
+
         $subdomain = $request->header('X-Tenant');
 
         if (!$subdomain) {
