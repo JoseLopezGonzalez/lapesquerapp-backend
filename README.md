@@ -325,18 +325,19 @@ En esta API multitenant, puedes crear usuarios directamente desde consola sin pa
 
 ### ✅ Paso 1: Usar el helper `createTenantUser`
 
-El helper `createTenantUser()` está definido en `app/Helpers/tenant_helpers.php` y permite crear un usuario en la base de datos deseada, generando la contraseña cifrada correctamente.
+El helper `createTenantUser()` está definido en `app/Helpers/tenant_helpers.php` y permite crear un usuario en la base de datos deseada, generando la contraseña cifrada correctamente y asignando un rol por nombre si se desea.
 
 ### 📦 Sintaxis
 
 ```php
-createTenantUser(string $database, string $name, string $email, string $password)
+createTenantUser(string $database, string $name, string $email, string $password, ?string $roleName = null)
 ```
 
 - `database`: nombre de la base de datos (tenant) donde insertar el usuario.
 - `name`: nombre del usuario.
 - `email`: correo electrónico.
 - `password`: contraseña en texto plano (se cifra con `bcrypt` automáticamente).
+- `roleName` (opcional): nombre del rol a asignar (por ejemplo, `superuser`).
 
 ### 🚀 Ejemplo desde Tinker
 
@@ -345,11 +346,11 @@ php artisan tinker
 ```
 
 ```php
-createTenantUser('test', 'Admin Test', 'admin@test.com', '12345678');
-createTenantUser('pymcolorao', 'Admin Pym', 'admin@pymcolorao.com', '12345678');
+createTenantUser('test', 'Admin', 'admin@lapesquerapp.es', 'admin', 'superuser');
+createTenantUser('pymcolorao', 'Gestor', 'gestor@pymcolorao.com', '12345678', 'manager');
 ```
 
-Esto insertará los usuarios directamente en las tablas `users` de cada base de datos tenant.
+Esto insertará los usuarios directamente en las tablas `users` de cada base de datos tenant y les asignará el rol indicado si existe.
 
 ### 🛠️ Requisitos
 
@@ -365,11 +366,9 @@ Esto insertará los usuarios directamente en las tablas `users` de cada base de 
 
 - Ejecutar `composer dump-autoload` tras crear o editar el helper.
 
----
-
-🧠 Tip: Puedes extender este helper para asignar roles si usas `spatie/laravel-permission`.
-
-
-Puedes probar accediendo a una ruta pública como `/api/status` o `/`.
+- El modelo `User` debe tener el método `assignRole($roleName)` implementado correctamente y la relación `roles()` definida mediante tabla pivote (`role_user`).
 
 ---
+
+🧠 Tip: Este helper usa Eloquent con `setConnection('tenant')` para trabajar correctamente en entornos multitenant.
+
