@@ -17,7 +17,6 @@ class TenantMiddleware
 
         $excluded = [
             'api/v2/public/*',
-            'storage/*',
         ];
 
         foreach ($excluded as $route) {

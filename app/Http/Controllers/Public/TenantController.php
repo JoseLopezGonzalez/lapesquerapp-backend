@@ -20,7 +20,6 @@ class TenantController extends Controller
 
         return response()->json([
             'active' => (bool) $tenant->active,
-            'branding_image_url' => $tenant->branding_image_url,
             'name' => $tenant->name,
         ]);
     }
