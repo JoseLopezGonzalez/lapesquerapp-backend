@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Public\TenantController;
 use App\Http\Controllers\v2\OrderDocumentController;
 use App\Http\Controllers\v1\AuthController;
 use App\Http\Controllers\v1\AutoSalesController;
@@ -243,6 +244,10 @@ Route::post('v1/insert-auto-sales-customers', [CustomerController::class, 'inser
     Route::apiResource('v2/raw-material-receptions', V2RawMaterialReceptionController::class);
     Route::get('v2/orders_report', [OrdersReportController::class, 'exportToExcel'])->name('export.orders');
 }); */
+
+/* IMPORTANTISIMO */
+Route::get('v2/tenant/{subdomain}', [TenantController::class, 'showBySubdomain']);
+
 
 Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], function () {
     // Rutas públicas (sin autenticación)
