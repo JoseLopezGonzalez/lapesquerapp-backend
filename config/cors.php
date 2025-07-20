@@ -33,8 +33,9 @@ return [
 
 
     'allowed_origins_patterns' => [
-        '^https:\/\/[a-z0-9\-]+\.lapesquerapp\.es$', // patrón para permitir subdominios
+        '/^https:\/\/[a-z0-9\-]+\.lapesquerapp\.es$/',
     ],
+
 
     'allowed_headers' => ['*'],
 
