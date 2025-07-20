@@ -29,6 +29,9 @@ return [
         'https://lapesquerapp.es',
         'https://*.lapesquerapp.es', // permite todos los subdominios
         /* 'https://brisamar.lapesquerapp.es', */
+        'http://brisamar.localhost:3000',
+        'http://test.localhost:3000',
+        'http://pymcolorao.localhost:3000',
     ],
 
 
