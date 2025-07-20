@@ -1,20 +1,27 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use App\Models\User;
 
 if (!function_exists('createTenantUser')) {
-    function createTenantUser(string $database, string $name, string $email, string $password): void
+    function createTenantUser(string $database, string $name, string $email, string $password, ?string $roleName = null): void
     {
         DB::purge('tenant');
         config(['database.connections.tenant.database' => $database]);
         DB::reconnect('tenant');
 
-        DB::connection('tenant')->table('users')->insert([
-            'name' => $name,
-            'email' => $email,
-            'password' => bcrypt($password),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // Crear el usuario desde el modelo Eloquent
+        $user = new User();
+        $user->setConnection('tenant');
+        $user->name = $name;
+        $user->email = $email;
+        $user->password = Hash::make($password);
+        $user->save();
+
+        // Asignar rol si se indica
+        if ($roleName) {
+            $user->assignRole($roleName);
+        }
     }
 }
