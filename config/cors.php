@@ -18,7 +18,7 @@ return [
 
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-    'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS' , 'PATCH'],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
 
 
     // Permitir varios orígenes (especifica los dominios)
@@ -26,10 +26,15 @@ return [
         'http://localhost:3000', // Origen local (por ejemplo, frontend en desarrollo)
         'https://*.congeladosbrisamar.es', // Origen de producción
         'http://localhost:5173',
+        'https://lapesquerapp.es',
+        'https://*.lapesquerapp.es', // permite todos los subdominios
+        /* 'https://brisamar.lapesquerapp.es', */
     ],
 
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '^https:\/\/[a-z0-9\-]+\.lapesquerapp\.es$', // patrón para permitir subdominios
+    ],
 
     'allowed_headers' => ['*'],
 
