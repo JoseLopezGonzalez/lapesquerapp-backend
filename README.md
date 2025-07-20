@@ -311,6 +311,65 @@ Después del despliegue exitoso, la API estará accesible en:
 https://api.lapesquerapp.es
 ```
 
+
+---
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+## 👤 Crear manualmente usuarios en tenants desde Tinker
+
+En esta API multitenant, puedes crear usuarios directamente desde consola sin pasar por la interfaz, útil para entornos de prueba, recuperación o creación rápida de administradores.
+
+### ✅ Paso 1: Usar el helper `createTenantUser`
+
+El helper `createTenantUser()` está definido en `app/Helpers/tenant_helpers.php` y permite crear un usuario en la base de datos deseada, generando la contraseña cifrada correctamente.
+
+### 📦 Sintaxis
+
+```php
+createTenantUser(string $database, string $name, string $email, string $password)
+```
+
+- `database`: nombre de la base de datos (tenant) donde insertar el usuario.
+- `name`: nombre del usuario.
+- `email`: correo electrónico.
+- `password`: contraseña en texto plano (se cifra con `bcrypt` automáticamente).
+
+### 🚀 Ejemplo desde Tinker
+
+```bash
+php artisan tinker
+```
+
+```php
+createTenantUser('test', 'Admin Test', 'admin@test.com', '12345678');
+createTenantUser('pymcolorao', 'Admin Pym', 'admin@pymcolorao.com', '12345678');
+```
+
+Esto insertará los usuarios directamente en las tablas `users` de cada base de datos tenant.
+
+### 🛠️ Requisitos
+
+- Tener el helper registrado en `composer.json`:
+
+```json
+"autoload": {
+    "files": [
+        "app/Helpers/tenant_helpers.php"
+    ]
+}
+```
+
+- Ejecutar `composer dump-autoload` tras crear o editar el helper.
+
+---
+
+🧠 Tip: Puedes extender este helper para asignar roles si usas `spatie/laravel-permission`.
+
+
 Puedes probar accediendo a una ruta pública como `/api/status` o `/`.
 
 ---
