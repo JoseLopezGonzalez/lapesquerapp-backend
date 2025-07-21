@@ -28,6 +28,7 @@ use App\Http\Controllers\v1\SpeciesController;
 use App\Http\Controllers\v1\ProcessNodeController;
 use App\Http\Controllers\v1\FinalNodeController;
 use App\Http\Controllers\v2\PdfExtractionController;
+use App\Http\Controllers\v2\SettingController;
 use App\Http\Controllers\v2\TaxController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -291,6 +292,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         // Rutas accesibles para múltiples roles
         Route::middleware(['role:superuser,manager,admin'])->group(function () {
             /* Options */
+            Route::get('settings', [SettingController::class, 'index']);
+            Route::put('settings', [SettingController::class, 'update']);
+
             Route::get('/customers/options', [V2CustomerController::class, 'options']);
             Route::get('/salespeople/options', [V2SalespersonController::class, 'options']);
             Route::get('/transports/options', [V2TransportController::class, 'options']);
