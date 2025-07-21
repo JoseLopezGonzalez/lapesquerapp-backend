@@ -1,4 +1,5 @@
 <?php
+//config/company.php
 /* Constantes de configuración de la empresa */
 
 return [
