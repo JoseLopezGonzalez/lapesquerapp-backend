@@ -372,3 +372,80 @@ Esto insertará los usuarios directamente en las tablas `users` de cada base de 
 
 🧠 Tip: Este helper usa Eloquent con `setConnection('tenant')` para trabajar correctamente en entornos multitenant.
 
+
+
+---
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+# 📦 Migraciones para la base de datos de cada Tenant
+
+Este documento resume cómo debes crear y ejecutar migraciones que afecten solo a la base de datos individual de cada empresa (Tenant) en tu arquitectura multitenant.
+
+---
+
+## 📁 Estructura de las migraciones
+
+Guarda las migraciones específicas de los tenants en:
+
+```
+database/migrations/companies/
+```
+
+Por ejemplo:
+```
+database/migrations/companies/2025_07_21_000000_create_settings_table.php
+```
+
+---
+
+## 🛠 Crear una migración para los tenants
+
+Usa el comando Artisan con la ruta personalizada:
+
+```bash
+php artisan make:migration create_settings_table --path=database/migrations/companies
+```
+
+---
+
+## 🔐 Proteger la migración para que no se ejecute en la base central
+
+En el archivo de la migración, añade este control en `up()` y `down()`:
+
+```php
+if (config('database.default') !== 'tenant') {
+    return;
+}
+```
+
+---
+
+## 🚀 Ejecutar las migraciones en todas las bases de datos de tenants
+
+Usa el comando Artisan personalizado que recorre todos los tenants:
+
+```bash
+php artisan tenants:migrate
+```
+
+Este comando:
+- Lee los tenants activos desde la base central
+- Cambia dinámicamente la conexión a cada base
+- Ejecuta solo las migraciones dentro de `migrations/companies/`
+
+---
+
+## ✅ Opciones adicionales
+
+- `--fresh`: Borra y vuelve a ejecutar las migraciones
+- `--seed`: Ejecuta también el seeder `TenantDatabaseSeeder` por cada tenant
+
+Ejemplo:
+
+```bash
+php artisan tenants:migrate --fresh --seed
+```
