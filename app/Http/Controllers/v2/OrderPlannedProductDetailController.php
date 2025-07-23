@@ -31,11 +31,11 @@ class OrderPlannedProductDetailController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            "orderId" => 'required|integer|exists:orders,id',
+            "orderId" => 'required|integer|exists:tenant.orders,id',
             "boxes" => 'required|integer',
-            "product.id" => 'required|integer|exists:products,id',
+            "product.id" => 'required|integer|exists:tenant.products,id',
             "quantity" => 'required|numeric',
-            "tax.id" => 'required|integer|exists:taxes,id',
+            "tax.id" => 'required|integer|exists:tenant.taxes,id',
             'unitPrice' => 'required|numeric',
         ]);
 
@@ -78,9 +78,9 @@ class OrderPlannedProductDetailController extends Controller
 
         $request->validate([
             "boxes" => 'required|integer',
-            "product.id" => 'required|integer|exists:products,id',
+            "product.id" => 'required|integer|exists:tenant.products,id',
             "quantity" => 'required|numeric',
-            "tax.id" => 'required|integer|exists:taxes,id',
+            "tax.id" => 'required|integer|exists:tenant.taxes,id',
             'unitPrice' => 'required|numeric',
         ]);
 

@@ -175,7 +175,7 @@ class TransportController extends Controller
     {
         $validated = $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'integer|exists:transports,id',
+            'ids.*' => 'integer|exists:tenant.transports,id',
         ]);
 
         Transport::whereIn('id', $validated['ids'])->delete();

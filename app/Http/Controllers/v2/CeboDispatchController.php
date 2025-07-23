@@ -65,7 +65,7 @@ class CeboDispatchController extends Controller
             'date' => 'required|date',
             'notes' => 'nullable|string',
             'details' => 'required|array',
-            'details.*.product.id' => 'required|exists:products,id',
+            'details.*.product.id' => 'required|exists:tenant.products,id',
             'details.*.netWeight' => 'required|numeric',
         ]);
 
@@ -108,7 +108,7 @@ class CeboDispatchController extends Controller
             'date' => 'required|date',
             'notes' => 'nullable|string',
             'details' => 'required|array',
-            'details.*.product.id' => 'required|exists:products,id',
+            'details.*.product.id' => 'required|exists:tenant.products,id',
             'details.*.netWeight' => 'required|numeric',
         ]);
 

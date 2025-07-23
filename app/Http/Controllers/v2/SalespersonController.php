@@ -179,4 +179,5 @@ class SalespersonController extends Controller
 
         return response()->json($salespeople);
     }
+    
 }

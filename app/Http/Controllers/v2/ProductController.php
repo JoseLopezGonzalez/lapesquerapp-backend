@@ -81,8 +81,8 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|min:3|max:255',
-            'speciesId' => 'required|exists:species,id',
-            'captureZoneId' => 'required|exists:capture_zones,id',
+            'speciesId' => 'required|exists:tenant.species,id',
+            'captureZoneId' => 'required|exists:tenant.capture_zones,id',
             'articleGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
             'boxGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
             'palletGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
@@ -151,8 +151,8 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|min:3|max:255',
-            'speciesId' => 'required|exists:species,id',
-            'captureZoneId' => 'required|exists:capture_zones,id',
+            'speciesId' => 'required|exists:tenant.species,id',
+            'captureZoneId' => 'required|exists:tenant.capture_zones,id',
             'articleGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
             'boxGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
             'palletGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',

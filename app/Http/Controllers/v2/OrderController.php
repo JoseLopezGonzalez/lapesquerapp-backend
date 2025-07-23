@@ -149,14 +149,14 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'customer' => 'required|integer|exists:customers,id',
+            'customer' => 'required|integer|exists:tenant.customers,id',
             'entryDate' => 'required|date',
             'loadDate' => 'required|date',
-            'salesperson' => 'nullable|integer|exists:salespeople,id',
-            'payment' => 'nullable|integer|exists:payment_terms,id',
-            'incoterm' => 'nullable|integer|exists:incoterms,id',
+            'salesperson' => 'nullable|integer|exists:tenant.salespeople,id',
+            'payment' => 'nullable|integer|exists:tenant.payment_terms,id',
+            'incoterm' => 'nullable|integer|exists:tenant.incoterms,id',
             'buyerReference' => 'nullable|string',
-            'transport' => 'nullable|integer|exists:transports,id',
+            'transport' => 'nullable|integer|exists:tenant.transports,id',
             'truckPlate' => 'nullable|string',
             'trailerPlate' => 'nullable|string',
             'temperature' => 'nullable|string',
@@ -170,11 +170,11 @@ class OrderController extends Controller
             'ccEmails' => 'nullable|array',
             'ccEmails.*' => 'string|email:rfc,dns|distinct',
             'plannedProducts' => 'nullable|array',
-            'plannedProducts.*.product' => 'required|integer|exists:products,id',
+            'plannedProducts.*.product' => 'required|integer|exists:tenant.products,id',
             'plannedProducts.*.quantity' => 'required|numeric',
             'plannedProducts.*.boxes' => 'required|integer',
             'plannedProducts.*.unitPrice' => 'required|numeric',
-            'plannedProducts.*.tax' => 'required|integer|exists:taxes,id',
+            'plannedProducts.*.tax' => 'required|integer|exists:tenant.taxes,id',
         ]);
 
         // Formatear emails

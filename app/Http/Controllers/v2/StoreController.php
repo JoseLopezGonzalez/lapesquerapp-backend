@@ -148,7 +148,7 @@ class StoreController extends Controller
     {
         $validated = $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'integer|exists:stores,id',
+            'ids.*' => 'integer|exists:tenant.stores,id',
         ]);
 
         Store::whereIn('id', $validated['ids'])->delete();

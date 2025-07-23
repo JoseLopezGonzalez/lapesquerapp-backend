@@ -168,9 +168,9 @@ class PalletController extends Controller
             'boxes.*.gs1128' => 'required|string',
             'boxes.*.grossWeight' => 'required|numeric',
             'boxes.*.netWeight' => 'required|numeric',
-            'store.id' => 'sometimes|nullable|integer|exists:stores,id',
-            'order' => 'sometimes|nullable|integer|exists:orders,id',
-            'state.id' => 'sometimes|integer|exists:pallet_states,id',
+            'store.id' => 'sometimes|nullable|integer|exists:tenant.stores,id',
+            'order' => 'sometimes|nullable|integer|exists:tenant.orders,id',
+            'state.id' => 'sometimes|integer|exists:tenant.pallet_states,id',
         ]);
 
         if ($validator->fails()) {

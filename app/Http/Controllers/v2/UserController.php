@@ -79,7 +79,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
-            'role.id' => 'required|exists:roles,id',
+            'role.id' => 'required|exists:tenant.roles,id',
         ]);
 
         // Usar una transacción para asegurar que ambas operaciones se completen exitosamente
@@ -136,7 +136,7 @@ class UserController extends Controller
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|unique:users,email,' . $user->id,
             'password' => 'sometimes|string|min:8',
-            'roles' => 'array|exists:roles,id', // Validar roles si se envían
+            'roles' => 'array|exists:tenant.roles,id', // Validar roles si se envían
         ]);
 
         $user->update(array_filter([

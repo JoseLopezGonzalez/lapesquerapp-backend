@@ -65,7 +65,7 @@ class SpeciesController extends Controller
             'name' => 'required|string|min:2',
             'scientificName' => 'required|string|min:2',
             'fao' => ['required', 'regex:/^[A-Z]{3,5}$/'],
-            'fishingGearId' => 'required|exists:fishing_gears,id',
+            'fishingGearId' => 'required|exists:tenant.fishing_gears,id',
         ]);
 
         $species = Species::create([
@@ -95,7 +95,7 @@ class SpeciesController extends Controller
             'name' => 'required|string|min:2',
             'scientificName' => 'required|string|min:2',
             'fao' => ['required', 'regex:/^[A-Z]{3,5}$/'],
-            'fishingGearId' => 'required|exists:fishing_gears,id',
+            'fishingGearId' => 'required|exists:tenant.fishing_gears,id',
         ]);
 
         $species->update([
