@@ -161,7 +161,7 @@ class SalespersonController extends Controller
     {
         $validated = $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'integer|exists:salespeople,id',
+            'ids.*' => 'integer|exists:tenant.salespeople,id',
         ]);
 
         Salesperson::whereIn('id', $validated['ids'])->delete();
