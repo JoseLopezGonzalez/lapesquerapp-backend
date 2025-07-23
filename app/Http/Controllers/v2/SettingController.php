@@ -10,7 +10,7 @@ class SettingController extends Controller
 {
     public function index()
     {
-        $settings = DB::table('settings')->pluck('value', 'key');
+        $settings = DB::connection('tenant')->table('settings')->pluck('value', 'key');
         return response()->json($settings);
     }
 
@@ -19,7 +19,7 @@ class SettingController extends Controller
         $data = $request->all();
 
         foreach ($data as $key => $value) {
-            DB::table('settings')->updateOrInsert(
+            DB::connection('tenant')->table('settings')->updateOrInsert(
                 ['key' => $key],
                 ['value' => $value]
             );
