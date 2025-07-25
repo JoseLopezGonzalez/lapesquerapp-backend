@@ -520,9 +520,9 @@ class PalletController extends Controller
     public function bulkUpdateState(Request $request)
     {
         $validated = Validator::make($request->all(), [
-            'state_id' => 'required|integer|exists:pallet_states,id',
+            'state_id' => 'required|integer|exists:tenant.pallet_states,id',
             'ids' => 'array|required_without_all:filters,applyToAll',
-            'ids.*' => 'integer|exists:pallets,id',
+            'ids.*' => 'integer|exists:tenant.pallets,id',
             'filters' => 'array|required_without_all:ids,applyToAll',
             'applyToAll' => 'boolean|required_without_all:ids,filters',
         ]);
