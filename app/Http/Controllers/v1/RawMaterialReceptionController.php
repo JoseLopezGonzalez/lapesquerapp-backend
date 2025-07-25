@@ -204,7 +204,7 @@ class RawMaterialReceptionController extends Controller
     public function updateDeclaredData(Request $request)
     {
         $validated = $request->validate([
-            'supplier_id' => 'required|integer|exists:suppliers,id',
+            'supplier_id' => 'required|integer|exists:tenant.suppliers,id',
             'date' => 'required|date',
             'declared_total_amount' => 'nullable|numeric|min:0',
             'declared_total_net_weight' => 'nullable|numeric|min:0',
