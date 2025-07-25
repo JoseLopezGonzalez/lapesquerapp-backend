@@ -471,8 +471,8 @@ class PalletController extends Controller
     public function moveToStore(Request $request)
     {
         $validated = Validator::make($request->all(), [
-            'pallet_id' => 'required|integer|exists:pallets,id',
-            'store_id' => 'required|integer|exists:stores,id',
+            'pallet_id' => 'required|integer|exists:tenant.pallets,id',
+            'store_id' => 'required|integer|exists:tenant.stores,id',
         ]);
 
         if ($validated->fails()) {
