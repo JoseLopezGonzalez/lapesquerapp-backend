@@ -169,7 +169,7 @@ class PalletController extends Controller
             'boxes.*.grossWeight' => 'required|numeric',
             'boxes.*.netWeight' => 'required|numeric',
             'store.id' => 'sometimes|nullable|integer|exists:tenant.stores,id',
-            'order' => 'sometimes|nullable|integer|exists:tenant.orders,id',
+            'orderId' => 'sometimes|nullable|integer|exists:tenant.orders,id',
             'state.id' => 'sometimes|integer|exists:tenant.pallet_states,id',
         ]);
 
@@ -186,7 +186,7 @@ class PalletController extends Controller
         $newPallet = new Pallet;
         $newPallet->observations = $pallet['observations'];
         $newPallet->state_id = $pallet['state']['id'] ?? 1; // Por defecto, estado registrado
-        $newPallet->order_id = $pallet['order'] ?? null; // Si se proporciona, asignar la orden
+        $newPallet->order_id = $pallet['orderId'] ?? null; // Si se proporciona, asignar la orden
         $newPallet->save();
 
         // Crear vínculo con almacén si se proporciona
