@@ -312,6 +312,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::post('/pallets/assign-to-position', [V2PalletController::class, 'assignToPosition']);
             Route::post('/pallets/move-to-store', [V2PalletController::class, 'moveToStore']);
             Route::post('pallets/{id}/unassign-position', [V2PalletController::class, 'unassignPosition']);
+            Route::post('/pallets/{id}/unlink-order', [V2PalletController::class, 'unlinkOrder']);
 
 
 

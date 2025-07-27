@@ -571,12 +571,37 @@ class PalletController extends Controller
         ]);
     }
 
+    /**
+     * Unlink a pallet from its associated order
+     *
+     * @param string $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function unlinkOrder(string $id)
+    {
+        $pallet = Pallet::findOrFail($id);
 
+        // Check if pallet is already unlinked from any order
+        if (!$pallet->order_id) {
+            return response()->json([
+                'message' => 'El palet ya no está asociado a ninguna orden',
+                'pallet' => new PalletResource($pallet->refresh())
+            ], 200);
+        }
 
+        // Store the order ID before unlinking for the response
+        $orderId = $pallet->order_id;
 
+        // Unlink the pallet from the order
+        $pallet->order_id = null;
+        $pallet->save();
 
-
-
-
+        return response()->json([
+            'message' => 'Palet desvinculado correctamente de la orden',
+            'pallet_id' => $id,
+            'order_id' => $orderId,
+            'pallet' => new PalletResource($pallet->refresh())
+        ], 200);
+    }
 
 }
