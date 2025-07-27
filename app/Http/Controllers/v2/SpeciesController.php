@@ -135,9 +135,15 @@ class SpeciesController extends Controller
      */
     public function options()
     {
-        $species = Species::select('id', 'name') // Selecciona solo los campos necesarios
-            ->orderBy('name', 'asc') // Ordena por nombre, opcional
-            ->get();
+        $species = Species::select('id', 'name', 'scientific_name', 'fao')
+            ->orderBy('name', 'asc')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'name' => "{$item->name} ({$item->scientific_name} - {$item->fao})"
+                ];
+            });
 
         return response()->json($species);
     }
