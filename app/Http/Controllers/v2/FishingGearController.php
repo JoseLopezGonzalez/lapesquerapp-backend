@@ -122,7 +122,7 @@ class FishingGearController extends Controller
     {
         $validated = $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'integer|exists:fishing_gears,id',
+            'ids.*' => 'integer|exists:tenant.fishing_gears,id',
         ]);
 
         FishingGear::whereIn('id', $validated['ids'])->delete();

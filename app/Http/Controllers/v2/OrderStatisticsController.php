@@ -33,7 +33,7 @@ class OrderStatisticsController extends Controller
         $validated = $request->validate([
             'dateFrom' => 'required|date',
             'dateTo' => 'required|date',
-            'speciesId' => 'nullable|integer|exists:species,id',
+            'speciesId' => 'nullable|integer|exists:tenant.species,id',
         ]);
 
         $result = OrderStatisticsService::getNetWeightStatsComparedToLastYear(
@@ -79,7 +79,7 @@ class OrderStatisticsController extends Controller
         $validated = $request->validate([
             'dateFrom' => 'required|date',
             'dateTo' => 'required|date',
-            'speciesId' => 'nullable|integer|exists:species,id',
+            'speciesId' => 'nullable|integer|exists:tenant.species,id',
         ]);
 
         $stats = OrderStatisticsService::getAmountStatsComparedToLastYear(
@@ -132,7 +132,7 @@ class OrderStatisticsController extends Controller
             'valueType' => 'required|in:totalAmount,totalQuantity',
             'dateFrom' => 'required|date',
             'dateTo' => 'required|date',
-            'speciesId' => 'nullable|integer|exists:species,id',
+            'speciesId' => 'nullable|integer|exists:tenant.species,id',
         ]);
 
         $results = OrderStatisticsService::getOrderRankingStats(

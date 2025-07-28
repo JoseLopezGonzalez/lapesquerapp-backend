@@ -77,7 +77,7 @@ class UserController extends Controller
         // Validar la solicitud
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'email' => 'required|email|unique:tenant.users,email',
             'password' => 'required|string|min:8',
             'role.id' => 'required|exists:tenant.roles,id',
         ]);
@@ -134,7 +134,7 @@ class UserController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,' . $user->id,
+            'email' => 'sometimes|email|unique:tenant.users,email,' . $user->id,
             'password' => 'sometimes|string|min:8',
             'roles' => 'array|exists:tenant.roles,id', // Validar roles si se envían
         ]);

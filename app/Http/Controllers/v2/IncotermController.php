@@ -127,7 +127,7 @@ class IncotermController extends Controller
     {
         $request->validate([
             'ids' => 'required|array|min:1',
-            'ids.*' => 'integer|exists:incoterms,id',
+            'ids.*' => 'integer|exists:tenant.incoterms,id',
         ]);
 
         Incoterm::whereIn('id', $request->ids)->delete();

@@ -449,7 +449,7 @@ class PalletController extends Controller
         $validated = Validator::make($request->all(), [
             'position_id' => 'required|integer|min:1',
             'pallet_ids' => 'required|array|min:1',
-            'pallet_ids.*' => 'integer|exists:pallets,id',
+            'pallet_ids.*' => 'integer|exists:tenant.pallets,id',
         ]);
 
         if ($validated->fails()) {

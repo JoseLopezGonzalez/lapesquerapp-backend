@@ -121,7 +121,7 @@ class SpeciesController extends Controller
     {
         $validated = $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'integer|exists:species,id',
+            'ids.*' => 'integer|exists:tenant.species,id',
         ]);
 
         Species::whereIn('id', $validated['ids'])->delete();
