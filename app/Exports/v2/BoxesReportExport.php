@@ -32,11 +32,32 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
         // Ordenar por ID descendente
         $query->orderBy('id', 'desc');
 
-        return $query->with([
+        // Debug: Primero probar sin filtros para ver si hay datos
+        $totalBoxes = Box::count();
+        \Log::info('BoxesReportExport - Total boxes in database: ' . $totalBoxes);
+
+        // Debug: Ver cuántos registros se obtienen
+        $boxes = $query->with([
+            'product',
             'product.article',
+            'product.species',
+            'palletBox',
+            'palletBox.pallet',
+            'palletBox.pallet.order',
             'palletBox.pallet.order.customer',
+            'palletBox.pallet.storedPallet',
             'palletBox.pallet.storedPallet.store'
         ])->get();
+
+        // Log para debug
+        \Log::info('BoxesReportExport - Total boxes after filters: ' . $boxes->count());
+        if ($boxes->count() > 0) {
+            \Log::info('BoxesReportExport - First box: ' . json_encode($boxes->first()->toArray()));
+        } else {
+            \Log::info('BoxesReportExport - No boxes found after applying filters');
+        }
+
+        return $boxes;
     }
 
     private function applyFiltersToQuery($query)
@@ -192,22 +213,25 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
 
     public function map($box): array
     {
+        // Debug: Log cada box que se está mapeando
+        \Log::info('BoxesReportExport - Mapping box ID: ' . $box->id);
+        
         return [
             $box->id,
-            $box->product->article->name ?? '',
-            $box->product->species->name ?? '',
-            $box->lot,
-            number_format($box->net_weight, 2, ',', '.'),
-            number_format($box->gross_weight, 2, ',', '.'),
-            $box->gs1_128 ?? '',
-            $box->palletBox->pallet->id ?? '',
+            optional($box->product)->article->name ?? 'Sin artículo',
+            optional($box->product)->species->name ?? 'Sin especie',
+            $box->lot ?? 'Sin lote',
+            number_format($box->net_weight ?? 0, 2, ',', '.'),
+            number_format($box->gross_weight ?? 0, 2, ',', '.'),
+            $box->gs1_128 ?? 'Sin GS1-128',
+            optional($box->palletBox)->pallet->id ?? 'Sin palet',
             $this->getPalletState($box),
-            $box->palletBox->pallet->order->id ?? '',
-            $box->palletBox->pallet->order->customer->name ?? '',
-            $box->palletBox->pallet->storedPallet->store->name ?? '',
-            $box->palletBox->pallet->storedPallet->position ?? '',
-            $box->palletBox->pallet->observations ?? '',
-            $box->created_at->format('d/m/Y H:i:s'),
+            optional($box->palletBox)->pallet->order->id ?? 'Sin pedido',
+            optional($box->palletBox)->pallet->order->customer->name ?? 'Sin cliente',
+            optional($box->palletBox)->pallet->storedPallet->store->name ?? 'Sin almacén',
+            optional($box->palletBox)->pallet->storedPallet->position ?? 'Sin posición',
+            optional($box->palletBox)->pallet->observations ?? 'Sin observaciones',
+            $box->created_at ? $box->created_at->format('d/m/Y H:i:s') : 'Sin fecha',
         ];
     }
 

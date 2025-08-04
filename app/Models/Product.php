@@ -86,7 +86,7 @@ class Product extends Model
 
     public function article()
     {
-        return $this->hasOne(Article::class, 'id', 'id');
+        return $this->belongsTo(Article::class, 'id', 'id');
     }
 
 
