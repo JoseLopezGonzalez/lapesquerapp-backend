@@ -8,6 +8,7 @@ use App\Exports\v2\FacilcomOrderSalesDeliveryNoteExport;
 use App\Exports\v2\FacilcomOrdersSalesDeliveryNotesExport;
 use App\Exports\v2\OrderBoxListExport;
 use App\Exports\v2\ActiveOrderPlannedProductsExport;
+use App\Exports\v2\BoxesReportExport;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -260,6 +261,17 @@ class ExcelController extends Controller
         return Excel::download(
             new ActiveOrderPlannedProductsExport(),
             'productos_previstos_pedidos_activos.xlsx'
+        );
+    }
+
+    public function exportBoxesReport(Request $request)
+    {
+        ini_set('memory_limit', '1024M');
+        ini_set('max_execution_time', 300);
+
+        return Excel::download(
+            new BoxesReportExport($request),
+            'reporte_cajas.xlsx'
         );
     }
 
