@@ -136,7 +136,23 @@ class BoxesController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $box = Box::findOrFail($id);
+        $box->delete();
+
+        return response()->json(['message' => 'Caja eliminada con éxito']);
+    }
+
+    public function destroyMultiple(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (!is_array($ids) || empty($ids)) {
+            return response()->json(['message' => 'No se han proporcionado IDs válidos'], 400);
+        }
+
+        Box::whereIn('id', $ids)->delete();
+
+        return response()->json(['message' => 'Cajas eliminadas con éxito']);
     }
 
     

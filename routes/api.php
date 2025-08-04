@@ -365,6 +365,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::delete('countries', [CountryController::class, 'destroyMultiple']);
 
             Route::apiResource('boxes', BoxesController::class); /* Algo raro en el nombre */
+            Route::delete('boxes', [BoxesController::class, 'destroyMultiple']);
             Route::apiResource('pallets', V2PalletController::class);
             Route::apiResource('customers', V2CustomerController::class);
             Route::delete('customers', [V2CustomerController::class, 'destroyMultiple']);
