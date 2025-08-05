@@ -272,10 +272,24 @@ class ExcelController extends Controller
         // Verificar si se solicita un límite para testing
         $limit = $request->input('limit');
         
-        return Excel::download(
+        // Generar un nombre único para el archivo
+        $fileName = 'reporte_cajas_' . date('Y-m-d_H-i-s') . '.xlsx';
+        $filePath = storage_path('app/exports/' . $fileName);
+        
+        // Asegurar que el directorio existe
+        if (!file_exists(dirname($filePath))) {
+            mkdir(dirname($filePath), 0755, true);
+        }
+        
+        // Generar el archivo usando Excel::store
+        Excel::store(
             new BoxesReportExport($request, $limit),
-            'reporte_cajas.xlsx'
+            'exports/' . $fileName,
+            'local'
         );
+        
+        // Devolver el archivo como respuesta de descarga
+        return response()->download($filePath, $fileName)->deleteFileAfterSend();
     }
 
 }
