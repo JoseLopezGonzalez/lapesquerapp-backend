@@ -393,10 +393,10 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::apiResource('fishing-gears', FishingGearController::class);
             Route::delete('fishing-gears', [FishingGearController::class, 'destroyMultiple']);
 
-            Route::apiResource('cebo-dispatches', V2CeboDispatchController::class);
-            /* Cebo Dispatch Exports */
+            /* Cebo Dispatch Exports - DEBE IR ANTES del apiResource */
             Route::get('cebo-dispatches/facilcom-xlsx', [\App\Http\Controllers\v2\ExcelController::class, 'exportCeboDispatchFacilcom'])->name('export_cebo_dispatches_facilcom');
             Route::get('cebo-dispatches/a3erp-xlsx', [\App\Http\Controllers\v2\ExcelController::class, 'exportCeboDispatchA3erp'])->name('export_cebo_dispatches_a3erp');
+            Route::apiResource('cebo-dispatches', V2CeboDispatchController::class);
             Route::get('labels/options', [LabelController::class, 'options'])->name('labels.options');
             Route::apiResource('labels', LabelController::class);
 
