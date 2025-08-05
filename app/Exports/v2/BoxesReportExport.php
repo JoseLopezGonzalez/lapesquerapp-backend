@@ -28,9 +28,12 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
     {
         $query = Box::query();
 
+        // Extraer todos los filtros aplicables del request (igual que PalletController)
+        $filters = $this->filters->all();
+
         // Aplicar filtros si existen
-        if ($this->filters && $this->filters->has('filters')) {
-            $this->applyFiltersToQuery($query);
+        if ($filters) {
+            $this->applyFiltersToQuery($query, $filters);
         }
 
         // Ordenar por ID descendente
@@ -50,9 +53,12 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
         ])->get();
     }
 
-    private function applyFiltersToQuery($query)
+    private function applyFiltersToQuery($query, $filters)
     {
-        $filters = $this->filters->input('filters', []);
+        // Para aceptar filtros anidados (igual que PalletController)
+        if (isset($filters['filters'])) {
+            $filters = $filters['filters'];
+        }
 
         // Filtro por ID de caja
         if (isset($filters['id'])) {
