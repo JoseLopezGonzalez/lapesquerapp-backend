@@ -274,22 +274,31 @@ class ExcelController extends Controller
         
         // Generar un nombre único para el archivo
         $fileName = 'reporte_cajas_' . date('Y-m-d_H-i-s') . '.xlsx';
-        $filePath = storage_path('app/exports/' . $fileName);
         
-        // Asegurar que el directorio existe
-        if (!file_exists(dirname($filePath))) {
-            mkdir(dirname($filePath), 0755, true);
-        }
-        
-        // Generar el archivo usando Excel::store
-        Excel::store(
+        // Usar Excel::download pero con manejo manual del archivo
+        $response = Excel::download(
             new BoxesReportExport($request, $limit),
-            'exports/' . $fileName,
-            'local'
+            $fileName
         );
         
-        // Devolver el archivo como respuesta de descarga
-        return response()->download($filePath, $fileName)->deleteFileAfterSend();
+        // Si es BinaryFileResponse, obtener el archivo y devolverlo como respuesta de descarga
+        if ($response instanceof \Symfony\Component\HttpFoundation\BinaryFileResponse) {
+            $file = $response->getFile();
+            
+            if ($file->isFile() && $file->isReadable()) {
+                // Leer el contenido del archivo
+                $content = file_get_contents($file->getPathname());
+                
+                // Devolver como respuesta de descarga con el contenido
+                return response($content)
+                    ->header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"')
+                    ->header('Content-Length', strlen($content));
+            }
+        }
+        
+        // Si no es BinaryFileResponse, devolver la respuesta original
+        return $response;
     }
 
 }
