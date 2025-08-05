@@ -27,17 +27,12 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
         $query = Box::query();
 
         // Aplicar filtros siguiendo el patrón del PalletController v2
-        $this->applyFiltersToQuery($query);
+        /* $this->applyFiltersToQuery($query); */
 
         // Ordenar por ID descendente
         $query->orderBy('id', 'desc');
 
-        // Debug: Primero probar sin filtros para ver si hay datos
-        $totalBoxes = Box::count();
-        \Log::info('BoxesReportExport - Total boxes in database: ' . $totalBoxes);
-
-        // Debug: Ver cuántos registros se obtienen
-        $boxes = $query->with([
+        return $query->with([
             'product',
             'product.article',
             'product.species',
@@ -48,16 +43,6 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
             'palletBox.pallet.storedPallet',
             'palletBox.pallet.storedPallet.store'
         ])->get();
-
-        // Log para debug
-        \Log::info('BoxesReportExport - Total boxes after filters: ' . $boxes->count());
-        if ($boxes->count() > 0) {
-            \Log::info('BoxesReportExport - First box: ' . json_encode($boxes->first()->toArray()));
-        } else {
-            \Log::info('BoxesReportExport - No boxes found after applying filters');
-        }
-
-        return $boxes;
     }
 
     private function applyFiltersToQuery($query)
@@ -213,9 +198,6 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
 
     public function map($box): array
     {
-        // Debug: Log cada box que se está mapeando
-        \Log::info('BoxesReportExport - Mapping box ID: ' . $box->id);
-        
         return [
             $box->id,
             optional($box->product)->article->name ?? 'Sin artículo',
