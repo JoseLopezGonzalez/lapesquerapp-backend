@@ -12,6 +12,7 @@ use App\Models\PalletBox;
 use App\Models\StoredPallet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class PalletController extends Controller
 {
@@ -392,10 +393,48 @@ class PalletController extends Controller
      */
     public function destroy(string $id)
     {
-        $pallet = Pallet::findOrFail($id);
-        $pallet->delete();
+        DB::transaction(function () use ($id) {
+            $pallet = Pallet::findOrFail($id);
+            
+            // Eliminar registros relacionados primero
+            if ($pallet->storedPallet) {
+                $pallet->storedPallet->delete();
+            }
+            
+            // Eliminar las cajas asociadas al palet
+            $pallet->boxes()->delete();
+            
+            // Eliminar el palet
+            $pallet->delete();
+        });
 
-        return response()->json(['message' => 'Palet eliminado correctamente'], 200);
+        return response()->json(['message' => 'Palet eliminado correctamente']);
+    }
+
+    /**
+     * Remove multiple resources from storage.
+     */
+    public function destroyMultiple(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:tenant.pallets,id',
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            $palletIds = $validated['ids'];
+            
+            // Eliminar registros relacionados primero
+            StoredPallet::whereIn('pallet_id', $palletIds)->delete();
+            
+            // Eliminar las cajas asociadas a los palets
+            PalletBox::whereIn('pallet_id', $palletIds)->delete();
+            
+            // Eliminar los palets
+            Pallet::whereIn('id', $palletIds)->delete();
+        });
+
+        return response()->json(['message' => 'Palets eliminados correctamente']);
     }
 
     /* options */
