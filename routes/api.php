@@ -421,6 +421,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::get('orders/{orderId}/xls/facilcom-single', [\App\Http\Controllers\v2\ExcelController::class, 'exportFacilcomSingleOrder'])->name('export_facilcom_single');
             Route::get('orders/xlsx/active-planned-products', [\App\Http\Controllers\v2\ExcelController::class, 'exportActiveOrderPlannedProducts'])->name('export_active_planned_products');
 
+            /* Raw Material Receptions Facilcom Export */
+            Route::get('raw-material-receptions/facilcom-xls', [\App\Http\Controllers\v2\ExcelController::class, 'exportRawMaterialReceptionFacilcom'])->name('export_raw_material_receptions_facilcom');
+
             Route::get('orders/{orderId}/pdf/valued-loading-note', [\App\Http\Controllers\v2\PDFController::class, 'generateValuedLoadingNote'])->name('generate_valued_loading_note');
             /* generateIncident */
             Route::get('orders/{orderId}/pdf/incident', [\App\Http\Controllers\v2\PDFController::class, 'generateIncident'])->name('generate_incident');

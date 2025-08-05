@@ -9,6 +9,7 @@ use App\Exports\v2\FacilcomOrdersSalesDeliveryNotesExport;
 use App\Exports\v2\OrderBoxListExport;
 use App\Exports\v2\ActiveOrderPlannedProductsExport;
 use App\Exports\v2\BoxesReportExport;
+use App\Exports\v2\RawMaterialReceptionFacilcomExport;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -277,6 +278,19 @@ class ExcelController extends Controller
         return Excel::download(
             new BoxesReportExport($request, $limit),
             'reporte_cajas.xlsx'
+        );
+    }
+
+    /* Raw Material Reception Facilcom Export v2 */
+    public function exportRawMaterialReceptionFacilcom(Request $request)
+    {
+        ini_set('memory_limit', '1024M');
+        ini_set('max_execution_time', 300);
+
+        return Excel::download(
+            new RawMaterialReceptionFacilcomExport($request),
+            'recepciones_materia_prima_facilcom.xls',
+            \Maatwebsite\Excel\Excel::XLS
         );
     }
 
