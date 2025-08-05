@@ -148,7 +148,7 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
             }
 
             $rows[] = [
-                $this->index,
+                $this->index, // Mismo código para toda la recepción
                 date('d/m/Y', strtotime($reception->date)),
                 $supplier->facil_com_code,
                 $supplier->name,
@@ -158,13 +158,12 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
                 $product->price,
                 date('dmY', strtotime($reception->date)),
             ];
-            $this->index++;
         }
 
         // Caso especial PULPO FRESCO LONJA
         if ($reception->declared_total_amount > 0 && $reception->declared_total_net_weight > 0) {
             $rows[] = [
-                $this->index,
+                $this->index, // Mismo código para toda la recepción
                 date('d/m/Y', strtotime($reception->date)),
                 $supplier->facil_com_code,
                 $supplier->name,
@@ -174,8 +173,10 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
                 $reception->declared_total_amount / $reception->declared_total_net_weight,
                 date('dmY', strtotime($reception->date)),
             ];
-            $this->index++;
         }
+
+        // Incrementar el índice solo después de procesar toda la recepción
+        $this->index++;
 
         return $rows;
     }
