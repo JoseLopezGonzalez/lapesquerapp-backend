@@ -18,25 +18,37 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
 
     protected $filters;
     protected $index;
+    protected $limit;
 
-    public function __construct(Request $request)
+    public function __construct(Request $request, $limit = null)
     {
         $this->filters = $request;
         $this->index = 1;
+        $this->limit = $limit;
     }
 
     public function collection()
     {
         try {
             $query = RawMaterialReception::query();
-            $query->with('supplier', 'products.product.article');
 
-            // Aplicar filtros coordinados con el método index v2
-            $this->applyFiltersToQuery($query);
+            // Extraer todos los filtros aplicables del request (igual que BoxesReportExport)
+            $filters = $this->filters->all();
+
+            // Aplicar filtros si existen
+            if ($filters) {
+                $this->applyFiltersToQuery($query, $filters);
+            }
 
             $query->orderBy('date', 'desc');
 
-            $receptions = $query->get();
+            // Aplicar límite si se especifica (útil para testing)
+            if ($this->limit) {
+                $query->limit($this->limit);
+            }
+
+            // Cargar relaciones de forma más eficiente
+            $receptions = $query->with('supplier', 'products.product.article')->get();
             $rows = [];
         } catch (\Exception $e) {
             \Log::error('Exportación Facilcom v2: Error en collection(): ' . $e->getMessage(), [
@@ -106,22 +118,27 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         return collect($rows);
     }
 
-    private function applyFiltersToQuery($query)
+    private function applyFiltersToQuery($query, $filters)
     {
-        if ($this->filters->has('id')) {
-            $query->where('id', $this->filters->input('id'));
+        // Para aceptar filtros anidados (igual que BoxesReportExport)
+        if (isset($filters['filters'])) {
+            $filters = $filters['filters'];
         }
 
-        if ($this->filters->has('ids')) {
-            $query->whereIn('id', $this->filters->input('ids'));
+        if (isset($filters['id'])) {
+            $query->where('id', $filters['id']);
         }
 
-        if ($this->filters->has('suppliers')) {
-            $query->whereIn('supplier_id', $this->filters->input('suppliers'));
+        if (isset($filters['ids'])) {
+            $query->whereIn('id', $filters['ids']);
         }
 
-        if ($this->filters->has('dates')) {
-            $dates = $this->filters->input('dates');
+        if (isset($filters['suppliers'])) {
+            $query->whereIn('supplier_id', $filters['suppliers']);
+        }
+
+        if (isset($filters['dates'])) {
+            $dates = $filters['dates'];
             if (isset($dates['start'])) {
                 $startDate = date('Y-m-d 00:00:00', strtotime($dates['start']));
                 $query->where('date', '>=', $startDate);
@@ -132,20 +149,20 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
             }
         }
 
-        if ($this->filters->has('species')) {
-            $query->whereHas('products.product', function ($query) {
-                $query->whereIn('species_id', $this->filters->input('species'));
+        if (isset($filters['species'])) {
+            $query->whereHas('products.product', function ($query) use ($filters) {
+                $query->whereIn('species_id', $filters['species']);
             });
         }
 
-        if ($this->filters->has('products')) {
-            $query->whereHas('products.product', function ($query) {
-                $query->whereIn('id', $this->filters->input('products'));
+        if (isset($filters['products'])) {
+            $query->whereHas('products.product', function ($query) use ($filters) {
+                $query->whereIn('id', $filters['products']);
             });
         }
 
-        if ($this->filters->has('notes')) {
-            $query->where('notes', 'like', '%' . $this->filters->input('notes') . '%');
+        if (isset($filters['notes'])) {
+            $query->where('notes', 'like', '%' . $filters['notes'] . '%');
         }
     }
 
@@ -153,15 +170,15 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
     {
         try {
             return [
-                $row['id'],
-                $row['date'],
-                $row['supplierId'],
-                $row['supplierName'],
-                $row['articleId'],
-                $row['articleName'],
-                $row['netWeight'],
-                $row['price'],
-                $row['lot'],
+                $row['id'] ?? '-',
+                $row['date'] ?? '-',
+                $row['supplierId'] ?? '-',
+                $row['supplierName'] ?? '-',
+                $row['articleId'] ?? '-',
+                $row['articleName'] ?? '-',
+                $row['netWeight'] ?? 0,
+                $row['price'] ?? 0,
+                $row['lot'] ?? '-',
             ];
         } catch (\Exception $e) {
             \Log::error('Exportación Facilcom v2: Error en map(): ' . $e->getMessage(), [
