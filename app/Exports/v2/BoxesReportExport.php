@@ -4,54 +4,61 @@ namespace App\Exports\v2;
 
 use App\Models\Box;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, WithStyles
+class BoxesReportExport implements FromQuery, WithHeadings, WithMapping, WithStyles, WithChunkReading
 {
     use Exportable;
 
     protected $filters;
+    protected $limit;
 
-    public function __construct(Request $request)
+    public function __construct(Request $request, $limit = null)
     {
         $this->filters = $request;
+        $this->limit = $limit;
     }
 
-    public function collection()
+    public function query()
     {
         $query = Box::query();
 
-        // Aplicar filtros siguiendo el patrón del PalletController v2
-        /* $this->applyFiltersToQuery($query); */
+        // Aplicar filtros si existen
+        if ($this->filters && $this->filters->has('filters')) {
+            $this->applyFiltersToQuery($query);
+        }
 
         // Ordenar por ID descendente
         $query->orderBy('id', 'desc');
 
+        // Aplicar límite si se especifica (útil para testing)
+        if ($this->limit) {
+            $query->limit($this->limit);
+        }
+
+        // Cargar relaciones de forma más eficiente
         return $query->with([
-            'product',
             'product.article',
             'product.species',
-            'palletBox',
-            'palletBox.pallet',
-            'palletBox.pallet.order',
             'palletBox.pallet.order.customer',
-            'palletBox.pallet.storedPallet',
             'palletBox.pallet.storedPallet.store'
-        ])->get();
+        ]);
+    }
+
+    public function chunkSize(): int
+    {
+        return 1000; // Procesar 1000 registros a la vez
     }
 
     private function applyFiltersToQuery($query)
     {
-        $filters = $this->filters->all();
-
-        if (isset($filters['filters'])) {
-            $filters = $filters['filters']; // Para aceptar filtros anidados
-        }
+        $filters = $this->filters->input('filters', []);
 
         // Filtro por ID de caja
         if (isset($filters['id'])) {
@@ -198,32 +205,44 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
 
     public function map($box): array
     {
+        // Mejorar el manejo de relaciones nulas
+        $product = $box->product;
+        $article = $product ? $product->article : null;
+        $species = $product ? $product->species : null;
+        
+        $palletBox = $box->palletBox;
+        $pallet = $palletBox ? $palletBox->pallet : null;
+        $order = $pallet ? $pallet->order : null;
+        $customer = $order ? $order->customer : null;
+        $storedPallet = $pallet ? $pallet->storedPallet : null;
+        $store = $storedPallet ? $storedPallet->store : null;
+
         return [
             $box->id,
-            optional($box->product)->article->name ?? 'Sin artículo',
-            optional($box->product)->species->name ?? 'Sin especie',
+            $article ? $article->name : 'Sin artículo',
+            $species ? $species->name : 'Sin especie',
             $box->lot ?? 'Sin lote',
             number_format($box->net_weight ?? 0, 2, ',', '.'),
             number_format($box->gross_weight ?? 0, 2, ',', '.'),
             $box->gs1_128 ?? 'Sin GS1-128',
-            optional($box->palletBox)->pallet->id ?? 'Sin palet',
-            $this->getPalletState($box),
-            optional($box->palletBox)->pallet->order->id ?? 'Sin pedido',
-            optional($box->palletBox)->pallet->order->customer->name ?? 'Sin cliente',
-            optional($box->palletBox)->pallet->storedPallet->store->name ?? 'Sin almacén',
-            optional($box->palletBox)->pallet->storedPallet->position ?? 'Sin posición',
-            optional($box->palletBox)->pallet->observations ?? 'Sin observaciones',
+            $pallet ? $pallet->id : 'Sin palet',
+            $this->getPalletState($pallet),
+            $order ? $order->id : 'Sin pedido',
+            $customer ? $customer->name : 'Sin cliente',
+            $store ? $store->name : 'Sin almacén',
+            $storedPallet ? $storedPallet->position : 'Sin posición',
+            $pallet ? ($pallet->observations ?? 'Sin observaciones') : 'Sin observaciones',
             $box->created_at ? $box->created_at->format('d/m/Y H:i:s') : 'Sin fecha',
         ];
     }
 
-    private function getPalletState($box)
+    private function getPalletState($pallet)
     {
-        if (!$box->palletBox || !$box->palletBox->pallet) {
+        if (!$pallet) {
             return 'Sin palet';
         }
 
-        $stateId = $box->palletBox->pallet->state_id;
+        $stateId = $pallet->state_id;
         
         switch ($stateId) {
             case 1:

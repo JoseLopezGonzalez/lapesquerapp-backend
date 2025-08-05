@@ -266,11 +266,14 @@ class ExcelController extends Controller
 
     public function exportBoxesReport(Request $request)
     {
-        ini_set('memory_limit', '1024M');
-        ini_set('max_execution_time', 300);
+        ini_set('memory_limit', '2048M');
+        ini_set('max_execution_time', 600);
 
+        // Verificar si se solicita un límite para testing
+        $limit = $request->input('limit');
+        
         return Excel::download(
-            new BoxesReportExport($request),
+            new BoxesReportExport($request, $limit),
             'reporte_cajas.xlsx'
         );
     }
