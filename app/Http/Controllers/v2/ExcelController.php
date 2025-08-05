@@ -294,11 +294,21 @@ class ExcelController extends Controller
             $export = new RawMaterialReceptionFacilcomExport($request);
             
             \Log::info('Generando archivo Excel');
-            $response = Excel::download(
-                $export,
-                'recepciones_materia_prima_facilcom.xls',
-                \Maatwebsite\Excel\Excel::XLS
-            );
+            try {
+                $response = Excel::download(
+                    $export,
+                    'recepciones_materia_prima_facilcom.xls',
+                    \Maatwebsite\Excel\Excel::XLS
+                );
+                \Log::info('Archivo Excel generado exitosamente');
+            } catch (\Exception $excelError) {
+                \Log::error('Error generando archivo Excel: ' . $excelError->getMessage(), [
+                    'file' => $excelError->getFile(),
+                    'line' => $excelError->getLine(),
+                    'trace' => $excelError->getTraceAsString()
+                ]);
+                throw $excelError;
+            }
             
             \Log::info('Exportación completada exitosamente');
             return $response;

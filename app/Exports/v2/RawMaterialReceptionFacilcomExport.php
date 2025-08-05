@@ -199,50 +199,69 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
 
     public function headings(): array
     {
-        return [
-            'CODIGO',
-            'Fecha',
-            'CODIGO CLIENTE',
-            'Destino',
-            'Cod. Producto',
-            'Producto',
-            'Cantidad Kg',
-            'Precio',
-            'Lote asignado',
-        ];
+        try {
+            \Log::info('Exportación Facilcom v2: Generando headings');
+            $headings = [
+                'CODIGO',
+                'Fecha',
+                'CODIGO CLIENTE',
+                'Destino',
+                'Cod. Producto',
+                'Producto',
+                'Cantidad Kg',
+                'Precio',
+                'Lote asignado',
+            ];
+            \Log::info('Exportación Facilcom v2: Headings generados: ' . implode(', ', $headings));
+            return $headings;
+        } catch (\Exception $e) {
+            \Log::error('Exportación Facilcom v2: Error en headings(): ' . $e->getMessage());
+            throw $e;
+        }
     }
 
     public function styles(Worksheet $sheet)
     {
-        return [
-            // Estilo para los headers
-            1 => [
-                'font' => [
-                    'bold' => true,
-                    'color' => ['rgb' => 'FFFFFF'],
-                ],
-                'fill' => [
-                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => '4472C4'],
-                ],
-                'alignment' => [
-                    'horizontal' => Alignment::HORIZONTAL_CENTER,
-                    'vertical' => Alignment::VERTICAL_CENTER,
-                ],
-            ],
-            // Estilo para todas las celdas
-            'A:I' => [
-                'alignment' => [
-                    'horizontal' => Alignment::HORIZONTAL_CENTER,
-                    'vertical' => Alignment::VERTICAL_CENTER,
-                ],
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                        'color' => ['rgb' => '000000'],
+        try {
+            \Log::info('Exportación Facilcom v2: Aplicando estilos');
+            $styles = [
+                // Estilo para los headers
+                1 => [
+                    'font' => [
+                        'bold' => true,
+                        'color' => ['rgb' => 'FFFFFF'],
+                    ],
+                    'fill' => [
+                        'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                        'startColor' => ['rgb' => '4472C4'],
+                    ],
+                    'alignment' => [
+                        'horizontal' => Alignment::HORIZONTAL_CENTER,
+                        'vertical' => Alignment::VERTICAL_CENTER,
                     ],
                 ],
-            ],
-        ];
+                // Estilo para todas las celdas
+                'A:I' => [
+                    'alignment' => [
+                        'horizontal' => Alignment::HORIZONTAL_CENTER,
+                        'vertical' => Alignment::VERTICAL_CENTER,
+                    ],
+                    'borders' => [
+                        'allBorders' => [
+                            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                            'color' => ['rgb' => '000000'],
+                        ],
+                    ],
+                ],
+            ];
+            \Log::info('Exportación Facilcom v2: Estilos aplicados correctamente');
+            return $styles;
+        } catch (\Exception $e) {
+            \Log::error('Exportación Facilcom v2: Error en styles(): ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            throw $e;
+        }
     }
 } 
