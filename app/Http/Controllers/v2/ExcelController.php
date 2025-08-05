@@ -295,12 +295,14 @@ class ExcelController extends Controller
             
             \Log::info('Generando archivo Excel');
             try {
+                \Log::info('Exportación Facilcom v2: Llamando a Excel::download');
                 $response = Excel::download(
                     $export,
                     'recepciones_materia_prima_facilcom.xls',
                     \Maatwebsite\Excel\Excel::XLS
                 );
                 \Log::info('Archivo Excel generado exitosamente');
+                \Log::info('Exportación Facilcom v2: Tipo de respuesta: ' . get_class($response));
             } catch (\Exception $excelError) {
                 \Log::error('Error generando archivo Excel: ' . $excelError->getMessage(), [
                     'file' => $excelError->getFile(),
@@ -311,6 +313,7 @@ class ExcelController extends Controller
             }
             
             \Log::info('Exportación completada exitosamente');
+            \Log::info('Exportación Facilcom v2: Retornando respuesta al cliente');
             return $response;
             
         } catch (\Exception $e) {
