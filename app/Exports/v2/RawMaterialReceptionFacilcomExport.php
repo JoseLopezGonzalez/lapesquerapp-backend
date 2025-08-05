@@ -47,6 +47,7 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
             \Log::info('Exportación Facilcom v2: Recepciones obtenidas: ' . $receptions->count());
             
             $rows = [];
+            \Log::info('Exportación Facilcom v2: Iniciando procesamiento de recepciones');
         } catch (\Exception $e) {
             \Log::error('Exportación Facilcom v2: Error en collection(): ' . $e->getMessage(), [
                 'file' => $e->getFile(),
@@ -69,17 +70,29 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         }
 
         foreach ($receptions as $reception) {
+            \Log::info('Exportación Facilcom v2: Procesando recepción ID: ' . $reception->id);
+            
             // Verificar que el supplier existe y tiene facil_com_code
             if (!$reception->supplier || !$reception->supplier->facil_com_code) {
+                \Log::warning('Exportación Facilcom v2: Saltando recepción ' . $reception->id . ' - sin supplier o facil_com_code');
                 continue; // Saltar recepciones sin supplier o sin código facilcom
             }
 
+            \Log::info('Exportación Facilcom v2: Supplier válido para recepción ' . $reception->id . ': ' . $reception->supplier->facil_com_code);
+
             // Agregar productos regulares
+            \Log::info('Exportación Facilcom v2: Procesando ' . $reception->products->count() . ' productos para recepción ' . $reception->id);
+            
             foreach ($reception->products as $product) {
+                \Log::info('Exportación Facilcom v2: Procesando producto ID: ' . $product->id);
+                
                 // Verificar que el producto y su artículo existen
                 if (!$product->product || !$product->product->article) {
+                    \Log::warning('Exportación Facilcom v2: Saltando producto ' . $product->id . ' - sin producto o artículo');
                     continue; // Saltar productos sin artículo
                 }
+
+                \Log::info('Exportación Facilcom v2: Producto válido: ' . $product->product->id . ' - Artículo: ' . $product->product->article->name);
 
                 $rows[] = [
                     'id' => $this->index,
@@ -93,6 +106,7 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
                     'lot' => date('dmY', strtotime($reception->date)),
                 ];
                 $this->index++;
+                \Log::info('Exportación Facilcom v2: Producto agregado al índice: ' . $this->index);
             }
 
             // Caso especial PULPO FRESCO LONJA
@@ -112,6 +126,7 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
             }
         }
 
+        \Log::info('Exportación Facilcom v2: Procesamiento completado. Total de filas: ' . count($rows));
         return collect($rows);
     }
 
