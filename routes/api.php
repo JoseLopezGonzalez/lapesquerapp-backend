@@ -351,6 +351,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             /* Raw Material Receptions - Export debe ir ANTES del apiResource */
             Route::get('raw-material-receptions/facilcom-xls', [\App\Http\Controllers\v2\ExcelController::class, 'exportRawMaterialReceptionFacilcom'])->name('export_raw_material_receptions_facilcom');
             Route::apiResource('raw-material-receptions', V2RawMaterialReceptionController::class);
+            Route::delete('raw-material-receptions', [V2RawMaterialReceptionController::class, 'destroyMultiple']);
             Route::apiResource('transports', V2TransportController::class);
             Route::delete('transports', [V2TransportController::class, 'destroyMultiple']);
 

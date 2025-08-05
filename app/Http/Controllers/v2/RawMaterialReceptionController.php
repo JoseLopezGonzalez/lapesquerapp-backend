@@ -155,4 +155,17 @@ class RawMaterialReceptionController extends Controller
         $order->delete();
         return response()->json(['message' => 'Palet eliminado correctamente'], 200);
     }
+
+    public function destroyMultiple(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (!is_array($ids) || empty($ids)) {
+            return response()->json(['message' => 'No se han proporcionado IDs válidos'], 400);
+        }
+
+        RawMaterialReception::whereIn('id', $ids)->delete();
+
+        return response()->json(['message' => 'Recepciones de materia prima eliminadas con éxito']);
+    }
 }
