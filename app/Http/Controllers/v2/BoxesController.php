@@ -83,6 +83,70 @@ class BoxesController extends Controller
             }
         }
 
+        /* palletState - Filtro por estado del pallet */
+        if ($request->has('palletState')) {
+            if ($request->palletState === 'stored') {
+                $query->whereHas('palletBox.pallet', function ($query) {
+                    $query->where('state_id', 2);
+                });
+            } elseif ($request->palletState === 'shipped') {
+                $query->whereHas('palletBox.pallet', function ($query) {
+                    $query->where('state_id', 3);
+                });
+            }
+        }
+
+        /* orderState - Filtro por estado de la orden del pallet */
+        if ($request->has('orderState')) {
+            if ($request->orderState === 'pending') {
+                $query->whereHas('palletBox.pallet.order', function ($query) {
+                    $query->where('status', 'pending');
+                });
+            } elseif ($request->orderState === 'finished') {
+                $query->whereHas('palletBox.pallet.order', function ($query) {
+                    $query->where('status', 'finished');
+                });
+            } elseif ($request->orderState === 'without_order') {
+                $query->whereHas('palletBox.pallet', function ($query) {
+                    $query->whereDoesntHave('order');
+                });
+            }
+        }
+
+        /* position - Filtro por posición del pallet */
+        if ($request->has('position')) {
+            if ($request->position === 'located') {
+                $query->whereHas('palletBox.pallet.storedPallet', function ($query) {
+                    $query->whereNotNull('position');
+                });
+            } elseif ($request->position === 'unlocated') {
+                $query->whereHas('palletBox.pallet.storedPallet', function ($query) {
+                    $query->whereNull('position');
+                });
+            }
+        }
+
+        /* stores - Filtro por almacén donde está el pallet */
+        if ($request->has('stores')) {
+            $query->whereHas('palletBox.pallet.storedPallet', function ($query) use ($request) {
+                $query->whereIn('store_id', $request->stores);
+            });
+        }
+
+        /* orders - Filtro por órdenes asociadas al pallet */
+        if ($request->has('orders')) {
+            $query->whereHas('palletBox.pallet.order', function ($query) use ($request) {
+                $query->whereIn('order_id', $request->orders);
+            });
+        }
+
+        /* notes - Filtro por observaciones del pallet */
+        if ($request->has('notes')) {
+            $query->whereHas('palletBox.pallet', function ($query) use ($request) {
+                $query->where('observations', 'like', '%' . $request->notes . '%');
+            });
+        }
+
         /* order by id desc */
         $query->orderBy('id', 'desc');
 

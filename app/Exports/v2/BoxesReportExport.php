@@ -109,12 +109,12 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
         }
 
         // Filtro por estado del palet
-        if (!empty($filters['state'])) {
-            if ($filters['state'] === 'stored') {
+        if (!empty($filters['palletState'])) {
+            if ($filters['palletState'] === 'stored') {
                 $query->whereHas('palletBox.pallet', function ($query) {
                     $query->where('state_id', 2);
                 });
-            } elseif ($filters['state'] === 'shipped') {
+            } elseif ($filters['palletState'] === 'shipped') {
                 $query->whereHas('palletBox.pallet', function ($query) {
                     $query->where('state_id', 3);
                 });
@@ -132,7 +132,9 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
                     $query->where('status', 'finished');
                 });
             } elseif ($filters['orderState'] === 'without_order') {
-                $query->whereDoesntHave('palletBox.pallet.order');
+                $query->whereHas('palletBox.pallet', function ($query) {
+                    $query->whereDoesntHave('order');
+                });
             }
         }
 
