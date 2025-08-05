@@ -35,7 +35,44 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
 
         $query->orderBy('date', 'desc');
 
-        return $query->get();
+        $receptions = $query->get();
+        $rows = [];
+
+        foreach ($receptions as $reception) {
+            // Agregar productos regulares
+            foreach ($reception->products as $product) {
+                $rows[] = [
+                    'id' => $this->index,
+                    'date' => date('d/m/Y', strtotime($reception->date)),
+                    'supplierId' => $reception->supplier->facil_com_code,
+                    'supplierName' => $reception->supplier->name,
+                    'articleId' => $product->product->facil_com_code,
+                    'articleName' => $product->product->article->name,
+                    'netWeight' => $product->net_weight,
+                    'price' => $product->price,
+                    'lot' => date('dmY', strtotime($reception->date)),
+                ];
+                $this->index++;
+            }
+
+            // Caso especial PULPO FRESCO LONJA
+            if ($reception->declared_total_amount > 0 && $reception->declared_total_net_weight > 0) {
+                $rows[] = [
+                    'id' => $this->index,
+                    'date' => date('d/m/Y', strtotime($reception->date)),
+                    'supplierId' => $reception->supplier->facil_com_code,
+                    'supplierName' => $reception->supplier->name,
+                    'articleId' => 100,
+                    'articleName' => 'PULPO FRESCO LONJA',
+                    'netWeight' => $reception->declared_total_net_weight * -1,
+                    'price' => $reception->declared_total_amount / $reception->declared_total_net_weight,
+                    'lot' => date('dmY', strtotime($reception->date)),
+                ];
+                $this->index++;
+            }
+        }
+
+        return collect($rows);
     }
 
     private function applyFiltersToQuery($query)
@@ -81,42 +118,19 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         }
     }
 
-    public function map($rawMaterialReception): array
+    public function map($row): array
     {
-        $mappedProducts = [];
-
-        foreach ($rawMaterialReception->products as $product) {
-            $mappedProducts[] = [
-                'id' => $this->index,
-                'date' => date('d/m/Y', strtotime($rawMaterialReception->date)),
-                'supplierId' => $rawMaterialReception->supplier->facil_com_code,
-                'supplierName' => $rawMaterialReception->supplier->name,
-                'articleId' => $product->product->facil_com_code,
-                'articleName' => $product->product->article->name,
-                'netWeight' => $product->net_weight,
-                'price' => $product->price,
-                'lot' => date('dmY', strtotime($rawMaterialReception->date)),
-            ];
-        }
-
-        // Caso especial PULPO FRESCO LONJA
-        if ($rawMaterialReception->declared_total_amount > 0 && $rawMaterialReception->declared_total_net_weight > 0) {
-            $mappedProducts[] = [
-                'id' => $this->index,
-                'date' => date('d/m/Y', strtotime($rawMaterialReception->date)),
-                'supplierId' => $rawMaterialReception->supplier->facil_com_code,
-                'supplierName' => $rawMaterialReception->supplier->name,
-                'articleId' => 100,
-                'articleName' => 'PULPO FRESCO LONJA',
-                'netWeight' => $rawMaterialReception->declared_total_net_weight * -1,
-                'price' => $rawMaterialReception->declared_total_amount / $rawMaterialReception->declared_total_net_weight,
-                'lot' => date('dmY', strtotime($rawMaterialReception->date)),
-            ];
-        }
-
-        $this->index++;
-
-        return $mappedProducts;
+        return [
+            $row['id'],
+            $row['date'],
+            $row['supplierId'],
+            $row['supplierName'],
+            $row['articleId'],
+            $row['articleName'],
+            $row['netWeight'],
+            $row['price'],
+            $row['lot'],
+        ];
     }
 
     public function headings(): array
