@@ -19,11 +19,13 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
 
     protected $filters;
     protected $limit;
+    protected $index;
 
     public function __construct(Request $request, $limit = null)
     {
         $this->filters = $request;
         $this->limit = $limit;
+        $this->index = 1;
     }
 
     public function collection()
@@ -111,15 +113,15 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
     public function headings(): array
     {
         return [
-            'ID',
+            'CODIGO',
             'Fecha',
-            'ID Proveedor',
-            'Proveedor',
-            'ID Artículo',
-            'Artículo',
-            'Peso Neto',
+            'CODIGO CLIENTE',
+            'Destino',
+            'Cod. Producto',
+            'Producto',
+            'Cantidad Kg',
             'Precio',
-            'Lote',
+            'Lote asignado',
         ];
     }
 
@@ -146,7 +148,7 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
             }
 
             $rows[] = [
-                $reception->id,
+                $this->index,
                 date('d/m/Y', strtotime($reception->date)),
                 $supplier->facil_com_code,
                 $supplier->name,
@@ -156,12 +158,13 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
                 $product->price,
                 date('dmY', strtotime($reception->date)),
             ];
+            $this->index++;
         }
 
         // Caso especial PULPO FRESCO LONJA
         if ($reception->declared_total_amount > 0 && $reception->declared_total_net_weight > 0) {
             $rows[] = [
-                $reception->id,
+                $this->index,
                 date('d/m/Y', strtotime($reception->date)),
                 $supplier->facil_com_code,
                 $supplier->name,
@@ -171,6 +174,7 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
                 $reception->declared_total_amount / $reception->declared_total_net_weight,
                 date('dmY', strtotime($reception->date)),
             ];
+            $this->index++;
         }
 
         return $rows;
