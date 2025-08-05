@@ -20,6 +20,10 @@ class CeboDispatchController extends Controller
             $query->where('id', $request->id);
         }
 
+        if ($request->has('ids')) {
+            $query->whereIn('id', $request->ids);
+        }
+
         if ($request->has('suppliers')) {
             $query->whereIn('supplier_id', $request->suppliers);
         }
@@ -41,6 +45,12 @@ class CeboDispatchController extends Controller
         }
 
 
+        if ($request->has('species')) {
+            $query->whereHas('products.product', function ($query) use ($request) {
+                $query->whereIn('species_id', $request->species);
+            });
+        }
+
         if ($request->has('products')) {
             $query->whereHas('products.product', function ($query) use ($request) {
                 $query->whereIn('id', $request->products);
@@ -49,6 +59,10 @@ class CeboDispatchController extends Controller
 
         if ($request->has('notes')) {
             $query->where('notes', 'like', '%' . $request->notes . '%');
+        }
+
+        if ($request->has('export_type')) {
+            $query->where('export_type', $request->export_type);
         }
 
         /* Order by Date Descen */

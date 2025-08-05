@@ -10,6 +10,8 @@ use App\Exports\v2\OrderBoxListExport;
 use App\Exports\v2\ActiveOrderPlannedProductsExport;
 use App\Exports\v2\BoxesReportExport;
 use App\Exports\v2\RawMaterialReceptionFacilcomExport;
+use App\Exports\v2\CeboDispatchFacilcomExport;
+use App\Exports\v2\CeboDispatchA3erpExport;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -299,6 +301,64 @@ class ExcelController extends Controller
             
         } catch (\Exception $e) {
             \Log::error('Error en exportación Facilcom v2: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'error' => 'Error durante la exportación: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /* Cebo Dispatch Facilcom Export v2 */
+    public function exportCeboDispatchFacilcom(Request $request)
+    {
+        try {
+            ini_set('memory_limit', '2048M');
+            ini_set('max_execution_time', 600);
+
+            // Verificar si se solicita un límite para testing
+            $limit = $request->input('limit');
+            
+            return Excel::download(
+                new CeboDispatchFacilcomExport($request, $limit),
+                'despachos_cebo_facilcom.xlsx',
+                \Maatwebsite\Excel\Excel::XLSX
+            );
+            
+        } catch (\Exception $e) {
+            \Log::error('Error en exportación Cebo Dispatch Facilcom v2: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'error' => 'Error durante la exportación: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /* Cebo Dispatch A3erp Export v2 */
+    public function exportCeboDispatchA3erp(Request $request)
+    {
+        try {
+            ini_set('memory_limit', '2048M');
+            ini_set('max_execution_time', 600);
+
+            // Verificar si se solicita un límite para testing
+            $limit = $request->input('limit');
+            
+            return Excel::download(
+                new CeboDispatchA3erpExport($request, $limit),
+                'despachos_cebo_a3erp.xlsx',
+                \Maatwebsite\Excel\Excel::XLSX
+            );
+            
+        } catch (\Exception $e) {
+            \Log::error('Error en exportación Cebo Dispatch A3erp v2: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()

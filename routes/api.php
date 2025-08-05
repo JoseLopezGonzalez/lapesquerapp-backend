@@ -395,8 +395,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
             Route::apiResource('cebo-dispatches', V2CeboDispatchController::class);
             /* Cebo Dispatch Exports */
-            Route::get('cebo-dispatches/facilcom-xlsx', [\App\Http\Controllers\v2\CeboDispatchReportController::class, 'exportToFacilcomExcel'])->name('export_cebo_dispatches_facilcom');
-            Route::get('cebo-dispatches/a3erp-xlsx', [\App\Http\Controllers\v2\CeboDispatchReportController::class, 'exportToA3erpExcel'])->name('export_cebo_dispatches_a3erp');
+            Route::get('cebo-dispatches/facilcom-xlsx', [\App\Http\Controllers\v2\ExcelController::class, 'exportCeboDispatchFacilcom'])->name('export_cebo_dispatches_facilcom');
+            Route::get('cebo-dispatches/a3erp-xlsx', [\App\Http\Controllers\v2\ExcelController::class, 'exportCeboDispatchA3erp'])->name('export_cebo_dispatches_a3erp');
             Route::get('labels/options', [LabelController::class, 'options'])->name('labels.options');
             Route::apiResource('labels', LabelController::class);
 
