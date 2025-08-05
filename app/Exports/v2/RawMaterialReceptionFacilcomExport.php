@@ -39,14 +39,24 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         $rows = [];
 
         foreach ($receptions as $reception) {
+            // Verificar que el supplier existe y tiene facil_com_code
+            if (!$reception->supplier || !$reception->supplier->facil_com_code) {
+                continue; // Saltar recepciones sin supplier o sin código facilcom
+            }
+
             // Agregar productos regulares
             foreach ($reception->products as $product) {
+                // Verificar que el producto y su artículo existen
+                if (!$product->product || !$product->product->article) {
+                    continue; // Saltar productos sin artículo
+                }
+
                 $rows[] = [
                     'id' => $this->index,
                     'date' => date('d/m/Y', strtotime($reception->date)),
                     'supplierId' => $reception->supplier->facil_com_code,
                     'supplierName' => $reception->supplier->name,
-                    'articleId' => $product->product->facil_com_code,
+                    'articleId' => $product->product->facil_com_code ?? '',
                     'articleName' => $product->product->article->name,
                     'netWeight' => $product->net_weight,
                     'price' => $product->price,
