@@ -150,4 +150,17 @@ class CeboDispatchController extends Controller
         $dispatch->delete();
         return response()->json(['message' => 'Despacho de cebo eliminado correctamente'], 200);
     }
+
+    public function destroyMultiple(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (!is_array($ids) || empty($ids)) {
+            return response()->json(['message' => 'No se proporcionaron IDs válidos'], 400);
+        }
+
+        CeboDispatch::whereIn('id', $ids)->delete();
+
+        return response()->json(['message' => 'Despachos de cebo eliminados correctamente']);
+    }
 }

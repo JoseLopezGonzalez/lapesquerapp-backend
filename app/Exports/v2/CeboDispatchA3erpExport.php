@@ -48,46 +48,10 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
         }
 
         // Cargar relaciones de forma más eficiente
-        $dispatches = $query->with([
+        return $query->with([
             'supplier',
             'products.product.article'
         ])->get();
-
-        // Crear una colección plana con un elemento por producto
-        $flatCollection = collect();
-        
-        foreach ($dispatches as $dispatch) {
-            $supplier = $dispatch->supplier;
-            
-            // Verificar que el supplier existe y tiene a3erp_cebo_code
-            if (!$supplier || !$supplier->a3erp_cebo_code) {
-                continue; // Saltar este despacho
-            }
-
-            // Solo procesar si el tipo de exportación es a3erp
-            if ($dispatch->export_type === 'a3erp') {
-                foreach ($dispatch->products as $product) {
-                    $productModel = $product->product;
-                    $article = $productModel ? $productModel->article : null;
-                    
-                    // Verificar que el producto y su artículo existen
-                    if (!$productModel || !$article) {
-                        continue; // Saltar productos sin artículo
-                    }
-
-                    // Crear un objeto con los datos necesarios
-                    $flatCollection->push((object) [
-                        'dispatch' => $dispatch,
-                        'product' => $product,
-                        'productModel' => $productModel,
-                        'article' => $article,
-                        'supplier' => $supplier
-                    ]);
-                }
-            }
-        }
-
-        return $flatCollection;
     }
 
     private function applyFiltersToQuery($query, $filters)
@@ -166,20 +130,45 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
         ];
     }
 
-    public function map($item): array
+    public function map($ceboDispatch): array
     {
-        return [
-            'C25', // cabSerie
-            $item->dispatch->id, // id
-            date('d/m/Y', strtotime($item->dispatch->date)),
-            $item->supplier->a3erp_cebo_code,
-            $item->supplier->name . " - CEBO - " . date('d/m/Y', strtotime($item->dispatch->date)),
-            $item->productModel->a3erp_code ?? '',
-            $item->article->name,
-            $item->product->net_weight,
-            $item->product->price,
-            'RED10', // iva
-        ];
+        // Mejorar el manejo de relaciones nulas
+        $supplier = $ceboDispatch->supplier;
+        
+        // Verificar que el supplier existe y tiene a3erp_cebo_code
+        if (!$supplier || !$supplier->a3erp_cebo_code) {
+            return []; // Retornar array vacío para saltar este despacho
+        }
+
+        $rows = [];
+
+        // Solo procesar si el tipo de exportación es a3erp
+        if ($ceboDispatch->export_type === 'a3erp') {
+            foreach ($ceboDispatch->products as $product) {
+                $productModel = $product->product;
+                $article = $productModel ? $productModel->article : null;
+                
+                // Verificar que el producto y su artículo existen
+                if (!$productModel || !$article) {
+                    continue; // Saltar productos sin artículo
+                }
+
+                $rows[] = [
+                    'C25', // cabSerie
+                    $ceboDispatch->id, // id
+                    date('d/m/Y', strtotime($ceboDispatch->date)),
+                    $supplier->a3erp_cebo_code,
+                    $supplier->name . " - CEBO - " . date('d/m/Y', strtotime($ceboDispatch->date)),
+                    $productModel->a3erp_code ?? '',
+                    $article->name,
+                    $product->net_weight,
+                    $product->price,
+                    'RED10', // iva
+                ];
+            }
+        }
+
+        return $rows;
     }
 
     public function title(): string
