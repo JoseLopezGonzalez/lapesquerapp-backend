@@ -285,24 +285,40 @@ class ExcelController extends Controller
     public function exportRawMaterialReceptionFacilcom(Request $request)
     {
         try {
+            \Log::info('Iniciando exportación Facilcom v2', ['request' => $request->all()]);
+            
             ini_set('memory_limit', '1024M');
             ini_set('max_execution_time', 300);
 
-            return Excel::download(
-                new RawMaterialReceptionFacilcomExport($request),
+            \Log::info('Creando instancia de exportación');
+            $export = new RawMaterialReceptionFacilcomExport($request);
+            
+            \Log::info('Generando archivo Excel');
+            $response = Excel::download(
+                $export,
                 'recepciones_materia_prima_facilcom.xls',
                 \Maatwebsite\Excel\Excel::XLS
             );
+            
+            \Log::info('Exportación completada exitosamente');
+            return $response;
+            
         } catch (\Exception $e) {
             \Log::error('Error en exportación Facilcom v2: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
-                'request' => $request->all()
+                'request' => $request->all(),
+                'tenant' => $request->header('X-Tenant'),
+                'user_agent' => $request->header('User-Agent')
             ]);
             
             return response()->json([
-                'error' => 'Error durante la exportación: ' . $e->getMessage()
+                'error' => 'Error durante la exportación: ' . $e->getMessage(),
+                'details' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]
             ], 500);
         }
     }

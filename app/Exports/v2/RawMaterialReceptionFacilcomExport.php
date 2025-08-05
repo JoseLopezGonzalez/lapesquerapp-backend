@@ -28,17 +28,32 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
     public function collection()
     {
         try {
+            \Log::info('Exportación Facilcom v2: Iniciando collection()');
+            
             $query = RawMaterialReception::query();
+            \Log::info('Exportación Facilcom v2: Query creado');
+            
             $query->with('supplier', 'products.product.article');
+            \Log::info('Exportación Facilcom v2: Relaciones cargadas');
 
             // Aplicar filtros coordinados con el método index v2
             $this->applyFiltersToQuery($query);
+            \Log::info('Exportación Facilcom v2: Filtros aplicados');
 
             $query->orderBy('date', 'desc');
+            \Log::info('Exportación Facilcom v2: Orden aplicado');
 
             $receptions = $query->get();
+            \Log::info('Exportación Facilcom v2: Recepciones obtenidas: ' . $receptions->count());
+            
             $rows = [];
         } catch (\Exception $e) {
+            \Log::error('Exportación Facilcom v2: Error en collection(): ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             // Si hay error de conexión tenant, retornar colección vacía con mensaje
             if (strpos($e->getMessage(), 'No database selected') !== false || 
                 strpos($e->getMessage(), 'Invalid catalog name') !== false ||
@@ -145,17 +160,26 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
 
     public function map($row): array
     {
-        return [
-            $row['id'],
-            $row['date'],
-            $row['supplierId'],
-            $row['supplierName'],
-            $row['articleId'],
-            $row['articleName'],
-            $row['netWeight'],
-            $row['price'],
-            $row['lot'],
-        ];
+        try {
+            return [
+                $row['id'],
+                $row['date'],
+                $row['supplierId'],
+                $row['supplierName'],
+                $row['articleId'],
+                $row['articleName'],
+                $row['netWeight'],
+                $row['price'],
+                $row['lot'],
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Exportación Facilcom v2: Error en map(): ' . $e->getMessage(), [
+                'row' => $row,
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            throw $e;
+        }
     }
 
     public function headings(): array
