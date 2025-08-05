@@ -27,16 +27,31 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
 
     public function collection()
     {
-        $query = RawMaterialReception::query();
-        $query->with('supplier', 'products.product.article');
+        try {
+            $query = RawMaterialReception::query();
+            $query->with('supplier', 'products.product.article');
 
-        // Aplicar filtros coordinados con el método index v2
-        $this->applyFiltersToQuery($query);
+            // Aplicar filtros coordinados con el método index v2
+            $this->applyFiltersToQuery($query);
 
-        $query->orderBy('date', 'desc');
+            $query->orderBy('date', 'desc');
 
-        $receptions = $query->get();
-        $rows = [];
+            $receptions = $query->get();
+            $rows = [];
+        } catch (\Exception $e) {
+            // Si hay error de conexión tenant, retornar colección vacía con mensaje
+            if (strpos($e->getMessage(), 'No database selected') !== false || 
+                strpos($e->getMessage(), 'Invalid catalog name') !== false ||
+                strpos($e->getMessage(), 'Base table or view not found') !== false) {
+                
+                \Log::warning('Exportación Facilcom v2: No se pudo conectar a la base de datos tenant. Error: ' . $e->getMessage());
+                
+                // Retornar colección vacía para evitar errores
+                return collect([]);
+            } else {
+                throw $e; // Re-lanzar otros errores
+            }
+        }
 
         foreach ($receptions as $reception) {
             // Verificar que el supplier existe y tiene facil_com_code
