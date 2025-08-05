@@ -9,9 +9,11 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithAutoFilter;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
-class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, WithStyles
+class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithAutoFilter
 {
     use Exportable;
 
@@ -221,27 +223,27 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
 
         return [
             $box->id,
-            $article ? $article->name : 'Sin artículo',
-            $species ? $species->name : 'Sin especie',
-            $box->lot ?? 'Sin lote',
-            number_format($box->net_weight ?? 0, 2, ',', '.'),
-            number_format($box->gross_weight ?? 0, 2, ',', '.'),
-            $box->gs1_128 ?? 'Sin GS1-128',
-            $pallet ? $pallet->id : 'Sin palet',
+            $article ? $article->name : '-',
+            $species ? $species->name : '-',
+            $box->lot ?? '-',
+            $box->net_weight ?? 0,
+            $box->gross_weight ?? 0,
+            $box->gs1_128 ?? '-',
+            $pallet ? $pallet->id : '-',
             $this->getPalletState($pallet),
-            $order ? $order->id : 'Sin pedido',
-            $customer ? $customer->name : 'Sin cliente',
-            $store ? $store->name : 'Sin almacén',
-            $storedPallet ? $storedPallet->position : 'Sin posición',
-            $pallet ? ($pallet->observations ?? 'Sin observaciones') : 'Sin observaciones',
-            $box->created_at ? $box->created_at->format('d/m/Y H:i:s') : 'Sin fecha',
+            $order ? $order->id : '-',
+            $customer ? $customer->name : '-',
+            $store ? $store->name : '-',
+            $storedPallet ? $storedPallet->position : '-',
+            $pallet ? ($pallet->observations ?? '-') : '-',
+            $box->created_at ? $box->created_at : '-',
         ];
     }
 
     private function getPalletState($pallet)
     {
         if (!$pallet) {
-            return 'Sin palet';
+            return '-';
         }
 
         $stateId = $pallet->state_id;
@@ -254,20 +256,35 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
             case 3:
                 return 'Enviado';
             default:
-                return 'Desconocido';
+                return '-';
         }
     }
 
+
+
     public function styles(Worksheet $sheet)
     {
-        return [
-            1 => [
-                'font' => ['bold' => true],
-                'fill' => [
-                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => 'E2EFDA']
-                ]
-            ],
-        ];
+        // Obtener el rango de datos
+        $highestRow = $sheet->getHighestRow();
+        $highestColumn = $sheet->getHighestColumn();
+
+        // Solo negrita para encabezados
+        $sheet->getStyle('A1:' . $highestColumn . '1')->applyFromArray([
+            'font' => [
+                'bold' => true
+            ]
+        ]);
+
+        // Formato de números para columnas de peso (E y F)
+        $sheet->getStyle('E:F')->getNumberFormat()->setFormatCode('#,##0.00');
+
+        // Autoajuste básico de columnas
+        foreach (range('A', $highestColumn) as $column) {
+            $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
+
+        return [];
     }
+
+
 } 
