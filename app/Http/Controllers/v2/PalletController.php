@@ -91,6 +91,10 @@ class PalletController extends Controller
             $query->whereHas('boxes.box', fn($q) => $q->whereIn('article_id', $filters['products']));
         }
 
+        if (!empty($filters['species'])) {
+            $query->whereHas('boxes.box.product', fn($q) => $q->whereIn('species_id', $filters['species']));
+        }
+
         if (!empty($filters['stores'])) {
             $query->whereHas('storedPallet', fn($q) => $q->whereIn('store_id', $filters['stores']));
         }
