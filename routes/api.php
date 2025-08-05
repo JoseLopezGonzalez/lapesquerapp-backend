@@ -345,6 +345,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             /* bulkUpdateState */
             Route::post('pallets/update-state', [V2PalletController::class, 'bulkUpdateState'])->name('pallets.bulk_update_state');
 
+            Route::get('raw-material-receptions/facilcom-xls', [\App\Http\Controllers\v2\ExcelController::class, 'exportRawMaterialReceptionFacilcom'])->name('export_raw_material_receptions_facilcom');
+
             /* Controladores Genericos */
             Route::apiResource('orders', V2OrderController::class);
             Route::apiResource('order-planned-product-details', OrderPlannedProductDetailController::class);
@@ -422,7 +424,6 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::get('orders/xlsx/active-planned-products', [\App\Http\Controllers\v2\ExcelController::class, 'exportActiveOrderPlannedProducts'])->name('export_active_planned_products');
 
             /* Raw Material Receptions Facilcom Export */
-            Route::get('raw-material-receptions/facilcom-xls', [\App\Http\Controllers\v2\ExcelController::class, 'exportRawMaterialReceptionFacilcom'])->name('export_raw_material_receptions_facilcom');
 
             Route::get('orders/{orderId}/pdf/valued-loading-note', [\App\Http\Controllers\v2\PDFController::class, 'generateValuedLoadingNote'])->name('generate_valued_loading_note');
             /* generateIncident */
