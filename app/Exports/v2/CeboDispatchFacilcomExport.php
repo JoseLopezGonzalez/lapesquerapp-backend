@@ -49,10 +49,50 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
         }
 
         // Cargar relaciones de forma más eficiente
-        return $query->with([
+        $dispatches = $query->with([
             'supplier',
             'products.product.article'
         ])->get();
+
+        // Crear una colección plana con un elemento por producto
+        $flatCollection = collect();
+        
+        foreach ($dispatches as $dispatch) {
+            $supplier = $dispatch->supplier;
+            
+            // Verificar que el supplier existe y tiene facilcom_cebo_code
+            if (!$supplier || !$supplier->facilcom_cebo_code) {
+                continue; // Saltar este despacho
+            }
+
+            // Solo procesar si el tipo de exportación es facilcom
+            if ($dispatch->export_type == 'facilcom') {
+                foreach ($dispatch->products as $product) {
+                    $productModel = $product->product;
+                    $article = $productModel ? $productModel->article : null;
+                    
+                    // Verificar que el producto y su artículo existen
+                    if (!$productModel || !$article) {
+                        continue; // Saltar productos sin artículo
+                    }
+
+                    // Crear un objeto con los datos necesarios
+                    $flatCollection->push((object) [
+                        'dispatch' => $dispatch,
+                        'product' => $product,
+                        'productModel' => $productModel,
+                        'article' => $article,
+                        'supplier' => $supplier,
+                        'index' => $this->index
+                    ]);
+                }
+
+                // Incrementar el índice solo después de procesar todo el despacho
+                $this->index++;
+            }
+        }
+
+        return $flatCollection;
     }
 
     private function applyFiltersToQuery($query, $filters)
@@ -130,47 +170,19 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
         ];
     }
 
-    public function map($ceboDispatch): array
+    public function map($item): array
     {
-        // Mejorar el manejo de relaciones nulas
-        $supplier = $ceboDispatch->supplier;
-        
-        // Verificar que el supplier existe y tiene facilcom_cebo_code
-        if (!$supplier || !$supplier->facilcom_cebo_code) {
-            return []; // Retornar array vacío para saltar este despacho
-        }
-
-        $rows = [];
-
-        // Solo procesar si el tipo de exportación es facilcom
-        if ($ceboDispatch->export_type == 'facilcom') {
-            foreach ($ceboDispatch->products as $product) {
-                $productModel = $product->product;
-                $article = $productModel ? $productModel->article : null;
-                
-                // Verificar que el producto y su artículo existen
-                if (!$productModel || !$article) {
-                    continue; // Saltar productos sin artículo
-                }
-
-                $rows[] = [
-                    $this->index, // Mismo código para todo el despacho
-                    date('d/m/Y', strtotime($ceboDispatch->date)),
-                    $supplier->facilcom_cebo_code,
-                    $supplier->name,
-                    $productModel->facil_com_code ?? '',
-                    $article->name,
-                    $product->net_weight,
-                    $product->price,
-                    date('dmY', strtotime($ceboDispatch->date)),
-                ];
-            }
-
-            // Incrementar el índice solo después de procesar todo el despacho
-            $this->index++;
-        }
-
-        return $rows;
+        return [
+            $item->index, // Mismo código para todo el despacho
+            date('d/m/Y', strtotime($item->dispatch->date)),
+            $item->supplier->facilcom_cebo_code,
+            $item->supplier->name,
+            $item->productModel->facil_com_code ?? '',
+            $item->article->name,
+            $item->product->net_weight,
+            $item->product->price,
+            date('dmY', strtotime($item->dispatch->date)),
+        ];
     }
 
     public function styles(Worksheet $sheet)
