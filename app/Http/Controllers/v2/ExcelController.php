@@ -285,53 +285,24 @@ class ExcelController extends Controller
     public function exportRawMaterialReceptionFacilcom(Request $request)
     {
         try {
-            \Log::info('Iniciando exportación Facilcom v2', ['request' => $request->all()]);
-            
             ini_set('memory_limit', '1024M');
             ini_set('max_execution_time', 300);
 
-            \Log::info('Creando instancia de exportación');
-            $export = new RawMaterialReceptionFacilcomExport($request);
-            
-            \Log::info('Generando archivo Excel');
-            try {
-                \Log::info('Exportación Facilcom v2: Llamando a Excel::download');
-                $response = Excel::download(
-                    $export,
-                    'recepciones_materia_prima_facilcom.xls',
-                    \Maatwebsite\Excel\Excel::XLS
-                );
-                \Log::info('Archivo Excel generado exitosamente');
-                \Log::info('Exportación Facilcom v2: Tipo de respuesta: ' . get_class($response));
-            } catch (\Exception $excelError) {
-                \Log::error('Error generando archivo Excel: ' . $excelError->getMessage(), [
-                    'file' => $excelError->getFile(),
-                    'line' => $excelError->getLine(),
-                    'trace' => $excelError->getTraceAsString()
-                ]);
-                throw $excelError;
-            }
-            
-            \Log::info('Exportación completada exitosamente');
-            \Log::info('Exportación Facilcom v2: Retornando respuesta al cliente');
-            return $response;
+            return Excel::download(
+                new RawMaterialReceptionFacilcomExport($request),
+                'recepciones_materia_prima_facilcom.xls',
+                \Maatwebsite\Excel\Excel::XLS
+            );
             
         } catch (\Exception $e) {
             \Log::error('Error en exportación Facilcom v2: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-                'request' => $request->all(),
-                'tenant' => $request->header('X-Tenant'),
-                'user_agent' => $request->header('User-Agent')
+                'trace' => $e->getTraceAsString()
             ]);
             
             return response()->json([
-                'error' => 'Error durante la exportación: ' . $e->getMessage(),
-                'details' => [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
-                ]
+                'error' => 'Error durante la exportación: ' . $e->getMessage()
             ], 500);
         }
     }

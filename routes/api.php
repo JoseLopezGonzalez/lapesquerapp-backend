@@ -344,11 +344,12 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             /* bulkUpdateState */
             Route::post('pallets/update-state', [V2PalletController::class, 'bulkUpdateState'])->name('pallets.bulk_update_state');
 
-            Route::get('raw-material-receptions/facilcom-xls', [\App\Http\Controllers\v2\ExcelController::class, 'exportRawMaterialReceptionFacilcom'])->name('export_raw_material_receptions_facilcom');
-
             /* Controladores Genericos */
             Route::apiResource('orders', V2OrderController::class);
             Route::apiResource('order-planned-product-details', OrderPlannedProductDetailController::class);
+            
+            /* Raw Material Receptions - Export debe ir ANTES del apiResource */
+            Route::get('raw-material-receptions/facilcom-xls', [\App\Http\Controllers\v2\ExcelController::class, 'exportRawMaterialReceptionFacilcom'])->name('export_raw_material_receptions_facilcom');
             Route::apiResource('raw-material-receptions', V2RawMaterialReceptionController::class);
             Route::apiResource('transports', V2TransportController::class);
             Route::delete('transports', [V2TransportController::class, 'destroyMultiple']);
@@ -391,8 +392,6 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::apiResource('fishing-gears', FishingGearController::class);
             Route::delete('fishing-gears', [FishingGearController::class, 'destroyMultiple']);
 
-            Route::apiResource('countries', CountryController::class);
-            Route::apiResource('payment-terms', V2PaymentTermController::class);
             Route::apiResource('cebo-dispatches', V2CeboDispatchController::class);
             Route::get('labels/options', [LabelController::class, 'options'])->name('labels.options');
             Route::apiResource('labels', LabelController::class);

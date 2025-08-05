@@ -28,26 +28,16 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
     public function collection()
     {
         try {
-            \Log::info('Exportación Facilcom v2: Iniciando collection()');
-            
             $query = RawMaterialReception::query();
-            \Log::info('Exportación Facilcom v2: Query creado');
-            
             $query->with('supplier', 'products.product.article');
-            \Log::info('Exportación Facilcom v2: Relaciones cargadas');
 
             // Aplicar filtros coordinados con el método index v2
             $this->applyFiltersToQuery($query);
-            \Log::info('Exportación Facilcom v2: Filtros aplicados');
 
             $query->orderBy('date', 'desc');
-            \Log::info('Exportación Facilcom v2: Orden aplicado');
 
             $receptions = $query->get();
-            \Log::info('Exportación Facilcom v2: Recepciones obtenidas: ' . $receptions->count());
-            
             $rows = [];
-            \Log::info('Exportación Facilcom v2: Iniciando procesamiento de recepciones');
         } catch (\Exception $e) {
             \Log::error('Exportación Facilcom v2: Error en collection(): ' . $e->getMessage(), [
                 'file' => $e->getFile(),
@@ -70,29 +60,17 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         }
 
         foreach ($receptions as $reception) {
-            \Log::info('Exportación Facilcom v2: Procesando recepción ID: ' . $reception->id);
-            
             // Verificar que el supplier existe y tiene facil_com_code
             if (!$reception->supplier || !$reception->supplier->facil_com_code) {
-                \Log::warning('Exportación Facilcom v2: Saltando recepción ' . $reception->id . ' - sin supplier o facil_com_code');
                 continue; // Saltar recepciones sin supplier o sin código facilcom
             }
 
-            \Log::info('Exportación Facilcom v2: Supplier válido para recepción ' . $reception->id . ': ' . $reception->supplier->facil_com_code);
-
             // Agregar productos regulares
-            \Log::info('Exportación Facilcom v2: Procesando ' . $reception->products->count() . ' productos para recepción ' . $reception->id);
-            
             foreach ($reception->products as $product) {
-                \Log::info('Exportación Facilcom v2: Procesando producto ID: ' . $product->id);
-                
                 // Verificar que el producto y su artículo existen
                 if (!$product->product || !$product->product->article) {
-                    \Log::warning('Exportación Facilcom v2: Saltando producto ' . $product->id . ' - sin producto o artículo');
                     continue; // Saltar productos sin artículo
                 }
-
-                \Log::info('Exportación Facilcom v2: Producto válido: ' . $product->product->id . ' - Artículo: ' . $product->product->article->name);
 
                 $rows[] = [
                     'id' => $this->index,
@@ -106,7 +84,6 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
                     'lot' => date('dmY', strtotime($reception->date)),
                 ];
                 $this->index++;
-                \Log::info('Exportación Facilcom v2: Producto agregado al índice: ' . $this->index);
             }
 
             // Caso especial PULPO FRESCO LONJA
@@ -126,7 +103,6 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
             }
         }
 
-        \Log::info('Exportación Facilcom v2: Procesamiento completado. Total de filas: ' . count($rows));
         return collect($rows);
     }
 
@@ -199,69 +175,50 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
 
     public function headings(): array
     {
-        try {
-            \Log::info('Exportación Facilcom v2: Generando headings');
-            $headings = [
-                'CODIGO',
-                'Fecha',
-                'CODIGO CLIENTE',
-                'Destino',
-                'Cod. Producto',
-                'Producto',
-                'Cantidad Kg',
-                'Precio',
-                'Lote asignado',
-            ];
-            \Log::info('Exportación Facilcom v2: Headings generados: ' . implode(', ', $headings));
-            return $headings;
-        } catch (\Exception $e) {
-            \Log::error('Exportación Facilcom v2: Error en headings(): ' . $e->getMessage());
-            throw $e;
-        }
+        return [
+            'CODIGO',
+            'Fecha',
+            'CODIGO CLIENTE',
+            'Destino',
+            'Cod. Producto',
+            'Producto',
+            'Cantidad Kg',
+            'Precio',
+            'Lote asignado',
+        ];
     }
 
     public function styles(Worksheet $sheet)
     {
-        try {
-            \Log::info('Exportación Facilcom v2: Aplicando estilos');
-            $styles = [
-                // Estilo para los headers
-                1 => [
-                    'font' => [
-                        'bold' => true,
-                        'color' => ['rgb' => 'FFFFFF'],
-                    ],
-                    'fill' => [
-                        'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                        'startColor' => ['rgb' => '4472C4'],
-                    ],
-                    'alignment' => [
-                        'horizontal' => Alignment::HORIZONTAL_CENTER,
-                        'vertical' => Alignment::VERTICAL_CENTER,
+        return [
+            // Estilo para los headers
+            1 => [
+                'font' => [
+                    'bold' => true,
+                    'color' => ['rgb' => 'FFFFFF'],
+                ],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => '4472C4'],
+                ],
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_CENTER,
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                ],
+            ],
+            // Estilo para todas las celdas
+            'A:I' => [
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_CENTER,
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['rgb' => '000000'],
                     ],
                 ],
-                // Estilo para todas las celdas
-                'A:I' => [
-                    'alignment' => [
-                        'horizontal' => Alignment::HORIZONTAL_CENTER,
-                        'vertical' => Alignment::VERTICAL_CENTER,
-                    ],
-                    'borders' => [
-                        'allBorders' => [
-                            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                            'color' => ['rgb' => '000000'],
-                        ],
-                    ],
-                ],
-            ];
-            \Log::info('Exportación Facilcom v2: Estilos aplicados correctamente');
-            return $styles;
-        } catch (\Exception $e) {
-            \Log::error('Exportación Facilcom v2: Error en styles(): ' . $e->getMessage(), [
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ]);
-            throw $e;
-        }
+            ],
+        ];
     }
 } 
