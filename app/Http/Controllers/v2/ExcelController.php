@@ -273,33 +273,11 @@ class ExcelController extends Controller
         // Verificar si se solicita un límite para testing
         $limit = $request->input('limit');
         
-        // Generar un nombre único para el archivo
-        $fileName = 'reporte_cajas_' . date('Y-m-d_H-i-s') . '.xlsx';
-        
-        // Usar Excel::download pero con manejo manual del archivo
-        $response = Excel::download(
+        // Probar Excel::download() directamente ahora que las rutas están correctas
+        return Excel::download(
             new BoxesReportExport($request, $limit),
-            $fileName
+            'reporte_cajas.xlsx'
         );
-        
-        // Si es BinaryFileResponse, obtener el archivo y devolverlo como respuesta de descarga
-        if ($response instanceof \Symfony\Component\HttpFoundation\BinaryFileResponse) {
-            $file = $response->getFile();
-            
-            if ($file->isFile() && $file->isReadable()) {
-                // Leer el contenido del archivo
-                $content = file_get_contents($file->getPathname());
-                
-                // Devolver como respuesta de descarga con el contenido
-                return response($content)
-                    ->header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"')
-                    ->header('Content-Length', strlen($content));
-            }
-        }
-        
-        // Si no es BinaryFileResponse, devolver la respuesta original
-        return $response;
     }
 
 }
