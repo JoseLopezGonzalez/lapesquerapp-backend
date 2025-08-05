@@ -286,7 +286,6 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
         // Rutas para Administración
         Route::middleware(['role:admin'])->group(function () {
-            Route::apiResource('raw-material-receptions', V2RawMaterialReceptionController::class);
         });
 
         // Rutas accesibles para múltiples roles
