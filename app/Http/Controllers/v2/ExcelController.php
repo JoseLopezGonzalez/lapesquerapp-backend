@@ -264,6 +264,7 @@ class ExcelController extends Controller
         );
     }
 
+    /* Boxes report v2 */
     public function exportBoxesReport(Request $request)
     {
         ini_set('memory_limit', '2048M');

@@ -364,6 +364,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::apiResource('countries', CountryController::class);
             Route::delete('countries', [CountryController::class, 'destroyMultiple']);
 
+            Route::get('boxes/xlsx', [\App\Http\Controllers\v2\ExcelController::class, 'exportBoxesReport'])->name('export_boxes_report');
+
             Route::apiResource('boxes', BoxesController::class); /* Algo raro en el nombre */
             Route::delete('boxes', [BoxesController::class, 'destroyMultiple']);
             Route::apiResource('pallets', V2PalletController::class);
@@ -417,7 +419,6 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::get('orders/xls/facilcom-sales-delivery-note', [\App\Http\Controllers\v2\ExcelController::class, 'exportFacilcomOrderSalesDeliveryNoteWithFilters'])->name('export_facilcom_orders');
             Route::get('orders/{orderId}/xls/facilcom-single', [\App\Http\Controllers\v2\ExcelController::class, 'exportFacilcomSingleOrder'])->name('export_facilcom_single');
             Route::get('orders/xlsx/active-planned-products', [\App\Http\Controllers\v2\ExcelController::class, 'exportActiveOrderPlannedProducts'])->name('export_active_planned_products');
-            Route::get('boxes/xlsx', [\App\Http\Controllers\v2\ExcelController::class, 'exportBoxesReport'])->name('export_boxes_report');
 
             Route::get('orders/{orderId}/pdf/valued-loading-note', [\App\Http\Controllers\v2\PDFController::class, 'generateValuedLoadingNote'])->name('generate_valued_loading_note');
             /* generateIncident */
