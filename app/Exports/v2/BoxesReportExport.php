@@ -9,11 +9,11 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithAutoFilter;
+
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
-class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithAutoFilter
+class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, WithStyles
 {
     use Exportable;
 
