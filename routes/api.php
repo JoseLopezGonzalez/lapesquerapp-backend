@@ -346,6 +346,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
             /* Controladores Genericos */
             Route::apiResource('orders', V2OrderController::class);
+            Route::delete('orders', [V2OrderController::class, 'destroyMultiple']);
             Route::apiResource('order-planned-product-details', OrderPlannedProductDetailController::class);
             
             /* Raw Material Receptions - Export debe ir ANTES del apiResource */

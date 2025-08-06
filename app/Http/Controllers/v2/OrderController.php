@@ -371,7 +371,20 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
         $order->delete();
-        return response()->json(['message' => 'Palet eliminado correctamente'], 200);
+        return response()->json(['message' => 'Pedido eliminado correctamente'], 200);
+    }
+
+    public function destroyMultiple(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (!is_array($ids) || empty($ids)) {
+            return response()->json(['message' => 'No se proporcionaron IDs válidos'], 400);
+        }
+
+        Order::whereIn('id', $ids)->delete();
+
+        return response()->json(['message' => 'Pedidos eliminados correctamente']);
     }
 
     /* Options */
