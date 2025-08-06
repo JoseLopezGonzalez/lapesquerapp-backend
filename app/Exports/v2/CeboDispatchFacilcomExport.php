@@ -145,14 +145,14 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
                 
                 $rows[] = [
                     $this->index, // Mismo código para todo el despacho
-                    date('d/m/Y', strtotime($ceboDispatch->date)),
+                    $ceboDispatch->date ? date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
                     $supplier && $supplier->facilcom_cebo_code ? $supplier->facilcom_cebo_code : '-',
                     $supplier ? $supplier->name : '-',
                     $productModel && $productModel->facil_com_code ? $productModel->facil_com_code : '-',
                     $article ? $article->name : '-',
-                    $product->net_weight,
-                    $product->price,
-                    date('dmY', strtotime($ceboDispatch->date)),
+                    $product->net_weight ?: '-',
+                    $product->price ?: '-',
+                    $ceboDispatch->date ? date('dmY', strtotime($ceboDispatch->date)) : '-',
                 ];
             }
 

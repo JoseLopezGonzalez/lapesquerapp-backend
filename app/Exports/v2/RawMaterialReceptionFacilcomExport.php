@@ -139,14 +139,14 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
             
             $rows[] = [
                 $this->index, // Mismo código para toda la recepción
-                date('d/m/Y', strtotime($reception->date)),
+                $reception->date ? date('d/m/Y', strtotime($reception->date)) : '-',
                 $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
                 $supplier ? $supplier->name : '-',
                 $productModel && $productModel->facil_com_code ? $productModel->facil_com_code : '-',
                 $article ? $article->name : '-',
-                $product->net_weight,
-                $product->price,
-                date('dmY', strtotime($reception->date)),
+                $product->net_weight ?: '-',
+                $product->price ?: '-',
+                $reception->date ? date('dmY', strtotime($reception->date)) : '-',
             ];
         }
 
@@ -154,14 +154,14 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         if ($reception->declared_total_amount > 0 && $reception->declared_total_net_weight > 0) {
             $rows[] = [
                 $this->index, // Mismo código para toda la recepción
-                date('d/m/Y', strtotime($reception->date)),
+                $reception->date ? date('d/m/Y', strtotime($reception->date)) : '-',
                 $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
                 $supplier ? $supplier->name : '-',
                 100,
                 'PULPO FRESCO LONJA',
-                $reception->declared_total_net_weight * -1,
-                $reception->declared_total_amount / $reception->declared_total_net_weight,
-                date('dmY', strtotime($reception->date)),
+                $reception->declared_total_net_weight ? $reception->declared_total_net_weight * -1 : '-',
+                $reception->declared_total_amount && $reception->declared_total_net_weight ? $reception->declared_total_amount / $reception->declared_total_net_weight : '-',
+                $reception->date ? date('dmY', strtotime($reception->date)) : '-',
             ];
         }
 

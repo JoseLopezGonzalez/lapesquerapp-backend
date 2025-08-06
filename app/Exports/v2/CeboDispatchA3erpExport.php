@@ -145,14 +145,14 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
                 
                 $rows[] = [
                     'C25', // cabSerie
-                    $ceboDispatch->id, // id
-                    date('d/m/Y', strtotime($ceboDispatch->date)),
+                    $ceboDispatch->id ?: '-', // id
+                    $ceboDispatch->date ? date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
                     $supplier && $supplier->a3erp_cebo_code ? $supplier->a3erp_cebo_code : '-',
-                    $supplier ? $supplier->name . " - CEBO - " . date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
+                    $supplier && $ceboDispatch->date ? $supplier->name . " - CEBO - " . date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
                     $productModel && $productModel->a3erp_code ? $productModel->a3erp_code : '-',
                     $article ? $article->name : '-',
-                    $product->net_weight,
-                    $product->price,
+                    $product->net_weight ?: '-',
+                    $product->price ?: '-',
                     'RED10', // iva
                 ];
             }
