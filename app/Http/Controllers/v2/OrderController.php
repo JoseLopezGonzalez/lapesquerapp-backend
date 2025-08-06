@@ -117,6 +117,20 @@ class OrderController extends Controller
                 }
             }
 
+            /* producto - filtra pedidos que contengan algún palet con alguna caja que tenga ese producto */
+            if ($request->has('producto')) {
+                $query->whereHas('pallets.palletBoxes.box', function ($q) use ($request) {
+                    $q->where('article_id', $request->producto);
+                });
+            }
+
+            /* especie - filtra pedidos que contengan algún palet con alguna caja que tenga un producto de esa especie */
+            if ($request->has('especie')) {
+                $query->whereHas('pallets.palletBoxes.box.product', function ($q) use ($request) {
+                    $q->where('species_id', $request->especie);
+                });
+            }
+
             /* incoterm */
             if ($request->has('incoterm')) {
                 $query->where('incoterm_id', $request->incoterm);
