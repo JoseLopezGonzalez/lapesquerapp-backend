@@ -135,11 +135,6 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
         // Mejorar el manejo de relaciones nulas
         $supplier = $ceboDispatch->supplier;
         
-        // Verificar que el supplier existe y tiene a3erp_cebo_code
-        if (!$supplier || !$supplier->a3erp_cebo_code) {
-            return []; // Retornar array vacío para saltar este despacho
-        }
-
         $rows = [];
 
         // Solo procesar si el tipo de exportación es a3erp
@@ -148,19 +143,14 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
                 $productModel = $product->product;
                 $article = $productModel ? $productModel->article : null;
                 
-                // Verificar que el producto y su artículo existen
-                if (!$productModel || !$article) {
-                    continue; // Saltar productos sin artículo
-                }
-
                 $rows[] = [
                     'C25', // cabSerie
                     $ceboDispatch->id, // id
                     date('d/m/Y', strtotime($ceboDispatch->date)),
-                    $supplier->a3erp_cebo_code,
-                    $supplier->name . " - CEBO - " . date('d/m/Y', strtotime($ceboDispatch->date)),
-                    $productModel->a3erp_code ?? '',
-                    $article->name,
+                    $supplier && $supplier->a3erp_cebo_code ? $supplier->a3erp_cebo_code : '-',
+                    $supplier ? $supplier->name . " - CEBO - " . date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
+                    $productModel && $productModel->a3erp_code ? $productModel->a3erp_code : '-',
+                    $article ? $article->name : '-',
                     $product->net_weight,
                     $product->price,
                     'RED10', // iva
@@ -195,6 +185,17 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
         // Autoajuste básico de columnas
         foreach (range('A', $highestColumn) as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
+
+        // Colorear de amarillo las celdas con datos faltantes ("-")
+        for ($row = 2; $row <= $highestRow; $row++) {
+            for ($col = 'A'; $col <= $highestColumn; $col++) {
+                $cellValue = $sheet->getCell($col . $row)->getValue();
+                if ($cellValue === '-') {
+                    $sheet->getStyle($col . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+                    $sheet->getStyle($col . $row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
+                }
+            }
         }
 
         return [];
