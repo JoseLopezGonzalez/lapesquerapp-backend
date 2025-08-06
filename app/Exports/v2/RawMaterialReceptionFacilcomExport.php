@@ -130,11 +130,6 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         // Mejorar el manejo de relaciones nulas (igual que BoxesReportExport)
         $supplier = $reception->supplier;
         
-        // Verificar que el supplier existe y tiene facil_com_code
-        if (!$supplier || !$supplier->facil_com_code) {
-            return []; // Retornar array vacío para saltar esta recepción
-        }
-
         $rows = [];
 
         // Agregar productos regulares
@@ -142,18 +137,13 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
             $productModel = $product->product;
             $article = $productModel ? $productModel->article : null;
             
-            // Verificar que el producto y su artículo existen
-            if (!$productModel || !$article) {
-                continue; // Saltar productos sin artículo
-            }
-
             $rows[] = [
                 $this->index, // Mismo código para toda la recepción
                 date('d/m/Y', strtotime($reception->date)),
-                $supplier->facil_com_code,
-                $supplier->name,
-                $productModel->facil_com_code ?? '',
-                $article->name,
+                $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
+                $supplier ? $supplier->name : '-',
+                $productModel && $productModel->facil_com_code ? $productModel->facil_com_code : '-',
+                $article ? $article->name : '-',
                 $product->net_weight,
                 $product->price,
                 date('dmY', strtotime($reception->date)),
@@ -165,8 +155,8 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
             $rows[] = [
                 $this->index, // Mismo código para toda la recepción
                 date('d/m/Y', strtotime($reception->date)),
-                $supplier->facil_com_code,
-                $supplier->name,
+                $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
+                $supplier ? $supplier->name : '-',
                 100,
                 'PULPO FRESCO LONJA',
                 $reception->declared_total_net_weight * -1,
@@ -200,6 +190,17 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         // Autoajuste básico de columnas
         foreach (range('A', $highestColumn) as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
+
+        // Colorear de amarillo las celdas con datos faltantes ("-")
+        for ($row = 2; $row <= $highestRow; $row++) {
+            for ($col = 'A'; $col <= $highestColumn; $col++) {
+                $cellValue = $sheet->getCell($col . $row)->getValue();
+                if ($cellValue === '-') {
+                    $sheet->getStyle($col . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+                    $sheet->getStyle($col . $row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
+                }
+            }
         }
 
         return [];
