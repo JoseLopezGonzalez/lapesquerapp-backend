@@ -117,17 +117,17 @@ class OrderController extends Controller
                 }
             }
 
-            /* producto - filtra pedidos que contengan algún palet con alguna caja que tenga ese producto */
-            if ($request->has('producto')) {
+            /* products - filtra pedidos que contengan algún palet con alguna caja que tenga esos productos */
+            if ($request->has('products')) {
                 $query->whereHas('pallets.palletBoxes.box', function ($q) use ($request) {
-                    $q->where('article_id', $request->producto);
+                    $q->whereIn('article_id', $request->products);
                 });
             }
 
-            /* especie - filtra pedidos que contengan algún palet con alguna caja que tenga un producto de esa especie */
-            if ($request->has('especie')) {
+            /* species - filtra pedidos que contengan algún palet con alguna caja que tenga un producto de esas especies */
+            if ($request->has('species')) {
                 $query->whereHas('pallets.palletBoxes.box.product', function ($q) use ($request) {
-                    $q->where('species_id', $request->especie);
+                    $q->whereIn('species_id', $request->species);
                 });
             }
 
