@@ -123,19 +123,35 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
             }
         }
 
-        // Filtro por estado del pedido
+        // Filtro por estado del pedido (actualizado para múltiples valores)
         if (!empty($filters['orderState'])) {
-            if ($filters['orderState'] === 'pending') {
-                $query->whereHas('palletBox.pallet.order', function ($query) {
-                    $query->where('status', 'pending');
+            $orderStates = is_array($filters['orderState']) ? $filters['orderState'] : [$filters['orderState']];
+            
+            // Manejar el caso especial de 'without_order'
+            if (in_array('without_order', $orderStates)) {
+                $orderStates = array_filter($orderStates, function($state) {
+                    return $state !== 'without_order';
                 });
-            } elseif ($filters['orderState'] === 'finished') {
-                $query->whereHas('palletBox.pallet.order', function ($query) {
-                    $query->where('status', 'finished');
-                });
-            } elseif ($filters['orderState'] === 'without_order') {
-                $query->whereHas('palletBox.pallet', function ($query) {
-                    $query->whereDoesntHave('order');
+                
+                if (!empty($orderStates)) {
+                    // Si hay otros estados además de 'without_order', usar OR
+                    $query->where(function($query) use ($orderStates) {
+                        $query->whereHas('palletBox.pallet.order', function ($query) use ($orderStates) {
+                            $query->whereIn('status', $orderStates);
+                        })->orWhereHas('palletBox.pallet', function ($query) {
+                            $query->whereDoesntHave('order');
+                        });
+                    });
+                } else {
+                    // Solo 'without_order'
+                    $query->whereHas('palletBox.pallet', function ($query) {
+                        $query->whereDoesntHave('order');
+                    });
+                }
+            } else {
+                // Solo estados normales
+                $query->whereHas('palletBox.pallet.order', function ($query) use ($orderStates) {
+                    $query->whereIn('status', $orderStates);
                 });
             }
         }
@@ -182,6 +198,37 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
         if (!empty($filters['orders'])) {
             $query->whereHas('palletBox.pallet.order', function ($query) use ($filters) {
                 $query->whereIn('id', $filters['orders']);
+            });
+        }
+
+        // Filtro por IDs de pedidos específicos
+        if (!empty($filters['orderIds'])) {
+            $orderIds = is_array($filters['orderIds']) ? $filters['orderIds'] : explode(',', $filters['orderIds']);
+            $query->whereHas('palletBox.pallet.order', function ($query) use ($orderIds) {
+                $query->whereIn('id', $orderIds);
+            });
+        }
+
+        // Filtro por fechas de pedidos
+        if (!empty($filters['orderDates'])) {
+            if (isset($filters['orderDates']['start'])) {
+                $startDate = date('Y-m-d 00:00:00', strtotime($filters['orderDates']['start']));
+                $query->whereHas('palletBox.pallet.order', function ($query) use ($startDate) {
+                    $query->where('created_at', '>=', $startDate);
+                });
+            }
+            if (isset($filters['orderDates']['end'])) {
+                $endDate = date('Y-m-d 23:59:59', strtotime($filters['orderDates']['end']));
+                $query->whereHas('palletBox.pallet.order', function ($query) use ($endDate) {
+                    $query->where('created_at', '<=', $endDate);
+                });
+            }
+        }
+
+        // Filtro por referencia de compra
+        if (!empty($filters['orderBuyerReference'])) {
+            $query->whereHas('palletBox.pallet.order', function ($query) use ($filters) {
+                $query->where('buyer_reference', 'like', '%' . $filters['orderBuyerReference'] . '%');
             });
         }
     }
