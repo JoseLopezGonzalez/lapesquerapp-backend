@@ -64,7 +64,7 @@ class Product extends Model
             [
                 'species' => optional($this->species)->toArrayAssoc() ?? [],
                 'captureZone' => optional($this->captureZone)->toArrayAssoc() ?? [],
-                'category' => optional($this->family->category)->toArrayAssoc() ?? [],
+                'category' => optional($this->family)->category ? optional($this->family->category)->toArrayAssoc() ?? [] : [],
                 'family' => optional($this->family)->toArrayAssoc() ?? [],
                 'articleGtin' => $this->article_gtin,
                 'boxGtin' => $this->box_gtin,
