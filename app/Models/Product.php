@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Article;
 use App\Models\Species;
 use App\Models\CaptureZone;
+use App\Models\ProductCategory;
+use App\Models\ProductFamily;
 
 class Product extends Model
 {
@@ -21,6 +23,8 @@ class Product extends Model
     protected $fillable = [
         'id',
         'article_id', //Esto 
+        'category_id',
+        'family_id',
         'species_id',
         'capture_zone_id',
         'article_gtin',
@@ -47,6 +51,16 @@ class Product extends Model
         return $this->belongsTo(CaptureZone::class, 'capture_zone_id'); // No se bien porque no indica que el id es el que relaciona las tablas
     }
 
+    public function category()
+    {
+        return $this->belongsTo(ProductCategory::class, 'category_id');
+    }
+
+    public function family()
+    {
+        return $this->belongsTo(ProductFamily::class, 'family_id');
+    }
+
     public function toArrayAssoc()
     {
         return array_merge(
@@ -54,6 +68,8 @@ class Product extends Model
             [
                 'species' => optional($this->species)->toArrayAssoc() ?? [],
                 'captureZone' => optional($this->captureZone)->toArrayAssoc() ?? [],
+                'category' => optional($this->category)->toArrayAssoc() ?? [],
+                'family' => optional($this->family)->toArrayAssoc() ?? [],
                 'articleGtin' => $this->article_gtin,
                 'boxGtin' => $this->box_gtin,
                 'palletGtin' => $this->pallet_gtin,

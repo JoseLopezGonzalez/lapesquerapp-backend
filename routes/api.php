@@ -63,6 +63,8 @@ use App\Http\Controllers\v2\OrderStatisticsController;
 use App\Http\Controllers\v2\PalletController as V2PalletController;
 use App\Http\Controllers\v2\PaymentTermController as V2PaymentTermController;
 use App\Http\Controllers\v2\ProductController as V2ProductController;
+use App\Http\Controllers\v2\ProductCategoryController;
+use App\Http\Controllers\v2\ProductFamilyController;
 use App\Http\Controllers\v2\RawMaterialReceptionController as V2RawMaterialReceptionController;
 use App\Http\Controllers\v2\RoleController;
 use App\Http\Controllers\v2\SalespersonController as V2SalespersonController;
@@ -301,6 +303,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::get('/suppliers/options', [V2SupplierController::class, 'options']);
             Route::get('/species/options', [V2SpeciesController::class, 'options']);
             Route::get('/products/options', [V2ProductController::class, 'options']);
+            Route::get('/product-categories/options', [ProductCategoryController::class, 'options']);
+            Route::get('/product-families/options', [ProductFamilyController::class, 'options']);
             Route::get('/taxes/options', [TaxController::class, 'options']);
             Route::get('/capture-zones/options', [V2CaptureZoneController::class, 'options']);
             Route::get('/pallets/options', [V2PalletController::class, 'options']);
@@ -358,6 +362,11 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
             Route::apiResource('products', V2ProductController::class);
             Route::delete('products', [V2ProductController::class, 'destroyMultiple']);
+
+            Route::apiResource('product-categories', ProductCategoryController::class);
+            Route::delete('product-categories', [ProductCategoryController::class, 'destroyMultiple']);
+            Route::apiResource('product-families', ProductFamilyController::class);
+            Route::delete('product-families', [ProductFamilyController::class, 'destroyMultiple']);
 
             Route::apiResource('stores', V2StoreController::class);
             Route::delete('stores', [V2StoreController::class, 'deleteMultiple']); // <-- importante

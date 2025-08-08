@@ -18,7 +18,7 @@ class ProductController extends Controller
     {
         $query = Product::query();
         /* Add article */
-        $query->with('article');
+        $query->with(['article', 'category', 'family']);
 
         if ($request->has('id')) {
             $query->where('id', $request->id);
@@ -43,6 +43,16 @@ class ProductController extends Controller
         /* capture zone where in*/
         if ($request->has('captureZones')) {
             $query->whereIn('capture_zone_id', $request->captureZones);
+        }
+
+        /* category where in */
+        if ($request->has('categories')) {
+            $query->whereIn('category_id', $request->categories);
+        }
+
+        /* family where in */
+        if ($request->has('families')) {
+            $query->whereIn('family_id', $request->families);
         }
 
         /* articleGtin */
@@ -83,6 +93,8 @@ class ProductController extends Controller
             'name' => 'required|string|min:3|max:255',
             'speciesId' => 'required|exists:tenant.species,id',
             'captureZoneId' => 'required|exists:tenant.capture_zones,id',
+            'categoryId' => 'nullable|exists:tenant.product_categories,id',
+            'familyId' => 'nullable|exists:tenant.product_families,id',
             'articleGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
             'boxGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
             'palletGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
@@ -104,6 +116,8 @@ class ProductController extends Controller
                 'id' => $articleId,
                 'species_id' => $validated['speciesId'],
                 'capture_zone_id' => $validated['captureZoneId'],
+                'category_id' => $validated['categoryId'] ?? null,
+                'family_id' => $validated['familyId'] ?? null,
                 'article_gtin' => $validated['articleGtin'] ?? null,
                 'box_gtin' => $validated['boxGtin'] ?? null,
                 'pallet_gtin' => $validated['palletGtin'] ?? null,
@@ -132,7 +146,7 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        $product = Product::with(['article', 'species', 'captureZone'])->findOrFail($id);
+        $product = Product::with(['article', 'species', 'captureZone', 'category', 'family'])->findOrFail($id);
 
         return response()->json([
             'message' => 'Producto obtenido con éxito',
@@ -153,6 +167,8 @@ class ProductController extends Controller
             'name' => 'required|string|min:3|max:255',
             'speciesId' => 'required|exists:tenant.species,id',
             'captureZoneId' => 'required|exists:tenant.capture_zones,id',
+            'categoryId' => 'nullable|exists:tenant.product_categories,id',
+            'familyId' => 'nullable|exists:tenant.product_families,id',
             'articleGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
             'boxGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
             'palletGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
@@ -168,6 +184,8 @@ class ProductController extends Controller
             $product->update([
                 'species_id' => $validated['speciesId'],
                 'capture_zone_id' => $validated['captureZoneId'],
+                'category_id' => $validated['categoryId'] ?? null,
+                'family_id' => $validated['familyId'] ?? null,
                 'article_gtin' => $validated['articleGtin'] ?? null,
                 'box_gtin' => $validated['boxGtin'] ?? null,
                 'pallet_gtin' => $validated['palletGtin'] ?? null,
@@ -176,7 +194,7 @@ class ProductController extends Controller
             ]);
         });
 
-        $updated = Product::with(['article', 'species', 'captureZone'])->find($id);
+        $updated = Product::with(['article', 'species', 'captureZone', 'category', 'family'])->find($id);
 
         return response()->json([
             'message' => 'Producto actualizado con éxito',
