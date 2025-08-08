@@ -28,7 +28,7 @@ class ProductCategory extends Model
 
     public function products()
     {
-        return $this->hasMany(Product::class, 'category_id');
+        return $this->hasManyThrough(Product::class, ProductFamily::class, 'category_id', 'family_id');
     }
 
     public function toArrayAssoc()

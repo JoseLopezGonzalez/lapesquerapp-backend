@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Article;
 use App\Models\Species;
 use App\Models\CaptureZone;
-use App\Models\ProductCategory;
+
 use App\Models\ProductFamily;
 
 class Product extends Model
@@ -50,10 +50,7 @@ class Product extends Model
         return $this->belongsTo(CaptureZone::class, 'capture_zone_id'); // No se bien porque no indica que el id es el que relaciona las tablas
     }
 
-    public function category()
-    {
-        return $this->hasOneThrough(ProductCategory::class, ProductFamily::class, 'id', 'id', 'family_id', 'category_id');
-    }
+
 
     public function family()
     {
