@@ -135,7 +135,7 @@ php artisan make:model ProductFamily
 
 #### 2.3 Actualizar Product Model
 **Modificaciones realizadas:**
-- Agregar campos `category_id` y `family_id` al fillable
+- Agregar campo `family_id` al fillable
 - Agregar relaciones `category()` y `family()`
 - Actualizar método `toArrayAssoc()` para incluir nuevas relaciones
 
@@ -200,7 +200,7 @@ php artisan make:controller v2/ProductFamilyController
 #### 5.3 Actualizar ProductController
 **Modificaciones realizadas:**
 - Agregar filtros por `categories` y `families`
-- Agregar validaciones para `categoryId` y `familyId`
+- Agregar validaciones para `familyId`
 - Cargar relaciones en respuestas
 - Actualizar creación y actualización de productos
 

@@ -23,7 +23,6 @@ class Product extends Model
     protected $fillable = [
         'id',
         'article_id', //Esto 
-        'category_id',
         'family_id',
         'species_id',
         'capture_zone_id',
@@ -53,7 +52,7 @@ class Product extends Model
 
     public function category()
     {
-        return $this->belongsTo(ProductCategory::class, 'category_id');
+        return $this->hasOneThrough(ProductCategory::class, ProductFamily::class, 'id', 'id', 'family_id', 'category_id');
     }
 
     public function family()
@@ -68,7 +67,7 @@ class Product extends Model
             [
                 'species' => optional($this->species)->toArrayAssoc() ?? [],
                 'captureZone' => optional($this->captureZone)->toArrayAssoc() ?? [],
-                'category' => optional($this->category)->toArrayAssoc() ?? [],
+                'category' => optional($this->family->category)->toArrayAssoc() ?? [],
                 'family' => optional($this->family)->toArrayAssoc() ?? [],
                 'articleGtin' => $this->article_gtin,
                 'boxGtin' => $this->box_gtin,
