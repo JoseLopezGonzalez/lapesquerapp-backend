@@ -88,20 +88,25 @@ class OrderStatisticsService
 
     public static function calculateAmountDetails(string $from, string $to, ?int $speciesId = null): array
     {
-        $orders = Order::query()
-            ->withPlannedProductDetails()
-            ->wherePlannedProductSpecies($speciesId)
-            ->betweenLoadDates($from, $to)
-            ->get();
+        // Optimización: usar consultas SQL directas en lugar de cargar todos los datos en memoria
+        $query = Order::query()
+            ->join('order_planned_product_details', 'orders.id', '=', 'order_planned_product_details.order_id')
+            ->join('products', 'order_planned_product_details.product_id', '=', 'products.id')
+            ->whereBetween('orders.load_date', [$from, $to]);
 
-        $total = 0;
-        $subtotal = 0;
-
-        foreach ($orders as $order) {
-            $total += $order->totalAmount;
-            $subtotal += $order->subtotalAmount;
+        if ($speciesId) {
+            $query->where('products.species_id', $speciesId);
         }
 
+        $result = $query->selectRaw('
+            SUM(order_planned_product_details.unit_price * order_planned_product_details.quantity) as subtotal,
+            SUM(order_planned_product_details.unit_price * order_planned_product_details.quantity * (1 + COALESCE(taxes.rate, 0) / 100)) as total
+        ')
+        ->leftJoin('taxes', 'order_planned_product_details.tax_id', '=', 'taxes.id')
+        ->first();
+
+        $subtotal = $result->subtotal ?? 0;
+        $total = $result->total ?? 0;
         $tax = $total - $subtotal;
 
         return [
@@ -140,49 +145,42 @@ class OrderStatisticsService
 
     public static function getOrderRankingStats(string $groupBy, string $valueType, string $dateFrom, string $dateTo, ?int $speciesId = null): \Illuminate\Support\Collection
     {
-        $orders = Order::query()
-            ->withCustomerCountry()
-            ->withPlannedProductDetailsAndSpecies()
-            ->betweenLoadDates($dateFrom, $dateTo)
-            ->get();
+        // Optimización: usar consultas SQL directas en lugar de cargar todos los datos en memoria
+        $query = Order::query()
+            ->join('order_planned_product_details', 'orders.id', '=', 'order_planned_product_details.order_id')
+            ->join('products', 'order_planned_product_details.product_id', '=', 'products.id')
+            ->join('customers', 'orders.customer_id', '=', 'customers.id')
+            ->leftJoin('countries', 'customers.country_id', '=', 'countries.id')
+            ->leftJoin('taxes', 'order_planned_product_details.tax_id', '=', 'taxes.id')
+            ->whereBetween('orders.load_date', [$dateFrom, $dateTo]);
 
-        $summary = [];
-
-        foreach ($orders as $order) {
-            // Aquí usamos el accessor que contiene todo bien armado
-            $products = collect($order->productDetails);
-
-            if ($speciesId) {
-                $products = $products->filter(fn($p) => $p['product']['species_id'] === $speciesId);
-            }
-
-            foreach ($products as $p) {
-                $groupName = match ($groupBy) {
-                    'client' => $order->customer->name,
-                    'country' => $order->customer->country->name ?? 'Sin país',
-                    'product' => $p['product']['name'] ?? 'Sin producto',
-                };
-
-                if (!isset($summary[$groupName])) {
-                    $summary[$groupName] = [
-                        'name' => $groupName,
-                        'totalQuantity' => 0,
-                        'totalAmount' => 0,
-                    ];
-                }
-
-                $summary[$groupName]['totalQuantity'] += $p['netWeight'] ?? 0;
-                $summary[$groupName]['totalAmount'] += $p['total'] ?? 0;
-            }
+        if ($speciesId) {
+            $query->where('products.species_id', $speciesId);
         }
 
-        return collect(array_values($summary))
-            ->sortByDesc($valueType)
-            ->values()
-            ->map(fn($item) => [
-                'name' => $item['name'],
-                'value' => round($item[$valueType], 2),
-            ]);
+        $groupByField = match ($groupBy) {
+            'client' => 'customers.name',
+            'country' => 'countries.name',
+            'product' => 'products.name',
+        };
+
+        $valueField = match ($valueType) {
+            'totalAmount' => 'SUM(order_planned_product_details.unit_price * order_planned_product_details.quantity * (1 + COALESCE(taxes.rate, 0) / 100))',
+            'totalQuantity' => 'SUM(order_planned_product_details.quantity)',
+        };
+
+        $results = $query->selectRaw("
+            {$groupByField} as name,
+            {$valueField} as value
+        ")
+        ->groupBy($groupByField)
+        ->orderByDesc('value')
+        ->get();
+
+        return $results->map(fn($item) => [
+            'name' => $item->name ?? 'Sin nombre',
+            'value' => round($item->value, 2),
+        ]);
     }
 
 

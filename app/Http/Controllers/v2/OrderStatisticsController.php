@@ -74,7 +74,9 @@ class OrderStatisticsController extends Controller
      */
     public function totalAmountStats(Request $request)
     {
-        set_time_limit(120); // o 120 si necesitas más tiempo
+        // Aumentar límites para consultas pesadas
+        set_time_limit(300); // 5 minutos
+        ini_set('memory_limit', '512M'); // 512MB de memoria
 
         $validated = $request->validate([
             'dateFrom' => 'required|date',
@@ -125,7 +127,9 @@ class OrderStatisticsController extends Controller
 
     public function orderRankingStats(Request $request)
     {
-        ini_set('memory_limit', '256M'); // o más si lo necesitas
+        // Aumentar límites para consultas pesadas
+        set_time_limit(300); // 5 minutos
+        ini_set('memory_limit', '512M'); // 512MB de memoria
 
         $validated = $request->validate([
             'groupBy' => 'required|in:client,country,product',
