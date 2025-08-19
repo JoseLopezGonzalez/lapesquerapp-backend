@@ -25,14 +25,14 @@
         <!-- ENCABEZADO -->
         <div class="flex justify-between items-end mb-6">
             <div>
-                <h1 class="text-md font-bold">{{ config('company.name') }}</h1>
+                <h1 class="text-md font-bold">{{ tenantSetting('company.name') }}</h1>
                 <p>
-                    {{ config('company.address.street') }} -
-                    {{ config('company.address.postal_code') }} {{ config('company.address.city') }}
+                    {{ tenantSetting('company.address.street') }} -
+                    {{ tenantSetting('company.address.postal_code') }} {{ tenantSetting('company.address.city') }}
                 </p>
-                <p>Tel: {{ config('company.contact.phone_admin') }}</p>
-                <p>{{ config('company.contact.email_admin') }}</p>
-                <p>{{ config('company.sanitary_number') }}</p>
+                <p>Tel: {{ tenantSetting('company.contact.phone_admin') }}</p>
+                <p>{{ tenantSetting('company.contact.email_admin') }}</p>
+                <p>{{ tenantSetting('company.sanitary_number') }}</p>
             </div>
 
             <div class="flex items-start gap-4">

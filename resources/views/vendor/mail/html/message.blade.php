@@ -18,8 +18,14 @@
         </x-mail::header>
     </x-slot:header>
 
-    {{-- Body --}}
-    {{ $slot }}
+    {{-- Body (Card style) --}}
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:8px 0;">
+        <tr>
+            <td style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:24px;box-shadow:0 1px 2px rgba(0,0,0,0.04);text-align:left;">
+                {{ $slot }}
+            </td>
+        </tr>
+    </table>
 
     {{-- Subcopy --}}
     @isset($subcopy)

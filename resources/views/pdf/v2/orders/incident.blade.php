@@ -31,12 +31,12 @@
         <div class="flex justify-between items-end mb-6 ">
             <div class="flex items-center gap-2">
                 <div>
-                    <h1 class="text-md font-bold">{{ config('company.name') }}</h1>
-                    <p>{{ config('company.address.street') }} - {{ config('company.address.postal_code') }}
-                        {{ config('company.address.city') }}</p>
-                    <p>Tel: {{ config('company.contact.phone_admin') }}</p>
-                    <p>{{ config('company.contact.email_admin') }}</p>
-                    <p>{{ config('company.sanitary_number') }}</p>
+                    <h1 class="text-md font-bold">{{ tenantSetting('company.name') }}</h1>
+                    <p>{{ tenantSetting('company.address.street') }} - {{ tenantSetting('company.address.postal_code') }}
+                        {{ tenantSetting('company.address.city') }}</p>
+                    <p>Tel: {{ tenantSetting('company.contact.phone_admin') }}</p>
+                    <p>{{ tenantSetting('company.contact.email_admin') }}</p>
+                    <p>{{ tenantSetting('company.sanitary_number') }}</p>
                 </div>
 
             </div>

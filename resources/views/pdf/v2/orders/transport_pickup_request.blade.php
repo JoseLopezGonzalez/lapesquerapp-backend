@@ -22,14 +22,14 @@
         <!-- ENCABEZADO -->
         <div class="flex justify-between items-end mb-6">
             <div>
-                <h1 class="text-md font-bold">{{ config('company.name') }}</h1>
+                <h1 class="text-md font-bold">{{ tenantSetting('company.name') }}</h1>
                 <p>
-                    {{ config('company.address.street') }} -
-                    {{ config('company.address.postal_code') }} {{ config('company.address.city') }}
+                    {{ tenantSetting('company.address.street') }} -
+                    {{ tenantSetting('company.address.postal_code') }} {{ tenantSetting('company.address.city') }}
                 </p>
-                <p>Tel: {{ config('company.contact.phone_admin') }}</p>
-                <p>{{ config('company.contact.email_admin') }}</p>
-                <p>{{ config('company.sanitary_number') }}</p>
+                <p>Tel: {{ tenantSetting('company.contact.phone_admin') }}</p>
+                <p>{{ tenantSetting('company.contact.email_admin') }}</p>
+                <p>{{ tenantSetting('company.sanitary_number') }}</p>
             </div>
 
             <div class="flex items-start gap-4">
@@ -74,13 +74,13 @@
                 <div class="font-bold p-2 bg-gray-800 text-white">CONTACTOS</div>
                 <div class="p-4 space-y-1">
                     <p><span class="font-medium">Contacto de emergencias:</span>
-                        {{ config('company.contact.emergency_email') }}</p>
+                        {{ tenantSetting('company.contact.emergency_email') }}</p>
                     <p><span class="font-medium">Contacto de incidencias:</span>
-                        {{ config('company.contact.incidents_email') }}</p>
+                        {{ tenantSetting('company.contact.incidents_email') }}</p>
                     <p><span class="font-medium">Contacto para carga:</span>
-                        {{ config('company.contact.loading_email') }}</p>
+                        {{ tenantSetting('company.contact.loading_email') }}</p>
                     <p><span class="font-medium">Contacto para descarga:</span>
-                        {{ config('company.contact.unloading_email') }}</p>
+                        {{ tenantSetting('company.contact.unloading_email') }}</p>
                 </div>
             </div>
         </div>

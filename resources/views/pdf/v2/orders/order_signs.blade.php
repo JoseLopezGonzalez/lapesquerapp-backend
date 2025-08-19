@@ -37,12 +37,12 @@
             <div class='grid grid-cols-2 w-full gap-3'>
                 <div class="space-y-2 border rounded-lg p-8">
                     <div class="text-md font-semibold">Expedidor:</div>
-                    <div class="text-2xl font-semibold">{{ config('company.name') }}</div>
+                    <div class="text-2xl font-semibold">{{ tenantSetting('company.name') }}</div>
                     <p>
-                        {{ config('company.address.street') }}<br>
-                        {{ config('company.address.postal_code') }} {{ config('company.address.city') }}
-                        ({{ config('company.address.province') }})<br>
-                        {{ config('company.address.country') }}
+                        {{ tenantSetting('company.address.street') }}<br>
+                        {{ tenantSetting('company.address.postal_code') }} {{ tenantSetting('company.address.city') }}
+                        ({{ tenantSetting('company.address.province') }})<br>
+                        {{ tenantSetting('company.address.country') }}
                     </p>
                 </div>
 

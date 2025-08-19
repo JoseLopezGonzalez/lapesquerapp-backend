@@ -27,7 +27,7 @@ Por favor, revisen la documentación adjunta para asegurarse de que toda la info
 
 <br>
 
-Si necesitan más información, pueden contactar directamente con el equipo de operaciones a [{{ config('company.contact.email_operations') }}](mailto:{{ config('company.contact.email_operations') }}).
+Si necesitan más información, pueden contactar directamente con el equipo de operaciones a [{{ tenantSetting('company.contact.email_operations') }}](mailto:{{ tenantSetting('company.contact.email_operations') }}).
 
 <br>
 

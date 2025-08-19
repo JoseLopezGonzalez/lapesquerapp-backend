@@ -87,6 +87,7 @@ class OrderMailerService
 
             Mail::to((array) $mainEmails)
                 ->cc((array) $ccEmails)
+                ->bcc(tenantSetting('company.bcc_email'))
                 ->send($mailable);
         }
     }
@@ -140,6 +141,7 @@ class OrderMailerService
             // ✅ Enviar email
             Mail::to((array) $mainEmails)
                 ->cc((array) $ccEmails)
+                ->bcc(tenantSetting('company.bcc_email'))
                 ->send($mailable);
         }
     }

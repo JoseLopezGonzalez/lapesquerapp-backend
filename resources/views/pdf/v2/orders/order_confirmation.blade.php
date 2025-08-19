@@ -215,7 +215,7 @@
     {{ config('company.address.street') }} ·
     {{ config('company.address.postal_code') }} {{ config('company.address.city') }},
     {{ config('company.address.province') }} ·
-    {{ config('company.website') }}
+    {{ tenantSetting('company.website_url') }}
 </footer>
 
 

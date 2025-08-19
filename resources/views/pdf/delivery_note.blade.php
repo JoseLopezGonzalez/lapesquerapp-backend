@@ -32,11 +32,11 @@
             </div>
             <div class="col-span-8" style="line-height: 122%; text-align: right; color: #1E79BB;">
                 <p style="font-size: 10pt;">
-                    <strong>{{ config('company.name') }}</strong><br>
-                    C.I.F.: {{ config('company.cif') }}<br>
-                    {{ config('company.address.street') }}<br>
-                    {{ config('company.address.postal_code') }} {{ config('company.address.city') }}
-                    ({{ config('company.address.province') }})
+                    <strong>{{ tenantSetting('company.name') }}</strong><br>
+                    C.I.F.: {{ tenantSetting('company.cif') }}<br>
+                    {{ tenantSetting('company.address.street') }}<br>
+                    {{ tenantSetting('company.address.postal_code') }} {{ tenantSetting('company.address.city') }}
+                    ({{ tenantSetting('company.address.province') }})
                 </p>
 
             </div>

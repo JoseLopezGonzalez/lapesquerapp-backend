@@ -51,10 +51,10 @@
 
                     </div>
                     <p style="text-align: left; font-size: 9pt; left: 90px; top: 70px; position: absolute;">
-                        {{ config('company.name') }}<br>
-                        {{ config('company.address.street') }}<br>
-                        {{ config('company.address.postal_code') }} {{ config('company.address.city') }}<br>
-                        {{ config('company.address.province') }} - {{ config('company.address.country') }}
+                        {{ tenantSetting('company.name') }}<br>
+                        {{ tenantSetting('company.address.street') }}<br>
+                        {{ tenantSetting('company.address.postal_code') }} {{ tenantSetting('company.address.city') }}<br>
+                        {{ tenantSetting('company.address.province') }} - {{ tenantSetting('company.address.country') }}
                     </p>
                     <p
                         style="font-weight: bold; text-align: left; font-size: 9pt; left: 655px; top: 50px; position: absolute;">
