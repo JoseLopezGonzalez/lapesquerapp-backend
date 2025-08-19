@@ -5,9 +5,15 @@
         <x-mail::header :url="config('company.website_url')">
             @php($logoUrl = config('company.logo_url_small'))
             @if(!empty($logoUrl))
-                <img src="{{ $logoUrl }}" alt="{{ config('company.name') }}" style="height:45px; max-height:45px; width:auto; display:block;">
-            @else
+                <img src="{{ $logoUrl }}" alt="{{ config('company.name') }}" style="height:45px; max-height:45px; width:auto; display:block; margin:0 auto;">
+            @endif
+            <div style="margin-top:8px; font-weight:600; font-size:16px; color:#0f172a;">
                 {{ config('company.name') }}
+            </div>
+            @if(!empty($logoUrl))
+                <div style="margin-top:4px; font-size:12px; color:#64748b;">
+                    {{ $logoUrl }}
+                </div>
             @endif
         </x-mail::header>
     </x-slot:header>
