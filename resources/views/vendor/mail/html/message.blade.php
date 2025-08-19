@@ -5,16 +5,11 @@
         <x-mail::header :url="tenantSetting('company.website_url')">
             @php($logoUrl = tenantSetting('company.logo_url_small'))
             @if(!empty($logoUrl))
-                <img src="{{ $logoUrl }}" alt="{{ config('company.name') }}" height="45" style="height:45px; width:auto; display:block; margin:0 auto;">
+                <img src="{{ $logoUrl }}" alt="{{ config('company.name') }}" width="100" style="width:100px; height:auto; display:block; margin:0 auto;">
             @endif
-            <div style="margin-top:8px; font-weight:600; font-size:16px; color:#0f172a;">
+            <div style="margin-top:8px; font-weight:600; font-size:16px; color:white;">
                 {{ tenantSetting('company.name') }}
             </div>
-            @if(!empty($logoUrl))
-                <div style="margin-top:4px; font-size:12px; color:#64748b;">
-                    {{ $logoUrl }}
-                </div>
-            @endif
         </x-mail::header>
     </x-slot:header>
 
