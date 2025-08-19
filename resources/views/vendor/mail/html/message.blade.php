@@ -33,7 +33,7 @@
             © {{ date('Y') }} La Pesquerapp ERP. @lang('All rights reserved.')
             </span>
             <br>
-            <a href="https://lapesquerapp.com" target="_blank" rel="noopener noreferrer">www.lapesquerapp.com</a>
+            <a href="https://lapesquerapp.es" target="_blank" rel="noopener noreferrer">www.lapesquerapp.es</a>
         </x-mail::footer>
     </x-slot:footer>
 

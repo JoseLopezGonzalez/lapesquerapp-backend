@@ -33,7 +33,7 @@
 
 ## Observaciones:
 
-Por favor, revisen los documentos adjuntos para aseguraros que todos los detalles son correctos y que tienen todo lo necesario.
+Por favor, revisen los documentos adjuntos para verificar que todos los detalles son correctos y que tienen todo lo necesario.
 
 *Si encuentran alguna discrepancia o necesitan más información, no duden en contactarnos a [{{ tenantSetting('company.contact.email_orders') }}](mailto:{{ tenantSetting('company.contact.email_orders') }}) ({{ tenantSetting('company.contact.phone_orders') }})*
 
