@@ -26,11 +26,14 @@
     <x-slot:footer>
         <x-mail::footer>
             <span style="display:block;font-size:13px;color:white;">
-                Gestiona tu negocio pesquero con <strong>La Pesquerapp ERP</strong>. 
-                <a href="https://lapesquerapp.com" target="_blank" rel="noopener noreferrer" style="color:#0ea5e9;text-decoration:none;">Conócela</a>
+                Gestiona tu industria pesquera con <strong>La Pesquerapp ERP</strong>. 
             </span>
             <br>
-            © {{ date('Y') }} La Pesquerapp ERP. @lang('All rights reserved.') — <a href="https://lapesquerapp.com" target="_blank" rel="noopener noreferrer">www.lapesquerapp.com</a>
+            <span style="display:block;font-size:13px;color:gray;">
+            © {{ date('Y') }} La Pesquerapp ERP. @lang('All rights reserved.')
+            </span>
+            <br>
+            <a href="https://lapesquerapp.com" target="_blank" rel="noopener noreferrer">www.lapesquerapp.com</a>
         </x-mail::footer>
     </x-slot:footer>
 
