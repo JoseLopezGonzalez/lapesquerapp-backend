@@ -1,14 +1,14 @@
 <x-mail::message>
 
-# {{ $order->transport->name }}
+# {{ optional($order->transport)->name ?? '-' }}
 
 ## &nbsp;
 
 ## Detalles del Envío:
 
-- **{{ $order->customer->alias }}**
+- **{{ optional($order->customer)->alias ?? '-' }}**
 - **Número de Pedido:** {{ $order->formattedId }}
-- **Fecha de carga:** {{ date('d/m/Y', strtotime($order->load_date)) }}
+- **Fecha de carga:** {{ !empty($order->load_date) ? \Illuminate\Support\Carbon::parse($order->load_date)->format('d/m/Y') : '-' }}
 - **Destino:** {!! nl2br(e($order->shipping_address)) !!}
 
 ## &nbsp;
@@ -17,9 +17,7 @@
     | Nº Palet | Cajas | Peso Total |
     |:-----------:|:-----------:|:------------:|
     @foreach ($order->pallets as $pallet)
-        | #{{ str_pad($pallet->id, 9, ' ', STR_PAD_RIGHT) }} |
-        {{ str_pad($pallet->numberOfBoxes, 10, ' ', STR_PAD_RIGHT) }} |
-        {{ str_pad(number_format($pallet->netWeight, 2, ',', '.') . ' kg', 10, ' ', STR_PAD_RIGHT) }} |
+    | #{{ $pallet->id }} | {{ $pallet->numberOfBoxes }} | {{ number_format($pallet->netWeight, 2, ',', '.') }} kg |
     @endforeach
 </x-mail::table>
 
