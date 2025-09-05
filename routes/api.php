@@ -291,7 +291,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         });
 
         // Rutas accesibles para múltiples roles
-        Route::middleware(['role:superuser,manager,admin'])->group(function () {
+        Route::middleware(['role:superuser,manager,admin,store_operator'])->group(function () {
             /* Options */
             Route::get('settings', [SettingController::class, 'index']);
             Route::put('settings', [SettingController::class, 'update']);
@@ -345,8 +345,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             /* orders/transport-chart-data */
             Route::get('orders/transport-chart-data', [V2OrderController::class, 'transportChartData']);
 
-            /* bulkUpdateState */
-            Route::post('pallets/update-state', [V2PalletController::class, 'bulkUpdateState'])->name('pallets.bulk_update_state');
+            /* bulkUpdateState - Solo para roles administrativos */
+            Route::post('pallets/update-state', [V2PalletController::class, 'bulkUpdateState'])->name('pallets.bulk_update_state')->middleware(['role:superuser,manager,admin']);
 
             /* Controladores Genericos */
             Route::apiResource('orders', V2OrderController::class);
@@ -369,7 +369,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::delete('product-families', [ProductFamilyController::class, 'destroyMultiple']);
 
             Route::apiResource('stores', V2StoreController::class);
-            Route::delete('stores', [V2StoreController::class, 'deleteMultiple']); // <-- importante
+            Route::delete('stores', [V2StoreController::class, 'deleteMultiple'])->middleware(['role:superuser,manager,admin']); // <-- importante
 
             Route::apiResource('payment-terms', V2PaymentTermController::class);
             Route::delete('payment-terms', [V2PaymentTermController::class, 'destroyMultiple']);
@@ -382,7 +382,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::apiResource('boxes', BoxesController::class); /* Algo raro en el nombre */
             Route::delete('boxes', [BoxesController::class, 'destroyMultiple']);
             Route::apiResource('pallets', V2PalletController::class);
-            Route::delete('pallets', [V2PalletController::class, 'destroyMultiple']);
+            Route::delete('pallets', [V2PalletController::class, 'destroyMultiple'])->middleware(['role:superuser,manager,admin']);
             Route::apiResource('customers', V2CustomerController::class);
             Route::delete('customers', [V2CustomerController::class, 'destroyMultiple']);
 

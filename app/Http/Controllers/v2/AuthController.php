@@ -42,6 +42,9 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'assignedStoreId' => $user->assigned_store_id,
+                'companyName' => $user->company_name,
+                'companyLogoUrl' => $user->company_logo_url,
                 'role' => $user->roles->pluck('name'), // Si usas roles
             ],
         ]);

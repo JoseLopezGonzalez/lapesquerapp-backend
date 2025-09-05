@@ -10,6 +10,12 @@ class TenantDatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // Seed roles first
+        $this->call(RoleSeeder::class);
+        
+        // Create test store operator user
+        $this->call(StoreOperatorUserSeeder::class);
+
         $companyConfig = config('company');
 
         $flattened = Arr::dot($companyConfig); // Convierte el array en clave.valor (OJO CON ESTO, Buscar ese company config y ponerlo en el seeder cuando se deje de usar)
