@@ -25,15 +25,7 @@
     {{-- Footer --}}
     <x-slot:footer>
         <x-mail::footer>
-            <span style="display:block;font-size:13px;color:white;">
-                Gestiona tu industria pesquera con <strong>La Pesquerapp ERP</strong>. 
-            </span>
-            <br>
-            <span style="display:block;font-size:13px;color:gray;">
-            © {{ date('Y') }} La Pesquerapp ERP. @lang('All rights reserved.')
-            </span>
-            <br>
-            <a href="https://lapesquerapp.es" target="_blank" rel="noopener noreferrer">www.lapesquerapp.es</a>
+            
         </x-mail::footer>
     </x-slot:footer>
 

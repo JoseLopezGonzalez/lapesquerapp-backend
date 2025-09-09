@@ -131,6 +131,5 @@ class User extends Authenticatable
             'updatedAt' => $this->updated_at,
         ];
     }
-
     
 }
