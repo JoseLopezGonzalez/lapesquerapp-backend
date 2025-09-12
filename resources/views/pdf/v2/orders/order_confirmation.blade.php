@@ -76,9 +76,6 @@
                         @foreach ($entity->transport->emailsArray as $email)
                             <li>{{ $email }}</li>
                         @endforeach
-                        @foreach ($entity->ccEmailsArray as $email)
-                            <li>{{ $email }}</li>
-                        @endforeach
                     </ul>
                 </div>
             </div>
