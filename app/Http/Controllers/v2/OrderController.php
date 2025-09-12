@@ -281,7 +281,7 @@ class OrderController extends Controller
     {
         $request->validate([
             'buyerReference' => 'sometimes|nullable|string',
-            'paymentTerm' => 'sometimes|integer',
+            'payment' => 'sometimes|integer',
             'billingAddress' => 'sometimes|string',
             'shippingAddress' => 'sometimes|string',
             'transportationNotes' => 'sometimes|nullable|string',
@@ -308,8 +308,8 @@ class OrderController extends Controller
         if ($request->has('buyerReference')) {
             $order->buyer_reference = $request->buyerReference;
         }
-        if ($request->has('paymentTerm')) {
-            $order->payment_term_id = $request->paymentTerm;
+        if ($request->has('payment')) {
+            $order->payment_term_id = $request->payment;
         }
         if ($request->has('billingAddress')) {
             $order->billing_address = $request->billingAddress;
