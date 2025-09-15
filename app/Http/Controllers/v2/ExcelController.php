@@ -383,8 +383,8 @@ class ExcelController extends Controller
             
             return Excel::download(
                 new RawMaterialReceptionA3erpExport($request, $limit),
-                'recepciones_materia_prima_a3erp.xlsx',
-                \Maatwebsite\Excel\Excel::XLSX
+                'recepciones_materia_prima_a3erp.xls',
+                \Maatwebsite\Excel\Excel::XLS
             );
             
         } catch (\Exception $e) {
