@@ -115,13 +115,12 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
             'CABSERIE',
             'CABNUMDOC',
             'CABFECHA',
-            'CABCODCLI',
+            'CABCODPRO',
             'CABREFERENCIA',
             'LINCODART',
             'LINDESCLIN',
             'LINUNIDADES',
             'LINPRCMONEDA',
-            'LINTIPIVA',
         ];
     }
 
@@ -138,7 +137,7 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
             $article = $productModel ? $productModel->article : null;
             
             $rows[] = [
-                'C25', // cabSerie - usando C25 para recepciones de materia prima
+                'RE25', // cabSerie - usando C25 para recepciones de materia prima
                 $reception->id ?: '-', // id
                 $reception->date ? date('d/m/Y', strtotime($reception->date)) : '-',
                 $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
@@ -147,23 +146,21 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
                 $article ? $article->name : '-',
                 $product->net_weight ?: '-',
                 $product->price ?: '-',
-                'RED10', // iva
             ];
         }
 
         // Caso especial PULPO FRESCO LONJA (si existe)
         if ($reception->declared_total_amount > 0 && $reception->declared_total_net_weight > 0) {
             $rows[] = [
-                'C25', // cabSerie
+                'RE25', // cabSerie
                 $reception->id ?: '-', // id
                 $reception->date ? date('d/m/Y', strtotime($reception->date)) : '-',
                 $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
                 $supplier && $reception->date ? $supplier->name . " - RECEPCION - " . date('d/m/Y', strtotime($reception->date)) : '-',
-                '100', // Código especial para PULPO FRESCO LONJA
-                'PULPO FRESCO LONJA',
+                '9', // Código especial para PULPO FRESCO LONJA
+                'Pulpo Fresco Compensado',
                 $reception->declared_total_net_weight ? $reception->declared_total_net_weight * -1 : '-',
                 $reception->declared_total_amount && $reception->declared_total_net_weight ? $reception->declared_total_amount / $reception->declared_total_net_weight : '-',
-                'RED10', // iva
             ];
         }
 
@@ -172,7 +169,7 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
 
     public function title(): string
     {
-        return 'ALBARANESVENTA';
+        return 'ALBARANESCOMPRA';
     }
 
     public function styles(Worksheet $sheet)
