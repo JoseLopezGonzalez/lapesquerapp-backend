@@ -141,7 +141,7 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
                 $reception->id ?: '-', // id
                 $reception->date ? date('d/m/Y', strtotime($reception->date)) : '-',
                 $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
-                $supplier && $reception->date ? $supplier->name . " - RECEPCION - " . date('d/m/Y', strtotime($reception->date)) : '-',
+                $supplier && $reception->date ? $supplier->name . " - " . date('d/m/Y', strtotime($reception->date)) .' - ' . $reception->id  : '-',
                 $productModel && $productModel->facil_com_code ? $productModel->facil_com_code : '-',
                 $article ? $article->name : '-',
                 $product->net_weight ?: '-',
@@ -156,7 +156,7 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
                 $reception->id ?: '-', // id
                 $reception->date ? date('d/m/Y', strtotime($reception->date)) : '-',
                 $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
-                $supplier && $reception->date ? $supplier->name . " - RECEPCION - " . date('d/m/Y', strtotime($reception->date)) : '-',
+                $supplier && $reception->date ? $supplier->name . " - " . date('d/m/Y', strtotime($reception->date)) .' - ' . $reception->id  : '-',
                 '9', // Código especial para PULPO FRESCO LONJA
                 'Pulpo Fresco Compensado',
                 $reception->declared_total_net_weight ? $reception->declared_total_net_weight * -1 : '-',
