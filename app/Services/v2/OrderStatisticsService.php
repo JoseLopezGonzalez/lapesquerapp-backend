@@ -92,6 +92,7 @@ class OrderStatisticsService
         $query = Order::query()
             ->join('order_planned_product_details', 'orders.id', '=', 'order_planned_product_details.order_id')
             ->join('products', 'order_planned_product_details.product_id', '=', 'products.id')
+            ->leftJoin('taxes', 'order_planned_product_details.tax_id', '=', 'taxes.id')
             ->whereBetween('orders.load_date', [$from, $to]);
 
         if ($speciesId) {
@@ -102,7 +103,6 @@ class OrderStatisticsService
             SUM(order_planned_product_details.unit_price * order_planned_product_details.quantity) as subtotal,
             SUM(order_planned_product_details.unit_price * order_planned_product_details.quantity * (1 + COALESCE(taxes.rate, 0) / 100)) as total
         ')
-        ->leftJoin('taxes', 'order_planned_product_details.tax_id', '=', 'taxes.id')
         ->first();
 
         $subtotal = $result->subtotal ?? 0;
