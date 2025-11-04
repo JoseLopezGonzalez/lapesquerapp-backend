@@ -354,8 +354,8 @@ class ExcelController extends Controller
             
             return Excel::download(
                 new CeboDispatchA3erpExport($request, $limit),
-                'despachos_cebo_a3erp.xlsx',
-                \Maatwebsite\Excel\Excel::XLSX
+                'despachos_cebo_a3erp.xls',
+                \Maatwebsite\Excel\Excel::XLS
             );
             
         } catch (\Exception $e) {
