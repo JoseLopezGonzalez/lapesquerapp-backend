@@ -51,7 +51,7 @@ class ProductFamilyController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|min:3|max:255',
             'description' => 'nullable|string|max:1000',
-            'categoryId' => 'required|exists:product_categories,id',
+            'categoryId' => 'required|exists:tenant.product_categories,id',
             'active' => 'boolean',
         ]);
 
@@ -93,7 +93,7 @@ class ProductFamilyController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|required|string|min:3|max:255',
             'description' => 'nullable|string|max:1000',
-            'categoryId' => 'sometimes|required|exists:product_categories,id',
+            'categoryId' => 'sometimes|required|exists:tenant.product_categories,id',
             'active' => 'boolean',
         ]);
 

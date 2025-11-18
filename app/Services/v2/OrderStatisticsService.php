@@ -206,100 +206,89 @@ class OrderStatisticsService
         ?int $familyId = null,
         ?int $categoryId = null
     ): \Illuminate\Support\Collection {
-        $orders = Order::with(
-            'pallets.boxes.box.product.species',
-            'pallets.boxes.box.product.family',
-            'pallets.boxes.box.product.family.category',
-            'plannedProductDetails.product',
-            'plannedProductDetails.tax'
-        )
-            ->whereBetween('entry_date', [$dateFrom, $dateTo])
-            ->get();
+        // Usar la misma lógica que totalAmountStats y totalNetWeightStats: usar load_date
+        // Para quantity: usar la misma estructura que calculateTotalNetWeight (boxes.net_weight con articles)
+        // Para amount: usar order_planned_product_details (igual que calculateAmountDetails)
+        
+        if ($valueType === 'quantity') {
+            // Para quantity, usar la misma estructura que calculateTotalNetWeight
+            // Nota: joinBoxesAndArticles hace join con articles, pero para los filtros usamos products
+            $query = Order::query()
+                ->join('pallets', 'pallets.order_id', '=', 'orders.id')
+                ->join('pallet_boxes', 'pallet_boxes.pallet_id', '=', 'pallets.id')
+                ->join('boxes', 'boxes.id', '=', 'pallet_boxes.box_id')
+                ->join('articles', 'articles.id', '=', 'boxes.article_id')
+                ->join('products', 'products.id', '=', 'articles.id') // products.id = articles.id (relación 1:1)
+                ->leftJoin('product_families', 'products.family_id', '=', 'product_families.id')
+                ->leftJoin('product_categories', 'product_families.category_id', '=', 'product_categories.id')
+                ->whereBetween('orders.load_date', [$dateFrom, $dateTo]);
 
-        $grouped = [];
-
-        foreach ($orders as $order) {
-            if (!$order->entry_date) {
-                continue;
+            // Aplicar filtros (usar products.species_id ya que articles no tiene species_id directamente)
+            // Esto es consistente porque products.id = articles.id (relación 1:1)
+            if ($speciesId) {
+                $query->where('products.species_id', $speciesId);
+            }
+            if ($familyId) {
+                $query->where('products.family_id', $familyId);
+            }
+            if ($categoryId) {
+                $query->where('product_families.category_id', $categoryId);
             }
 
-            $date = Carbon::parse($order->entry_date);
+            $dateField = 'orders.load_date';
+            $valueField = 'SUM(boxes.net_weight)';
+        } else {
+            // Para amount, usar order_planned_product_details (igual que calculateAmountDetails)
+            $query = Order::query()
+                ->join('order_planned_product_details', 'orders.id', '=', 'order_planned_product_details.order_id')
+                ->join('products', 'order_planned_product_details.product_id', '=', 'products.id')
+                ->leftJoin('taxes', 'order_planned_product_details.tax_id', '=', 'taxes.id')
+                ->leftJoin('product_families', 'products.family_id', '=', 'product_families.id')
+                ->leftJoin('product_categories', 'product_families.category_id', '=', 'product_categories.id')
+                ->whereBetween('orders.load_date', [$dateFrom, $dateTo]);
 
-            switch ($groupBy) {
-                case 'week':
-                    $entryDate = $date->startOfWeek()->format('Y-\WW'); // Ej: 2025-W27
-                    break;
-                case 'month':
-                    $entryDate = $date->format('Y-m'); // Ej: 2025-07
-                    break;
-                case 'day':
-                default:
-                    $entryDate = $date->format('Y-m-d'); // Ej: 2025-07-02
-                    break;
+            // Aplicar filtros
+            if ($speciesId) {
+                $query->where('products.species_id', $speciesId);
+            }
+            if ($familyId) {
+                $query->where('products.family_id', $familyId);
+            }
+            if ($categoryId) {
+                $query->where('product_families.category_id', $categoryId);
             }
 
-            // Calcular valores solo de las cajas que cumplen los filtros
-            $filteredAmount = 0;
-            $filteredQuantity = 0;
-
-            foreach ($order->pallets as $pallet) {
-                foreach ($pallet->boxes as $box) {
-                    $product = $box->box->product;
-                    
-                    if (!$product) {
-                        continue;
-                    }
-
-                    // Verificar filtros
-                    $matchesSpecies = !$speciesId || ($product->species && $product->species->id == $speciesId);
-                    $matchesFamily = !$familyId || ($product->family && $product->family->id == $familyId);
-                    $matchesCategory = !$categoryId || (
-                        $product->family && 
-                        $product->family->category && 
-                        $product->family->category->id == $categoryId
-                    );
-
-                    // Si no cumple todos los filtros, saltar esta caja
-                    if (!$matchesSpecies || !$matchesFamily || !$matchesCategory) {
-                        continue;
-                    }
-
-                    // Sumar cantidad (peso neto)
-                    $filteredQuantity += floatval($box->netWeight);
-
-                    // Calcular monto
-                    $plannedProductDetail = $order->plannedProductDetails->firstWhere('product_id', $product->id);
-                    if ($plannedProductDetail) {
-                        $subtotal = $plannedProductDetail->unit_price * $box->netWeight;
-                        $taxRate = $plannedProductDetail->tax ? $plannedProductDetail->tax->rate : 0;
-                        $total = $subtotal + ($subtotal * $taxRate / 100);
-                        $filteredAmount += floatval($total);
-                    }
-                }
-            }
-
-            // Solo agregar si hay datos que cumplen los filtros
-            if ($filteredQuantity > 0 || $filteredAmount > 0) {
-                if (!isset($grouped[$entryDate])) {
-                    $grouped[$entryDate] = [
-                        'date' => $entryDate,
-                        'amount' => 0,
-                        'quantity' => 0,
-                    ];
-                }
-
-                $grouped[$entryDate]['amount'] += $filteredAmount;
-                $grouped[$entryDate]['quantity'] += $filteredQuantity;
-            }
+            $dateField = 'orders.load_date';
+            $valueField = 'SUM(order_planned_product_details.unit_price * order_planned_product_details.quantity * (1 + COALESCE(taxes.rate, 0) / 100))';
         }
 
-        return collect($grouped)
-            ->sortKeys()
-            ->map(fn($item) => [
-                'date' => $item['date'],
-                'value' => round($item[$valueType], 2),
-            ])
-            ->values();
+        // Agrupar por fecha según groupBy
+        $dateFormat = match ($groupBy) {
+            'week' => "DATE_FORMAT({$dateField}, '%Y-%u')", // Año-semana
+            'month' => "DATE_FORMAT({$dateField}, '%Y-%m')", // Año-mes
+            'day' => "DATE_FORMAT({$dateField}, '%Y-%m-%d')", // Año-mes-día
+            default => "DATE_FORMAT({$dateField}, '%Y-%m-%d')",
+        };
+
+        $dateAlias = match ($groupBy) {
+            'week' => "DATE_FORMAT({$dateField}, '%Y-W%u')",
+            'month' => "DATE_FORMAT({$dateField}, '%Y-%m')",
+            'day' => "DATE_FORMAT({$dateField}, '%Y-%m-%d')",
+            default => "DATE_FORMAT({$dateField}, '%Y-%m-%d')",
+        };
+
+        $results = $query->selectRaw("
+            {$dateAlias} as date,
+            {$valueField} as value
+        ")
+        ->groupByRaw($dateFormat)
+        ->orderByRaw($dateFormat)
+        ->get();
+
+        return $results->map(fn($item) => [
+            'date' => $item->date,
+            'value' => round($item->value, 2),
+        ])->values();
     }
 
 
