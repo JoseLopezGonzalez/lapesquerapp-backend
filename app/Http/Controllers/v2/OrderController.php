@@ -492,7 +492,9 @@ class OrderController extends Controller
         $validated = Validator::make($request->all(), [
             'dateFrom' => 'required|date',
             'dateTo' => 'required|date',
-            'speciesId' => 'nullable|integer|exists:species,id',
+            'speciesId' => 'nullable|integer|exists:tenant.species,id',
+            'familyId' => 'nullable|integer|exists:tenant.product_families,id',
+            'categoryId' => 'nullable|integer|exists:tenant.product_categories,id',
             'valueType' => 'required|in:amount,quantity',
             'groupBy' => 'nullable|in:day,week,month',
         ])->validate();
@@ -500,10 +502,18 @@ class OrderController extends Controller
         $dateFrom = $validated['dateFrom'] . ' 00:00:00';
         $dateTo = $validated['dateTo'] . ' 23:59:59';
         $speciesId = $validated['speciesId'] ?? null;
+        $familyId = $validated['familyId'] ?? null;
+        $categoryId = $validated['categoryId'] ?? null;
         $valueType = $validated['valueType'];
         $groupBy = $validated['groupBy'] ?? 'day';
 
-        $orders = Order::with('pallets.boxes.box.product.species')
+        $orders = Order::with(
+            'pallets.boxes.box.product.species',
+            'pallets.boxes.box.product.family',
+            'pallets.boxes.box.product.family.category',
+            'plannedProductDetails.product',
+            'plannedProductDetails.tax'
+        )
             ->whereBetween('entry_date', [$dateFrom, $dateTo])
             ->get();
 
@@ -528,21 +538,59 @@ class OrderController extends Controller
                     break;
             }
 
-            // Filtrar por especie usando el atributo calculado
-            if ($speciesId && !collect($order->species_list)->pluck('id')->contains($speciesId)) {
-                continue;
+            // Calcular valores solo de las cajas que cumplen los filtros
+            $filteredAmount = 0;
+            $filteredQuantity = 0;
+
+            foreach ($order->pallets as $pallet) {
+                foreach ($pallet->boxes as $box) {
+                    $product = $box->box->product;
+                    
+                    if (!$product) {
+                        continue;
+                    }
+
+                    // Verificar filtros
+                    $matchesSpecies = !$speciesId || ($product->species && $product->species->id == $speciesId);
+                    $matchesFamily = !$familyId || ($product->family && $product->family->id == $familyId);
+                    $matchesCategory = !$categoryId || (
+                        $product->family && 
+                        $product->family->category && 
+                        $product->family->category->id == $categoryId
+                    );
+
+                    // Si no cumple todos los filtros, saltar esta caja
+                    if (!$matchesSpecies || !$matchesFamily || !$matchesCategory) {
+                        continue;
+                    }
+
+                    // Sumar cantidad (peso neto)
+                    $filteredQuantity += floatval($box->netWeight);
+
+                    // Calcular monto
+                    $plannedProductDetail = $order->plannedProductDetails->firstWhere('product_id', $product->id);
+                    if ($plannedProductDetail) {
+                        $subtotal = $plannedProductDetail->unit_price * $box->netWeight;
+                        $taxRate = $plannedProductDetail->tax ? $plannedProductDetail->tax->rate : 0;
+                        $total = $subtotal + ($subtotal * $taxRate / 100);
+                        $filteredAmount += floatval($total);
+                    }
+                }
             }
 
-            if (!isset($grouped[$entryDate])) {
-                $grouped[$entryDate] = [
-                    'date' => $entryDate,
-                    'amount' => 0,
-                    'quantity' => 0,
-                ];
-            }
+            // Solo agregar si hay datos que cumplen los filtros
+            if ($filteredQuantity > 0 || $filteredAmount > 0) {
+                if (!isset($grouped[$entryDate])) {
+                    $grouped[$entryDate] = [
+                        'date' => $entryDate,
+                        'amount' => 0,
+                        'quantity' => 0,
+                    ];
+                }
 
-            $grouped[$entryDate]['amount'] += floatval($order->totalAmount);
-            $grouped[$entryDate]['quantity'] += floatval($order->totalNetWeight);
+                $grouped[$entryDate]['amount'] += $filteredAmount;
+                $grouped[$entryDate]['quantity'] += $filteredQuantity;
+            }
         }
 
         $result = collect($grouped)

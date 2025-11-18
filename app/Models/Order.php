@@ -535,6 +535,44 @@ class Order extends Model
         return $species->values();
     }
 
+    public function getFamiliesListAttribute()
+    {
+        $families = collect();
+
+        $this->pallets->each(function ($pallet) use (&$families) {
+            $pallet->boxes->each(function ($box) use (&$families) {
+                $product = $box->box->product;
+                if ($product && $product->family) {
+                    $families->put($product->family->id, [
+                        'id' => $product->family->id,
+                        'name' => $product->family->name,
+                    ]);
+                }
+            });
+        });
+
+        return $families->values();
+    }
+
+    public function getCategoriesListAttribute()
+    {
+        $categories = collect();
+
+        $this->pallets->each(function ($pallet) use (&$categories) {
+            $pallet->boxes->each(function ($box) use (&$categories) {
+                $product = $box->box->product;
+                if ($product && $product->family && $product->family->category) {
+                    $categories->put($product->family->category->id, [
+                        'id' => $product->family->category->id,
+                        'name' => $product->family->category->name,
+                    ]);
+                }
+            });
+        });
+
+        return $categories->values();
+    }
+
 
 
     /* NUEVO ACTUALIZADO 2025 LA PESQUERAPP--------------------------------------- */
