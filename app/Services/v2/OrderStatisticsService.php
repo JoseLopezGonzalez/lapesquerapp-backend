@@ -185,7 +185,7 @@ class OrderStatisticsService
     }
 
     /**
-     * Obtiene datos de ventas agrupados por período (día, semana o mes)
+     * Obtiene datos de ventas agrupados por período (día, semana o mes).
      * con filtros opcionales por especie, familia o categoría.
      * 
      * @param string $dateFrom Fecha de inicio (formato: Y-m-d H:i:s)
