@@ -238,11 +238,10 @@ class OrderStatisticsService
             $dateField = 'orders.load_date';
             $valueField = 'SUM(boxes.net_weight)';
         } else {
-            // Para amount, usar order_planned_product_details (igual que calculateAmountDetails)
+            // Para amount, usar order_planned_product_details (solo subtotal, sin IVA)
             $query = Order::query()
                 ->join('order_planned_product_details', 'orders.id', '=', 'order_planned_product_details.order_id')
                 ->join('products', 'order_planned_product_details.product_id', '=', 'products.id')
-                ->leftJoin('taxes', 'order_planned_product_details.tax_id', '=', 'taxes.id')
                 ->leftJoin('product_families', 'products.family_id', '=', 'product_families.id')
                 ->leftJoin('product_categories', 'product_families.category_id', '=', 'product_categories.id')
                 ->whereBetween('orders.load_date', [$dateFrom, $dateTo]);
@@ -259,7 +258,8 @@ class OrderStatisticsService
             }
 
             $dateField = 'orders.load_date';
-            $valueField = 'SUM(order_planned_product_details.unit_price * order_planned_product_details.quantity * (1 + COALESCE(taxes.rate, 0) / 100))';
+            // Usar solo el subtotal (base sin IVA) para que coincida con el subtotal de totalAmountStats
+            $valueField = 'SUM(order_planned_product_details.unit_price * order_planned_product_details.quantity)';
         }
 
         // Agrupar por fecha según groupBy
