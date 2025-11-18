@@ -341,7 +341,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             /* orders/sales-by-salesperson */
             Route::get('orders/sales-by-salesperson', [V2OrderController::class, 'salesBySalesperson']);
             /* salesChartData */
-            Route::get('orders/sales-chart-data', [V2OrderController::class, 'salesChartData']);
+            Route::get('orders/sales-chart-data', [OrderStatisticsController::class, 'salesChartData']);
             /* orders/transport-chart-data */
             Route::get('orders/transport-chart-data', [V2OrderController::class, 'transportChartData']);
 

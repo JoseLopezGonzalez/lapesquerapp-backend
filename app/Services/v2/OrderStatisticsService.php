@@ -3,6 +3,7 @@
 namespace App\Services\v2;
 
 use App\Models\Order;
+use Carbon\Carbon;
 
 class OrderStatisticsService
 {
@@ -181,6 +182,124 @@ class OrderStatisticsService
             'name' => $item->name ?? 'Sin nombre',
             'value' => round($item->value, 2),
         ]);
+    }
+
+    /**
+     * Obtiene datos de ventas agrupados por período (día, semana o mes)
+     * con filtros opcionales por especie, familia o categoría.
+     * 
+     * @param string $dateFrom Fecha de inicio (formato: Y-m-d H:i:s)
+     * @param string $dateTo Fecha de fin (formato: Y-m-d H:i:s)
+     * @param string $valueType Tipo de valor: 'amount' o 'quantity'
+     * @param string $groupBy Agrupación: 'day', 'week' o 'month'
+     * @param int|null $speciesId ID de especie para filtrar
+     * @param int|null $familyId ID de familia para filtrar
+     * @param int|null $categoryId ID de categoría para filtrar
+     * @return \Illuminate\Support\Collection
+     */
+    public static function getSalesChartData(
+        string $dateFrom,
+        string $dateTo,
+        string $valueType,
+        string $groupBy,
+        ?int $speciesId = null,
+        ?int $familyId = null,
+        ?int $categoryId = null
+    ): \Illuminate\Support\Collection {
+        $orders = Order::with(
+            'pallets.boxes.box.product.species',
+            'pallets.boxes.box.product.family',
+            'pallets.boxes.box.product.family.category',
+            'plannedProductDetails.product',
+            'plannedProductDetails.tax'
+        )
+            ->whereBetween('entry_date', [$dateFrom, $dateTo])
+            ->get();
+
+        $grouped = [];
+
+        foreach ($orders as $order) {
+            if (!$order->entry_date) {
+                continue;
+            }
+
+            $date = Carbon::parse($order->entry_date);
+
+            switch ($groupBy) {
+                case 'week':
+                    $entryDate = $date->startOfWeek()->format('Y-\WW'); // Ej: 2025-W27
+                    break;
+                case 'month':
+                    $entryDate = $date->format('Y-m'); // Ej: 2025-07
+                    break;
+                case 'day':
+                default:
+                    $entryDate = $date->format('Y-m-d'); // Ej: 2025-07-02
+                    break;
+            }
+
+            // Calcular valores solo de las cajas que cumplen los filtros
+            $filteredAmount = 0;
+            $filteredQuantity = 0;
+
+            foreach ($order->pallets as $pallet) {
+                foreach ($pallet->boxes as $box) {
+                    $product = $box->box->product;
+                    
+                    if (!$product) {
+                        continue;
+                    }
+
+                    // Verificar filtros
+                    $matchesSpecies = !$speciesId || ($product->species && $product->species->id == $speciesId);
+                    $matchesFamily = !$familyId || ($product->family && $product->family->id == $familyId);
+                    $matchesCategory = !$categoryId || (
+                        $product->family && 
+                        $product->family->category && 
+                        $product->family->category->id == $categoryId
+                    );
+
+                    // Si no cumple todos los filtros, saltar esta caja
+                    if (!$matchesSpecies || !$matchesFamily || !$matchesCategory) {
+                        continue;
+                    }
+
+                    // Sumar cantidad (peso neto)
+                    $filteredQuantity += floatval($box->netWeight);
+
+                    // Calcular monto
+                    $plannedProductDetail = $order->plannedProductDetails->firstWhere('product_id', $product->id);
+                    if ($plannedProductDetail) {
+                        $subtotal = $plannedProductDetail->unit_price * $box->netWeight;
+                        $taxRate = $plannedProductDetail->tax ? $plannedProductDetail->tax->rate : 0;
+                        $total = $subtotal + ($subtotal * $taxRate / 100);
+                        $filteredAmount += floatval($total);
+                    }
+                }
+            }
+
+            // Solo agregar si hay datos que cumplen los filtros
+            if ($filteredQuantity > 0 || $filteredAmount > 0) {
+                if (!isset($grouped[$entryDate])) {
+                    $grouped[$entryDate] = [
+                        'date' => $entryDate,
+                        'amount' => 0,
+                        'quantity' => 0,
+                    ];
+                }
+
+                $grouped[$entryDate]['amount'] += $filteredAmount;
+                $grouped[$entryDate]['quantity'] += $filteredQuantity;
+            }
+        }
+
+        return collect($grouped)
+            ->sortKeys()
+            ->map(fn($item) => [
+                'date' => $item['date'],
+                'value' => round($item[$valueType], 2),
+            ])
+            ->values();
     }
 
 
