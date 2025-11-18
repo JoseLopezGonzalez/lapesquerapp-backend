@@ -529,7 +529,7 @@ class OrderController extends Controller
             }
 
             // Filtrar por especie usando el atributo calculado
-            if ($speciesId && !collect($order->species_list)->contains('id', $speciesId)) {
+            if ($speciesId && !collect($order->species_list)->pluck('id')->contains($speciesId)) {
                 continue;
             }
 
