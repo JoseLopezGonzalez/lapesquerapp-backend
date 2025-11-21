@@ -66,6 +66,7 @@ use App\Http\Controllers\v2\ProductController as V2ProductController;
 use App\Http\Controllers\v2\ProductCategoryController;
 use App\Http\Controllers\v2\ProductFamilyController;
 use App\Http\Controllers\v2\RawMaterialReceptionController as V2RawMaterialReceptionController;
+use App\Http\Controllers\v2\RawMaterialReceptionStatisticsController;
 use App\Http\Controllers\v2\RoleController;
 use App\Http\Controllers\v2\SalespersonController as V2SalespersonController;
 use App\Http\Controllers\v2\SessionController;
@@ -356,6 +357,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             /* Raw Material Receptions - Export debe ir ANTES del apiResource */
             Route::get('raw-material-receptions/facilcom-xls', [\App\Http\Controllers\v2\ExcelController::class, 'exportRawMaterialReceptionFacilcom'])->name('export_raw_material_receptions_facilcom');
             Route::get('raw-material-receptions/a3erp-xls', [\App\Http\Controllers\v2\ExcelController::class, 'exportRawMaterialReceptionA3erp'])->name('export_raw_material_receptions_a3erp');
+            /* receptionChartData */
+            Route::get('raw-material-receptions/reception-chart-data', [RawMaterialReceptionStatisticsController::class, 'receptionChartData']);
             Route::apiResource('raw-material-receptions', V2RawMaterialReceptionController::class);
             Route::delete('raw-material-receptions', [V2RawMaterialReceptionController::class, 'destroyMultiple']);
             Route::apiResource('transports', V2TransportController::class);
