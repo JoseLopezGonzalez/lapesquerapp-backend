@@ -25,6 +25,7 @@ class Production extends Model
 
     protected $casts = [
         'diagram_data' => 'array', // Casteo para manipular JSON como array
+        'date' => 'date',
         'opened_at' => 'datetime',
         'closed_at' => 'datetime',
     ];
