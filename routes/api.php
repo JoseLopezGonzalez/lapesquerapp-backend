@@ -77,6 +77,7 @@ use App\Http\Controllers\v2\StoreController as V2StoreController;
 use App\Http\Controllers\v2\SupplierController as V2SupplierController;
 use App\Http\Controllers\v2\TransportController as V2TransportController;
 use App\Http\Controllers\v2\UserController;
+use App\Http\Controllers\v2\ProcessController as V2ProcessController;
 use App\Http\Controllers\v2\ProductionController as V2ProductionController;
 use App\Http\Controllers\v2\ProductionRecordController;
 use App\Http\Controllers\v2\ProductionInputController;
@@ -313,6 +314,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::get('/product-families/options', [ProductFamilyController::class, 'options']);
             Route::get('/taxes/options', [TaxController::class, 'options']);
             Route::get('/capture-zones/options', [V2CaptureZoneController::class, 'options']);
+            Route::get('/processes/options', [V2ProcessController::class, 'options']);
             Route::get('/pallets/options', [V2PalletController::class, 'options']);
             Route::get('/pallets/stored-options', [V2PalletController::class, 'storedOptions']);
             Route::get('/pallets/shipped-options', [V2PalletController::class, 'shippedOptions']);
@@ -437,6 +439,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::post('production-inputs/multiple', [ProductionInputController::class, 'storeMultiple'])->name('production-inputs.storeMultiple');
 
             Route::apiResource('production-outputs', ProductionOutputController::class);
+
+            /* Processes */
+            Route::apiResource('processes', V2ProcessController::class);
 
             /* order incidents */
             Route::get('orders/{orderId}/incident', [IncidentController::class, 'show']);
