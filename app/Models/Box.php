@@ -37,6 +37,14 @@ class Box extends Model
         return $this->palletBox ? $this->palletBox->pallet : null;
     }
 
+    /**
+     * Relación con ProductionInput (en qué procesos de producción se ha usado esta caja)
+     */
+    public function productionInputs()
+    {
+        return $this->hasMany(ProductionInput::class, 'box_id');
+    }
+
     public function toArrayAssoc()
     {
         return [

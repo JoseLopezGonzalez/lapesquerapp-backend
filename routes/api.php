@@ -77,6 +77,10 @@ use App\Http\Controllers\v2\StoreController as V2StoreController;
 use App\Http\Controllers\v2\SupplierController as V2SupplierController;
 use App\Http\Controllers\v2\TransportController as V2TransportController;
 use App\Http\Controllers\v2\UserController;
+use App\Http\Controllers\v2\ProductionController as V2ProductionController;
+use App\Http\Controllers\v2\ProductionRecordController;
+use App\Http\Controllers\v2\ProductionInputController;
+use App\Http\Controllers\v2\ProductionOutputController;
 
 /*
 |--------------------------------------------------------------------------
@@ -418,6 +422,21 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::get('labels/options', [LabelController::class, 'options'])->name('labels.options');
             Route::apiResource('labels', LabelController::class);
 
+            /* Production Module v2 */
+            Route::apiResource('productions', V2ProductionController::class);
+            Route::get('productions/{id}/diagram', [V2ProductionController::class, 'getDiagram'])->name('productions.getDiagram');
+            Route::get('productions/{id}/process-tree', [V2ProductionController::class, 'getProcessTree'])->name('productions.getProcessTree');
+            Route::get('productions/{id}/totals', [V2ProductionController::class, 'getTotals'])->name('productions.getTotals');
+            Route::get('productions/{id}/reconciliation', [V2ProductionController::class, 'getReconciliation'])->name('productions.getReconciliation');
+
+            Route::apiResource('production-records', ProductionRecordController::class);
+            Route::get('production-records/{id}/tree', [ProductionRecordController::class, 'tree'])->name('production-records.tree');
+            Route::post('production-records/{id}/finish', [ProductionRecordController::class, 'finish'])->name('production-records.finish');
+
+            Route::apiResource('production-inputs', ProductionInputController::class);
+            Route::post('production-inputs/multiple', [ProductionInputController::class, 'storeMultiple'])->name('production-inputs.storeMultiple');
+
+            Route::apiResource('production-outputs', ProductionOutputController::class);
 
             /* order incidents */
             Route::get('orders/{orderId}/incident', [IncidentController::class, 'show']);
