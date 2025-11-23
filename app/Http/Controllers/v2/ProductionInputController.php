@@ -47,8 +47,8 @@ class ProductionInputController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'production_record_id' => 'required|exists:production_records,id',
-            'box_id' => 'required|exists:boxes,id',
+            'production_record_id' => 'required|exists:tenant.production_records,id',
+            'box_id' => 'required|exists:tenant.boxes,id',
         ]);
 
         // Verificar que la caja no esté ya asignada a este proceso
@@ -79,9 +79,9 @@ class ProductionInputController extends Controller
     public function storeMultiple(Request $request)
     {
         $validated = $request->validate([
-            'production_record_id' => 'required|exists:production_records,id',
+            'production_record_id' => 'required|exists:tenant.production_records,id',
             'box_ids' => 'required|array',
-            'box_ids.*' => 'required|exists:boxes,id',
+            'box_ids.*' => 'required|exists:tenant.boxes,id',
         ]);
 
         $created = [];

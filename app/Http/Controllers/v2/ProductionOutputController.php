@@ -51,8 +51,8 @@ class ProductionOutputController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'production_record_id' => 'required|exists:production_records,id',
-            'product_id' => 'required|exists:products,id',
+            'production_record_id' => 'required|exists:tenant.production_records,id',
+            'product_id' => 'required|exists:tenant.products,id',
             'lot_id' => 'nullable|string',
             'boxes' => 'required|integer|min:0',
             'weight_kg' => 'required|numeric|min:0',
@@ -91,8 +91,8 @@ class ProductionOutputController extends Controller
         $output = ProductionOutput::findOrFail($id);
 
         $validated = $request->validate([
-            'production_record_id' => 'sometimes|exists:production_records,id',
-            'product_id' => 'sometimes|exists:products,id',
+            'production_record_id' => 'sometimes|exists:tenant.production_records,id',
+            'product_id' => 'sometimes|exists:tenant.products,id',
             'lot_id' => 'sometimes|nullable|string',
             'boxes' => 'sometimes|integer|min:0',
             'weight_kg' => 'sometimes|numeric|min:0',

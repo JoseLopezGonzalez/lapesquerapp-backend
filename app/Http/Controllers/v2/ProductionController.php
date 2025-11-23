@@ -52,7 +52,7 @@ class ProductionController extends Controller
     {
         $validated = $request->validate([
             'lot' => 'nullable|string',
-            'species_id' => 'nullable|exists:species,id',
+            'species_id' => 'nullable|exists:tenant.species,id',
             'notes' => 'nullable|string',
         ]);
 
@@ -90,7 +90,7 @@ class ProductionController extends Controller
 
         $validated = $request->validate([
             'lot' => 'sometimes|nullable|string',
-            'species_id' => 'sometimes|nullable|exists:species,id',
+            'species_id' => 'sometimes|nullable|exists:tenant.species,id',
             'notes' => 'sometimes|nullable|string',
         ]);
 
