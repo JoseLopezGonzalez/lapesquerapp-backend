@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\v2\ProductionResource;
 use App\Models\Production;
 use Illuminate\Http\Request;
 
@@ -41,10 +42,7 @@ class ProductionController extends Controller
         $query->orderBy('opened_at', 'desc');
 
         $perPage = $request->input('perPage', 15);
-        return response()->json([
-            'message' => 'Producciones obtenidas correctamente.',
-            'data' => $query->paginate($perPage),
-        ]);
+        return ProductionResource::collection($query->paginate($perPage));
     }
 
     /**
