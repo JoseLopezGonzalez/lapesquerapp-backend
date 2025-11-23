@@ -63,7 +63,7 @@ class ProductionRecordController extends Controller
         $validated = $request->validate([
             'production_id' => 'required|exists:tenant.productions,id',
             'parent_record_id' => 'nullable|exists:tenant.production_records,id',
-            'process_id' => 'nullable|exists:tenant.processes,id',
+            'process_id' => 'required|exists:tenant.processes,id',
             'started_at' => 'nullable|date',
             'finished_at' => 'nullable|date',
             'notes' => 'nullable|string',
@@ -110,7 +110,7 @@ class ProductionRecordController extends Controller
         $validated = $request->validate([
             'production_id' => 'sometimes|exists:tenant.productions,id',
             'parent_record_id' => 'sometimes|nullable|exists:tenant.production_records,id',
-            'process_id' => 'sometimes|nullable|exists:tenant.processes,id',
+            'process_id' => 'sometimes|required|exists:tenant.processes,id',
             'started_at' => 'sometimes|nullable|date',
             'finished_at' => 'sometimes|nullable|date',
             'notes' => 'sometimes|nullable|string',

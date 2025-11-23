@@ -37,11 +37,11 @@ class ProductionRecordResource extends JsonResource
             }),
             'processId' => $this->process_id,
             'process' => $this->whenLoaded('process', function () {
-                return $this->process ? [
+                return [
                     'id' => $this->process->id,
                     'name' => $this->process->name,
                     'type' => $this->process->type,
-                ] : null;
+                ];
             }),
             'startedAt' => $this->started_at?->toIso8601String(),
             'finishedAt' => $this->finished_at?->toIso8601String(),
