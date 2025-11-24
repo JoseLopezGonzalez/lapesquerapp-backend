@@ -449,7 +449,11 @@ Todas las rutas están bajo el prefijo `/v2` y requieren autenticación (`auth:s
 - `POST /v2/production-records/{id}/finish` - Finalizar proceso
 
 #### Production Inputs (Entradas)
-- `GET /v2/production-inputs` - Listar entradas
+- `GET /v2/production-inputs` - Listar entradas (sin paginación, devuelve todos los resultados)
+  - Parámetros de query:
+    - `production_record_id` - Filtrar por record de producción
+    - `box_id` - Filtrar por caja específica
+    - `production_id` - Filtrar por producción (a través del record)
 - `POST /v2/production-inputs` - Crear entrada
 - `POST /v2/production-inputs/multiple` - Crear múltiples entradas
 - `GET /v2/production-inputs/{id}` - Mostrar entrada

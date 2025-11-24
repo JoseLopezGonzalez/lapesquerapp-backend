@@ -37,8 +37,7 @@ class ProductionInputController extends Controller
             });
         }
 
-        $perPage = $request->input('perPage', 15);
-        return ProductionInputResource::collection($query->paginate($perPage));
+        return ProductionInputResource::collection($query->get());
     }
 
     /**
