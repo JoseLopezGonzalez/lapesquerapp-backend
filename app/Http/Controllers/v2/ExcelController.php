@@ -13,6 +13,7 @@ use App\Exports\v2\RawMaterialReceptionFacilcomExport;
 use App\Exports\v2\RawMaterialReceptionA3erpExport;
 use App\Exports\v2\CeboDispatchFacilcomExport;
 use App\Exports\v2\CeboDispatchA3erpExport;
+use App\Exports\v2\CeboDispatchA3erp2Export;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -360,6 +361,35 @@ class ExcelController extends Controller
             
         } catch (\Exception $e) {
             \Log::error('Error en exportación Cebo Dispatch A3erp v2: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'error' => 'Error durante la exportación: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /* Cebo Dispatch A3erp2 Export v2 - Formato A3 con códigos Facilcom, solo tipo facilcom */
+    public function exportCeboDispatchA3erp2(Request $request)
+    {
+        try {
+            ini_set('memory_limit', '2048M');
+            ini_set('max_execution_time', 600);
+
+            // Verificar si se solicita un límite para testing
+            $limit = $request->input('limit');
+            
+            return Excel::download(
+                new CeboDispatchA3erp2Export($request, $limit),
+                'despachos_cebo_a3erp2.xls',
+                \Maatwebsite\Excel\Excel::XLS
+            );
+            
+        } catch (\Exception $e) {
+            \Log::error('Error en exportación Cebo Dispatch A3erp2 v2: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
