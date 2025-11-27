@@ -155,7 +155,7 @@ class CeboDispatchA3erp2Export implements FromCollection, WithHeadings, WithMapp
                     $article ? $article->name : '-',
                     $product->net_weight ?: '-',
                     $product->price ?: '-',
-                    'RED10', // iva
+                    'EXE', // iva
                 ];
             }
         }
