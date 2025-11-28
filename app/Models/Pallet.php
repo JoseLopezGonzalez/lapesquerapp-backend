@@ -114,6 +114,50 @@ class Pallet extends Model
         return $this->boxes->count();
     }
 
+    /**
+     * Cantidad de cajas disponibles (no usadas en producción)
+     */
+    public function getAvailableBoxesCountAttribute()
+    {
+        return $this->boxes->filter(function ($palletBox) {
+            return $palletBox->box->isAvailable;
+        })->count();
+    }
+
+    /**
+     * Cantidad de cajas usadas en producción
+     */
+    public function getUsedBoxesCountAttribute()
+    {
+        return $this->boxes->filter(function ($palletBox) {
+            return !$palletBox->box->isAvailable;
+        })->count();
+    }
+
+    /**
+     * Peso total neto de las cajas disponibles
+     */
+    public function getTotalAvailableWeightAttribute()
+    {
+        return $this->boxes->filter(function ($palletBox) {
+            return $palletBox->box->isAvailable;
+        })->sum(function ($palletBox) {
+            return $palletBox->box->net_weight ?? 0;
+        });
+    }
+
+    /**
+     * Peso total neto de las cajas usadas en producción
+     */
+    public function getTotalUsedWeightAttribute()
+    {
+        return $this->boxes->filter(function ($palletBox) {
+            return !$palletBox->box->isAvailable;
+        })->sum(function ($palletBox) {
+            return $palletBox->box->net_weight ?? 0;
+        });
+    }
+
     public function getPositionAttribute()
     {
         $pallet = StoredPallet::where('pallet_id', $this->id)->first();

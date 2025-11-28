@@ -32,6 +32,11 @@ class PalletResource extends JsonResource
                 ] : null,
             'orderId' => $this->order_id,
             'numberOfBoxes' => $this->numberOfBoxes,
+            // Campos calculados para cajas disponibles y usadas
+            'availableBoxesCount' => $this->availableBoxesCount,
+            'usedBoxesCount' => $this->usedBoxesCount,
+            'totalAvailableWeight' => $this->totalAvailableWeight !== null ? round($this->totalAvailableWeight, 3) : null,
+            'totalUsedWeight' => $this->totalUsedWeight !== null ? round($this->totalUsedWeight, 3) : null,
         ];
     }
 }

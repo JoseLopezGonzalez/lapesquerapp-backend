@@ -45,6 +45,50 @@ class Box extends Model
         return $this->hasMany(ProductionInput::class, 'box_id');
     }
 
+    /**
+     * Determina si la caja está disponible (no ha sido usada en ningún proceso de producción)
+     */
+    public function getIsAvailableAttribute()
+    {
+        // Si la relación ya está cargada, usar exists() es más eficiente
+        if ($this->relationLoaded('productionInputs')) {
+            return $this->productionInputs->isEmpty();
+        }
+        
+        // Si no está cargada, hacer una consulta directa más eficiente
+        return !$this->productionInputs()->exists();
+    }
+
+    /**
+     * Obtiene la producción más reciente en la que se ha usado esta caja
+     * Retorna null si la caja no ha sido usada en ninguna producción
+     */
+    public function getProductionAttribute()
+    {
+        // Si la relación ya está cargada, usar la colección
+        if ($this->relationLoaded('productionInputs')) {
+            $latestInput = $this->productionInputs
+                ->sortByDesc('created_at')
+                ->first();
+            
+            if ($latestInput) {
+                // Intentar obtener la producción desde el productionRecord cargado
+                $productionRecord = $latestInput->productionRecord;
+                if ($productionRecord && $productionRecord->relationLoaded('production')) {
+                    return $productionRecord->production;
+                }
+            }
+        }
+        
+        // Si no está cargada o las relaciones anidadas no están cargadas, hacer una consulta optimizada
+        $latestInput = $this->productionInputs()
+            ->with('productionRecord.production')
+            ->orderBy('created_at', 'desc')
+            ->first();
+        
+        return $latestInput?->productionRecord?->production;
+    }
+
     public function toArrayAssoc()
     {
         return [
@@ -62,6 +106,8 @@ class Box extends Model
 
     public function toArrayAssocV2()
     {
+        $production = $this->production;
+        
         return [
             'id' => $this->id,
             'palletId' => $this->pallet_id,
@@ -71,6 +117,11 @@ class Box extends Model
             'grossWeight' => (float) $this->gross_weight,
             'netWeight' => (float) $this->net_weight,
             'createdAt' => $this->created_at?->format('Y-m-d'), // Solo fecha
+            'isAvailable' => $this->isAvailable, // Flag que indica si la caja está disponible (no usada en producción)
+            'production' => $production ? [
+                'id' => $production->id,
+                'lot' => $production->lot,
+            ] : null, // Información de la producción más reciente en la que se usó esta caja
         ];
     }
 

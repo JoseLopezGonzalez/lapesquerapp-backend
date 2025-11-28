@@ -29,6 +29,18 @@ class PalletController extends Controller
 
     } */
 
+    /**
+     * Carga las relaciones necesarias para el PalletResource
+     */
+    private function loadPalletRelations($query)
+    {
+        return $query->with([
+            'storedPallet',
+            'boxes.box.productionInputs.productionRecord.production', // Cargar productionInputs y su producción para determinar disponibilidad y mostrar info de producción
+            'boxes.box.product', // Asegurar que product esté cargado para toArrayAssocV2
+        ]);
+    }
+
     private function applyFiltersToQuery($query, $filters)
     {
 
@@ -131,7 +143,8 @@ class PalletController extends Controller
 
     public function index(Request $request)
     {
-        $query = Pallet::query()->with('storedPallet');
+        $query = Pallet::query();
+        $query = $this->loadPalletRelations($query);
 
         // Extraemos todos los filtros aplicables del request
         $filters = $request->all();
@@ -222,6 +235,7 @@ class PalletController extends Controller
 
         /* return resource */
         $newPallet->refresh(); // Refrescar el modelo para obtener los datos actualizados
+        $newPallet = $this->loadPalletRelations(Pallet::query()->where('id', $newPallet->id))->first();
         return response()->json(new PalletResource($newPallet), 201); // Código de estado 201 - Created
     }
 
@@ -230,7 +244,8 @@ class PalletController extends Controller
      */
     public function show(string $id)
     {
-        return new PalletResource(Pallet::findOrFail($id));
+        $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->firstOrFail();
+        return new PalletResource($pallet);
     }
 
     /**
@@ -385,9 +400,9 @@ class PalletController extends Controller
 
         $updatedPallet->refresh();
 
-        // return new PalletResource(Pallet::findOrFail($id));
-
-        return response()->json(new PalletResource(Pallet::findOrFail($id)), 201);
+        // Cargar relaciones y devolver el palet actualizado
+        $updatedPallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->firstOrFail();
+        return response()->json(new PalletResource($updatedPallet), 201);
 
         //return response()->json($updatedPallet->toArrayAssoc(), 201);
     }
@@ -536,9 +551,11 @@ class PalletController extends Controller
         $storedPallet->position = null; // ← resetea la posición al mover de almacén
         $storedPallet->save();
 
+        $pallet->refresh();
+        $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $pallet->id))->first();
         return response()->json([
             'message' => 'Palet movido correctamente al nuevo almacén',
-            'pallet' => new PalletResource($pallet->refresh()),
+            'pallet' => new PalletResource($pallet),
         ], 200);
     }
 
@@ -626,9 +643,10 @@ class PalletController extends Controller
 
         // Check if pallet is already unlinked from any order
         if (!$pallet->order_id) {
+            $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->first();
             return response()->json([
                 'message' => 'El palet ya no está asociado a ninguna orden',
-                'pallet' => new PalletResource($pallet->refresh())
+                'pallet' => new PalletResource($pallet)
             ], 200);
         }
 
@@ -639,11 +657,12 @@ class PalletController extends Controller
         $pallet->order_id = null;
         $pallet->save();
 
+        $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->first();
         return response()->json([
             'message' => 'Palet desvinculado correctamente de la orden',
             'pallet_id' => $id,
             'order_id' => $orderId,
-            'pallet' => new PalletResource($pallet->refresh())
+            'pallet' => new PalletResource($pallet)
         ], 200);
     }
 
