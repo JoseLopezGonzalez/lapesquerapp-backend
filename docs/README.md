@@ -1,160 +1,151 @@
-# Documentación del Sistema PesquerApp
+# Documentación Técnica del Backend - API v2
 
-## 📚 Índice de Documentación
+## ⚠️ ADVERTENCIA IMPORTANTE
 
-Esta carpeta contiene toda la documentación técnica del sistema PesquerApp, incluyendo las implementaciones más recientes y las guías de referencia.
+Esta documentación cubre **EXCLUSIVAMENTE la API v2**, que es la versión activa y en desarrollo del sistema.
 
-## 🆕 Implementaciones Recientes
-
-### Sistema de Categorías y Familias de Productos
-
-#### 📋 Documentación Técnica
-- **[PRODUCT_CATEGORIES_AND_FAMILIES.md](PRODUCT_CATEGORIES_AND_FAMILIES.md)** - Documentación técnica completa del sistema de categorías y familias de productos
-  - Arquitectura del sistema
-  - Estructura de base de datos
-  - Relaciones Eloquent
-  - API Endpoints
-  - Validaciones y protecciones
-  - Casos de uso y ejemplos
-
-#### 🚀 Guía de Implementación
-- **[IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)** - Guía paso a paso de la implementación
-  - Resumen ejecutivo
-  - Objetivos de la implementación
-  - Arquitectura implementada
-  - Pasos detallados de implementación
-  - Configuraciones específicas
-  - Testing y verificación
-
-#### 📖 Documentación de API
-- **[API_PRODUCT_CATEGORIES_FAMILIES.md](API_PRODUCT_CATEGORIES_FAMILIES.md)** - Documentación completa de la API
-  - Endpoints de ProductCategories
-  - Endpoints de ProductFamilies
-  - Endpoints de Products (actualizados)
-  - Ejemplos de requests y responses
-  - Códigos de error y validaciones
-
-## 🏗️ Arquitectura del Sistema
-
-### Multi-Tenant
-- **[database/migrations/companies/README.md](../database/migrations/companies/README.md)** - Guía de migraciones y seeders multi-tenant
-  - Comandos para migraciones
-  - Comandos para seeders
-  - Estructura de archivos
-  - Troubleshooting
-  - Consideraciones importantes
-
-## 📊 Estructura de Archivos
-
-```
-docs/
-├── README.md                                    # Este archivo (índice)
-├── PRODUCT_CATEGORIES_AND_FAMILIES.md          # Documentación técnica
-├── IMPLEMENTATION_GUIDE.md                     # Guía de implementación
-└── API_PRODUCT_CATEGORIES_FAMILIES.md         # Documentación de API
-
-database/migrations/companies/
-└── README.md                                   # Guía de migraciones multi-tenant
-```
-
-## 🔍 Búsqueda Rápida
-
-### Por Tema
-- **API**: [API_PRODUCT_CATEGORIES_FAMILIES.md](API_PRODUCT_CATEGORIES_FAMILIES.md)
-- **Implementación**: [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)
-- **Arquitectura**: [PRODUCT_CATEGORIES_AND_FAMILIES.md](PRODUCT_CATEGORIES_AND_FAMILIES.md)
-- **Migraciones**: [database/migrations/companies/README.md](../database/migrations/companies/README.md)
-
-### Por Funcionalidad
-- **Categorías de Productos**: Ver sección ProductCategories en cualquier documento
-- **Familias de Productos**: Ver sección ProductFamilies en cualquier documento
-- **Multi-Tenant**: Ver sección Multi-Tenant en cualquier documento
-- **API Endpoints**: Ver documento específico de API
-
-## 🚀 Comandos Útiles
-
-### Migraciones Multi-Tenant
-```bash
-# Ejecutar migraciones en todos los tenants
-php artisan tenants:migrate
-
-# Ejecutar seeders en todos los tenants
-php artisan tenants:seed --class=ProductCategorySeeder
-```
-
-### Verificar Implementación
-```bash
-# Verificar migraciones
-php artisan tenants:migrate:status
-
-# Verificar datos
-php artisan tinker
->>> App\Models\ProductCategory::count()
->>> App\Models\ProductFamily::count()
-```
-
-## 📝 Convenciones de Documentación
-
-### Estructura de Documentos
-- **Descripción General**: Resumen del propósito y alcance
-- **Arquitectura**: Diseño y estructura del sistema
-- **Implementación**: Pasos técnicos de implementación
-- **API**: Endpoints, parámetros y respuestas
-- **Ejemplos**: Casos de uso prácticos
-- **Troubleshooting**: Solución de problemas comunes
-
-### Formato
-- **Markdown**: Todos los documentos están en formato Markdown
-- **Emojis**: Uso de emojis para mejorar la legibilidad
-- **Código**: Bloques de código con syntax highlighting
-- **Tablas**: Para estructurar información compleja
-
-## 🔄 Mantenimiento
-
-### Actualización de Documentación
-1. **Nuevas Funcionalidades**: Crear documentación técnica y de API
-2. **Cambios en API**: Actualizar documentación de API
-3. **Nuevas Migraciones**: Actualizar guía de migraciones
-4. **Bugs o Problemas**: Documentar en troubleshooting
-
-### Versionado
-- **Versión**: Incluir número de versión en cada documento
-- **Fecha**: Marcar fecha de última actualización
-- **Autor**: Identificar responsable de la documentación
-
-## 📞 Soporte
-
-### Para Dudas Técnicas
-- Revisar la documentación técnica correspondiente
-- Verificar la guía de troubleshooting
-- Consultar ejemplos de implementación
-
-### Para Problemas de API
-- Revisar documentación de API
-- Verificar códigos de error
-- Probar con ejemplos proporcionados
-
-### Para Problemas de Migraciones
-- Revisar guía de migraciones multi-tenant
-- Verificar comandos de troubleshooting
-- Consultar consideraciones importantes
-
-## 🎯 Próximos Pasos
-
-### Documentación Pendiente
-1. **Tests**: Documentación de testing y casos de prueba
-2. **Deployment**: Guía de despliegue y configuración
-3. **Performance**: Guía de optimización y mejores prácticas
-4. **Security**: Documentación de seguridad y validaciones
-
-### Mejoras Sugeridas
-1. **Ejemplos Interactivos**: Agregar ejemplos ejecutables
-2. **Diagramas**: Incluir diagramas de arquitectura
-3. **Videos**: Crear videos tutoriales
-4. **FAQ**: Sección de preguntas frecuentes
+- **API v1**: Está **OBSOLETA** y se mantiene únicamente por razones de compatibilidad. No está documentada aquí.
+- **API v2**: Es la versión activa y actual. Toda la documentación hace referencia a esta versión salvo que se indique explícitamente lo contrario.
 
 ---
 
-**Última actualización**: Agosto 2025  
-**Versión**: 1.0  
-**Mantenido por**: Equipo de Desarrollo PesquerApp
+## 📚 Estructura de la Documentación
+
+Esta documentación está organizada por carpetas según grandes apartados funcionales:
+
+### 📁 [Fundamentos](./fundamentos/)
+Documentación esencial para entender la arquitectura del sistema:
+- **[00-Introduccion.md](./fundamentos/00-Introduccion.md)**: Visión general del proyecto, arquitectura y principios fundamentales
+- **[01-Arquitectura-Multi-Tenant.md](./fundamentos/01-Arquitectura-Multi-Tenant.md)**: Sistema multi-tenant, middleware, conexiones de base de datos
+- **[02-Autenticacion-Autorizacion.md](./fundamentos/02-Autenticacion-Autorizacion.md)**: Laravel Sanctum, roles, permisos, sesiones
+- **[03-Configuracion-Entorno.md](./fundamentos/03-Configuracion-Entorno.md)**: Configuración del entorno, variables de entorno, conexiones
+
+> **📌 Empieza aquí si eres nuevo en el proyecto**
+
+---
+
+### 📁 [Producción](./produccion/) ⚠️ EN TRANSICIÓN
+Módulo de gestión de producción pesquera (el más complejo e incompleto):
+- **[10-Produccion-General.md](./produccion/10-Produccion-General.md)**: Visión general del módulo, conceptos, estado de migración
+- **[11-Produccion-Lotes.md](./produccion/11-Produccion-Lotes.md)**: Gestión de lotes de producción (Production)
+- **[12-Produccion-Procesos.md](./produccion/12-Produccion-Procesos.md)**: Procesos de producción (ProductionRecord)
+- **[13-Produccion-Entradas.md](./produccion/13-Produccion-Entradas.md)**: Entradas de producción (ProductionInput)
+- **[14-Produccion-Salidas.md](./produccion/14-Produccion-Salidas.md)**: Salidas de producción (ProductionOutput)
+
+> **⚠️ Nota**: Este módulo está en transición entre v1 (JSON único, obsoleta) y v2 (entidades relacionales, activa). Es el área más compleja del sistema.
+
+---
+
+### 📁 [Pedidos](./pedidos/)
+Módulo de gestión de pedidos y ventas:
+- **[20-Pedidos-General.md](./pedidos/20-Pedidos-General.md)**: Visión general del módulo de pedidos (Orders)
+- **[21-Pedidos-Detalles-Planificados.md](./pedidos/21-Pedidos-Detalles-Planificados.md)**: Detalles planificados de productos (OrderPlannedProductDetail)
+- **[22-Pedidos-Documentos.md](./pedidos/22-Pedidos-Documentos.md)**: Generación de documentos PDF y envío por email
+- **[23-Pedidos-Incidentes.md](./pedidos/23-Pedidos-Incidentes.md)**: Gestión de incidentes en pedidos
+- **[24-Pedidos-Estadisticas.md](./pedidos/24-Pedidos-Estadisticas.md)**: Estadísticas y reportes de pedidos
+
+---
+
+### 📁 [Inventario](./inventario/)
+Módulo de gestión de inventario y almacenes:
+- **[30-Almacenes.md](./inventario/30-Almacenes.md)**: Gestión de almacenes (Stores)
+- **[31-Palets.md](./inventario/31-Palets.md)**: Gestión de palets (Pallets)
+- **[32-Cajas.md](./inventario/32-Cajas.md)**: Gestión de cajas (Boxes)
+- **[33-Estadisticas-Stock.md](./inventario/33-Estadisticas-Stock.md)**: Estadísticas de inventario
+
+---
+
+### 📁 [Catálogos](./catalogos/)
+Catálogos y maestros de datos:
+- **[40-Productos.md](./catalogos/40-Productos.md)**: Gestión de productos (Products)
+- **[41-Categorias-Familias-Productos.md](./catalogos/41-Categorias-Familias-Productos.md)**: Categorías y familias de productos
+- **[42-Especies.md](./catalogos/42-Especies.md)**: Gestión de especies (Species)
+- **[43-Zonas-Captura.md](./catalogos/43-Zonas-Captura.md)**: Zonas de captura (CaptureZones)
+- **[44-Clientes.md](./catalogos/44-Clientes.md)**: Gestión de clientes (Customers)
+- **[45-Proveedores.md](./catalogos/45-Proveedores.md)**: Gestión de proveedores (Suppliers)
+- **[46-Transportes.md](./catalogos/46-Transportes.md)**: Gestión de transportes (Transports)
+- **[47-Vendedores.md](./catalogos/47-Vendedores.md)**: Gestión de vendedores (Salespeople)
+- **[48-Terminos-Pago.md](./catalogos/48-Terminos-Pago.md)**: Términos de pago (PaymentTerms)
+- **[49-Incoterms.md](./catalogos/49-Incoterms.md)**: Incoterms
+- **[50-Paises.md](./catalogos/50-Paises.md)**: Países (Countries)
+- **[51-Artemania-Pesquera.md](./catalogos/51-Artemania-Pesquera.md)**: Artes de pesca (FishingGears)
+- **[52-Impuestos.md](./catalogos/52-Impuestos.md)**: Impuestos (Taxes)
+- **[53-Procesos.md](./catalogos/53-Procesos.md)**: Procesos (Processes)
+
+---
+
+### 📁 [Recepciones y Despachos](./recepciones-despachos/)
+Módulo de recepciones de materia prima y despachos de cebo:
+- **[60-Recepciones-Materia-Prima.md](./recepciones-despachos/60-Recepciones-Materia-Prima.md)**: Recepciones de materia prima (RawMaterialReceptions)
+- **[61-Despachos-Cebo.md](./recepciones-despachos/61-Despachos-Cebo.md)**: Despachos de cebo (CeboDispatches)
+
+---
+
+### 📁 [Etiquetas](./etiquetas/)
+Sistema de gestión de etiquetas:
+- **[70-Etiquetas.md](./etiquetas/70-Etiquetas.md)**: Gestión de etiquetas (Labels)
+
+---
+
+### 📁 [Sistema](./sistema/)
+Administración y configuración del sistema:
+- **[80-Usuarios.md](./sistema/80-Usuarios.md)**: Gestión de usuarios (Users)
+- **[81-Roles.md](./sistema/81-Roles.md)**: Gestión de roles (Roles)
+- **[82-Sesiones.md](./sistema/82-Sesiones.md)**: Gestión de sesiones activas
+- **[83-Logs-Actividad.md](./sistema/83-Logs-Actividad.md)**: Logs de actividad (ActivityLogs)
+- **[84-Configuracion.md](./sistema/84-Configuracion.md)**: Configuración del sistema (Settings)
+
+---
+
+### 📁 [Utilidades](./utilidades/)
+Servicios y utilidades transversales:
+- **[90-Generacion-PDF.md](./utilidades/90-Generacion-PDF.md)**: Sistema de generación de documentos PDF
+- **[91-Exportacion-Excel.md](./utilidades/91-Exportacion-Excel.md)**: Sistema de exportación a Excel
+- **[92-Extraccion-Documentos-AI.md](./utilidades/92-Extraccion-Documentos-AI.md)**: Extracción de datos con IA (Azure Document AI)
+
+---
+
+### 📁 [Referencia](./referencia/)
+Documentación de referencia técnica:
+- **[95-Modelos-Referencia.md](./referencia/95-Modelos-Referencia.md)**: Referencia completa de todos los modelos Eloquent
+- **[96-Recursos-API.md](./referencia/96-Recursos-API.md)**: Referencia de todos los recursos de API (API Resources)
+- **[97-Rutas-Completas.md](./referencia/97-Rutas-Completas.md)**: Lista completa de todas las rutas v2
+- **[98-Errores-Comunes.md](./referencia/98-Errores-Comunes.md)**: Errores comunes y soluciones (59 problemas documentados)
+- **[99-Glosario.md](./referencia/99-Glosario.md)**: Glosario de términos técnicos y de negocio
+
+---
+
+## ⚠️ Problemas Críticos
+
+Para un resumen ejecutivo de los problemas más críticos del sistema:
+
+**📄 [PROBLEMAS-CRITICOS.md](./PROBLEMAS-CRITICOS.md)**
+
+Este documento resume los **25 problemas más críticos** organizados por prioridad:
+- 🔴 **Crítico**: Seguridad y datos (funcionalidad rota, vulnerabilidades)
+- 🟠 **Alto**: Funcionalidad incompleta, performance, configuración
+- 🟡 **Medio**: Lógica de negocio, inconsistencias
+
+Para ver todos los problemas detallados (59 en total), consultar [`referencia/98-Errores-Comunes.md`](./referencia/98-Errores-Comunes.md).
+
+---
+
+## 🔍 Cómo Usar Esta Documentación
+
+1. **Para desarrolladores nuevos**: Comienza por los archivos en [Fundamentos](./fundamentos/)
+2. **Para trabajar en un módulo específico**: Navega a la carpeta correspondiente
+3. **Para entender problemas**: Revisa la sección "Observaciones Críticas" al final de cada archivo
+4. **Para referencia rápida**: Usa los archivos en [Referencia](./referencia/)
+
+---
+
+## ⚠️ Convenciones de la Documentación
+
+- Todas las rutas mencionadas son de la **API v2** (`/v2/*`)
+- Todas las rutas de archivos son relativas a la raíz del proyecto (ej: `app/Models/Production.php`)
+- Secciones de "Observaciones Críticas" documentan problemas conocidos, código incompleto, y mejoras recomendadas
+- Los ejemplos de código reflejan el estado **actual** del código, no propuestas de mejora
+
+---
+
+**Última actualización**: Esta documentación se genera automáticamente desde el código fuente del repositorio.
