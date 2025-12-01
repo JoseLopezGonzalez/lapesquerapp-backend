@@ -74,6 +74,14 @@ class ProductionRecord extends Model
     }
 
     /**
+     * Relación con los consumos de outputs del padre (cuando este proceso consume outputs del padre)
+     */
+    public function parentOutputConsumptions()
+    {
+        return $this->hasMany(ProductionOutputConsumption::class, 'production_record_id');
+    }
+
+    /**
      * Verificar si es un proceso raíz (no tiene padre)
      */
     public function isRoot()
@@ -90,16 +98,22 @@ class ProductionRecord extends Model
     }
 
     /**
-     * Obtener el peso total de las entradas (suma de net_weight de las cajas)
+     * Obtener el peso total de las entradas (suma de net_weight de las cajas + consumos de outputs del padre)
      */
     public function getTotalInputWeightAttribute()
     {
-        return $this->inputs()
+        // Peso desde inputs de stock (cajas)
+        $stockWeight = $this->inputs()
             ->with('box')
             ->get()
             ->sum(function ($input) {
                 return $input->box->net_weight ?? 0;
             });
+
+        // Peso desde consumos de outputs del padre
+        $parentOutputWeight = $this->parentOutputConsumptions()->sum('consumed_weight_kg');
+
+        return $stockWeight + $parentOutputWeight;
     }
 
     /**
@@ -111,11 +125,17 @@ class ProductionRecord extends Model
     }
 
     /**
-     * Obtener el número total de cajas de entrada
+     * Obtener el número total de cajas de entrada (cajas del stock + cajas consumidas del padre)
      */
     public function getTotalInputBoxesAttribute()
     {
-        return $this->inputs()->count();
+        // Cajas desde inputs de stock
+        $stockBoxes = $this->inputs()->count();
+
+        // Cajas desde consumos de outputs del padre
+        $parentOutputBoxes = $this->parentOutputConsumptions()->sum('consumed_boxes');
+
+        return $stockBoxes + $parentOutputBoxes;
     }
 
     /**
@@ -139,7 +159,7 @@ class ProductionRecord extends Model
      */
     public function buildTree()
     {
-        $this->load('children.process', 'inputs.box.product', 'outputs.product');
+        $this->load('children.process', 'inputs.box.product', 'outputs.product', 'parentOutputConsumptions.productionOutput.product');
         
         foreach ($this->children as $child) {
             $child->buildTree();
@@ -175,7 +195,7 @@ class ProductionRecord extends Model
     public function getNodeData()
     {
         // Asegurar que las relaciones estén cargadas
-        $this->loadMissing(['process', 'inputs.box.product', 'outputs.product', 'children']);
+        $this->loadMissing(['process', 'inputs.box.product', 'outputs.product', 'children', 'parentOutputConsumptions.productionOutput.product']);
 
         // Construir árbol de hijos recursivamente
         $childrenData = [];
@@ -183,10 +203,11 @@ class ProductionRecord extends Model
             $childrenData[] = $child->getNodeData();
         }
 
-        // Preparar inputs
+        // Preparar inputs desde stock (cajas)
         $inputsData = $this->inputs->map(function ($input) {
             return [
                 'id' => $input->id,
+                'type' => 'stock_box',
                 'box_id' => $input->box_id,
                 'box' => [
                     'id' => $input->box->id,
@@ -201,6 +222,31 @@ class ProductionRecord extends Model
                 'weight' => $input->box->net_weight ?? 0,
             ];
         })->toArray();
+
+        // Preparar consumos de outputs del padre
+        $parentOutputConsumptionsData = $this->parentOutputConsumptions->map(function ($consumption) {
+            return [
+                'id' => $consumption->id,
+                'type' => 'parent_output',
+                'production_output_id' => $consumption->production_output_id,
+                'production_output' => [
+                    'id' => $consumption->productionOutput->id,
+                    'product' => $consumption->productionOutput->product ? [
+                        'id' => $consumption->productionOutput->product->id,
+                        'name' => $consumption->productionOutput->product->name,
+                    ] : null,
+                    'weight_kg' => $consumption->productionOutput->weight_kg,
+                    'boxes' => $consumption->productionOutput->boxes,
+                ],
+                'consumed_weight_kg' => $consumption->consumed_weight_kg,
+                'consumed_boxes' => $consumption->consumed_boxes,
+                'weight' => $consumption->consumed_weight_kg,
+                'notes' => $consumption->notes,
+            ];
+        })->toArray();
+
+        // Combinar ambos tipos de inputs
+        $allInputsData = array_merge($inputsData, $parentOutputConsumptionsData);
 
         // Preparar outputs
         $outputsData = $this->outputs->map(function ($output) {
@@ -236,10 +282,67 @@ class ProductionRecord extends Model
             'isRoot' => $this->isRoot(),
             'isFinal' => $this->isFinal(),
             'isCompleted' => $this->isCompleted(),
-            'inputs' => $inputsData,
+            'inputs' => $allInputsData,
+            'parentOutputConsumptions' => $parentOutputConsumptionsData,
             'outputs' => $outputsData,
             'children' => $childrenData,
             'totals' => $totals,
         ];
+    }
+
+    /**
+     * Obtener inputs que vienen del stock (cajas)
+     */
+    public function getStockInputs()
+    {
+        return $this->inputs;
+    }
+
+    /**
+     * Obtener consumos de outputs del padre
+     */
+    public function getParentOutputInputs()
+    {
+        return $this->parentOutputConsumptions;
+    }
+
+    /**
+     * Obtener outputs del padre disponibles para consumo
+     */
+    public function getAvailableParentOutputs()
+    {
+        if (!$this->parent_record_id) {
+            return collect([]); // No tiene padre
+        }
+
+        $parent = $this->parent;
+        if (!$parent) {
+            return collect([]);
+        }
+
+        // Obtener outputs del padre
+        $parentOutputs = $parent->outputs;
+
+        // Para cada output, calcular cuánto está disponible
+        return $parentOutputs->map(function ($output) {
+            $consumed = $output->consumptions()->sum('consumed_weight_kg');
+
+            $consumedBoxes = $output->consumptions()->sum('consumed_boxes');
+
+            $available = $output->weight_kg - $consumed;
+            $availableBoxes = $output->boxes - $consumedBoxes;
+
+            return [
+                'output' => $output,
+                'total_weight' => $output->weight_kg,
+                'total_boxes' => $output->boxes,
+                'consumed_weight' => $consumed,
+                'consumed_boxes' => $consumedBoxes,
+                'available_weight' => max(0, $available),
+                'available_boxes' => max(0, $availableBoxes),
+            ];
+        })->filter(function ($item) {
+            return $item['available_weight'] > 0 || $item['available_boxes'] > 0;
+        });
     }
 }

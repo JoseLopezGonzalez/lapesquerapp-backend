@@ -111,6 +111,7 @@ Representa un producto producido en un proceso. No vincula cajas individuales (e
 - Declara cantidad de cajas y peso total producido
 - Puede haber múltiples outputs del mismo producto en un proceso
 - El `lot_id` es opcional y puede diferir del lote del Production
+- Puede ser consumido por procesos hijos (a través de `ProductionOutputConsumption`)
 
 **Campos principales**:
 - `production_record_id`: FK a ProductionRecord
@@ -118,6 +119,23 @@ Representa un producto producido en un proceso. No vincula cajas individuales (e
 - `lot_id`: String opcional para identificar el lote del producto
 - `boxes`: Cantidad de cajas producidas (integer)
 - `weight_kg`: Peso total en kilogramos (decimal)
+
+### 5. ProductionOutputConsumption (Consumo de Output del Padre)
+**Archivo**: `app/Models/ProductionOutputConsumption.php`
+
+Representa el consumo de una salida de producción del proceso padre por parte de un proceso hijo. Permite que los procesos hijos consuman tanto cajas del stock como salidas del proceso padre.
+
+**Características**:
+- Permite que procesos hijos consuman outputs del proceso padre
+- Permite consumo parcial o total del output
+- Valida que no se exceda el output disponible
+- Complementa `ProductionInput` (que solo consume cajas del stock)
+
+**Campos principales**:
+- `production_record_id`: FK a ProductionRecord (proceso hijo que consume)
+- `production_output_id`: FK a ProductionOutput (output del padre consumido)
+- `consumed_weight_kg`: Peso consumido en kilogramos
+- `consumed_boxes`: Cantidad de cajas consumidas
 
 ---
 
@@ -142,6 +160,14 @@ Representa un producto producido en un proceso. No vincula cajas individuales (e
    ```
 
 4. **Registrar Salidas**: Se declaran productos producidos
+   ```
+   POST /v2/production-outputs
+   ```
+
+5. **Consumir Outputs del Padre** (para procesos hijos): Los procesos hijos pueden consumir outputs del proceso padre
+   ```
+   POST /v2/production-output-consumptions
+   ```
    ```
    POST /v2/production-outputs
    ```
@@ -172,8 +198,10 @@ Este endpoint:
 Production (1) ←→ (N) ProductionRecord
 ProductionRecord (1) ←→ (N) ProductionInput
 ProductionRecord (1) ←→ (N) ProductionOutput
+ProductionRecord (1) ←→ (N) ProductionOutputConsumption
 ProductionInput (N) ←→ (1) Box
 ProductionOutput (N) ←→ (1) Product
+ProductionOutput (1) ←→ (N) ProductionOutputConsumption
 ProductionRecord (N) ←→ (1) Process
 ProductionRecord (N) ←→ (1) ProductionRecord (parent)
 ```
@@ -218,6 +246,14 @@ Todas las rutas están bajo `/v2` y requieren autenticación (`auth:sanctum`) y 
 - `PUT /v2/production-outputs/{id}` - Actualizar salida
 - `DELETE /v2/production-outputs/{id}` - Eliminar salida
 
+### Production Output Consumptions (Consumos de Outputs del Padre)
+- `GET /v2/production-output-consumptions` - Listar consumos
+- `POST /v2/production-output-consumptions` - Crear consumo
+- `GET /v2/production-output-consumptions/{id}` - Mostrar consumo
+- `PUT /v2/production-output-consumptions/{id}` - Actualizar consumo
+- `DELETE /v2/production-output-consumptions/{id}` - Eliminar consumo
+- `GET /v2/production-output-consumptions/available-outputs/{productionRecordId}` - Obtener outputs disponibles
+
 ---
 
 ## 🔍 Conceptos Clave
@@ -236,10 +272,14 @@ Los procesos se organizan en árboles mediante `parent_record_id`. Para construi
 ### Cálculo de Totales
 
 Los totales se calculan dinámicamente:
-- **Peso de entrada**: Suma de `net_weight` de todas las cajas en inputs
+- **Peso de entrada**: Suma de `net_weight` de todas las cajas en inputs + suma de `consumed_weight_kg` de consumos de outputs del padre
 - **Peso de salida**: Suma de `weight_kg` de todos los outputs
 - **Merma**: Peso entrada - Peso salida
 - **Porcentaje de merma**: (Merma / Peso entrada) * 100
+
+**Nota**: Los procesos hijos pueden tener dos tipos de inputs:
+- **Inputs desde stock** (`ProductionInput`): Cajas físicas del stock
+- **Consumos de outputs del padre** (`ProductionOutputConsumption`): Salidas del proceso padre
 
 ### Conciliación con Stock
 
@@ -258,6 +298,7 @@ Para detalles completos de cada entidad, consultar:
 - [12-Produccion-Procesos.md](./12-Produccion-Procesos.md) - Modelo ProductionRecord
 - [13-Produccion-Entradas.md](./13-Produccion-Entradas.md) - Modelo ProductionInput
 - [14-Produccion-Salidas.md](./14-Produccion-Salidas.md) - Modelo ProductionOutput
+- [15-Produccion-Consumos-Outputs-Padre.md](./15-Produccion-Consumos-Outputs-Padre.md) - Modelo ProductionOutputConsumption
 
 ---
 

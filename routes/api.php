@@ -82,6 +82,7 @@ use App\Http\Controllers\v2\ProductionController as V2ProductionController;
 use App\Http\Controllers\v2\ProductionRecordController;
 use App\Http\Controllers\v2\ProductionInputController;
 use App\Http\Controllers\v2\ProductionOutputController;
+use App\Http\Controllers\v2\ProductionOutputConsumptionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -440,6 +441,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::post('production-inputs/multiple', [ProductionInputController::class, 'storeMultiple'])->name('production-inputs.storeMultiple');
 
             Route::apiResource('production-outputs', ProductionOutputController::class);
+
+            Route::apiResource('production-output-consumptions', ProductionOutputConsumptionController::class);
+            Route::get('production-output-consumptions/available-outputs/{productionRecordId}', [ProductionOutputConsumptionController::class, 'getAvailableOutputs'])->name('production-output-consumptions.available-outputs');
 
             /* Processes */
             Route::apiResource('processes', V2ProcessController::class);

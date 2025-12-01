@@ -41,6 +41,14 @@ class ProductionOutput extends Model
     }
 
     /**
+     * Relación con los consumos de este output (por procesos hijos)
+     */
+    public function consumptions()
+    {
+        return $this->hasMany(ProductionOutputConsumption::class, 'production_output_id');
+    }
+
+    /**
      * Calcular el peso promedio por caja
      */
     public function getAverageWeightPerBoxAttribute()
@@ -49,5 +57,52 @@ class ProductionOutput extends Model
             return $this->weight_kg / $this->boxes;
         }
         return 0;
+    }
+
+    /**
+     * Obtener el peso disponible (no consumido)
+     */
+    public function getAvailableWeightKgAttribute()
+    {
+        $consumed = $this->consumptions()->sum('consumed_weight_kg');
+        return max(0, $this->weight_kg - $consumed);
+    }
+
+    /**
+     * Obtener las cajas disponibles (no consumidas)
+     */
+    public function getAvailableBoxesAttribute()
+    {
+        $consumed = $this->consumptions()->sum('consumed_boxes');
+        return max(0, $this->boxes - $consumed);
+    }
+
+    /**
+     * Verificar si está completamente consumido
+     */
+    public function isFullyConsumed()
+    {
+        return $this->available_weight_kg <= 0 && $this->available_boxes <= 0;
+    }
+
+    /**
+     * Verificar si está parcialmente consumido
+     */
+    public function isPartiallyConsumed()
+    {
+        $hasConsumption = $this->consumptions()->exists();
+        return $hasConsumption && !$this->isFullyConsumed();
+    }
+
+    /**
+     * Obtener el porcentaje consumido por peso
+     */
+    public function getConsumedWeightPercentageAttribute()
+    {
+        if ($this->weight_kg <= 0) {
+            return 0;
+        }
+        $consumed = $this->consumptions()->sum('consumed_weight_kg');
+        return ($consumed / $this->weight_kg) * 100;
     }
 }
