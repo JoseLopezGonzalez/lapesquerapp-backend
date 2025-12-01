@@ -292,8 +292,42 @@ GET /v2/production-output-consumptions/available-outputs/{productionRecordId}
 **Comportamiento**: 
 - Retorna los outputs del proceso padre disponibles para consumo
 - Calcula cuánto está disponible considerando otros consumos existentes
+- Carga la relación `product` para incluir el nombre del producto en la respuesta
 
-**Respuesta**: Array de outputs con información de disponibilidad
+**Respuesta**: 
+```json
+{
+    "message": "Outputs disponibles obtenidos correctamente.",
+    "data": [
+        {
+            "output": {
+                "id": 456,
+                "productionRecordId": 100,
+                "productId": 10,
+                "product": {
+                    "id": 10,
+                    "name": "Filetes de atún"
+                },
+                "lotId": "LOT-123",
+                "boxes": 20,
+                "weightKg": 300.00,
+                "averageWeightPerBox": 15.00,
+                "createdAt": "2024-01-15T10:30:00+00:00",
+                "updatedAt": "2024-01-15T10:30:00+00:00"
+            },
+            "totalWeight": 300.00,
+            "totalBoxes": 20,
+            "consumedWeight": 150.50,
+            "consumedBoxes": 10,
+            "availableWeight": 149.50,
+            "availableBoxes": 10,
+            "hasExistingConsumption": false
+        }
+    ]
+}
+```
+
+**Nota**: Solo se incluyen outputs con `availableWeight > 0` o `availableBoxes > 0`. Si el proceso no tiene padre, retorna `data: []`.
 
 ---
 

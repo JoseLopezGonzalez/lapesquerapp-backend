@@ -119,13 +119,18 @@ GET /v2/production-output-consumptions/available-outputs/{productionRecordId}
         {
             "output": {
                 "id": 456,
+                "productionRecordId": 100,
                 "productId": 10,
                 "product": {
                     "id": 10,
                     "name": "Filetes de atún"
                 },
+                "lotId": "LOT-123",
+                "boxes": 20,
                 "weightKg": 300.00,
-                "boxes": 20
+                "averageWeightPerBox": 15.00,
+                "createdAt": "2024-01-15T10:30:00+00:00",
+                "updatedAt": "2024-01-15T10:30:00+00:00"
             },
             "totalWeight": 300.00,
             "totalBoxes": 20,
@@ -138,6 +143,8 @@ GET /v2/production-output-consumptions/available-outputs/{productionRecordId}
     ]
 }
 ```
+
+**Nota**: El objeto `product` con `id` y `name` está incluido en la respuesta. Solo se devuelven outputs con disponibilidad (`availableWeight > 0` o `availableBoxes > 0`).
 
 Este endpoint es especialmente útil para mostrar al usuario qué outputs del padre están disponibles antes de crear un consumo.
 

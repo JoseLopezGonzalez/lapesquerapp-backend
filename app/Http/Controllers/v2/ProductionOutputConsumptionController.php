@@ -245,7 +245,7 @@ class ProductionOutputConsumptionController extends Controller
             ]);
         }
 
-        $outputs = $parent->outputs;
+        $outputs = $parent->outputs()->with('product')->get();
 
         $availableOutputs = $outputs->map(function ($output) {
             $consumedWeight = ProductionOutputConsumption::where('production_output_id', $output->id)
