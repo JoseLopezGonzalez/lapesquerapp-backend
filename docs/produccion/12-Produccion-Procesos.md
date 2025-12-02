@@ -250,22 +250,51 @@ public function calculateNodeTotals()
 {
     $inputWeight = $this->total_input_weight;
     $outputWeight = $this->total_output_weight;
-    $waste = $inputWeight - $outputWeight;
-    $wastePercentage = $inputWeight > 0 
-        ? ($waste / $inputWeight) * 100 
-        : 0;
+    $difference = $inputWeight - $outputWeight;
+    
+    // Si hay pérdida (input > output)
+    if ($difference > 0) {
+        $waste = $difference;
+        $wastePercentage = ($waste / $inputWeight) * 100;
+        $yield = 0;
+        $yieldPercentage = 0;
+    }
+    // Si hay ganancia (input < output)
+    elseif ($difference < 0) {
+        $waste = 0;
+        $wastePercentage = 0;
+        $yield = abs($difference); // output - input
+        $yieldPercentage = ($yield / $inputWeight) * 100;
+    }
+    // Si es neutro (input = output)
+    else {
+        $waste = 0;
+        $wastePercentage = 0;
+        $yield = 0;
+        $yieldPercentage = 0;
+    }
     
     return [
         'inputWeight' => $inputWeight,
         'outputWeight' => $outputWeight,
         'waste' => $waste,
         'wastePercentage' => round($wastePercentage, 2),
+        'yield' => round($yield, 2),
+        'yieldPercentage' => round($yieldPercentage, 2),
         'inputBoxes' => $this->total_input_boxes,
         'outputBoxes' => $this->total_output_boxes,
     ];
 }
 ```
-- Calcula merma y porcentajes del nodo específico
+- Calcula merma o rendimiento según corresponda del nodo específico
+- **Lógica condicional**:
+  - **Si hay pérdida** (input > output): `waste > 0`, `yield = 0`
+  - **Si hay ganancia** (input < output): `yield > 0`, `waste = 0`
+  - **Si es neutro** (input = output): ambos en `0`
+- **Merma** (`waste`): Diferencia en kg cuando hay pérdida (inputWeight - outputWeight)
+- **Porcentaje de Merma** (`wastePercentage`): Porcentaje de pérdida respecto al peso de entrada
+- **Rendimiento** (`yield`): Diferencia en kg cuando hay ganancia (outputWeight - inputWeight)
+- **Porcentaje de Rendimiento** (`yieldPercentage`): Porcentaje de ganancia respecto al peso de entrada
 - No incluye datos de procesos hijos
 
 #### `getNodeData()` - Obtener Estructura del Nodo para Diagrama
@@ -410,6 +439,11 @@ POST /v2/production-records/{id}/finish
 **Archivo**: `app/Http/Resources/v2/ProductionRecordResource.php`
 
 **Campos expuestos**:
+
+### Ejemplo con Pérdida (Merma)
+
+Cuando `totalInputWeight > totalOutputWeight`:
+
 ```json
 {
     "id": 1,
@@ -441,6 +475,10 @@ POST /v2/production-records/{id}/finish
     "totalOutputWeight": 120.30,
     "totalInputBoxes": 5,
     "totalOutputBoxes": 8,
+    "waste": 30.20,
+    "wastePercentage": 20.07,
+    "yield": 0,
+    "yieldPercentage": 0,
     "inputs": [...],
     "outputs": [...],
     "children": [...],
@@ -448,6 +486,53 @@ POST /v2/production-records/{id}/finish
     "updatedAt": "2024-01-15T11:00:00Z"
 }
 ```
+
+### Ejemplo con Ganancia (Rendimiento)
+
+Cuando `totalInputWeight < totalOutputWeight`:
+
+```json
+{
+    "id": 2,
+    "productionId": 5,
+    "processId": 4,
+    "process": {
+        "id": 4,
+        "name": "Envasado en salmuera",
+        "type": "packaging"
+    },
+    "totalInputWeight": 100.00,
+    "totalOutputWeight": 120.00,
+    "totalInputBoxes": 3,
+    "totalOutputBoxes": 5,
+    "waste": 0,
+    "wastePercentage": 0,
+    "yield": 20.00,
+    "yieldPercentage": 20.00,
+    "inputs": [...],
+    "outputs": [...]
+}
+```
+
+### Campos de Cálculo
+
+**Lógica condicional**:
+- **Si hay pérdida** (`totalInputWeight > totalOutputWeight`):
+  - `waste` (number): Merma en kilogramos (totalInputWeight - totalOutputWeight)
+  - `wastePercentage` (number): Porcentaje de merma respecto al peso de entrada (0-100)
+  - `yield`: 0
+  - `yieldPercentage`: 0
+
+- **Si hay ganancia** (`totalInputWeight < totalOutputWeight`):
+  - `waste`: 0
+  - `wastePercentage`: 0
+  - `yield` (number): Rendimiento en kilogramos (totalOutputWeight - totalInputWeight)
+  - `yieldPercentage` (number): Porcentaje de ganancia respecto al peso de entrada (0-100)
+
+- **Si es neutro** (`totalInputWeight = totalOutputWeight`):
+  - Todos los campos de cálculo en `0`
+
+**Nota**: Estos campos se calculan automáticamente en cada respuesta de la API y están disponibles en todos los endpoints que retornan `ProductionRecordResource` (index, show, store, update, tree, finish, etc.).
 
 ---
 

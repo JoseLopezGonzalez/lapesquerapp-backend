@@ -14,6 +14,23 @@ class ProductionRecordResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        // Calcular diferencia para determinar si hay pérdida o ganancia
+        $inputWeight = $this->total_input_weight;
+        $outputWeight = $this->total_output_weight;
+        $difference = $inputWeight - $outputWeight;
+        
+        // Calcular waste (solo si hay pérdida)
+        $waste = $difference > 0 ? round($difference, 2) : 0;
+        $wastePercentage = ($difference > 0 && $inputWeight > 0) 
+            ? round(($difference / $inputWeight) * 100, 2) 
+            : 0;
+        
+        // Calcular yield (solo si hay ganancia)
+        $yield = $difference < 0 ? round(abs($difference), 2) : 0;
+        $yieldPercentage = ($difference < 0 && $inputWeight > 0) 
+            ? round((abs($difference) / $inputWeight) * 100, 2) 
+            : 0;
+        
         return [
             'id' => $this->id,
             'productionId' => $this->production_id,
@@ -49,10 +66,14 @@ class ProductionRecordResource extends JsonResource
             'isRoot' => $this->isRoot(),
             'isFinal' => $this->isFinal(),
             'isCompleted' => $this->isCompleted(),
-            'totalInputWeight' => $this->total_input_weight,
-            'totalOutputWeight' => $this->total_output_weight,
+            'totalInputWeight' => $inputWeight,
+            'totalOutputWeight' => $outputWeight,
             'totalInputBoxes' => $this->total_input_boxes,
             'totalOutputBoxes' => $this->total_output_boxes,
+            'waste' => $waste,
+            'wastePercentage' => $wastePercentage,
+            'yield' => $yield,
+            'yieldPercentage' => $yieldPercentage,
             'inputs' => ProductionInputResource::collection($this->whenLoaded('inputs')),
             'outputs' => ProductionOutputResource::collection($this->whenLoaded('outputs')),
             'children' => ProductionRecordResource::collection($this->whenLoaded('children')),

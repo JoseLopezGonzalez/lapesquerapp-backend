@@ -169,20 +169,50 @@ class ProductionRecord extends Model
     }
 
     /**
-     * Calcular los totales del nodo (merma, porcentajes, etc.)
+     * Calcular los totales del nodo (merma, porcentajes, rendimiento, etc.)
+     * 
+     * Lógica:
+     * - Si hay pérdida (input > output): waste > 0, yield = 0
+     * - Si hay ganancia (input < output): yield > 0, waste = 0
+     * - Si es neutro (input = output): ambos en 0
      */
     public function calculateNodeTotals()
     {
         $inputWeight = $this->total_input_weight;
         $outputWeight = $this->total_output_weight;
-        $waste = $inputWeight - $outputWeight;
-        $wastePercentage = $inputWeight > 0 ? ($waste / $inputWeight) * 100 : 0;
+        
+        // Calcular diferencia
+        $difference = $inputWeight - $outputWeight;
+        
+        // Si hay pérdida (input > output)
+        if ($difference > 0) {
+            $waste = $difference;
+            $wastePercentage = $inputWeight > 0 ? ($waste / $inputWeight) * 100 : 0;
+            $yield = 0;
+            $yieldPercentage = 0;
+        }
+        // Si hay ganancia (input < output)
+        elseif ($difference < 0) {
+            $waste = 0;
+            $wastePercentage = 0;
+            $yield = abs($difference); // output - input
+            $yieldPercentage = $inputWeight > 0 ? ($yield / $inputWeight) * 100 : 0;
+        }
+        // Si es neutro (input = output)
+        else {
+            $waste = 0;
+            $wastePercentage = 0;
+            $yield = 0;
+            $yieldPercentage = 0;
+        }
 
         return [
             'inputWeight' => $inputWeight,
             'outputWeight' => $outputWeight,
             'waste' => $waste,
             'wastePercentage' => round($wastePercentage, 2),
+            'yield' => round($yield, 2),
+            'yieldPercentage' => round($yieldPercentage, 2),
             'inputBoxes' => $this->total_input_boxes,
             'outputBoxes' => $this->total_output_boxes,
         ];
