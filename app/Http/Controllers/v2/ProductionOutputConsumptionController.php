@@ -224,6 +224,149 @@ class ProductionOutputConsumptionController extends Controller
     }
 
     /**
+     * Store multiple consumptions at once
+     */
+    public function storeMultiple(Request $request)
+    {
+        $validated = $request->validate([
+            'production_record_id' => 'required|exists:tenant.production_records,id',
+            'consumptions' => 'required|array|min:1',
+            'consumptions.*.production_output_id' => 'required|exists:tenant.production_outputs,id',
+            'consumptions.*.consumed_weight_kg' => 'required|numeric|min:0',
+            'consumptions.*.consumed_boxes' => 'nullable|integer|min:0',
+            'consumptions.*.notes' => 'nullable|string',
+        ]);
+
+        $record = ProductionRecord::findOrFail($validated['production_record_id']);
+
+        // Validar que el proceso tenga un padre
+        if (!$record->parent_record_id) {
+            return response()->json([
+                'message' => 'El proceso no tiene un proceso padre. Solo los procesos hijos pueden consumir outputs de procesos padre.',
+            ], 422);
+        }
+
+        $parent = $record->parent;
+        if (!$parent) {
+            return response()->json([
+                'message' => 'El proceso padre no existe.',
+            ], 422);
+        }
+
+        $created = [];
+        $errors = [];
+
+        DB::beginTransaction();
+        try {
+            // Validar disponibilidad de outputs antes de crear
+            $outputsToValidate = [];
+            foreach ($validated['consumptions'] as $consumptionData) {
+                $outputId = $consumptionData['production_output_id'];
+                if (!isset($outputsToValidate[$outputId])) {
+                    $outputsToValidate[$outputId] = [
+                        'output' => ProductionOutput::findOrFail($outputId),
+                        'total_requested_weight' => 0,
+                        'total_requested_boxes' => 0,
+                    ];
+                }
+                $outputsToValidate[$outputId]['total_requested_weight'] += $consumptionData['consumed_weight_kg'];
+                $outputsToValidate[$outputId]['total_requested_boxes'] += ($consumptionData['consumed_boxes'] ?? 0);
+            }
+
+            // Validar cada output
+            foreach ($outputsToValidate as $outputId => $validationData) {
+                $output = $validationData['output'];
+
+                // Validar que el output pertenezca al proceso padre directo
+                if ($output->production_record_id !== $parent->id) {
+                    $errors[] = "El output #{$outputId} no pertenece al proceso padre directo.";
+                    continue;
+                }
+
+                // Calcular consumo actual
+                $currentConsumedWeight = ProductionOutputConsumption::where('production_output_id', $outputId)
+                    ->sum('consumed_weight_kg');
+
+                $currentConsumedBoxes = ProductionOutputConsumption::where('production_output_id', $outputId)
+                    ->sum('consumed_boxes');
+
+                // Calcular disponibilidad
+                $availableWeight = $output->weight_kg - $currentConsumedWeight;
+                $availableBoxes = $output->boxes - $currentConsumedBoxes;
+
+                // Validar disponibilidad
+                if ($validationData['total_requested_weight'] > $availableWeight) {
+                    $errors[] = "Output #{$outputId}: No hay suficiente peso disponible. Disponible: {$availableWeight}kg, solicitado: {$validationData['total_requested_weight']}kg";
+                }
+
+                if ($validationData['total_requested_boxes'] > $availableBoxes) {
+                    $errors[] = "Output #{$outputId}: No hay suficientes cajas disponibles. Disponible: {$availableBoxes}, solicitado: {$validationData['total_requested_boxes']}";
+                }
+            }
+
+            // Si hay errores de validación, hacer rollback
+            if (!empty($errors)) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'Error de validación al crear los consumos.',
+                    'errors' => $errors,
+                ], 422);
+            }
+
+            // Crear consumos
+            foreach ($validated['consumptions'] as $index => $consumptionData) {
+                try {
+                    // Verificar que no haya un consumo ya existente para este output en este proceso
+                    $existing = ProductionOutputConsumption::where('production_record_id', $validated['production_record_id'])
+                        ->where('production_output_id', $consumptionData['production_output_id'])
+                        ->first();
+
+                    if ($existing) {
+                        $errors[] = "Consumo #{$index}: Ya existe un consumo para el output #{$consumptionData['production_output_id']}.";
+                        continue;
+                    }
+
+                    $consumption = ProductionOutputConsumption::create([
+                        'production_record_id' => $validated['production_record_id'],
+                        'production_output_id' => $consumptionData['production_output_id'],
+                        'consumed_weight_kg' => $consumptionData['consumed_weight_kg'],
+                        'consumed_boxes' => $consumptionData['consumed_boxes'] ?? 0,
+                        'notes' => $consumptionData['notes'] ?? null,
+                    ]);
+
+                    $consumption->load(['productionRecord.process', 'productionOutput.product']);
+                    $created[] = new ProductionOutputConsumptionResource($consumption);
+                } catch (\Exception $e) {
+                    $errors[] = "Error en el consumo #{$index}: " . $e->getMessage();
+                }
+            }
+
+            // Si no se creó ninguno y hay errores, hacer rollback
+            if (empty($created) && !empty($errors)) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'No se pudo crear ningún consumo.',
+                    'errors' => $errors,
+                ], 422);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => count($created) . ' consumo(s) creado(s) correctamente.',
+                'data' => $created,
+                'errors' => $errors,
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al crear los consumos.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Obtener outputs disponibles para consumo por un proceso hijo
      */
     public function getAvailableOutputs(string $productionRecordId)

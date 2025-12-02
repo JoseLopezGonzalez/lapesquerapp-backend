@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\v2\ProductionOutputResource;
 use App\Models\ProductionOutput;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProductionOutputController extends Controller
 {
@@ -120,5 +121,57 @@ class ProductionOutputController extends Controller
         return response()->json([
             'message' => 'Salida de producción eliminada correctamente.',
         ], 200);
+    }
+
+    /**
+     * Store multiple outputs at once
+     */
+    public function storeMultiple(Request $request)
+    {
+        $validated = $request->validate([
+            'production_record_id' => 'required|exists:tenant.production_records,id',
+            'outputs' => 'required|array|min:1',
+            'outputs.*.product_id' => 'required|exists:tenant.products,id',
+            'outputs.*.lot_id' => 'nullable|string',
+            'outputs.*.boxes' => 'required|integer|min:0',
+            'outputs.*.weight_kg' => 'required|numeric|min:0',
+        ]);
+
+        $created = [];
+        $errors = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($validated['outputs'] as $index => $outputData) {
+                try {
+                    $output = ProductionOutput::create([
+                        'production_record_id' => $validated['production_record_id'],
+                        'product_id' => $outputData['product_id'],
+                        'lot_id' => $outputData['lot_id'] ?? null,
+                        'boxes' => $outputData['boxes'],
+                        'weight_kg' => $outputData['weight_kg'],
+                    ]);
+
+                    $output->load(['productionRecord', 'product']);
+                    $created[] = new ProductionOutputResource($output);
+                } catch (\Exception $e) {
+                    $errors[] = "Error en la salida #{$index}: " . $e->getMessage();
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => count($created) . ' salida(s) creada(s) correctamente.',
+                'data' => $created,
+                'errors' => $errors,
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al crear las salidas.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

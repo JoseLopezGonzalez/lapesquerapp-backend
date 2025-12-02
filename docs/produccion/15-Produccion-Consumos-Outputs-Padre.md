@@ -283,6 +283,69 @@ DELETE /v2/production-output-consumptions/{id}
 
 **Comportamiento**: Elimina el consumo (cascade no afecta, solo es referencia)
 
+#### `storeMultiple(Request $request)` - Crear Múltiples Consumos
+
+```http
+POST /v2/production-output-consumptions/multiple
+```
+
+**Validación**:
+```php
+[
+    'production_record_id' => 'required|exists:tenant.production_records,id',
+    'consumptions' => 'required|array|min:1',
+    'consumptions.*.production_output_id' => 'required|exists:tenant.production_outputs,id',
+    'consumptions.*.consumed_weight_kg' => 'required|numeric|min:0',
+    'consumptions.*.consumed_boxes' => 'nullable|integer|min:0',
+    'consumptions.*.notes' => 'nullable|string',
+]
+```
+
+**Validaciones de negocio**:
+1. El proceso debe tener un proceso padre
+2. Cada output debe pertenecer al proceso padre directo
+3. No puede haber consumos duplicados del mismo output
+4. El consumo total no debe exceder el output disponible (validado antes de crear)
+
+**Comportamiento**:
+- Valida disponibilidad de todos los outputs antes de crear
+- Crea múltiples consumos en una transacción
+- Retorna array de consumos creados y errores (si los hay)
+- Si la validación falla, hace rollback de toda la operación
+
+**Respuesta**: 201 con array de consumos creados y errores
+
+**Ejemplo de request**:
+```json
+{
+    "production_record_id": 124,
+    "consumptions": [
+        {
+            "production_output_id": 456,
+            "consumed_weight_kg": 150.00,
+            "consumed_boxes": 10,
+            "notes": "Consumo parcial"
+        },
+        {
+            "production_output_id": 457,
+            "consumed_weight_kg": 200.00,
+            "consumed_boxes": 15
+        }
+    ]
+}
+```
+
+**Ejemplo de response**:
+```json
+{
+    "message": "2 consumo(s) creado(s) correctamente.",
+    "data": [...],
+    "errors": []
+}
+```
+
+**Nota**: Este endpoint es útil para crear múltiples consumos de una vez, pero para editar todos los consumos de un proceso, use el endpoint de sincronización en `ProductionRecordController`.
+
 #### `getAvailableOutputs(string $productionRecordId)` - Outputs Disponibles
 
 ```http
@@ -439,6 +502,56 @@ Content-Type: application/json
 }
 ```
 
+### Crear Múltiples Consumos
+
+```http
+POST /v2/production-output-consumptions/multiple
+Content-Type: application/json
+
+{
+    "production_record_id": 124,
+    "consumptions": [
+        {
+            "production_output_id": 456,
+            "consumed_weight_kg": 150.00,
+            "consumed_boxes": 10,
+            "notes": "Consumo parcial"
+        },
+        {
+            "production_output_id": 457,
+            "consumed_weight_kg": 200.00,
+            "consumed_boxes": 15
+        }
+    ]
+}
+```
+
+### Sincronizar Todos los Consumos de un Proceso
+
+```http
+PUT /v2/production-records/124/parent-output-consumptions
+Content-Type: application/json
+
+{
+    "consumptions": [
+        {
+            "id": 789,
+            "production_output_id": 456,
+            "consumed_weight_kg": 175.00,
+            "consumed_boxes": 12,
+            "notes": "Consumo actualizado"
+        },
+        {
+            "production_output_id": 458,
+            "consumed_weight_kg": 100.00,
+            "consumed_boxes": 8
+        }
+    ]
+}
+```
+
+**Nota**: Este endpoint permite crear (sin `id`), actualizar (con `id`) y eliminar (no incluir en el array) todos los consumos de un proceso en una sola petición. **Recomendado para editar todos los consumos de una vez.**
+
 ---
 
 ## 🔍 Conceptos Importantes
@@ -477,6 +590,13 @@ El modelo `ProductionRecord` tiene:
 - Método `getTotalInputWeightAttribute()` - Incluye consumos del padre en el cálculo
 - Método `getAvailableParentOutputs()` - Outputs disponibles para consumo
 
+**Endpoints adicionales en ProductionRecordController**:
+- `syncConsumptions(Request $request, string $id)` - Sincronizar todos los consumos de un proceso
+  - Ruta: `PUT /v2/production-records/{id}/parent-output-consumptions`
+  - Permite crear, actualizar y eliminar consumos en una sola petición
+  - Valida disponibilidad antes de hacer cambios
+  - Usa transacciones para garantizar consistencia
+
 ### ProductionOutput
 
 El modelo `ProductionOutput` tiene:
@@ -497,5 +617,36 @@ El modelo `ProductionOutput` tiene:
 
 ---
 
-**Última actualización**: Documentación generada desde código fuente en fecha de generación.
+---
+
+## 🆕 Nuevos Endpoints para Múltiples Consumos
+
+### Crear Múltiples Consumos
+
+**Endpoint**: `POST /v2/production-output-consumptions/multiple`
+
+Permite crear múltiples consumos en una sola petición. Valida disponibilidad de todos los outputs antes de crear.
+
+### Sincronizar Todos los Consumos
+
+**Endpoint**: `PUT /v2/production-records/{id}/parent-output-consumptions`
+
+Permite crear, actualizar y eliminar todos los consumos de un proceso en una sola petición. **Recomendado para editar todos los consumos de una vez.**
+
+**Comportamiento**:
+- Si `consumptions.*.id` existe → actualiza el consumo existente
+- Si `consumptions.*.id` no existe → crea un nuevo consumo
+- Los consumos que no están en el array → se eliminan
+- Valida disponibilidad antes de hacer cambios
+- Usa transacciones para garantizar consistencia
+
+**Ventajas**:
+- Una sola petición para editar todas las líneas
+- Validación completa antes de aplicar cambios
+- Rollback automático si algo falla
+- Respuesta con resumen de operaciones (creados, actualizados, eliminados)
+
+Para más detalles y ejemplos, ver: `docs/produccion/FRONTEND-Salidas-y-Consumos-Multiples.md`
+
+**Última actualización**: Documentación actualizada con nuevos endpoints para múltiples consumos (2025-01-XX).
 

@@ -436,13 +436,17 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::apiResource('production-records', ProductionRecordController::class);
             Route::get('production-records/{id}/tree', [ProductionRecordController::class, 'tree'])->name('production-records.tree');
             Route::post('production-records/{id}/finish', [ProductionRecordController::class, 'finish'])->name('production-records.finish');
+            Route::put('production-records/{id}/outputs', [ProductionRecordController::class, 'syncOutputs'])->name('production-records.syncOutputs');
+            Route::put('production-records/{id}/parent-output-consumptions', [ProductionRecordController::class, 'syncConsumptions'])->name('production-records.syncConsumptions');
 
             Route::apiResource('production-inputs', ProductionInputController::class);
             Route::post('production-inputs/multiple', [ProductionInputController::class, 'storeMultiple'])->name('production-inputs.storeMultiple');
 
             Route::apiResource('production-outputs', ProductionOutputController::class);
+            Route::post('production-outputs/multiple', [ProductionOutputController::class, 'storeMultiple'])->name('production-outputs.storeMultiple');
 
             Route::apiResource('production-output-consumptions', ProductionOutputConsumptionController::class);
+            Route::post('production-output-consumptions/multiple', [ProductionOutputConsumptionController::class, 'storeMultiple'])->name('production-output-consumptions.storeMultiple');
             Route::get('production-output-consumptions/available-outputs/{productionRecordId}', [ProductionOutputConsumptionController::class, 'getAvailableOutputs'])->name('production-output-consumptions.available-outputs');
 
             /* Processes */

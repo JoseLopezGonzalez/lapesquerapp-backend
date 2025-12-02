@@ -131,6 +131,8 @@ public function getAverageWeightPerBoxAttribute()
 
 ### Métodos del Controlador
 
+**Nota**: Para sincronizar todas las salidas de un proceso (crear/actualizar/eliminar), use el método `syncOutputs()` en `ProductionRecordController` (ver sección de ejemplos).
+
 #### `index(Request $request)` - Listar Salidas
 ```php
 GET /v2/production-outputs
@@ -197,6 +199,61 @@ DELETE /v2/production-outputs/{id}
 ```
 
 **Comportamiento**: Elimina la salida (cascade no afecta, solo es referencia)
+
+#### `storeMultiple(Request $request)` - Crear Múltiples Salidas
+```php
+POST /v2/production-outputs/multiple
+```
+
+**Validación**:
+```php
+[
+    'production_record_id' => 'required|exists:tenant.production_records,id',
+    'outputs' => 'required|array|min:1',
+    'outputs.*.product_id' => 'required|exists:tenant.products,id',
+    'outputs.*.lot_id' => 'nullable|string',
+    'outputs.*.boxes' => 'required|integer|min:0',
+    'outputs.*.weight_kg' => 'required|numeric|min:0',
+]
+```
+
+**Comportamiento**:
+- Crea múltiples salidas en una transacción
+- Retorna array de salidas creadas y errores (si los hay)
+- Si alguna falla, las que se crearon exitosamente se mantienen
+
+**Respuesta**: 201 con array de salidas creadas y errores
+
+**Ejemplo de request**:
+```json
+{
+    "production_record_id": 123,
+    "outputs": [
+        {
+            "product_id": 10,
+            "lot_id": "LOT-001",
+            "boxes": 20,
+            "weight_kg": 300.00
+        },
+        {
+            "product_id": 11,
+            "boxes": 15,
+            "weight_kg": 225.00
+        }
+    ]
+}
+```
+
+**Ejemplo de response**:
+```json
+{
+    "message": "2 salida(s) creada(s) correctamente.",
+    "data": [...],
+    "errors": []
+}
+```
+
+**Nota**: Este endpoint es útil para crear múltiples salidas de una vez, pero para editar todas las salidas de un proceso, use el endpoint de sincronización en `ProductionRecordController`.
 
 ---
 
@@ -272,6 +329,55 @@ Content-Type: application/json
     "weight_kg": 135.75
 }
 ```
+
+### Crear Múltiples Salidas
+```http
+POST /v2/production-outputs/multiple
+Content-Type: application/json
+
+{
+    "production_record_id": 123,
+    "outputs": [
+        {
+            "product_id": 10,
+            "lot_id": "LOT-001",
+            "boxes": 20,
+            "weight_kg": 300.00
+        },
+        {
+            "product_id": 11,
+            "boxes": 15,
+            "weight_kg": 225.00
+        }
+    ]
+}
+```
+
+### Sincronizar Todas las Salidas de un Proceso
+```http
+PUT /v2/production-records/123/outputs
+Content-Type: application/json
+
+{
+    "outputs": [
+        {
+            "id": 456,
+            "product_id": 10,
+            "lot_id": "LOT-001-UPDATED",
+            "boxes": 25,
+            "weight_kg": 375.00
+        },
+        {
+            "product_id": 12,
+            "lot_id": "LOT-003",
+            "boxes": 10,
+            "weight_kg": 150.00
+        }
+    ]
+}
+```
+
+**Nota**: Este endpoint permite crear (sin `id`), actualizar (con `id`) y eliminar (no incluir en el array) todas las salidas de un proceso en una sola petición. **Recomendado para editar todas las salidas de una vez.**
 
 ---
 
@@ -424,5 +530,18 @@ Process: "Envasado"
 
 ---
 
-**Última actualización**: Documentación generada desde código fuente en fecha de generación.
+---
+
+## 🔗 Endpoints Adicionales en ProductionRecordController
+
+Para sincronizar todas las salidas de un proceso (crear/actualizar/eliminar en una sola petición), use:
+
+**`syncOutputs(Request $request, string $id)`**
+- Ruta: `PUT /v2/production-records/{id}/outputs`
+- Permite crear (sin `id`), actualizar (con `id`) y eliminar (no incluir en el array) todas las salidas
+- Valida que no se eliminen salidas con consumos asociados
+- Usa transacciones para garantizar consistencia
+- **Recomendado para editar todas las salidas de una vez**
+
+**Última actualización**: Documentación actualizada con nuevos endpoints para múltiples salidas (2025-01-XX).
 
