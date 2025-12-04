@@ -140,6 +140,7 @@ class ProductionController extends Controller
 
     /**
      * Obtener el árbol completo de procesos de una producción
+     * Incluye nodos de venta y stock como hijos de nodos finales
      */
     public function getProcessTree(string $id)
     {
@@ -151,6 +152,9 @@ class ProductionController extends Controller
         $processNodes = $tree->map(function ($record) {
             return $record->getNodeData();
         })->toArray();
+
+        // ✨ Añadir nodos de venta y stock como hijos de nodos finales
+        $processNodes = $production->attachSalesAndStockNodes($processNodes);
 
         return response()->json([
             'message' => 'Árbol de procesos obtenido correctamente.',

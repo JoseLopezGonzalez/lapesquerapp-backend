@@ -1398,7 +1398,74 @@ Todos los endpoints devuelven respuestas con la estructura estándar:
                                 "updatedAt": "2024-01-15T14:05:00Z"
                             }
                         ],
-                        "children": [],
+                        "children": [
+                            {
+                                "type": "sales",
+                                "id": "sales-12-123",
+                                "parentRecordId": 2,
+                                "productionId": 1,
+                                "product": {
+                                    "id": 12,
+                                    "name": "Filetes de atún"
+                                },
+                                "order": {
+                                    "id": 123,
+                                    "formattedId": "#00123",
+                                    "customer": {
+                                        "id": 45,
+                                        "name": "Supermercado Central"
+                                    },
+                                    "loadDate": "2024-02-15T00:00:00Z",
+                                    "status": "pending"
+                                },
+                                "pallets": [
+                                    {
+                                        "id": 789,
+                                        "availableBoxesCount": 10,
+                                        "totalAvailableWeight": 95.0
+                                    }
+                                ],
+                                "totalBoxes": 10,
+                                "totalNetWeight": 95.0,
+                                "summary": {
+                                    "palletsCount": 1,
+                                    "boxesCount": 10,
+                                    "netWeight": 95.0
+                                },
+                                "children": []
+                            },
+                            {
+                                "type": "stock",
+                                "id": "stock-12-3",
+                                "parentRecordId": 2,
+                                "productionId": 1,
+                                "product": {
+                                    "id": 12,
+                                    "name": "Filetes de atún"
+                                },
+                                "store": {
+                                    "id": 3,
+                                    "name": "Almacén Central",
+                                    "temperature": -18.00
+                                },
+                                "pallets": [
+                                    {
+                                        "id": 456,
+                                        "availableBoxesCount": 5,
+                                        "totalAvailableWeight": 47.5,
+                                        "position": "A-12"
+                                    }
+                                ],
+                                "totalBoxes": 5,
+                                "totalNetWeight": 47.5,
+                                "summary": {
+                                    "palletsCount": 1,
+                                    "boxesCount": 5,
+                                    "netWeight": 47.5
+                                },
+                                "children": []
+                            }
+                        ],
                         "totals": {
                             "inputWeight": 100.0,
                             "outputWeight": 95.0,
@@ -1435,7 +1502,13 @@ Todos los endpoints devuelven respuestas con la estructura estándar:
             "totalYield": 64.80,
             "totalYieldPercentage": 43.06,
             "totalInputBoxes": 5,
-            "totalOutputBoxes": 18
+            "totalOutputBoxes": 18,
+            "totalSalesWeight": 95.0,
+            "totalSalesBoxes": 10,
+            "totalSalesPallets": 1,
+            "totalStockWeight": 47.5,
+            "totalStockBoxes": 5,
+            "totalStockPallets": 1
         }
     }
 }
@@ -1449,7 +1522,427 @@ Todos los endpoints devuelven respuestas con la estructura estándar:
 - **Inputs y outputs mejorados**: Formato consistente con `ProductionInputResource` y `ProductionOutputResource`
 - **Fechas incluidas**: `createdAt` y `updatedAt` en todos los niveles
 - **Árbol recursivo**: Los `children` se construyen recursivamente con la misma estructura
+- **✨ Nodos de Venta y Stock**: Los nodos finales pueden incluir nodos de venta/stock como hijos (ver sección siguiente)
 - Similar a `/diagram`, pero siempre incluye los totales globales
+
+---
+
+### ✨ Nodos de Venta y Stock en el Árbol
+
+**Nuevo desde 2025-01-27**: El endpoint ahora incluye nodos de venta y stock como hijos de los nodos finales del árbol de procesos.
+
+#### Nodos de Venta (`type: "sales"`)
+
+Representan productos del lote que están siendo vendidos (asignados a pedidos). Se agrupan por **producto + pedido**.
+
+**Criterios de inclusión**:
+- Palet tiene `order_id IS NOT NULL` (asignado a un pedido)
+- Cajas disponibles (`isAvailable = true`)
+- Cajas pertenecen al lote de la producción (`Box.lot = Production.lot`)
+
+**Estructura**:
+```json
+{
+    "type": "sales",
+    "id": "sales-{productId}-{orderId}",
+    "parentRecordId": 2,  // ID del nodo final padre (null si no tiene padre)
+    "productionId": 1,
+    "product": {
+        "id": 12,
+        "name": "Filetes de atún"
+    },
+    "order": {
+        "id": 123,
+        "formattedId": "#00123",
+        "customer": {
+            "id": 45,
+            "name": "Supermercado Central"
+        },
+        "loadDate": "2024-02-15T00:00:00Z",
+        "status": "pending"
+    },
+    "pallets": [
+        {
+            "id": 789,
+            "availableBoxesCount": 10,
+            "totalAvailableWeight": 95.0
+        }
+    ],
+    "totalBoxes": 10,
+    "totalNetWeight": 95.0,
+    "summary": {
+        "palletsCount": 1,
+        "boxesCount": 10,
+        "netWeight": 95.0
+    },
+    "children": []
+}
+```
+
+#### Nodos de Stock (`type: "stock"`)
+
+Representan productos del lote que están almacenados en almacenes. Se agrupan por **producto + almacén**.
+
+**Criterios de inclusión**:
+- Palet almacenado (`state_id = 2`)
+- Tiene relación en `stored_pallets` (está en un almacén)
+- Cajas disponibles (`isAvailable = true`)
+- Cajas pertenecen al lote de la producción (`Box.lot = Production.lot`)
+- NO está asignado a un pedido (`order_id IS NULL`)
+
+**Estructura**:
+```json
+{
+    "type": "stock",
+    "id": "stock-{productId}-{storeId}",
+    "parentRecordId": 2,  // ID del nodo final padre (null si no tiene padre)
+    "productionId": 1,
+    "product": {
+        "id": 12,
+        "name": "Filetes de atún"
+    },
+    "store": {
+        "id": 3,
+        "name": "Almacén Central",
+        "temperature": -18.00
+    },
+    "pallets": [
+        {
+            "id": 456,
+            "availableBoxesCount": 5,
+            "totalAvailableWeight": 47.5,
+            "position": "A-12"
+        }
+    ],
+    "totalBoxes": 5,
+    "totalNetWeight": 47.5,
+    "summary": {
+        "palletsCount": 1,
+        "boxesCount": 5,
+        "netWeight": 47.5
+    },
+    "children": []
+}
+```
+
+#### Lógica de Vinculación
+
+**Matching con Nodos Finales**:
+1. Se identifican todos los nodos finales (`isFinal = true`) y sus productos (de `outputs`)
+2. Para cada producto en venta/stock, se busca si existe un nodo final que produzca ese producto
+3. **Si hay UN SOLO nodo final** para el producto → El nodo de venta/stock se añade como **hijo** del nodo final
+4. **Si hay MÚLTIPLES nodos finales** o **NO hay nodo final** → El nodo de venta/stock se crea **sin padre** (`parentRecordId: null`) pero dentro de `processNodes`
+
+**Agrupación**:
+- **Venta**: Todos los palets del mismo producto en el mismo pedido se agrupan en un solo nodo
+- **Stock**: Todos los palets del mismo producto en el mismo almacén se agrupan en un solo nodo
+- La agrupación es independiente de la cantidad de palets
+
+#### Totales Actualizados
+
+Los `totals` ahora incluyen métricas de venta y stock:
+
+```json
+{
+    "totals": {
+        // Existentes
+        "totalInputWeight": 150.50,
+        "totalOutputWeight": 215.30,
+        "totalWaste": 0,
+        "totalWastePercentage": 0,
+        "totalYield": 64.80,
+        "totalYieldPercentage": 43.06,
+        "totalInputBoxes": 5,
+        "totalOutputBoxes": 18,
+        
+        // ✨ Nuevos - Venta
+        "totalSalesWeight": 95.0,
+        "totalSalesBoxes": 10,
+        "totalSalesPallets": 1,
+        
+        // ✨ Nuevos - Stock
+        "totalStockWeight": 47.5,
+        "totalStockBoxes": 5,
+        "totalStockPallets": 1
+    }
+}
+```
+
+**Documentación completa del diseño**: Ver `docs/produccion/DISENO-Nodos-Venta-y-Stock-Production-Tree.md`
+
+---
+
+## 📚 Ejemplos de Uso del Endpoint Process-Tree
+
+### Ejemplo 1: Árbol Completo con Nodos de Venta y Stock
+
+```http
+GET /api/v2/productions/1/process-tree
+Authorization: Bearer {token}
+X-Tenant: empresa1
+```
+
+**Respuesta completa con nodos de venta y stock**:
+
+El ejemplo de respuesta completa se muestra arriba en la sección `GET /v2/productions/{id}/process-tree`. Incluye:
+- Nodos de procesos con estructura jerárquica
+- Nodos de venta como hijos de nodos finales
+- Nodos de stock como hijos de nodos finales
+- Nodos huérfanos (sin padre) cuando hay múltiples nodos finales
+- Totales actualizados con métricas de venta y stock
+
+### Ejemplo 2: Caso con Múltiples Nodos Finales (Nodos Huérfanos)
+
+Cuando hay múltiples nodos finales produciendo el mismo producto, los nodos de venta/stock se crean sin padre para evitar ambigüedad:
+
+```json
+{
+    "message": "Árbol de procesos obtenido correctamente.",
+    "data": {
+        "processNodes": [
+            {
+                "id": 1,
+                "isFinal": true,
+                "outputs": [
+                    {
+                        "productId": 5,
+                        "product": {
+                            "id": 5,
+                            "name": "Filetes de Atún"
+                        }
+                    }
+                ],
+                "children": []
+            },
+            {
+                "id": 2,
+                "isFinal": true,
+                "outputs": [
+                    {
+                        "productId": 5,
+                        "product": {
+                            "id": 5,
+                            "name": "Filetes de Atún"
+                        }
+                    }
+                ],
+                "children": []
+            },
+            {
+                "type": "sales",
+                "id": "sales-5-123",
+                "parentRecordId": null,
+                "productionId": 1,
+                "product": {
+                    "id": 5,
+                    "name": "Filetes de Atún"
+                },
+                "order": {
+                    "id": 123,
+                    "formattedId": "#00123",
+                    "customer": {
+                        "id": 45,
+                        "name": "Supermercado Central"
+                    }
+                },
+                "pallets": [
+                    {
+                        "id": 789,
+                        "availableBoxesCount": 10,
+                        "totalAvailableWeight": 95.0
+                    }
+                ],
+                "totalBoxes": 10,
+                "totalNetWeight": 95.0,
+                "children": []
+            }
+        ],
+        "totals": {
+            "totalOutputWeight": 190.0,
+            "totalSalesWeight": 95.0,
+            "totalSalesBoxes": 10,
+            "totalSalesPallets": 1
+        }
+    }
+}
+```
+
+**Explicación**: Como hay 2 nodos finales (ID 1 y 2) produciendo el producto 5, el nodo de venta se crea sin padre (`parentRecordId: null`) para evitar ambigüedad sobre cuál nodo final es el correcto.
+
+### Ejemplo 3: Múltiples Productos en un Pedido
+
+Un pedido puede tener múltiples productos del mismo lote, creando múltiples nodos de venta (uno por producto):
+
+```json
+{
+    "processNodes": [
+        {
+            "id": 1,
+            "isFinal": true,
+            "outputs": [
+                {
+                    "productId": 5,
+                    "product": {
+                        "id": 5,
+                        "name": "Filetes de Atún"
+                    }
+                },
+                {
+                    "productId": 6,
+                    "product": {
+                        "id": 6,
+                        "name": "Atún en Aceite"
+                    }
+                }
+            ],
+            "children": [
+                {
+                    "type": "sales",
+                    "id": "sales-5-123",
+                    "parentRecordId": 1,
+                    "product": {
+                        "id": 5,
+                        "name": "Filetes de Atún"
+                    },
+                    "order": {
+                        "id": 123,
+                        "formattedId": "#00123",
+                        "customer": {
+                            "id": 45,
+                            "name": "Supermercado Central"
+                        }
+                    },
+                    "totalBoxes": 10,
+                    "totalNetWeight": 95.0,
+                    "children": []
+                },
+                {
+                    "type": "sales",
+                    "id": "sales-6-123",
+                    "parentRecordId": 1,
+                    "product": {
+                        "id": 6,
+                        "name": "Atún en Aceite"
+                    },
+                    "order": {
+                        "id": 123,
+                        "formattedId": "#00123",
+                        "customer": {
+                            "id": 45,
+                            "name": "Supermercado Central"
+                        }
+                    },
+                    "totalBoxes": 5,
+                    "totalNetWeight": 50.0,
+                    "children": []
+                }
+            ]
+        }
+    ]
+}
+```
+
+**Explicación**: El pedido #00123 tiene dos productos diferentes (ID 5 y 6) del mismo lote, creando dos nodos de venta separados, ambos como hijos del mismo nodo final.
+
+### Ejemplo 4: Múltiples Palets Agrupados en un Nodo
+
+Todos los palets del mismo producto en el mismo pedido/almacén se agrupan en un solo nodo:
+
+```json
+{
+    "type": "sales",
+    "id": "sales-5-123",
+    "parentRecordId": 2,
+    "productionId": 1,
+    "product": {
+        "id": 5,
+        "name": "Filetes de Atún"
+    },
+    "order": {
+        "id": 123,
+        "formattedId": "#00123",
+        "customer": {
+            "id": 45,
+            "name": "Supermercado Central"
+        }
+    },
+    "pallets": [
+        {
+            "id": 789,
+            "availableBoxesCount": 10,
+            "totalAvailableWeight": 95.0
+        },
+        {
+            "id": 790,
+            "availableBoxesCount": 8,
+            "totalAvailableWeight": 76.0
+        },
+        {
+            "id": 791,
+            "availableBoxesCount": 12,
+            "totalAvailableWeight": 114.0
+        }
+    ],
+    "totalBoxes": 30,
+    "totalNetWeight": 285.0,
+    "summary": {
+        "palletsCount": 3,
+        "boxesCount": 30,
+        "netWeight": 285.0
+    },
+    "children": []
+}
+```
+
+**Explicación**: Los 3 palets (ID 789, 790, 791) del producto 5 en el pedido 123 se agrupan en un solo nodo de venta con la lista completa de palets y totales agregados.
+
+### Ejemplo 5: Nodo de Stock con Posición en Almacén
+
+Los nodos de stock incluyen la posición del palet en el almacén:
+
+```json
+{
+    "type": "stock",
+    "id": "stock-5-3",
+    "parentRecordId": 2,
+    "productionId": 1,
+    "product": {
+        "id": 5,
+        "name": "Filetes de Atún"
+    },
+    "store": {
+        "id": 3,
+        "name": "Almacén Central",
+        "temperature": -18.00
+    },
+    "pallets": [
+        {
+            "id": 456,
+            "availableBoxesCount": 15,
+            "totalAvailableWeight": 142.5,
+            "position": "A-12"
+        },
+        {
+            "id": 457,
+            "availableBoxesCount": 20,
+            "totalAvailableWeight": 190.0,
+            "position": "A-13"
+        }
+    ],
+    "totalBoxes": 35,
+    "totalNetWeight": 332.5,
+    "summary": {
+        "palletsCount": 2,
+        "boxesCount": 35,
+        "netWeight": 332.5
+    },
+    "children": []
+}
+```
+
+**Explicación**: Dos palets (ID 456 y 457) del producto 5 están almacenados en el almacén 3 en posiciones diferentes (A-12 y A-13). Se agrupan en un solo nodo de stock.
+
+---
 
 ### `GET /v2/productions/{id}/totals` - Obtener Totales
 
@@ -1475,8 +1968,16 @@ Todos los endpoints devuelven respuestas con la estructura estándar:
 - `totalOutputWeight`: Peso total de salida (suma de `weight_kg` de todos los outputs)
 - `totalWaste`: Merma total (diferencia cuando hay pérdida)
 - `totalWastePercentage`: Porcentaje de merma respecto al peso de entrada
+- `totalYield`: Rendimiento total (diferencia cuando hay ganancia)
+- `totalYieldPercentage`: Porcentaje de rendimiento respecto al peso de entrada
 - `totalInputBoxes`: Cantidad total de cajas de entrada
 - `totalOutputBoxes`: Cantidad total de cajas de salida (suma de `boxes` en outputs)
+- ✨ `totalSalesWeight`: Peso total de productos en venta (cajas disponibles asignadas a pedidos)
+- ✨ `totalSalesBoxes`: Cantidad total de cajas en venta
+- ✨ `totalSalesPallets`: Cantidad total de palets en venta
+- ✨ `totalStockWeight`: Peso total de productos en stock (cajas disponibles almacenadas)
+- ✨ `totalStockBoxes`: Cantidad total de cajas en stock
+- ✨ `totalStockPallets`: Cantidad total de palets en stock
 
 ### `GET /v2/productions/{id}/reconciliation` - Obtener Conciliación
 
