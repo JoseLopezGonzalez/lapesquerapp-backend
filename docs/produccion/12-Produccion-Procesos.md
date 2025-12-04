@@ -145,7 +145,128 @@ public function outputs()
 
 ---
 
-## 🎯 Métodos de Estado y Validación
+## 🎯 Estados del Proceso de Producción
+
+El estado de un proceso se determina por las **fechas de inicio y finalización**:
+
+| Estado | Campo en API | Cómo se Determina | Descripción |
+|--------|--------------|-------------------|-------------|
+| **Pendiente** | `isCompleted: false` | `started_at === null && finished_at === null` | Proceso creado pero no iniciado |
+| **En Progreso** | `isCompleted: false` | `started_at !== null && finished_at === null` | Proceso iniciado pero no finalizado |
+| **Completado/Terminado** | `isCompleted: true` | `finished_at !== null` | Proceso finalizado |
+
+### 📋 Descripción de Estados
+
+#### 1. **Pendiente** (No iniciado)
+- **Determinación**: `started_at === null && finished_at === null`
+- **Significado**: El proceso ha sido creado pero aún no ha comenzado
+- **Campos**: `startedAt: null`, `finishedAt: null`, `isCompleted: false`
+
+#### 2. **En Progreso** (Activo)
+- **Determinación**: `started_at !== null && finished_at === null`
+- **Significado**: El proceso ha comenzado pero aún no ha finalizado
+- **Campos**: `startedAt: "2024-01-15T10:00:00Z"`, `finishedAt: null`, `isCompleted: false`
+- **Cómo se establece**: Al crear o actualizar con `started_at` sin `finished_at`
+
+#### 3. **Completado/Terminado**
+- **Determinación**: `finished_at !== null`
+- **Significado**: El proceso ha sido finalizado
+- **Campos**: `startedAt: "2024-01-15T10:00:00Z"`, `finishedAt: "2024-01-15T14:00:00Z"`, `isCompleted: true`
+- **Cómo se establece**: 
+  - Automáticamente al llamar `POST /v2/production-records/{id}/finish`
+  - O manualmente al actualizar con `PUT /v2/production-records/{id}` enviando `finished_at`
+
+### 📤 Método `isCompleted()`
+
+```php
+public function isCompleted()
+{
+    return $this->finished_at !== null;
+}
+```
+
+Este método retorna `true` si el proceso está completado/terminado, `false` si está pendiente o en progreso.
+
+### 📤 Campos en la Respuesta API
+
+```json
+{
+    "id": 1,
+    "startedAt": "2024-01-15T10:00:00Z",
+    "finishedAt": "2024-01-15T14:00:00Z",
+    "isCompleted": true,
+    ...
+}
+```
+
+---
+
+## 🔷 Tipos/Características del Proceso
+
+Además del estado, cada proceso tiene **características** que definen su posición en el árbol:
+
+| Característica | Campo en API | Método | Cómo se Determina |
+|----------------|--------------|--------|-------------------|
+| **Raíz** | `isRoot` | `isRoot()` | `parent_record_id === null` |
+| **Final** | `isFinal` | `isFinal()` | `inputs().count() === 0 && outputs().count() > 0` |
+
+### 📋 Descripción de Características
+
+#### 1. **`isRoot`** - Proceso Raíz
+```php
+public function isRoot()
+{
+    return $this->parent_record_id === null;
+}
+```
+- **Determinación**: No tiene proceso padre (`parent_record_id` es `null`)
+- **Significado**: Es el inicio del flujo de producción (nivel superior del árbol)
+- **Ejemplo**: Un proceso "Eviscerado" que no tiene padre es raíz
+
+#### 2. **`isFinal`** - Proceso Final
+```php
+public function isFinal()
+{
+    return $this->inputs()->count() === 0 
+        && $this->parentOutputConsumptions()->count() === 0
+        && $this->children()->count() === 0
+        && $this->outputs()->count() > 0;
+}
+```
+- **Determinación**: 
+  - No tiene inputs de stock (`inputs().count() === 0`)
+  - No tiene consumos de outputs del padre (`parentOutputConsumptions().count() === 0`)
+  - No tiene procesos hijos (`children().count() === 0`)
+  - Tiene al menos un output (`outputs().count() > 0`)
+- **Significado**: Es el último proceso en la cadena (no tiene materia prima de entrada y no tiene procesos hijos)
+- **Ejemplo**: Un proceso "Envasado final" que produce productos terminados y no tiene más transformaciones
+
+### 🔄 Combinaciones de Características
+
+Las características son **independientes** y pueden combinarse:
+
+| `isRoot` | `isFinal` | Descripción |
+|----------|-----------|-------------|
+| ✅ | ❌ | Proceso raíz intermedio (inicio del flujo, consume y produce) |
+| ✅ | ✅ | Proceso raíz y final (inicio del flujo, solo produce) |
+| ❌ | ❌ | Proceso intermedio (tiene padre, consume y produce) |
+| ❌ | ✅ | Proceso hijo final (tiene padre, solo produce) |
+
+### 📤 Campos en la Respuesta API
+
+```json
+{
+    "id": 1,
+    "isRoot": true,
+    "isFinal": false,
+    "isCompleted": true,
+    ...
+}
+```
+
+---
+
+## 🎯 Métodos de Estado y Validación (Referencia Técnica)
 
 ### `isRoot()` - Verificar si es Raíz
 ```php
@@ -154,8 +275,6 @@ public function isRoot()
     return $this->parent_record_id === null;
 }
 ```
-- Retorna `true` si el proceso no tiene padre (es raíz del árbol)
-- Los procesos raíz son el inicio del flujo de producción
 
 ### `isFinal()` - Verificar si es Final
 ```php
@@ -164,8 +283,6 @@ public function isFinal()
     return $this->inputs()->count() === 0 && $this->outputs()->count() > 0;
 }
 ```
-- Retorna `true` si el proceso solo produce outputs pero no consume inputs
-- **Nota**: Un proceso raíz puede ser final si no tiene inputs propios (recibe de procesos padre)
 
 ### `isCompleted()` - Verificar si está Completado
 ```php
@@ -174,7 +291,6 @@ public function isCompleted()
     return $this->finished_at !== null;
 }
 ```
-- Retorna `true` si el proceso tiene `finished_at` establecido
 
 ---
 
@@ -302,7 +418,15 @@ public function calculateNodeTotals()
 public function getNodeData()
 {
     // Asegurar que las relaciones estén cargadas
-    $this->loadMissing(['process', 'inputs.box.product', 'outputs.product', 'children']);
+    $this->loadMissing([
+        'production',
+        'parent',
+        'process',
+        'inputs.box.product',
+        'outputs.product',
+        'children',
+        'parentOutputConsumptions.productionOutput.product'
+    ]);
     
     // Construir árbol de hijos recursivamente
     $childrenData = [];
@@ -310,31 +434,52 @@ public function getNodeData()
         $childrenData[] = $child->getNodeData();
     }
     
-    // Preparar inputs...
-    // Preparar outputs...
-    // Calcular totales...
+    // Calcular merma y rendimiento (igual que ProductionRecordResource)
+    // Preparar inputs y outputs en formato consistente con Resources
+    // ...
     
     return [
         'id' => $this->id,
-        'production_id' => $this->production_id,
-        'parent_record_id' => $this->parent_record_id,
+        'productionId' => $this->production_id,
+        'production' => [...],  // Relación completa
+        'parentRecordId' => $this->parent_record_id,
+        'parent' => [...],  // Relación completa
+        'processId' => $this->process_id,
         'process' => [...],
-        'started_at' => $this->started_at?->toIso8601String(),
-        'finished_at' => $this->finished_at?->toIso8601String(),
+        'startedAt' => $this->started_at?->toIso8601String(),
+        'finishedAt' => $this->finished_at?->toIso8601String(),
         'notes' => $this->notes,
         'isRoot' => $this->isRoot(),
         'isFinal' => $this->isFinal(),
         'isCompleted' => $this->isCompleted(),
-        'inputs' => [...],
-        'outputs' => [...],
+        // Totales en nivel raíz (consistente con ProductionRecordResource)
+        'totalInputWeight' => ...,
+        'totalOutputWeight' => ...,
+        'totalInputBoxes' => ...,
+        'totalOutputBoxes' => ...,
+        'waste' => ...,
+        'wastePercentage' => ...,
+        'yield' => ...,
+        'yieldPercentage' => ...,
+        'inputs' => [...],  // Formato consistente con ProductionInputResource
+        'parentOutputConsumptions' => [...],
+        'outputs' => [...],  // Formato consistente con ProductionOutputResource
         'children' => $childrenData,
-        'totals' => $this->calculateNodeTotals(),
+        'totals' => $this->calculateNodeTotals(),  // También en objeto totals (compatibilidad)
+        'createdAt' => $this->created_at?->toIso8601String(),
+        'updatedAt' => $this->updated_at?->toIso8601String(),
     ];
 }
 ```
-- Retorna estructura completa del nodo compatible con diagrama antiguo
+- Retorna estructura completa del nodo **mejorada y consistente con ProductionRecordResource**
+- **Formato camelCase** en lugar de snake_case
+- Incluye relaciones `production` y `parent` completas
+- Incluye `processId` separado
+- **Totales en nivel raíz** (`waste`, `yield`, etc.) además de en objeto `totals`
+- Incluye `createdAt` y `updatedAt`
+- Inputs y outputs en formato consistente con sus Resources respectivos
 - Incluye árbol de hijos recursivamente
-- Formato usado por `Production::getDiagramData()`
+- Formato usado por `Production::getDiagramData()` y `Production::getProcessTree()`
 
 ---
 

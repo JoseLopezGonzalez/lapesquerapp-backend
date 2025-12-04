@@ -547,14 +547,57 @@ DELETE /v2/productions/{id}
 GET /v2/productions/{id}/diagram
 ```
 
-**Comportamiento**: Llama a `getDiagramData()` del modelo
+**Comportamiento**: 
+- Llama a `getDiagramData()` del modelo
+- **Puede retornar `diagram_data` antiguo** (si existe en BD y no hay procesos nuevos)
+- Si no hay `diagram_data` antiguo o hay procesos nuevos, calcula dinámicamente
+- Retorna: `{ processNodes: [...], totals: {...} }`
+
+**⚠️ Nota**: Si retorna `diagram_data` antiguo, puede estar en formato antiguo (snake_case). Si calcula dinámicamente, usa el formato mejorado (camelCase).
 
 #### `getProcessTree(string $id)` - Obtener Árbol de Procesos
 ```php
 GET /v2/productions/{id}/process-tree
 ```
 
-**Retorna**: Estructura del árbol con totales globales
+**Comportamiento**:
+- **Siempre calcula dinámicamente** desde los procesos actuales
+- Usa el formato mejorado (camelCase) con `getNodeData()`
+- Retorna: `{ processNodes: [...], totals: {...} }`
+- **Siempre incluye totales globales**
+
+**✅ Recomendado**: Usar este endpoint para obtener el árbol actualizado con formato consistente.
+
+---
+
+### 📊 Comparación de Endpoints para Obtener Diagrama/Árbol
+
+Hay **3 formas** de obtener datos del diagrama o árbol de procesos:
+
+| Endpoint | Cuándo usar | Formato | Datos |
+|----------|------------|---------|-------|
+| `GET /v2/productions/{id}?include_diagram=true` | Obtener producción completa con diagrama opcional | Mejorado (si calcula) | Incluye todos los campos de Production + diagramData |
+| `GET /v2/productions/{id}/diagram` | Obtener solo el diagrama (puede ser antiguo) | **Puede ser antiguo** | Solo `{ processNodes, totals }` |
+| `GET /v2/productions/{id}/process-tree` | **Obtener árbol siempre actualizado** | **Siempre mejorado** | Solo `{ processNodes, totals }` |
+
+**Diferencias clave**:
+
+1. **`/diagram`**:
+   - Puede retornar `diagram_data` antiguo guardado en BD (formato antiguo)
+   - Solo calcula dinámicamente si no existe o hay procesos nuevos
+   - Útil para compatibilidad con datos antiguos
+
+2. **`/process-tree`**:
+   - **Siempre calcula dinámicamente** desde procesos actuales
+   - **Siempre usa formato mejorado** (camelCase, relaciones completas, etc.)
+   - **Recomendado** para nuevas implementaciones
+
+3. **`?include_diagram=true`**:
+   - Incluye `diagramData` dentro del objeto Production completo
+   - Útil cuando necesitas la producción completa + diagrama en una sola llamada
+   - Usa `getDiagramData()` (mismo comportamiento que `/diagram`)
+
+**Recomendación**: Para nuevas implementaciones, usar `/process-tree` para garantizar formato consistente y datos actualizados.
 
 #### `getTotals(string $id)` - Obtener Totales
 ```php
@@ -855,49 +898,77 @@ Todos los endpoints devuelven respuestas con la estructura estándar:
             "processNodes": [
                 {
                     "id": 1,
-                    "production_id": 1,
-                    "parent_record_id": null,
+                    "productionId": 1,
+                    "production": {
+                        "id": 1,
+                        "lot": "LOT-2024-001",
+                        "openedAt": "2024-01-15T10:30:00Z",
+                        "closedAt": null
+                    },
+                    "parentRecordId": null,
+                    "parent": null,
+                    "processId": 3,
                     "process": {
                         "id": 3,
                         "name": "Eviscerado",
                         "type": "processing"
                     },
-                    "started_at": "2024-01-15T10:35:00Z",
-                    "finished_at": "2024-01-15T12:00:00Z",
+                    "startedAt": "2024-01-15T10:35:00Z",
+                    "finishedAt": "2024-01-15T12:00:00Z",
                     "notes": null,
                     "isRoot": true,
                     "isFinal": false,
                     "isCompleted": true,
+                    "totalInputWeight": 25.5,
+                    "totalOutputWeight": 245.5,
+                    "totalInputBoxes": 1,
+                    "totalOutputBoxes": 10,
+                    "waste": 0,
+                    "wastePercentage": 0,
+                    "yield": 220.0,
+                    "yieldPercentage": 862.75,
                     "inputs": [
                         {
                             "id": 1,
                             "type": "stock_box",
-                            "box_id": 123,
+                            "productionRecordId": 1,
+                            "boxId": 123,
                             "box": {
                                 "id": 123,
                                 "lot": "LOT-2024-001",
-                                "net_weight": 25.5,
-                                "gross_weight": 26.0
+                                "netWeight": 25.5,
+                                "grossWeight": 26.0,
+                                "product": {
+                                    "id": 10,
+                                    "name": "Atún entero"
+                                }
                             },
                             "product": {
                                 "id": 10,
                                 "name": "Atún entero"
                             },
-                            "weight": 25.5
+                            "lot": "LOT-2024-001",
+                            "weight": 25.5,
+                            "createdAt": "2024-01-15T11:05:00Z",
+                            "updatedAt": "2024-01-15T11:05:00Z"
                         }
                     ],
+                    "parentOutputConsumptions": [],
                     "outputs": [
                         {
                             "id": 1,
-                            "product_id": 11,
+                            "productionRecordId": 1,
+                            "productId": 11,
                             "product": {
                                 "id": 11,
                                 "name": "Atún eviscerado"
                             },
-                            "lot_id": "LOT-2024-001-EV",
+                            "lotId": "LOT-2024-001-EV",
                             "boxes": 10,
-                            "weight_kg": 245.5,
-                            "average_weight_per_box": 24.55
+                            "weightKg": 245.5,
+                            "averageWeightPerBox": 24.55,
+                            "createdAt": "2024-01-15T11:10:00Z",
+                            "updatedAt": "2024-01-15T11:10:00Z"
                         }
                     ],
                     "children": [],
@@ -910,7 +981,9 @@ Todos los endpoints devuelven respuestas con la estructura estándar:
                         "wastePercentage": 0,
                         "yield": 220.0,
                         "yieldPercentage": 862.75
-                    }
+                    },
+                    "createdAt": "2024-01-15T10:35:00Z",
+                    "updatedAt": "2024-01-15T12:00:00Z"
                 }
             ],
             "totals": {
@@ -940,7 +1013,14 @@ Todos los endpoints devuelven respuestas con la estructura estándar:
 }
 ```
 
-**Nota**: Los campos `diagramData` y `totals` solo se incluyen si se pasan los query params `include_diagram=true` y `include_totals=true`.
+**Notas importantes**:
+- Los campos `diagramData` y `totals` solo se incluyen si se pasan los query params `include_diagram=true` y `include_totals=true`
+- **Formato mejorado**: Los `processNodes` en `diagramData` usan el formato mejorado de `getNodeData()`:
+  - camelCase en lugar de snake_case
+  - Incluye relaciones `production` y `parent` completas
+  - Totales en nivel raíz (`waste`, `yield`, `totalInputWeight`, etc.)
+  - Inputs y outputs en formato consistente con sus Resources
+  - Incluye `createdAt` y `updatedAt`
 
 ### `PUT /v2/productions/{id}` - Actualizar Producción
 
@@ -1165,40 +1245,211 @@ Todos los endpoints devuelven respuestas con la estructura estándar:
         "processNodes": [
             {
                 "id": 1,
-                "production_id": 1,
-                "parent_record_id": null,
+                "productionId": 1,
+                "production": {
+                    "id": 1,
+                    "lot": "LOT-2024-001",
+                    "openedAt": "2024-01-15T10:30:00Z",
+                    "closedAt": null
+                },
+                "parentRecordId": null,
+                "parent": null,
+                "processId": 3,
                 "process": {
                     "id": 3,
                     "name": "Eviscerado",
                     "type": "processing"
                 },
-                "started_at": "2024-01-15T10:35:00Z",
-                "finished_at": "2024-01-15T12:00:00Z",
-                "notes": null,
+                "startedAt": "2024-01-15T10:35:00Z",
+                "finishedAt": "2024-01-15T12:00:00Z",
+                "notes": "Proceso de eviscerado manual",
                 "isRoot": true,
                 "isFinal": false,
                 "isCompleted": true,
-                "inputs": [...],
-                "outputs": [...],
-                "children": [...],
-                "totals": {...}
+                "totalInputWeight": 150.50,
+                "totalOutputWeight": 120.30,
+                "totalInputBoxes": 5,
+                "totalOutputBoxes": 8,
+                "waste": 30.20,
+                "wastePercentage": 20.07,
+                "yield": 0,
+                "yieldPercentage": 0,
+                "inputs": [
+                    {
+                        "id": 1,
+                        "type": "stock_box",
+                        "productionRecordId": 1,
+                        "boxId": 123,
+                        "box": {
+                            "id": 123,
+                            "lot": "LOT-2024-001",
+                            "netWeight": 25.5,
+                            "grossWeight": 26.0,
+                            "product": {
+                                "id": 10,
+                                "name": "Atún entero"
+                            }
+                        },
+                        "product": {
+                            "id": 10,
+                            "name": "Atún entero"
+                        },
+                        "lot": "LOT-2024-001",
+                        "weight": 25.5,
+                        "createdAt": "2024-01-15T11:05:00Z",
+                        "updatedAt": "2024-01-15T11:05:00Z"
+                    }
+                ],
+                "parentOutputConsumptions": [],
+                "outputs": [
+                    {
+                        "id": 1,
+                        "productionRecordId": 1,
+                        "productId": 11,
+                        "product": {
+                            "id": 11,
+                            "name": "Atún eviscerado"
+                        },
+                        "lotId": "LOT-2024-001-EV",
+                        "boxes": 10,
+                        "weightKg": 245.5,
+                        "averageWeightPerBox": 24.55,
+                        "createdAt": "2024-01-15T11:10:00Z",
+                        "updatedAt": "2024-01-15T11:10:00Z"
+                    }
+                ],
+                "children": [
+                    {
+                        "id": 2,
+                        "productionId": 1,
+                        "production": {
+                            "id": 1,
+                            "lot": "LOT-2024-001",
+                            "openedAt": "2024-01-15T10:30:00Z",
+                            "closedAt": null
+                        },
+                        "parentRecordId": 1,
+                        "parent": {
+                            "id": 1,
+                            "process": {
+                                "id": 3,
+                                "name": "Eviscerado"
+                            }
+                        },
+                        "processId": 4,
+                        "process": {
+                            "id": 4,
+                            "name": "Fileteado",
+                            "type": "processing"
+                        },
+                        "startedAt": "2024-01-15T12:05:00Z",
+                        "finishedAt": "2024-01-15T14:00:00Z",
+                        "notes": null,
+                        "isRoot": false,
+                        "isFinal": true,
+                        "isCompleted": true,
+                        "totalInputWeight": 100.0,
+                        "totalOutputWeight": 95.0,
+                        "totalInputBoxes": 4,
+                        "totalOutputBoxes": 10,
+                        "waste": 5.0,
+                        "wastePercentage": 5.0,
+                        "yield": 0,
+                        "yieldPercentage": 0,
+                        "inputs": [],
+                        "parentOutputConsumptions": [
+                            {
+                                "id": 1,
+                                "type": "parent_output",
+                                "productionRecordId": 2,
+                                "productionOutputId": 1,
+                                "productionOutput": {
+                                    "id": 1,
+                                    "productId": 11,
+                                    "product": {
+                                        "id": 11,
+                                        "name": "Atún eviscerado"
+                                    },
+                                    "weightKg": 245.5,
+                                    "boxes": 10
+                                },
+                                "consumedWeightKg": 100.0,
+                                "consumedBoxes": 4,
+                                "weight": 100.0,
+                                "notes": "Consumo parcial del output del padre",
+                                "createdAt": "2024-01-15T12:10:00Z",
+                                "updatedAt": "2024-01-15T12:10:00Z"
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "id": 2,
+                                "productionRecordId": 2,
+                                "productId": 12,
+                                "product": {
+                                    "id": 12,
+                                    "name": "Filetes de atún"
+                                },
+                                "lotId": "LOT-2024-001-FL",
+                                "boxes": 10,
+                                "weightKg": 95.0,
+                                "averageWeightPerBox": 9.5,
+                                "createdAt": "2024-01-15T14:05:00Z",
+                                "updatedAt": "2024-01-15T14:05:00Z"
+                            }
+                        ],
+                        "children": [],
+                        "totals": {
+                            "inputWeight": 100.0,
+                            "outputWeight": 95.0,
+                            "inputBoxes": 4,
+                            "outputBoxes": 10,
+                            "waste": 5.0,
+                            "wastePercentage": 5.0,
+                            "yield": 0,
+                            "yieldPercentage": 0
+                        },
+                        "createdAt": "2024-01-15T12:05:00Z",
+                        "updatedAt": "2024-01-15T14:00:00Z"
+                    }
+                ],
+                "totals": {
+                    "inputWeight": 150.50,
+                    "outputWeight": 120.30,
+                    "inputBoxes": 5,
+                    "outputBoxes": 8,
+                    "waste": 30.20,
+                    "wastePercentage": 20.07,
+                    "yield": 0,
+                    "yieldPercentage": 0
+                },
+                "createdAt": "2024-01-15T10:35:00Z",
+                "updatedAt": "2024-01-15T12:00:00Z"
             }
         ],
         "totals": {
-            "totalInputWeight": 25.5,
-            "totalOutputWeight": 425.5,
+            "totalInputWeight": 150.50,
+            "totalOutputWeight": 215.30,
             "totalWaste": 0,
             "totalWastePercentage": 0,
-            "totalYield": 400.0,
-            "totalYieldPercentage": 1568.63,
-            "totalInputBoxes": 1,
-            "totalOutputBoxes": 25
+            "totalYield": 64.80,
+            "totalYieldPercentage": 43.06,
+            "totalInputBoxes": 5,
+            "totalOutputBoxes": 18
         }
     }
 }
 ```
 
-**Nota**: Similar a `/diagram`, pero siempre incluye los totales globales.
+**Notas importantes**:
+- **Formato mejorado**: Usa camelCase y es consistente con `ProductionRecordResource`
+- **Relaciones completas**: Incluye `production` y `parent` con información básica
+- **Totales en nivel raíz**: `waste`, `yield`, `totalInputWeight`, etc. están en el nivel raíz del nodo
+- **Totales también en objeto `totals`**: Se mantiene para compatibilidad
+- **Inputs y outputs mejorados**: Formato consistente con `ProductionInputResource` y `ProductionOutputResource`
+- **Fechas incluidas**: `createdAt` y `updatedAt` en todos los niveles
+- **Árbol recursivo**: Los `children` se construyen recursivamente con la misma estructura
+- Similar a `/diagram`, pero siempre incluye los totales globales
 
 ### `GET /v2/productions/{id}/totals` - Obtener Totales
 

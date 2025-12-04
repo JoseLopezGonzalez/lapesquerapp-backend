@@ -90,11 +90,14 @@ class ProductionRecord extends Model
     }
 
     /**
-     * Verificar si es un proceso final (solo tiene outputs, no inputs)
+     * Verificar si es un proceso final (no tiene inputs y no tiene procesos hijos)
      */
     public function isFinal()
     {
-        return $this->inputs()->count() === 0 && $this->outputs()->count() > 0;
+        return $this->inputs()->count() === 0 
+            && $this->parentOutputConsumptions()->count() === 0
+            && $this->children()->count() === 0
+            && $this->outputs()->count() > 0;
     }
 
     /**
@@ -220,12 +223,20 @@ class ProductionRecord extends Model
 
     /**
      * Obtener la estructura del nodo para el diagrama
-     * Compatible con la estructura antigua de diagram_data
+     * Mejorado para ser consistente con ProductionRecordResource
      */
     public function getNodeData()
     {
         // Asegurar que las relaciones estén cargadas
-        $this->loadMissing(['process', 'inputs.box.product', 'outputs.product', 'children', 'parentOutputConsumptions.productionOutput.product']);
+        $this->loadMissing([
+            'production',
+            'parent',
+            'process',
+            'inputs.box.product',
+            'outputs.product',
+            'children',
+            'parentOutputConsumptions.productionOutput.product'
+        ]);
 
         // Construir árbol de hijos recursivamente
         $childrenData = [];
@@ -233,23 +244,48 @@ class ProductionRecord extends Model
             $childrenData[] = $child->getNodeData();
         }
 
-        // Preparar inputs desde stock (cajas)
+        // Calcular diferencia para determinar si hay pérdida o ganancia
+        $inputWeight = $this->total_input_weight;
+        $outputWeight = $this->total_output_weight;
+        $difference = $inputWeight - $outputWeight;
+        
+        // Calcular waste (solo si hay pérdida)
+        $waste = $difference > 0 ? round($difference, 2) : 0;
+        $wastePercentage = ($difference > 0 && $inputWeight > 0) 
+            ? round(($difference / $inputWeight) * 100, 2) 
+            : 0;
+        
+        // Calcular yield (solo si hay ganancia)
+        $yield = $difference < 0 ? round(abs($difference), 2) : 0;
+        $yieldPercentage = ($difference < 0 && $inputWeight > 0) 
+            ? round((abs($difference) / $inputWeight) * 100, 2) 
+            : 0;
+
+        // Preparar inputs desde stock (cajas) - formato consistente con ProductionInputResource
         $inputsData = $this->inputs->map(function ($input) {
             return [
                 'id' => $input->id,
                 'type' => 'stock_box',
-                'box_id' => $input->box_id,
-                'box' => [
+                'productionRecordId' => $input->production_record_id,
+                'boxId' => $input->box_id,
+                'box' => $input->box ? [
                     'id' => $input->box->id,
                     'lot' => $input->box->lot,
-                    'net_weight' => $input->box->net_weight,
-                    'gross_weight' => $input->box->gross_weight,
-                ],
-                'product' => $input->box->product ? [
+                    'netWeight' => $input->box->net_weight,
+                    'grossWeight' => $input->box->gross_weight,
+                    'product' => $input->box->product ? [
+                        'id' => $input->box->product->id,
+                        'name' => $input->box->product->name,
+                    ] : null,
+                ] : null,
+                'product' => $input->box && $input->box->product ? [
                     'id' => $input->box->product->id,
                     'name' => $input->box->product->name,
                 ] : null,
+                'lot' => $input->lot,
                 'weight' => $input->box->net_weight ?? 0,
+                'createdAt' => $input->created_at?->toIso8601String(),
+                'updatedAt' => $input->updated_at?->toIso8601String(),
             ];
         })->toArray();
 
@@ -258,39 +294,46 @@ class ProductionRecord extends Model
             return [
                 'id' => $consumption->id,
                 'type' => 'parent_output',
-                'production_output_id' => $consumption->production_output_id,
-                'production_output' => [
+                'productionRecordId' => $consumption->production_record_id,
+                'productionOutputId' => $consumption->production_output_id,
+                'productionOutput' => $consumption->productionOutput ? [
                     'id' => $consumption->productionOutput->id,
+                    'productId' => $consumption->productionOutput->product_id,
                     'product' => $consumption->productionOutput->product ? [
                         'id' => $consumption->productionOutput->product->id,
                         'name' => $consumption->productionOutput->product->name,
                     ] : null,
-                    'weight_kg' => $consumption->productionOutput->weight_kg,
+                    'weightKg' => (float) $consumption->productionOutput->weight_kg,
                     'boxes' => $consumption->productionOutput->boxes,
-                ],
-                'consumed_weight_kg' => $consumption->consumed_weight_kg,
-                'consumed_boxes' => $consumption->consumed_boxes,
-                'weight' => $consumption->consumed_weight_kg,
+                ] : null,
+                'consumedWeightKg' => (float) $consumption->consumed_weight_kg,
+                'consumedBoxes' => $consumption->consumed_boxes,
+                'weight' => (float) $consumption->consumed_weight_kg,
                 'notes' => $consumption->notes,
+                'createdAt' => $consumption->created_at?->toIso8601String(),
+                'updatedAt' => $consumption->updated_at?->toIso8601String(),
             ];
         })->toArray();
 
         // Combinar ambos tipos de inputs
         $allInputsData = array_merge($inputsData, $parentOutputConsumptionsData);
 
-        // Preparar outputs
+        // Preparar outputs - formato consistente con ProductionOutputResource
         $outputsData = $this->outputs->map(function ($output) {
             return [
                 'id' => $output->id,
-                'product_id' => $output->product_id,
+                'productionRecordId' => $output->production_record_id,
+                'productId' => $output->product_id,
                 'product' => $output->product ? [
                     'id' => $output->product->id,
                     'name' => $output->product->name,
                 ] : null,
-                'lot_id' => $output->lot_id,
+                'lotId' => $output->lot_id,
                 'boxes' => $output->boxes,
-                'weight_kg' => $output->weight_kg,
-                'average_weight_per_box' => $output->average_weight_per_box,
+                'weightKg' => (float) $output->weight_kg,
+                'averageWeightPerBox' => (float) $output->average_weight_per_box,
+                'createdAt' => $output->created_at?->toIso8601String(),
+                'updatedAt' => $output->updated_at?->toIso8601String(),
             ];
         })->toArray();
 
@@ -299,24 +342,50 @@ class ProductionRecord extends Model
 
         return [
             'id' => $this->id,
-            'production_id' => $this->production_id,
-            'parent_record_id' => $this->parent_record_id,
+            'productionId' => $this->production_id,
+            'production' => $this->production ? [
+                'id' => $this->production->id,
+                'lot' => $this->production->lot,
+                'openedAt' => $this->production->opened_at?->toIso8601String(),
+                'closedAt' => $this->production->closed_at?->toIso8601String(),
+            ] : null,
+            'parentRecordId' => $this->parent_record_id,
+            'parent' => $this->parent ? [
+                'id' => $this->parent->id,
+                'process' => $this->parent->process ? [
+                    'id' => $this->parent->process->id,
+                    'name' => $this->parent->process->name,
+                ] : null,
+            ] : null,
+            'processId' => $this->process_id,
             'process' => $this->process ? [
                 'id' => $this->process->id,
                 'name' => $this->process->name,
                 'type' => $this->process->type,
             ] : null,
-            'started_at' => $this->started_at?->toIso8601String(),
-            'finished_at' => $this->finished_at?->toIso8601String(),
+            'startedAt' => $this->started_at?->toIso8601String(),
+            'finishedAt' => $this->finished_at?->toIso8601String(),
             'notes' => $this->notes,
             'isRoot' => $this->isRoot(),
             'isFinal' => $this->isFinal(),
             'isCompleted' => $this->isCompleted(),
+            // Totales en nivel raíz (consistente con ProductionRecordResource)
+            'totalInputWeight' => round($inputWeight, 2),
+            'totalOutputWeight' => round($outputWeight, 2),
+            'totalInputBoxes' => $this->total_input_boxes,
+            'totalOutputBoxes' => $this->total_output_boxes,
+            'waste' => $waste,
+            'wastePercentage' => $wastePercentage,
+            'yield' => $yield,
+            'yieldPercentage' => $yieldPercentage,
             'inputs' => $allInputsData,
             'parentOutputConsumptions' => $parentOutputConsumptionsData,
             'outputs' => $outputsData,
             'children' => $childrenData,
+            // Totales también en objeto totals (para compatibilidad)
             'totals' => $totals,
+            'createdAt' => $this->created_at?->toIso8601String(),
+            'updatedAt' => $this->updated_at?->toIso8601String(),
         ];
     }
 
