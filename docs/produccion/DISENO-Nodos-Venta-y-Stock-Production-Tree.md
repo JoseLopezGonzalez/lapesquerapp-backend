@@ -151,39 +151,69 @@ Un palet se incluye en los nodos de venta si:
 
 ### Estructura de un Nodo de Venta
 
+**✨ IMPORTANTE**: Se crea **UN SOLO nodo de venta por producto** con desglose de todos los pedidos.
+
 ```json
 {
   "type": "sales",
-  "id": "sales-{productId}-{orderId}",
+  "id": "sales-{productId}",
   "parentRecordId": 1,  // ✨ ID del nodo final padre (null si no tiene padre)
   "productionId": 1,    // ID de la producción
   "product": {
     "id": 5,
     "name": "Atún en Lata 200g"
   },
-  "order": {
-    "id": 123,
-    "formattedId": "#00123",
-    "customer": {
-      "id": 45,
-      "name": "Supermercado Central"
-    },
-    "loadDate": "2024-02-15T00:00:00Z",
-    "status": "pending"
-  },
-  "pallets": [
+  "orders": [
     {
-      "id": 789,
-      "availableBoxesCount": 10,
-      "totalAvailableWeight": 25.50
+      "order": {
+        "id": 123,
+        "formattedId": "#00123",
+        "customer": {
+          "id": 45,
+          "name": "Supermercado Central"
+        },
+        "loadDate": "2024-02-15T00:00:00Z",
+        "status": "pending"
+      },
+      "pallets": [
+        {
+          "id": 789,
+          "availableBoxesCount": 10,
+          "totalAvailableWeight": 25.50
+        }
+      ],
+      "totalBoxes": 10,
+      "totalNetWeight": 25.50,
+      "summary": {
+        "palletsCount": 1,
+        "boxesCount": 10,
+        "netWeight": 25.50
+      }
+    },
+    {
+      "order": {
+        "id": 124,
+        "formattedId": "#00124",
+        "customer": {
+          "id": 46,
+          "name": "Otro Cliente"
+        },
+        "loadDate": "2024-02-20T00:00:00Z",
+        "status": "pending"
+      },
+      "pallets": [...],
+      "totalBoxes": 8,
+      "totalNetWeight": 20.0,
+      "summary": {...}
     }
   ],
-  "totalBoxes": 10,
-  "totalNetWeight": 25.50,
+  "totalBoxes": 18,  // Total de todos los pedidos
+  "totalNetWeight": 45.50,  // Total de todos los pedidos
   "summary": {
-    "palletsCount": 1,
-    "boxesCount": 10,
-    "netWeight": 25.50
+    "ordersCount": 2,  // Número de pedidos
+    "palletsCount": 2,  // Total de palets
+    "boxesCount": 18,  // Total de cajas
+    "netWeight": 45.50  // Peso total
   },
   "children": []  // Los nodos de venta/stock no tienen hijos
 }
@@ -200,11 +230,11 @@ Un palet se incluye en los nodos de venta si:
 
 ### Agrupación
 
-Los nodos se agrupan por **producto + pedido** (independientemente de cuántos palets haya):
-- Si un pedido tiene múltiples productos del mismo lote → múltiples nodos (uno por producto)
-- Si un producto está en múltiples pedidos → múltiples nodos (uno por pedido)
-- **Todos los palets** del mismo producto en el mismo pedido se agrupan en **un solo nodo**
-- Dentro del nodo, se incluye la lista completa de palets con sus detalles
+**✨ NUEVO**: Se crea **UN SOLO nodo de venta por producto**:
+- **Un nodo de venta** contiene **todos los pedidos** de ese producto (desglose en array `orders`)
+- Cada elemento en `orders` representa un pedido con sus palets, totales y resumen
+- Los totales del nodo (`totalBoxes`, `totalNetWeight`) son la suma de todos los pedidos
+- Si un pedido tiene múltiples productos del mismo lote → múltiples nodos de venta (uno por producto)
 
 ---
 
@@ -229,35 +259,60 @@ Un palet se incluye en los nodos de stock si:
 
 ### Estructura de un Nodo de Stock
 
+**✨ IMPORTANTE**: Se crea **UN SOLO nodo de stock por producto** con desglose de todos los almacenes.
+
 ```json
 {
   "type": "stock",
-  "id": "stock-{productId}-{storeId}",
+  "id": "stock-{productId}",
   "parentRecordId": 1,  // ✨ ID del nodo final padre (null si no tiene padre)
   "productionId": 1,    // ID de la producción
   "product": {
     "id": 5,
     "name": "Atún en Lata 200g"
   },
-  "store": {
-    "id": 3,
-    "name": "Almacén Central",
-    "temperature": -18.00
-  },
-  "pallets": [
+  "stores": [
     {
-      "id": 456,
-      "availableBoxesCount": 15,
-      "totalAvailableWeight": 38.25,
-      "position": "A-12"
+      "store": {
+        "id": 3,
+        "name": "Almacén Central",
+        "temperature": -18.00
+      },
+      "pallets": [
+        {
+          "id": 456,
+          "availableBoxesCount": 15,
+          "totalAvailableWeight": 38.25,
+          "position": "A-12"
+        }
+      ],
+      "totalBoxes": 15,
+      "totalNetWeight": 38.25,
+      "summary": {
+        "palletsCount": 1,
+        "boxesCount": 15,
+        "netWeight": 38.25
+      }
+    },
+    {
+      "store": {
+        "id": 4,
+        "name": "Almacén Norte",
+        "temperature": -20.00
+      },
+      "pallets": [...],
+      "totalBoxes": 10,
+      "totalNetWeight": 25.0,
+      "summary": {...}
     }
   ],
-  "totalBoxes": 15,
-  "totalNetWeight": 38.25,
+  "totalBoxes": 25,  // Total de todos los almacenes
+  "totalNetWeight": 63.25,  // Total de todos los almacenes
   "summary": {
-    "palletsCount": 1,
-    "boxesCount": 15,
-    "netWeight": 38.25
+    "storesCount": 2,  // Número de almacenes
+    "palletsCount": 2,  // Total de palets
+    "boxesCount": 25,  // Total de cajas
+    "netWeight": 63.25  // Peso total
   },
   "children": []  // Los nodos de stock no tienen hijos
 }
@@ -265,11 +320,11 @@ Un palet se incluye en los nodos de stock si:
 
 ### Agrupación
 
-Los nodos se agrupan por **producto + almacén** (independientemente de cuántos palets haya):
-- Si un almacén tiene múltiples productos del mismo lote → múltiples nodos (uno por producto)
-- Si un producto está en múltiples almacenes → múltiples nodos (uno por almacén)
-- **Todos los palets** del mismo producto en el mismo almacén se agrupan en **un solo nodo**
-- Dentro del nodo, se incluye la lista completa de palets con sus detalles (incluyendo posición si aplica)
+**✨ NUEVO**: Se crea **UN SOLO nodo de stock por producto**:
+- **Un nodo de stock** contiene **todos los almacenes** donde está ese producto (desglose en array `stores`)
+- Cada elemento en `stores` representa un almacén con sus palets, totales y resumen
+- Los totales del nodo (`totalBoxes`, `totalNetWeight`) son la suma de todos los almacenes
+- Si un almacén tiene múltiples productos del mismo lote → múltiples nodos de stock (uno por producto)
 
 ---
 

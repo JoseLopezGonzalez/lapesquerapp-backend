@@ -785,10 +785,10 @@ class Production extends Model
                         if (isset($finalNodesByProduct[$productId]) && count($finalNodesByProduct[$productId]) === 1) {
                             // Verificar que este es el único nodo final
                             if ($finalNodesByProduct[$productId][0] === $node['id']) {
-                                // Crear nodos de venta para este producto
+                                // Crear UN SOLO nodo de venta para este producto (con desglose de pedidos)
                                 $salesNodes = $this->createSalesNodesForProduct($productId, $salesData[$productId], $node['id']);
                                 
-                                // Añadir como hijos
+                                // Añadir como hijo (ahora es un solo nodo)
                                 if (!isset($node['children'])) {
                                     $node['children'] = [];
                                 }
@@ -826,10 +826,10 @@ class Production extends Model
                         if (isset($finalNodesByProduct[$productId]) && count($finalNodesByProduct[$productId]) === 1) {
                             // Verificar que este es el único nodo final
                             if ($finalNodesByProduct[$productId][0] === $node['id']) {
-                                // Crear nodos de stock para este producto
+                                // Crear UN SOLO nodo de stock para este producto (con desglose de almacenes)
                                 $stockNodes = $this->createStockNodesForProduct($productId, $stockData[$productId], $node['id']);
                                 
-                                // Añadir como hijos
+                                // Añadir como hijo (ahora es un solo nodo)
                                 if (!isset($node['children'])) {
                                     $node['children'] = [];
                                 }
@@ -843,25 +843,36 @@ class Production extends Model
     }
 
     /**
-     * Crear nodos de venta para un producto
+     * Crear UN SOLO nodo de venta para un producto con desglose de pedidos
      * 
      * @param int $productId ID del producto
      * @param array $data Datos de venta agrupados por pedido
      * @param int|null $parentRecordId ID del nodo final padre (null si no tiene padre)
-     * @return array Array de nodos de venta
+     * @return array Array con un solo nodo de venta (con desglose de pedidos)
      */
     private function createSalesNodesForProduct(int $productId, array $data, ?int $parentRecordId)
     {
-        $nodes = [];
+        if (empty($data)) {
+            return [];
+        }
+        
+        // Obtener el producto del primer pedido (todos deberían tener el mismo producto)
+        $firstOrderData = reset($data);
+        $product = $firstOrderData['product'];
+        
+        // Crear desglose de pedidos
+        $ordersData = [];
+        $totalBoxes = 0;
+        $totalNetWeight = 0;
+        $totalPallets = 0;
         
         foreach ($data as $orderId => $orderData) {
-            $product = $orderData['product'];
             $order = $orderData['order'];
             
-            // Calcular totales de palets
+            // Calcular totales de palets para este pedido
             $palletsData = [];
-            $totalBoxes = 0;
-            $totalNetWeight = 0;
+            $orderBoxes = 0;
+            $orderNetWeight = 0;
             
             foreach ($orderData['pallets'] as $palletData) {
                 $pallet = $palletData['pallet'];
@@ -876,19 +887,12 @@ class Production extends Model
                     'totalAvailableWeight' => round($totalAvailableWeight, 2),
                 ];
                 
-                $totalBoxes += $availableBoxesCount;
-                $totalNetWeight += $totalAvailableWeight;
+                $orderBoxes += $availableBoxesCount;
+                $orderNetWeight += $totalAvailableWeight;
+                $totalPallets++;
             }
             
-            $nodes[] = [
-                'type' => 'sales',
-                'id' => "sales-{$productId}-{$orderId}",
-                'parentRecordId' => $parentRecordId,
-                'productionId' => $this->id,
-                'product' => [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                ],
+            $ordersData[] = [
                 'order' => [
                     'id' => $order->id,
                     'formattedId' => $order->formatted_id,
@@ -902,40 +906,73 @@ class Production extends Model
                     'status' => $order->status,
                 ],
                 'pallets' => $palletsData,
-                'totalBoxes' => $totalBoxes,
-                'totalNetWeight' => round($totalNetWeight, 2),
+                'totalBoxes' => $orderBoxes,
+                'totalNetWeight' => round($orderNetWeight, 2),
                 'summary' => [
                     'palletsCount' => count($palletsData),
-                    'boxesCount' => $totalBoxes,
-                    'netWeight' => round($totalNetWeight, 2),
+                    'boxesCount' => $orderBoxes,
+                    'netWeight' => round($orderNetWeight, 2),
                 ],
-                'children' => [],
             ];
+            
+            $totalBoxes += $orderBoxes;
+            $totalNetWeight += $orderNetWeight;
         }
         
-        return $nodes;
+        // Retornar UN SOLO nodo con desglose de pedidos
+        return [[
+            'type' => 'sales',
+            'id' => "sales-{$productId}",
+            'parentRecordId' => $parentRecordId,
+            'productionId' => $this->id,
+            'product' => [
+                'id' => $product->id,
+                'name' => $product->name,
+            ],
+            'orders' => $ordersData,
+            'totalBoxes' => $totalBoxes,
+            'totalNetWeight' => round($totalNetWeight, 2),
+            'summary' => [
+                'ordersCount' => count($ordersData),
+                'palletsCount' => $totalPallets,
+                'boxesCount' => $totalBoxes,
+                'netWeight' => round($totalNetWeight, 2),
+            ],
+            'children' => [],
+        ]];
     }
 
     /**
-     * Crear nodos de stock para un producto
+     * Crear UN SOLO nodo de stock para un producto con desglose de almacenes
      * 
      * @param int $productId ID del producto
      * @param array $data Datos de stock agrupados por almacén
      * @param int|null $parentRecordId ID del nodo final padre (null si no tiene padre)
-     * @return array Array de nodos de stock
+     * @return array Array con un solo nodo de stock (con desglose de almacenes)
      */
     private function createStockNodesForProduct(int $productId, array $data, ?int $parentRecordId)
     {
-        $nodes = [];
+        if (empty($data)) {
+            return [];
+        }
+        
+        // Obtener el producto del primer almacén (todos deberían tener el mismo producto)
+        $firstStoreData = reset($data);
+        $product = $firstStoreData['product'];
+        
+        // Crear desglose de almacenes
+        $storesData = [];
+        $totalBoxes = 0;
+        $totalNetWeight = 0;
+        $totalPallets = 0;
         
         foreach ($data as $storeId => $storeData) {
-            $product = $storeData['product'];
             $store = $storeData['store'];
             
-            // Calcular totales de palets
+            // Calcular totales de palets para este almacén
             $palletsData = [];
-            $totalBoxes = 0;
-            $totalNetWeight = 0;
+            $storeBoxes = 0;
+            $storeNetWeight = 0;
             
             foreach ($storeData['pallets'] as $palletData) {
                 $pallet = $palletData['pallet'];
@@ -952,47 +989,62 @@ class Production extends Model
                     'position' => $storedPallet->position,
                 ];
                 
-                $totalBoxes += $availableBoxesCount;
-                $totalNetWeight += $totalAvailableWeight;
+                $storeBoxes += $availableBoxesCount;
+                $storeNetWeight += $totalAvailableWeight;
+                $totalPallets++;
             }
             
-            $nodes[] = [
-                'type' => 'stock',
-                'id' => "stock-{$productId}-{$storeId}",
-                'parentRecordId' => $parentRecordId,
-                'productionId' => $this->id,
-                'product' => [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                ],
+            $storesData[] = [
                 'store' => [
                     'id' => $store->id,
                     'name' => $store->name,
                     'temperature' => $store->temperature,
                 ],
                 'pallets' => $palletsData,
-                'totalBoxes' => $totalBoxes,
-                'totalNetWeight' => round($totalNetWeight, 2),
+                'totalBoxes' => $storeBoxes,
+                'totalNetWeight' => round($storeNetWeight, 2),
                 'summary' => [
                     'palletsCount' => count($palletsData),
-                    'boxesCount' => $totalBoxes,
-                    'netWeight' => round($totalNetWeight, 2),
+                    'boxesCount' => $storeBoxes,
+                    'netWeight' => round($storeNetWeight, 2),
                 ],
-                'children' => [],
             ];
+            
+            $totalBoxes += $storeBoxes;
+            $totalNetWeight += $storeNetWeight;
         }
         
-        return $nodes;
+        // Retornar UN SOLO nodo con desglose de almacenes
+        return [[
+            'type' => 'stock',
+            'id' => "stock-{$productId}",
+            'parentRecordId' => $parentRecordId,
+            'productionId' => $this->id,
+            'product' => [
+                'id' => $product->id,
+                'name' => $product->name,
+            ],
+            'stores' => $storesData,
+            'totalBoxes' => $totalBoxes,
+            'totalNetWeight' => round($totalNetWeight, 2),
+            'summary' => [
+                'storesCount' => count($storesData),
+                'palletsCount' => $totalPallets,
+                'boxesCount' => $totalBoxes,
+                'netWeight' => round($totalNetWeight, 2),
+            ],
+            'children' => [],
+        ]];
     }
 
     /**
-     * Crear nodos de venta sin padre:
+     * Crear nodos de venta sin padre (orphan nodes):
      * - Producto no tiene nodo final
      * - Producto tiene múltiples nodos finales (ambigüedad)
      * 
      * @param array $salesData Datos de venta agrupados por producto
      * @param array $finalNodesByProduct Nodos finales agrupados por producto
-     * @return array Array de nodos de venta sin padre
+     * @return array Array de nodos de venta sin padre (un nodo por producto con desglose de pedidos)
      */
     private function createOrphanSalesNodes(array $salesData, array $finalNodesByProduct)
     {
@@ -1010,13 +1062,13 @@ class Production extends Model
     }
 
     /**
-     * Crear nodos de stock sin padre:
+     * Crear nodos de stock sin padre (orphan nodes):
      * - Producto no tiene nodo final
      * - Producto tiene múltiples nodos finales (ambigüedad)
      * 
      * @param array $stockData Datos de stock agrupados por producto
      * @param array $finalNodesByProduct Nodos finales agrupados por producto
-     * @return array Array de nodos de stock sin padre
+     * @return array Array de nodos de stock sin padre (un nodo por producto con desglose de almacenes)
      */
     private function createOrphanStockNodes(array $stockData, array $finalNodesByProduct)
     {
