@@ -90,14 +90,21 @@ class ProductionRecord extends Model
     }
 
     /**
-     * Verificar si es un proceso final (no tiene inputs y no tiene procesos hijos)
+     * Verificar si es un proceso final (no tiene inputs de stock, no tiene procesos hijos, pero puede consumir del padre)
+     * 
+     * Condiciones:
+     * - No tiene inputs de stock (cajas directamente asignadas)
+     * - No tiene procesos hijos (no hay más transformaciones)
+     * - Tiene al menos un output (produce productos)
+     * 
+     * Nota: Los nodos finales SÍ pueden consumir outputs del padre (excepto si son raíz).
+     * Solo los nodos iniciales (raíz) no consumen del padre porque no tienen padre.
      */
     public function isFinal()
     {
-        return $this->inputs()->count() === 0 
-            && $this->parentOutputConsumptions()->count() === 0
-            && $this->children()->count() === 0
-            && $this->outputs()->count() > 0;
+        return $this->inputs()->count() === 0      // No tiene inputs de stock
+            && $this->children()->count() === 0     // No tiene procesos hijos
+            && $this->outputs()->count() > 0;      // Tiene al menos un output
     }
 
     /**

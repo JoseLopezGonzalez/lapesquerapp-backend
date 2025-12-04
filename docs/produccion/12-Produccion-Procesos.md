@@ -252,7 +252,7 @@ Además del estado, cada proceso tiene **características** que definen su posic
 | Característica | Campo en API | Método | Cómo se Determina |
 |----------------|--------------|--------|-------------------|
 | **Raíz** | `isRoot` | `isRoot()` | `parent_record_id === null` |
-| **Final** | `isFinal` | `isFinal()` | `inputs().count() === 0 && outputs().count() > 0` |
+| **Final** | `isFinal` | `isFinal()` | Ver condiciones completas en `docs/CONDICIONES-NODO-FINAL-PRODUCCION.md` |
 
 ### 📋 Descripción de Características
 
