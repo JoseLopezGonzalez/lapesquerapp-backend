@@ -378,9 +378,34 @@ POST /v2/production-records
 ]
 ```
 
+**Campos**:
+- `production_id` (requerido): ID del lote de producción
+- `parent_record_id` (opcional): ID del proceso padre (para procesos hijos)
+- `process_id` (requerido): ID del tipo de proceso
+- `started_at` (opcional): Fecha y hora de inicio del proceso (formato ISO 8601)
+- `finished_at` (opcional): Fecha y hora de finalización del proceso (formato ISO 8601)
+- `notes` (opcional): Notas adicionales
+
+**Notas importantes**:
+- `started_at` es opcional. Si no se proporciona, el campo quedará como `null` en la base de datos
+- `created_at` y `updated_at` son campos automáticos gestionados por Laravel y no deben enviarse en el request
+- Si no se proporciona `started_at`, se puede establecer posteriormente mediante el endpoint `update`
+
+**Ejemplo de request**:
+```json
+{
+    "production_id": 1,
+    "parent_record_id": null,
+    "process_id": 3,
+    "started_at": "2024-01-15T10:00:00Z",
+    "finished_at": null,
+    "notes": "Proceso inicial"
+}
+```
+
 **Comportamiento**:
 - Crea el proceso
-- Carga relaciones para respuesta
+- Carga relaciones para respuesta (`production`, `parent`, `process`, `inputs`, `outputs`)
 
 **⚠️ Problema**: No valida si `parent_record_id` pertenece al mismo `production_id` (ver observaciones)
 
@@ -396,7 +421,54 @@ GET /v2/production-records/{id}
 PUT /v2/production-records/{id}
 ```
 
-**Validación**: Misma que `store()` pero con `sometimes` en lugar de `required`
+**Validación**:
+```php
+[
+    'production_id' => 'sometimes|exists:tenant.productions,id',
+    'parent_record_id' => 'sometimes|nullable|exists:tenant.production_records,id',
+    'process_id' => 'sometimes|required|exists:tenant.processes,id',
+    'started_at' => 'sometimes|nullable|date',
+    'finished_at' => 'sometimes|nullable|date',
+    'notes' => 'sometimes|nullable|string',
+]
+```
+
+**Campos actualizables**:
+- `production_id` (opcional): ID del lote de producción
+- `parent_record_id` (opcional): ID del proceso padre (puede ser `null` para procesos raíz)
+- `process_id` (opcional, pero requerido si se envía): ID del tipo de proceso
+- `started_at` (opcional): Fecha y hora de inicio del proceso (formato ISO 8601)
+- `finished_at` (opcional): Fecha y hora de finalización del proceso (formato ISO 8601)
+- `notes` (opcional): Notas adicionales
+
+**Notas importantes**:
+- Todos los campos son opcionales (usar `sometimes` en validación)
+- Solo se actualizarán los campos que se envíen en el request
+- `created_at` y `updated_at` son campos automáticos gestionados por Laravel y no deben enviarse en el request
+- `updated_at` se actualiza automáticamente cuando se modifica cualquier campo
+
+**Ejemplo de request** (actualizar solo notas y fecha de finalización):
+```json
+{
+    "notes": "Notas actualizadas",
+    "finished_at": "2024-01-15T13:00:00Z"
+}
+```
+
+**Ejemplo de request** (actualizar múltiples campos):
+```json
+{
+    "parent_record_id": 5,
+    "process_id": 3,
+    "started_at": "2024-01-15T10:00:00Z",
+    "finished_at": "2024-01-15T13:00:00Z",
+    "notes": "Proceso actualizado completamente"
+}
+```
+
+**Comportamiento**:
+- Actualiza solo los campos proporcionados en el request
+- Carga relaciones para respuesta (`production`, `parent`, `process`, `inputs`, `outputs`)
 
 **⚠️ Problema**: Permite cambiar `production_id`, lo que podría romper la integridad (ver observaciones)
 
@@ -556,9 +628,25 @@ X-Tenant: empresa1
 
 {
     "production_id": 5,
+    "parent_record_id": null,
     "process_id": 3,
     "started_at": "2024-01-15T11:00:00Z",
+    "finished_at": null,
     "notes": "Proceso inicial de recepción"
+}
+```
+
+### Crear Proceso Raíz sin Fecha de Inicio
+```http
+POST /v2/production-records
+Content-Type: application/json
+X-Tenant: empresa1
+
+{
+    "production_id": 5,
+    "parent_record_id": null,
+    "process_id": 3,
+    "notes": "Proceso inicial - fecha de inicio se establecerá después"
 }
 ```
 
@@ -566,12 +654,53 @@ X-Tenant: empresa1
 ```http
 POST /v2/production-records
 Content-Type: application/json
+X-Tenant: empresa1
 
 {
     "production_id": 5,
     "parent_record_id": 1,
     "process_id": 4,
-    "started_at": "2024-01-15T12:00:00Z"
+    "started_at": "2024-01-15T12:00:00Z",
+    "finished_at": null,
+    "notes": "Proceso hijo de fileteado"
+}
+```
+
+### Actualizar Proceso (solo notas y fecha de finalización)
+```http
+PUT /v2/production-records/1
+Content-Type: application/json
+X-Tenant: empresa1
+
+{
+    "notes": "Notas actualizadas",
+    "finished_at": "2024-01-15T13:00:00Z"
+}
+```
+
+### Actualizar Proceso (múltiples campos)
+```http
+PUT /v2/production-records/1
+Content-Type: application/json
+X-Tenant: empresa1
+
+{
+    "parent_record_id": 5,
+    "process_id": 3,
+    "started_at": "2024-01-15T10:00:00Z",
+    "finished_at": "2024-01-15T13:00:00Z",
+    "notes": "Proceso actualizado completamente"
+}
+```
+
+### Actualizar Fecha de Inicio de un Proceso
+```http
+PUT /v2/production-records/1
+Content-Type: application/json
+X-Tenant: empresa1
+
+{
+    "started_at": "2024-01-15T10:00:00Z"
 }
 ```
 
@@ -589,6 +718,583 @@ POST /v2/production-records/1/finish
 ```http
 GET /v2/production-records?production_id=5&root_only=true
 ```
+
+---
+
+## 📤 Ejemplos de Respuestas de los Endpoints
+
+Todos los endpoints devuelven respuestas con la estructura estándar:
+```json
+{
+    "message": "Mensaje descriptivo",
+    "data": { ... }
+}
+```
+
+### `GET /v2/production-records` - Listar Procesos
+
+**Respuesta (200 OK)**:
+```json
+{
+    "data": [
+        {
+            "id": 1,
+            "productionId": 5,
+            "production": {
+                "id": 5,
+                "lot": "LOT-2024-001",
+                "openedAt": "2024-01-15T10:30:00Z",
+                "closedAt": null
+            },
+            "parentRecordId": null,
+            "parent": null,
+            "processId": 3,
+            "process": {
+                "id": 3,
+                "name": "Eviscerado",
+                "type": "processing"
+            },
+            "startedAt": "2024-01-15T11:00:00Z",
+            "finishedAt": "2024-01-15T12:00:00Z",
+            "notes": "Proceso de eviscerado manual",
+            "isRoot": true,
+            "isFinal": false,
+            "isCompleted": true,
+            "totalInputWeight": 150.50,
+            "totalOutputWeight": 120.30,
+            "totalInputBoxes": 5,
+            "totalOutputBoxes": 8,
+            "waste": 30.20,
+            "wastePercentage": 20.07,
+            "yield": 0,
+            "yieldPercentage": 0,
+            "inputs": [],
+            "outputs": [],
+            "children": [],
+            "createdAt": "2024-01-15T11:00:00Z",
+            "updatedAt": "2024-01-15T12:00:00Z"
+        }
+    ],
+    "links": {
+        "first": "http://api.example.com/v2/production-records?page=1",
+        "last": "http://api.example.com/v2/production-records?page=3",
+        "prev": null,
+        "next": "http://api.example.com/v2/production-records?page=2"
+    },
+    "meta": {
+        "current_page": 1,
+        "from": 1,
+        "last_page": 3,
+        "path": "http://api.example.com/v2/production-records",
+        "per_page": 15,
+        "to": 15,
+        "total": 42
+    }
+}
+```
+
+**Nota**: Las relaciones `production`, `parent`, `process`, `inputs.box.product`, `outputs.product` se cargan automáticamente. Los campos `inputs`, `outputs` y `children` aparecen vacíos en el listado a menos que se carguen explícitamente.
+
+### `GET /v2/production-records?production_id={productionId}` - Obtener Procesos de una Producción
+
+Este es el endpoint principal para obtener todos los procesos (records) de un lote de producción específico.
+
+**Ejemplo de Request**:
+```http
+GET /v2/production-records?production_id=5
+```
+
+**Respuesta (200 OK)**:
+```json
+{
+    "data": [
+        {
+            "id": 1,
+            "productionId": 5,
+            "production": {
+                "id": 5,
+                "lot": "LOT-2024-001",
+                "openedAt": "2024-01-15T10:30:00Z",
+                "closedAt": null
+            },
+            "parentRecordId": null,
+            "parent": null,
+            "processId": 3,
+            "process": {
+                "id": 3,
+                "name": "Eviscerado",
+                "type": "processing"
+            },
+            "startedAt": "2024-01-15T11:00:00Z",
+            "finishedAt": "2024-01-15T12:00:00Z",
+            "notes": "Proceso de eviscerado manual",
+            "isRoot": true,
+            "isFinal": false,
+            "isCompleted": true,
+            "totalInputWeight": 150.50,
+            "totalOutputWeight": 120.30,
+            "totalInputBoxes": 5,
+            "totalOutputBoxes": 8,
+            "waste": 30.20,
+            "wastePercentage": 20.07,
+            "yield": 0,
+            "yieldPercentage": 0,
+            "inputs": [],
+            "outputs": [],
+            "children": [],
+            "createdAt": "2024-01-15T11:00:00Z",
+            "updatedAt": "2024-01-15T12:00:00Z"
+        },
+        {
+            "id": 2,
+            "productionId": 5,
+            "production": {
+                "id": 5,
+                "lot": "LOT-2024-001",
+                "openedAt": "2024-01-15T10:30:00Z",
+                "closedAt": null
+            },
+            "parentRecordId": 1,
+            "parent": {
+                "id": 1,
+                "process": {
+                    "id": 3,
+                    "name": "Eviscerado"
+                }
+            },
+            "processId": 4,
+            "process": {
+                "id": 4,
+                "name": "Fileteado",
+                "type": "processing"
+            },
+            "startedAt": "2024-01-15T12:05:00Z",
+            "finishedAt": "2024-01-15T14:00:00Z",
+            "notes": null,
+            "isRoot": false,
+            "isFinal": true,
+            "isCompleted": true,
+            "totalInputWeight": 100.0,
+            "totalOutputWeight": 95.0,
+            "totalInputBoxes": 4,
+            "totalOutputBoxes": 10,
+            "waste": 5.0,
+            "wastePercentage": 5.0,
+            "yield": 0,
+            "yieldPercentage": 0,
+            "inputs": [],
+            "outputs": [],
+            "children": [],
+            "createdAt": "2024-01-15T12:05:00Z",
+            "updatedAt": "2024-01-15T14:00:00Z"
+        }
+    ],
+    "links": {
+        "first": "http://api.example.com/v2/production-records?production_id=5&page=1",
+        "last": "http://api.example.com/v2/production-records?production_id=5&page=1",
+        "prev": null,
+        "next": null
+    },
+    "meta": {
+        "current_page": 1,
+        "from": 1,
+        "last_page": 1,
+        "path": "http://api.example.com/v2/production-records",
+        "per_page": 15,
+        "to": 2,
+        "total": 2
+    }
+}
+```
+
+**Parámetros de query adicionales** (pueden combinarse con `production_id`):
+- `production_id=5` (required): ID del lote de producción
+- `root_only=true`: Solo procesos raíz (sin padre)
+- `completed=true`: Solo procesos finalizados (`finished_at` != null)
+- `completed=false`: Solo procesos pendientes (`finished_at` == null)
+- `parent_record_id=1`: Solo hijos de este proceso específico
+- `process_id=3`: Solo procesos de este tipo
+- `perPage=20`: Cantidad de resultados por página (default: 15)
+
+**Ejemplos combinados**:
+```http
+# Solo procesos raíz de la producción
+GET /v2/production-records?production_id=5&root_only=true
+
+# Solo procesos finalizados de la producción
+GET /v2/production-records?production_id=5&completed=true
+
+# Solo procesos pendientes de la producción
+GET /v2/production-records?production_id=5&completed=false
+
+# Procesos de un tipo específico en la producción
+GET /v2/production-records?production_id=5&process_id=3
+```
+
+**Nota importante**: Este endpoint retorna una lista plana de procesos. Si necesitas la estructura jerárquica (árbol), usa `GET /v2/productions/{id}/process-tree` o `GET /v2/production-records/{id}/tree`.
+
+### `POST /v2/production-records` - Crear Proceso
+
+**Request**:
+```json
+{
+    "production_id": 5,
+    "process_id": 3,
+    "started_at": "2024-01-15T11:00:00Z",
+    "notes": "Proceso inicial de recepción"
+}
+```
+
+**Respuesta (201 Created)**:
+```json
+{
+    "message": "Registro de producción creado correctamente.",
+    "data": {
+        "id": 1,
+        "productionId": 5,
+        "production": {
+            "id": 5,
+            "lot": "LOT-2024-001",
+            "openedAt": "2024-01-15T10:30:00Z",
+            "closedAt": null
+        },
+        "parentRecordId": null,
+        "parent": null,
+        "processId": 3,
+        "process": {
+            "id": 3,
+            "name": "Eviscerado",
+            "type": "processing"
+        },
+        "startedAt": "2024-01-15T11:00:00Z",
+        "finishedAt": null,
+        "notes": "Proceso inicial de recepción",
+        "isRoot": true,
+        "isFinal": false,
+        "isCompleted": false,
+        "totalInputWeight": 0,
+        "totalOutputWeight": 0,
+        "totalInputBoxes": 0,
+        "totalOutputBoxes": 0,
+        "waste": 0,
+        "wastePercentage": 0,
+        "yield": 0,
+        "yieldPercentage": 0,
+        "inputs": [],
+        "outputs": [],
+        "children": [],
+        "createdAt": "2024-01-15T11:00:00Z",
+        "updatedAt": "2024-01-15T11:00:00Z"
+    }
+}
+```
+
+### `GET /v2/production-records/{id}` - Mostrar Proceso
+
+**Respuesta (200 OK)**:
+```json
+{
+    "message": "Registro de producción obtenido correctamente.",
+    "data": {
+        "id": 1,
+        "productionId": 5,
+        "production": {
+            "id": 5,
+            "lot": "LOT-2024-001",
+            "openedAt": "2024-01-15T10:30:00Z",
+            "closedAt": null
+        },
+        "parentRecordId": null,
+        "parent": null,
+        "processId": 3,
+        "process": {
+            "id": 3,
+            "name": "Eviscerado",
+            "type": "processing"
+        },
+        "startedAt": "2024-01-15T11:00:00Z",
+        "finishedAt": "2024-01-15T12:00:00Z",
+        "notes": "Proceso de eviscerado manual",
+        "isRoot": true,
+        "isFinal": false,
+        "isCompleted": true,
+        "totalInputWeight": 150.50,
+        "totalOutputWeight": 120.30,
+        "totalInputBoxes": 5,
+        "totalOutputBoxes": 8,
+        "waste": 30.20,
+        "wastePercentage": 20.07,
+        "yield": 0,
+        "yieldPercentage": 0,
+        "inputs": [
+            {
+                "id": 1,
+                "productionRecordId": 1,
+                "boxId": 123,
+                "box": {
+                    "id": 123,
+                    "lot": "LOT-2024-001",
+                    "net_weight": 25.5,
+                    "gross_weight": 26.0,
+                    "product": {
+                        "id": 10,
+                        "name": "Atún entero"
+                    }
+                },
+                "product": {
+                    "id": 10,
+                    "name": "Atún entero"
+                },
+                "lot": "LOT-2024-001",
+                "weight": 25.5,
+                "pallet": null,
+                "createdAt": "2024-01-15T11:05:00Z",
+                "updatedAt": "2024-01-15T11:05:00Z"
+            }
+        ],
+        "outputs": [
+            {
+                "id": 1,
+                "productionRecordId": 1,
+                "productId": 11,
+                "product": {
+                    "id": 11,
+                    "name": "Atún eviscerado"
+                },
+                "lotId": "LOT-2024-001-EV",
+                "boxes": 8,
+                "weightKg": 120.30,
+                "averageWeightPerBox": 15.04,
+                "createdAt": "2024-01-15T11:30:00Z",
+                "updatedAt": "2024-01-15T11:30:00Z"
+            }
+        ],
+        "children": [
+            {
+                "id": 2,
+                "productionId": 5,
+                "parentRecordId": 1,
+                "processId": 4,
+                "process": {
+                    "id": 4,
+                    "name": "Fileteado",
+                    "type": "processing"
+                },
+                "startedAt": "2024-01-15T12:05:00Z",
+                "finishedAt": null,
+                "isRoot": false,
+                "isFinal": true,
+                "isCompleted": false,
+                "totalInputWeight": 0,
+                "totalOutputWeight": 0,
+                "totalInputBoxes": 0,
+                "totalOutputBoxes": 0,
+                "waste": 0,
+                "wastePercentage": 0,
+                "yield": 0,
+                "yieldPercentage": 0,
+                "inputs": [],
+                "outputs": [],
+                "children": []
+            }
+        ],
+        "createdAt": "2024-01-15T11:00:00Z",
+        "updatedAt": "2024-01-15T12:00:00Z"
+    }
+}
+```
+
+**Nota**: Este endpoint carga todas las relaciones: `production`, `parent`, `children`, `process`, `inputs.box.product`, `outputs.product`.
+
+### `PUT /v2/production-records/{id}` - Actualizar Proceso
+
+**Request**:
+```json
+{
+    "notes": "Notas actualizadas",
+    "finished_at": "2024-01-15T13:00:00Z"
+}
+```
+
+**Respuesta (200 OK)**:
+```json
+{
+    "message": "Registro de producción actualizado correctamente.",
+    "data": {
+        "id": 1,
+        "productionId": 5,
+        "processId": 3,
+        "process": {
+            "id": 3,
+            "name": "Eviscerado",
+            "type": "processing"
+        },
+        "startedAt": "2024-01-15T11:00:00Z",
+        "finishedAt": "2024-01-15T13:00:00Z",
+        "notes": "Notas actualizadas",
+        "isRoot": true,
+        "isFinal": false,
+        "isCompleted": true,
+        "totalInputWeight": 150.50,
+        "totalOutputWeight": 120.30,
+        "waste": 30.20,
+        "wastePercentage": 20.07,
+        "inputs": [],
+        "outputs": [],
+        "children": [],
+        "updatedAt": "2024-01-15T13:05:00Z"
+    }
+}
+```
+
+### `DELETE /v2/production-records/{id}` - Eliminar Proceso
+
+**Respuesta (200 OK)**:
+```json
+{
+    "message": "Registro de producción eliminado correctamente."
+}
+```
+
+**⚠️ Advertencia**: Eliminar un proceso raíz eliminará todos sus procesos hijos en cascada.
+
+### `GET /v2/production-records/{id}/tree` - Obtener Árbol del Proceso
+
+**Respuesta (200 OK)**:
+```json
+{
+    "message": "Árbol de procesos obtenido correctamente.",
+    "data": {
+        "id": 1,
+        "productionId": 5,
+        "processId": 3,
+        "process": {
+            "id": 3,
+            "name": "Eviscerado",
+            "type": "processing"
+        },
+        "startedAt": "2024-01-15T11:00:00Z",
+        "finishedAt": "2024-01-15T12:00:00Z",
+        "isRoot": true,
+        "isFinal": false,
+        "isCompleted": true,
+        "totalInputWeight": 150.50,
+        "totalOutputWeight": 120.30,
+        "waste": 30.20,
+        "wastePercentage": 20.07,
+        "inputs": [
+            {
+                "id": 1,
+                "productionRecordId": 1,
+                "boxId": 123,
+                "box": {
+                    "id": 123,
+                    "lot": "LOT-2024-001",
+                    "net_weight": 25.5
+                },
+                "product": {
+                    "id": 10,
+                    "name": "Atún entero"
+                },
+                "weight": 25.5
+            }
+        ],
+        "outputs": [
+            {
+                "id": 1,
+                "productionRecordId": 1,
+                "productId": 11,
+                "product": {
+                    "id": 11,
+                    "name": "Atún eviscerado"
+                },
+                "lotId": "LOT-2024-001-EV",
+                "boxes": 8,
+                "weightKg": 120.30
+            }
+        ],
+        "children": [
+            {
+                "id": 2,
+                "productionId": 5,
+                "parentRecordId": 1,
+                "processId": 4,
+                "process": {
+                    "id": 4,
+                    "name": "Fileteado",
+                    "type": "processing"
+                },
+                "startedAt": "2024-01-15T12:05:00Z",
+                "finishedAt": "2024-01-15T14:00:00Z",
+                "isRoot": false,
+                "isFinal": true,
+                "isCompleted": true,
+                "totalInputWeight": 100.0,
+                "totalOutputWeight": 95.0,
+                "waste": 5.0,
+                "wastePercentage": 5.0,
+                "inputs": [],
+                "outputs": [
+                    {
+                        "id": 2,
+                        "productId": 12,
+                        "product": {
+                            "id": 12,
+                            "name": "Filetes de atún"
+                        },
+                        "boxes": 10,
+                        "weightKg": 95.0
+                    }
+                ],
+                "children": []
+            }
+        ]
+    }
+}
+```
+
+**Nota**: Este endpoint construye el árbol completo recursivamente usando `buildTree()`. Los `children` se cargan con toda su estructura anidada.
+
+### `POST /v2/production-records/{id}/finish` - Finalizar Proceso
+
+**Respuesta (200 OK)**:
+```json
+{
+    "message": "Proceso finalizado correctamente.",
+    "data": {
+        "id": 1,
+        "productionId": 5,
+        "processId": 3,
+        "process": {
+            "id": 3,
+            "name": "Eviscerado",
+            "type": "processing"
+        },
+        "startedAt": "2024-01-15T11:00:00Z",
+        "finishedAt": "2024-01-15T15:30:00Z",
+        "isRoot": true,
+        "isFinal": false,
+        "isCompleted": true,
+        "totalInputWeight": 150.50,
+        "totalOutputWeight": 120.30,
+        "waste": 30.20,
+        "wastePercentage": 20.07,
+        "inputs": [],
+        "outputs": [],
+        "children": [],
+        "updatedAt": "2024-01-15T15:30:00Z"
+    }
+}
+```
+
+**Respuesta si ya está finalizado (400 Bad Request)**:
+```json
+{
+    "message": "El proceso ya está finalizado."
+}
+```
+
+**Nota**: El campo `finishedAt` se establece automáticamente con la fecha/hora actual. Una vez finalizado, `isCompleted` será `true`.
 
 ---
 

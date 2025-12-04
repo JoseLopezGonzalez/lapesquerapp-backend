@@ -61,9 +61,12 @@ class ProductionController extends Controller
         // Abrir el lote automáticamente
         $production->open();
 
+        // Cargar relaciones para la respuesta
+        $production->load(['species', 'captureZone', 'records.process']);
+
         return response()->json([
             'message' => 'Producción creada correctamente.',
-            'data' => $production,
+            'data' => new ProductionResource($production),
         ], 201);
     }
 
@@ -77,7 +80,7 @@ class ProductionController extends Controller
 
         return response()->json([
             'message' => 'Producción obtenida correctamente.',
-            'data' => $production,
+            'data' => new ProductionResource($production),
         ]);
     }
 
@@ -96,9 +99,12 @@ class ProductionController extends Controller
 
         $production->update($validated);
 
+        // Cargar relaciones para la respuesta
+        $production->load(['species', 'captureZone', 'records.process']);
+
         return response()->json([
             'message' => 'Producción actualizada correctamente.',
-            'data' => $production,
+            'data' => new ProductionResource($production),
         ]);
     }
 

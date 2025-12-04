@@ -275,10 +275,29 @@ public function calculateGlobalTotals()
 {
     $totalInputWeight = $this->total_input_weight;
     $totalOutputWeight = $this->total_output_weight;
-    $totalWaste = $totalInputWeight - $totalOutputWeight;
-    $totalWastePercentage = $totalInputWeight > 0 
-        ? ($totalWaste / $totalInputWeight) * 100 
-        : 0;
+    $difference = $totalInputWeight - $totalOutputWeight;
+
+    // Si hay pérdida (input > output)
+    if ($difference > 0) {
+        $totalWaste = $difference;
+        $totalWastePercentage = $totalInputWeight > 0 ? ($totalWaste / $totalInputWeight) * 100 : 0;
+        $totalYield = 0;
+        $totalYieldPercentage = 0;
+    }
+    // Si hay ganancia (input < output)
+    elseif ($difference < 0) {
+        $totalWaste = 0;
+        $totalWastePercentage = 0;
+        $totalYield = abs($difference); // output - input
+        $totalYieldPercentage = $totalInputWeight > 0 ? ($totalYield / $totalInputWeight) * 100 : 0;
+    }
+    // Si es neutro (input = output)
+    else {
+        $totalWaste = 0;
+        $totalWastePercentage = 0;
+        $totalYield = 0;
+        $totalYieldPercentage = 0;
+    }
     
     $totalInputBoxes = $this->total_input_boxes;
     $totalOutputBoxes = $this->total_output_boxes;
@@ -288,13 +307,16 @@ public function calculateGlobalTotals()
         'totalOutputWeight' => round($totalOutputWeight, 2),
         'totalWaste' => round($totalWaste, 2),
         'totalWastePercentage' => round($totalWastePercentage, 2),
+        'totalYield' => round($totalYield, 2),
+        'totalYieldPercentage' => round($totalYieldPercentage, 2),
         'totalInputBoxes' => $totalInputBoxes,
         'totalOutputBoxes' => $totalOutputBoxes,
     ];
 }
 ```
 - Calcula totales agregados de todo el lote
-- Retorna array con pesos, mermas y cantidades de cajas
+- Retorna array con pesos, mermas, rendimientos y cantidades de cajas
+- **Lógica condicional**: Calcula `waste` (merma) si hay pérdida, o `yield` (rendimiento) si hay ganancia, igual que `ProductionRecord`
 
 ### Attributes Calculados
 
@@ -578,10 +600,39 @@ GET /v2/productions/{id}/reconciliation
     "diagramData": {...},  // Solo si ?include_diagram=true
     "totals": {...},       // Solo si ?include_totals=true
     "records": [...],      // Solo si relación cargada
+    // Totales básicos (siempre incluidos)
+    "totalInputWeight": 150.50,
+    "totalOutputWeight": 120.30,
+    "totalInputBoxes": 5,
+    "totalOutputBoxes": 8,
+    // Merma y rendimiento (siempre incluidos, igual que ProductionRecord)
+    "waste": 30.20,
+    "wastePercentage": 20.07,
+    "yield": 0,
+    "yieldPercentage": 0,
     "createdAt": "2024-01-15T10:30:00Z",
     "updatedAt": "2024-01-15T10:30:00Z"
 }
 ```
+
+**Campos de cálculo (merma y rendimiento)**:
+
+Los campos `waste`, `wastePercentage`, `yield` y `yieldPercentage` se calculan automáticamente igual que en `ProductionRecord`:
+
+- **Si hay pérdida** (`totalInputWeight > totalOutputWeight`):
+  - `waste` (number): Merma en kilogramos (totalInputWeight - totalOutputWeight)
+  - `wastePercentage` (number): Porcentaje de merma respecto al peso de entrada (0-100)
+  - `yield`: 0
+  - `yieldPercentage`: 0
+
+- **Si hay ganancia** (`totalInputWeight < totalOutputWeight`):
+  - `waste`: 0
+  - `wastePercentage`: 0
+  - `yield` (number): Rendimiento en kilogramos (totalOutputWeight - totalInputWeight)
+  - `yieldPercentage` (number): Porcentaje de rendimiento respecto al peso de entrada (0-100)
+
+- **Si es neutro** (`totalInputWeight = totalOutputWeight`):
+  - Ambos valores en 0
 
 ---
 
@@ -624,6 +675,596 @@ GET /v2/productions/1/reconciliation
 ```http
 GET /v2/productions?status=open&perPage=20
 ```
+
+---
+
+## 📤 Ejemplos de Respuestas de los Endpoints
+
+Todos los endpoints devuelven respuestas con la estructura estándar:
+```json
+{
+    "message": "Mensaje descriptivo",
+    "data": { ... }
+}
+```
+
+### `GET /v2/productions` - Listar Producciones
+
+**Respuesta (200 OK)**:
+```json
+{
+    "data": [
+        {
+            "id": 1,
+            "lot": "LOT-2024-001",
+            "speciesId": 5,
+            "species": {
+                "id": 5,
+                "name": "Atún"
+            },
+            "captureZoneId": 2,
+            "captureZone": {
+                "id": 2,
+                "name": "Atlántico Norte"
+            },
+            "notes": "Lote de prueba",
+            "openedAt": "2024-01-15T10:30:00Z",
+            "closedAt": null,
+            "isOpen": true,
+            "isClosed": false,
+            "date": "2024-01-15",
+            "records": [
+                {
+                    "id": 1,
+                    "processId": 3,
+                    "startedAt": "2024-01-15T10:35:00Z",
+                    "finishedAt": null
+                }
+            ],
+            "createdAt": "2024-01-15T10:30:00Z",
+            "updatedAt": "2024-01-15T10:30:00Z"
+        }
+    ],
+    "links": {
+        "first": "http://api.example.com/v2/productions?page=1",
+        "last": "http://api.example.com/v2/productions?page=5",
+        "prev": null,
+        "next": "http://api.example.com/v2/productions?page=2"
+    },
+    "meta": {
+        "current_page": 1,
+        "from": 1,
+        "last_page": 5,
+        "path": "http://api.example.com/v2/productions",
+        "per_page": 15,
+        "to": 15,
+        "total": 75
+    }
+}
+```
+
+**Nota**: La respuesta usa paginación de Laravel. Los campos `species`, `captureZone` y `records` se incluyen porque se cargan con `with()` en el controlador.
+
+### `POST /v2/productions` - Crear Producción
+
+**Respuesta (201 Created)**:
+```json
+{
+    "message": "Producción creada correctamente.",
+    "data": {
+        "id": 1,
+        "lot": "LOT-2024-001",
+        "speciesId": 5,
+        "species": {
+            "id": 5,
+            "name": "Atún"
+        },
+        "captureZoneId": null,
+        "captureZone": null,
+        "notes": "Producción de atún",
+        "openedAt": "2024-01-15T10:30:00Z",
+        "closedAt": null,
+        "isOpen": true,
+        "isClosed": false,
+        "date": null,
+        "totalInputWeight": 0,
+        "totalOutputWeight": 0,
+        "totalInputBoxes": 0,
+        "totalOutputBoxes": 0,
+        "waste": 0,
+        "wastePercentage": 0,
+        "yield": 0,
+        "yieldPercentage": 0,
+        "createdAt": "2024-01-15T10:30:00Z",
+        "updatedAt": "2024-01-15T10:30:00Z"
+    }
+}
+```
+
+**Nota**: El lote se abre automáticamente (`openedAt` se establece). Las relaciones se cargan en la respuesta. Los totales inicialmente serán 0 hasta que se agreguen procesos con entradas y salidas.
+
+### `GET /v2/productions/{id}` - Mostrar Producción
+
+**Respuesta (200 OK)**:
+```json
+{
+    "message": "Producción obtenida correctamente.",
+    "data": {
+        "id": 1,
+        "lot": "LOT-2024-001",
+        "speciesId": 5,
+        "species": {
+            "id": 5,
+            "name": "Atún"
+        },
+        "captureZoneId": 2,
+        "captureZone": {
+            "id": 2,
+            "name": "Atlántico Norte"
+        },
+        "notes": "Lote de prueba",
+        "openedAt": "2024-01-15T10:30:00Z",
+        "closedAt": null,
+        "isOpen": true,
+        "isClosed": false,
+        "date": "2024-01-15",
+        "records": [
+            {
+                "id": 1,
+                "processId": 3,
+                "startedAt": "2024-01-15T10:35:00Z",
+                "finishedAt": null
+            }
+        ],
+        "totalInputWeight": 150.50,
+        "totalOutputWeight": 120.30,
+        "totalInputBoxes": 5,
+        "totalOutputBoxes": 8,
+        "waste": 30.20,
+        "wastePercentage": 20.07,
+        "yield": 0,
+        "yieldPercentage": 0,
+        "createdAt": "2024-01-15T10:30:00Z",
+        "updatedAt": "2024-01-15T10:30:00Z"
+    }
+}
+```
+
+**Nota**: Las relaciones `species`, `captureZone` y `records.process` se cargan automáticamente. Los campos de totales, merma y rendimiento siempre se incluyen en la respuesta (igual que en `ProductionRecord`).
+
+### `GET /v2/productions/{id}?include_diagram=true&include_totals=true` - Con Diagrama y Totales
+
+**Respuesta (200 OK)**:
+```json
+{
+    "message": "Producción obtenida correctamente.",
+    "data": {
+        "id": 1,
+        "lot": "LOT-2024-001",
+        "speciesId": 5,
+        "species": {
+            "id": 5,
+            "name": "Atún"
+        },
+        "notes": "Lote de prueba",
+        "openedAt": "2024-01-15T10:30:00Z",
+        "closedAt": null,
+        "isOpen": true,
+        "isClosed": false,
+        "diagramData": {
+            "processNodes": [
+                {
+                    "id": 1,
+                    "production_id": 1,
+                    "parent_record_id": null,
+                    "process": {
+                        "id": 3,
+                        "name": "Eviscerado",
+                        "type": "processing"
+                    },
+                    "started_at": "2024-01-15T10:35:00Z",
+                    "finished_at": "2024-01-15T12:00:00Z",
+                    "notes": null,
+                    "isRoot": true,
+                    "isFinal": false,
+                    "isCompleted": true,
+                    "inputs": [
+                        {
+                            "id": 1,
+                            "type": "stock_box",
+                            "box_id": 123,
+                            "box": {
+                                "id": 123,
+                                "lot": "LOT-2024-001",
+                                "net_weight": 25.5,
+                                "gross_weight": 26.0
+                            },
+                            "product": {
+                                "id": 10,
+                                "name": "Atún entero"
+                            },
+                            "weight": 25.5
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "id": 1,
+                            "product_id": 11,
+                            "product": {
+                                "id": 11,
+                                "name": "Atún eviscerado"
+                            },
+                            "lot_id": "LOT-2024-001-EV",
+                            "boxes": 10,
+                            "weight_kg": 245.5,
+                            "average_weight_per_box": 24.55
+                        }
+                    ],
+                    "children": [],
+                    "totals": {
+                        "inputWeight": 25.5,
+                        "outputWeight": 245.5,
+                        "inputBoxes": 1,
+                        "outputBoxes": 10,
+                        "waste": 0,
+                        "wastePercentage": 0,
+                        "yield": 220.0,
+                        "yieldPercentage": 862.75
+                    }
+                }
+            ],
+            "totals": {
+                "totalInputWeight": 25.5,
+                "totalOutputWeight": 245.5,
+                "totalWaste": 0,
+                "totalWastePercentage": 0,
+                "totalYield": 220.0,
+                "totalYieldPercentage": 862.75,
+                "totalInputBoxes": 1,
+                "totalOutputBoxes": 10
+            }
+        },
+        "totals": {
+            "totalInputWeight": 25.5,
+            "totalOutputWeight": 245.5,
+            "totalWaste": 0,
+            "totalWastePercentage": 0,
+            "totalYield": 220.0,
+            "totalYieldPercentage": 862.75,
+            "totalInputBoxes": 1,
+            "totalOutputBoxes": 10
+        },
+        "createdAt": "2024-01-15T10:30:00Z",
+        "updatedAt": "2024-01-15T10:30:00Z"
+    }
+}
+```
+
+**Nota**: Los campos `diagramData` y `totals` solo se incluyen si se pasan los query params `include_diagram=true` y `include_totals=true`.
+
+### `PUT /v2/productions/{id}` - Actualizar Producción
+
+**Respuesta (200 OK)**:
+```json
+{
+    "message": "Producción actualizada correctamente.",
+    "data": {
+        "id": 1,
+        "lot": "LOT-2024-001-UPDATED",
+        "speciesId": 5,
+        "species": {
+            "id": 5,
+            "name": "Atún"
+        },
+        "captureZoneId": null,
+        "captureZone": null,
+        "notes": "Notas actualizadas",
+        "openedAt": "2024-01-15T10:30:00Z",
+        "closedAt": null,
+        "isOpen": true,
+        "isClosed": false,
+        "date": null,
+        "totalInputWeight": 150.50,
+        "totalOutputWeight": 120.30,
+        "totalInputBoxes": 5,
+        "totalOutputBoxes": 8,
+        "waste": 30.20,
+        "wastePercentage": 20.07,
+        "yield": 0,
+        "yieldPercentage": 0,
+        "createdAt": "2024-01-15T10:30:00Z",
+        "updatedAt": "2024-01-15T14:20:00Z"
+    }
+}
+```
+
+### `DELETE /v2/productions/{id}` - Eliminar Producción
+
+**Respuesta (200 OK)**:
+```json
+{
+    "message": "Producción eliminada correctamente."
+}
+```
+
+### `GET /v2/productions/{id}/diagram` - Obtener Diagrama
+
+**Respuesta (200 OK)**:
+```json
+{
+    "message": "Diagrama obtenido correctamente.",
+    "data": {
+        "processNodes": [
+            {
+                "id": 1,
+                "production_id": 1,
+                "parent_record_id": null,
+                "process": {
+                    "id": 3,
+                    "name": "Eviscerado",
+                    "type": "processing"
+                },
+                "started_at": "2024-01-15T10:35:00Z",
+                "finished_at": "2024-01-15T12:00:00Z",
+                "notes": null,
+                "isRoot": true,
+                "isFinal": false,
+                "isCompleted": true,
+                "inputs": [
+                    {
+                        "id": 1,
+                        "type": "stock_box",
+                        "box_id": 123,
+                        "box": {
+                            "id": 123,
+                            "lot": "LOT-2024-001",
+                            "net_weight": 25.5,
+                            "gross_weight": 26.0
+                        },
+                        "product": {
+                            "id": 10,
+                            "name": "Atún entero"
+                        },
+                        "weight": 25.5
+                    },
+                    {
+                        "id": 2,
+                        "type": "parent_output",
+                        "production_output_id": 5,
+                        "production_output": {
+                            "id": 5,
+                            "product": {
+                                "id": 11,
+                                "name": "Atún eviscerado"
+                            },
+                            "weight_kg": 245.5,
+                            "boxes": 10
+                        },
+                        "consumed_weight_kg": 100.0,
+                        "consumed_boxes": 4,
+                        "weight": 100.0,
+                        "notes": null
+                    }
+                ],
+                "parentOutputConsumptions": [
+                    {
+                        "id": 2,
+                        "type": "parent_output",
+                        "production_output_id": 5,
+                        "production_output": {
+                            "id": 5,
+                            "product": {
+                                "id": 11,
+                                "name": "Atún eviscerado"
+                            },
+                            "weight_kg": 245.5,
+                            "boxes": 10
+                        },
+                        "consumed_weight_kg": 100.0,
+                        "consumed_boxes": 4,
+                        "weight": 100.0,
+                        "notes": null
+                    }
+                ],
+                "outputs": [
+                    {
+                        "id": 1,
+                        "product_id": 11,
+                        "product": {
+                            "id": 11,
+                            "name": "Atún eviscerado"
+                        },
+                        "lot_id": "LOT-2024-001-EV",
+                        "boxes": 10,
+                        "weight_kg": 245.5,
+                        "average_weight_per_box": 24.55
+                    }
+                ],
+                "children": [
+                    {
+                        "id": 2,
+                        "production_id": 1,
+                        "parent_record_id": 1,
+                        "process": {
+                            "id": 4,
+                            "name": "Fileteado",
+                            "type": "processing"
+                        },
+                        "started_at": "2024-01-15T12:05:00Z",
+                        "finished_at": "2024-01-15T14:00:00Z",
+                        "notes": null,
+                        "isRoot": false,
+                        "isFinal": true,
+                        "isCompleted": true,
+                        "inputs": [],
+                        "parentOutputConsumptions": [],
+                        "outputs": [
+                            {
+                                "id": 2,
+                                "product_id": 12,
+                                "product": {
+                                    "id": 12,
+                                    "name": "Filetes de atún"
+                                },
+                                "lot_id": "LOT-2024-001-FIL",
+                                "boxes": 15,
+                                "weight_kg": 180.0,
+                                "average_weight_per_box": 12.0
+                            }
+                        ],
+                        "children": [],
+                        "totals": {
+                            "inputWeight": 100.0,
+                            "outputWeight": 180.0,
+                            "inputBoxes": 4,
+                            "outputBoxes": 15,
+                            "waste": 0,
+                            "wastePercentage": 0,
+                            "yield": 80.0,
+                            "yieldPercentage": 80.0
+                        }
+                    }
+                ],
+                "totals": {
+                    "inputWeight": 125.5,
+                    "outputWeight": 245.5,
+                    "inputBoxes": 1,
+                    "outputBoxes": 10,
+                    "waste": 0,
+                    "wastePercentage": 0,
+                    "yield": 120.0,
+                    "yieldPercentage": 95.62
+                }
+            }
+        ],
+        "totals": {
+            "totalInputWeight": 25.5,
+            "totalOutputWeight": 425.5,
+            "totalWaste": 0,
+            "totalWastePercentage": 0,
+            "totalYield": 400.0,
+            "totalYieldPercentage": 1568.63,
+            "totalInputBoxes": 1,
+            "totalOutputBoxes": 25
+        }
+    }
+}
+```
+
+**Nota**: El diagrama incluye el árbol completo de procesos con sus hijos recursivamente. Los `inputs` pueden ser de dos tipos:
+- `stock_box`: Cajas del stock
+- `parent_output`: Consumos de outputs del proceso padre
+
+### `GET /v2/productions/{id}/process-tree` - Obtener Árbol de Procesos
+
+**Respuesta (200 OK)**:
+```json
+{
+    "message": "Árbol de procesos obtenido correctamente.",
+    "data": {
+        "processNodes": [
+            {
+                "id": 1,
+                "production_id": 1,
+                "parent_record_id": null,
+                "process": {
+                    "id": 3,
+                    "name": "Eviscerado",
+                    "type": "processing"
+                },
+                "started_at": "2024-01-15T10:35:00Z",
+                "finished_at": "2024-01-15T12:00:00Z",
+                "notes": null,
+                "isRoot": true,
+                "isFinal": false,
+                "isCompleted": true,
+                "inputs": [...],
+                "outputs": [...],
+                "children": [...],
+                "totals": {...}
+            }
+        ],
+        "totals": {
+            "totalInputWeight": 25.5,
+            "totalOutputWeight": 425.5,
+            "totalWaste": 0,
+            "totalWastePercentage": 0,
+            "totalYield": 400.0,
+            "totalYieldPercentage": 1568.63,
+            "totalInputBoxes": 1,
+            "totalOutputBoxes": 25
+        }
+    }
+}
+```
+
+**Nota**: Similar a `/diagram`, pero siempre incluye los totales globales.
+
+### `GET /v2/productions/{id}/totals` - Obtener Totales
+
+**Respuesta (200 OK)**:
+```json
+{
+    "message": "Totales obtenidos correctamente.",
+    "data": {
+        "totalInputWeight": 25.5,
+        "totalOutputWeight": 425.5,
+        "totalWaste": 0,
+        "totalWastePercentage": 0,
+        "totalYield": 400.0,
+        "totalYieldPercentage": 1568.63,
+        "totalInputBoxes": 1,
+        "totalOutputBoxes": 25
+    }
+}
+```
+
+**Campos**:
+- `totalInputWeight`: Peso total de entrada (suma de `net_weight` de todas las cajas en inputs + consumos de outputs del padre)
+- `totalOutputWeight`: Peso total de salida (suma de `weight_kg` de todos los outputs)
+- `totalWaste`: Merma total (diferencia cuando hay pérdida)
+- `totalWastePercentage`: Porcentaje de merma respecto al peso de entrada
+- `totalInputBoxes`: Cantidad total de cajas de entrada
+- `totalOutputBoxes`: Cantidad total de cajas de salida (suma de `boxes` en outputs)
+
+### `GET /v2/productions/{id}/reconciliation` - Obtener Conciliación
+
+**Respuesta (200 OK)**:
+```json
+{
+    "message": "Conciliación obtenida correctamente.",
+    "data": {
+        "status": "green",
+        "declared": {
+            "boxes": 25,
+            "weight_kg": 425.5
+        },
+        "stock": {
+            "boxes": 24,
+            "weight_kg": 420.0
+        },
+        "differences": {
+            "boxes": 1,
+            "weight_kg": 5.5,
+            "box_percentage": 4.0,
+            "weight_percentage": 1.29
+        }
+    }
+}
+```
+
+**Estados de conciliación**:
+- `green`: Diferencia < 1% (todo correcto)
+- `yellow`: Diferencia entre 1% y 5% (revisar)
+- `red`: Diferencia > 5% (crítico)
+
+**Campos**:
+- `status`: Estado de la conciliación (`green`, `yellow`, `red`)
+- `declared`: Valores declarados en producción (outputs)
+- `stock`: Valores reales en almacén (cajas con `lot` coincidente)
+- `differences`: Diferencias absolutas y porcentuales
+
+**Nota**: La conciliación compara los outputs declarados con las cajas que están en stock (en pallets) y tienen el mismo `lot` que el lote de producción.
 
 ---
 

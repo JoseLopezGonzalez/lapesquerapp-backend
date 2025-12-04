@@ -311,13 +311,40 @@ class Production extends Model
 
     /**
      * Calcular totales globales del lote completo
+     * Incluye merma (waste) y rendimiento (yield) como en ProductionRecord
+     * 
+     * Lógica:
+     * - Si hay pérdida (input > output): waste > 0, yield = 0
+     * - Si hay ganancia (input < output): yield > 0, waste = 0
+     * - Si es neutro (input = output): ambos en 0
      */
     public function calculateGlobalTotals()
     {
         $totalInputWeight = $this->total_input_weight;
         $totalOutputWeight = $this->total_output_weight;
-        $totalWaste = $totalInputWeight - $totalOutputWeight;
-        $totalWastePercentage = $totalInputWeight > 0 ? ($totalWaste / $totalInputWeight) * 100 : 0;
+        $difference = $totalInputWeight - $totalOutputWeight;
+
+        // Si hay pérdida (input > output)
+        if ($difference > 0) {
+            $totalWaste = $difference;
+            $totalWastePercentage = $totalInputWeight > 0 ? ($totalWaste / $totalInputWeight) * 100 : 0;
+            $totalYield = 0;
+            $totalYieldPercentage = 0;
+        }
+        // Si hay ganancia (input < output)
+        elseif ($difference < 0) {
+            $totalWaste = 0;
+            $totalWastePercentage = 0;
+            $totalYield = abs($difference); // output - input
+            $totalYieldPercentage = $totalInputWeight > 0 ? ($totalYield / $totalInputWeight) * 100 : 0;
+        }
+        // Si es neutro (input = output)
+        else {
+            $totalWaste = 0;
+            $totalWastePercentage = 0;
+            $totalYield = 0;
+            $totalYieldPercentage = 0;
+        }
 
         $totalInputBoxes = $this->total_input_boxes;
         $totalOutputBoxes = $this->total_output_boxes;
@@ -327,6 +354,8 @@ class Production extends Model
             'totalOutputWeight' => round($totalOutputWeight, 2),
             'totalWaste' => round($totalWaste, 2),
             'totalWastePercentage' => round($totalWastePercentage, 2),
+            'totalYield' => round($totalYield, 2),
+            'totalYieldPercentage' => round($totalYieldPercentage, 2),
             'totalInputBoxes' => $totalInputBoxes,
             'totalOutputBoxes' => $totalOutputBoxes,
         ];
