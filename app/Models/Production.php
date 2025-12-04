@@ -896,7 +896,9 @@ class Production extends Model
                         'id' => $order->customer->id,
                         'name' => $order->customer->name,
                     ] : null,
-                    'loadDate' => $order->load_date?->toIso8601String(),
+                    'loadDate' => $order->load_date 
+                        ? (\Carbon\Carbon::parse($order->load_date)->toIso8601String())
+                        : null,
                     'status' => $order->status,
                 ],
                 'pallets' => $palletsData,
