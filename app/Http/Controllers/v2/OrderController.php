@@ -247,6 +247,12 @@ class OrderController extends Controller
 
             DB::commit();
 
+            // Cargar relaciones necesarias antes de retornar
+            $order->load([
+                'pallets.boxes.box.productionInputs',
+                'pallets.boxes.box.product',
+            ]);
+            
             return new OrderDetailsResource($order);
 
         } catch (\Exception $e) {
@@ -263,7 +269,12 @@ class OrderController extends Controller
      */
     public function show(string $id)
     {
-        return new OrderDetailsResource(Order::findOrFail($id));
+        $order = Order::with([
+            'pallets.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
+            'pallets.boxes.box.product', // Cargar product para los cálculos
+        ])->findOrFail($id);
+        
+        return new OrderDetailsResource($order);
     }
 
     /**
@@ -303,7 +314,10 @@ class OrderController extends Controller
             'temperature' => 'sometimes|nullable|numeric',
         ]);
 
-        $order = Order::findOrFail($id);
+        $order = Order::with([
+            'pallets.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
+            'pallets.boxes.box.product', // Cargar product para los cálculos
+        ])->findOrFail($id);
 
         if ($request->has('buyerReference')) {
             $order->buyer_reference = $request->buyerReference;
@@ -374,6 +388,12 @@ class OrderController extends Controller
         $order->updated_at = now();
         $order->save();
 
+        // Cargar relaciones necesarias antes de retornar
+        $order->load([
+            'pallets.boxes.box.productionInputs',
+            'pallets.boxes.box.product',
+        ]);
+
         return new OrderDetailsResource($order);
     }
 
@@ -431,9 +451,19 @@ class OrderController extends Controller
             'status' => 'required|string',
         ]);
 
-        $order = Order::findOrFail($id);
+        $order = Order::with([
+            'pallets.boxes.box.productionInputs',
+            'pallets.boxes.box.product',
+        ])->findOrFail($id);
         $order->status = $request->status;
         $order->save();
+        
+        // Recargar relaciones después de actualizar
+        $order->load([
+            'pallets.boxes.box.productionInputs',
+            'pallets.boxes.box.product',
+        ]);
+        
         return new OrderDetailsResource($order);
     }
 
@@ -450,7 +480,11 @@ class OrderController extends Controller
         $dateFrom = $validated['dateFrom'] . ' 00:00:00';
         $dateTo = $validated['dateTo'] . ' 23:59:59';
 
-        $orders = Order::with(['salesperson', 'pallets.boxes.box'])
+        $orders = Order::with([
+            'salesperson',
+            'pallets.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
+            'pallets.boxes.box.product',
+        ])
             ->whereBetween('entry_date', [$dateFrom, $dateTo])
             ->get();
 
@@ -465,7 +499,10 @@ class OrderController extends Controller
 
             foreach ($order->pallets as $pallet) {
                 foreach ($pallet->boxes as $box) {
-                    $summary[$salespersonName] += $box->netWeight;
+                    // Solo incluir cajas disponibles (no usadas en producción)
+                    if ($box->box->isAvailable) {
+                        $summary[$salespersonName] += $box->box->net_weight ?? 0;
+                    }
                 }
             }
         }

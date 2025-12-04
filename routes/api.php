@@ -392,6 +392,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::get('boxes/xlsx', [\App\Http\Controllers\v2\ExcelController::class, 'exportBoxesReport'])->name('export_boxes_report');
 
             Route::apiResource('boxes', BoxesController::class); /* Algo raro en el nombre */
+            Route::get('boxes/available', [BoxesController::class, 'available'])->name('boxes.available');
             Route::delete('boxes', [BoxesController::class, 'destroyMultiple']);
             Route::apiResource('pallets', V2PalletController::class);
             Route::delete('pallets', [V2PalletController::class, 'destroyMultiple'])->middleware(['role:superuser,manager,admin']);

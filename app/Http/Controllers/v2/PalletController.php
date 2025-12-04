@@ -137,6 +137,27 @@ class PalletController extends Controller
             }
         }
 
+        // Filtro para palets con cajas disponibles
+        if (!empty($filters['hasAvailableBoxes'])) {
+            if ($filters['hasAvailableBoxes'] === true || $filters['hasAvailableBoxes'] === 'true') {
+                $query->whereHas('boxes.box', function ($q) {
+                    $q->whereDoesntHave('productionInputs');
+                });
+            }
+        }
+
+        // Filtro para palets con cajas usadas
+        if (!empty($filters['hasUsedBoxes'])) {
+            if ($filters['hasUsedBoxes'] === true || $filters['hasUsedBoxes'] === 'true') {
+                $query->whereHas('boxes.box', function ($q) {
+                    $q->whereHas('productionInputs');
+                });
+            }
+        }
+
+        // Filtro para solo mostrar cajas disponibles en la respuesta
+        // Esto se manejará en el Resource, pero podemos agregar un flag aquí si es necesario
+
         return $query;
     }
 

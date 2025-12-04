@@ -17,8 +17,18 @@ class BoxesController extends Controller
      */
     public function index(Request $request)
     {
+        // Cargar relaciones necesarias para determinar disponibilidad
+        $query = Box::with(['productionInputs.productionRecord.production', 'product']);
 
-        $query = Box::query();
+        // Filtro para solo cajas disponibles (no usadas en producción)
+        if ($request->has('available') && $request->available === 'true') {
+            $query->whereDoesntHave('productionInputs');
+        }
+
+        // Filtro para solo cajas usadas en producción
+        if ($request->has('available') && $request->available === 'false') {
+            $query->whereHas('productionInputs');
+        }
 
         if ($request->has('id')) {
             $query->where('id', $request->id);
@@ -201,8 +211,59 @@ class BoxesController extends Controller
         $query->orderBy('id', 'desc');
 
         /* no filter more */
-        $perPage = $request->input('perPage', 12); // Default a 10 si no se proporciona
+        $perPage = $request->input('perPage', 12); // Default a 12 si no se proporciona
         return BoxResource::collection($query->paginate($perPage));
+    }
+
+    /**
+     * Obtener cajas disponibles para un proceso de producción específico
+     * Útil para el frontend al seleccionar cajas para producción
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function available(Request $request)
+    {
+        $query = Box::query()
+            ->whereDoesntHave('productionInputs') // Solo cajas disponibles
+            ->with(['product', 'palletBox.pallet']);
+
+        // Filtros opcionales para refinar la búsqueda
+        if ($request->has('lot')) {
+            $query->where('lot', $request->lot);
+        }
+
+        if ($request->has('product_id')) {
+            $query->where('article_id', $request->product_id);
+        }
+
+        if ($request->has('product_ids')) {
+            $query->whereIn('article_id', $request->product_ids);
+        }
+
+        if ($request->has('pallet_id')) {
+            $query->whereHas('palletBox', function ($q) use ($request) {
+                $q->where('pallet_id', $request->pallet_id);
+            });
+        }
+
+        if ($request->has('pallet_ids')) {
+            $query->whereHas('palletBox', function ($q) use ($request) {
+                $q->whereIn('pallet_id', $request->pallet_ids);
+            });
+        }
+
+        // Solo cajas que están en palets almacenados (state_id = 2)
+        if ($request->has('onlyStored') && $request->onlyStored === 'true') {
+            $query->whereHas('palletBox.pallet', function ($q) {
+                $q->where('state_id', 2);
+            });
+        }
+
+        $perPage = $request->input('perPage', 50);
+        $boxes = $query->orderBy('id', 'desc')->paginate($perPage);
+
+        return BoxResource::collection($boxes);
     }
 
     /**

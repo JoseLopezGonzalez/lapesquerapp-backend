@@ -150,11 +150,45 @@ class ProductionRecord extends Model
     }
 
     /**
-     * Verificar si el proceso está completado
+     * Verificar si el proceso está completado/finalizado
      */
     public function isCompleted()
     {
         return $this->finished_at !== null;
+    }
+
+    /**
+     * Verificar si el proceso está pendiente (no iniciado)
+     */
+    public function isPending()
+    {
+        return $this->started_at === null && $this->finished_at === null;
+    }
+
+    /**
+     * Verificar si el proceso está en progreso (iniciado pero no finalizado)
+     */
+    public function isInProgress()
+    {
+        return $this->started_at !== null && $this->finished_at === null;
+    }
+
+    /**
+     * Obtener el estado del proceso como string
+     * 
+     * @return string 'pending'|'in_progress'|'completed'
+     */
+    public function getStatus()
+    {
+        if ($this->isCompleted()) {
+            return 'completed';
+        }
+        
+        if ($this->isInProgress()) {
+            return 'in_progress';
+        }
+        
+        return 'pending';
     }
 
     /**

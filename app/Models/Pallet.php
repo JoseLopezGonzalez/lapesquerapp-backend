@@ -304,6 +304,11 @@ class Pallet extends Model
             'numberOfBoxes' => $this->numberOfBoxes,
             'position' => $this->positionV2,
             'orderId' => $this->order_id,
+            // Campos calculados para cajas disponibles y usadas
+            'availableBoxesCount' => $this->availableBoxesCount,
+            'usedBoxesCount' => $this->usedBoxesCount,
+            'totalAvailableWeight' => $this->totalAvailableWeight !== null ? round($this->totalAvailableWeight, 3) : null,
+            'totalUsedWeight' => $this->totalUsedWeight !== null ? round($this->totalUsedWeight, 3) : null,
         ];
     }
 

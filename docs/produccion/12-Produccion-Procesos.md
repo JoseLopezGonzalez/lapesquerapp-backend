@@ -158,34 +158,78 @@ El estado de un proceso se determina por las **fechas de inicio y finalización*
 ### 📋 Descripción de Estados
 
 #### 1. **Pendiente** (No iniciado)
-- **Determinación**: `started_at === null && finished_at === null`
+- **Cálculo**: `isPending()` → `started_at === null && finished_at === null`
 - **Significado**: El proceso ha sido creado pero aún no ha comenzado
-- **Campos**: `startedAt: null`, `finishedAt: null`, `isCompleted: false`
+- **Campos en API**: `startedAt: null`, `finishedAt: null`, `isCompleted: false`
+- **Método**: `$record->isPending()` retorna `true`
 
 #### 2. **En Progreso** (Activo)
-- **Determinación**: `started_at !== null && finished_at === null`
+- **Cálculo**: `isInProgress()` → `started_at !== null && finished_at === null`
 - **Significado**: El proceso ha comenzado pero aún no ha finalizado
-- **Campos**: `startedAt: "2024-01-15T10:00:00Z"`, `finishedAt: null`, `isCompleted: false`
-- **Cómo se establece**: Al crear o actualizar con `started_at` sin `finished_at`
-
-#### 3. **Completado/Terminado**
-- **Determinación**: `finished_at !== null`
-- **Significado**: El proceso ha sido finalizado
-- **Campos**: `startedAt: "2024-01-15T10:00:00Z"`, `finishedAt: "2024-01-15T14:00:00Z"`, `isCompleted: true`
+- **Campos en API**: `startedAt: "2024-01-15T10:00:00Z"`, `finishedAt: null`, `isCompleted: false`
+- **Método**: `$record->isInProgress()` retorna `true`
 - **Cómo se establece**: 
-  - Automáticamente al llamar `POST /v2/production-records/{id}/finish`
-  - O manualmente al actualizar con `PUT /v2/production-records/{id}` enviando `finished_at`
+  - Al crear con `POST /v2/production-records` enviando `started_at`
+  - Al actualizar con `PUT /v2/production-records/{id}` estableciendo `started_at` sin `finished_at`
 
-### 📤 Método `isCompleted()`
+#### 3. **Completado/Terminado** (Finalizado)
+- **Cálculo**: `isCompleted()` → `finished_at !== null`
+- **Significado**: El proceso ha sido finalizado
+- **Campos en API**: `startedAt: "2024-01-15T10:00:00Z"`, `finishedAt: "2024-01-15T14:00:00Z"`, `isCompleted: true`
+- **Método**: `$record->isCompleted()` retorna `true`
+- **Cómo se establece**: 
+  - Automáticamente al llamar `POST /v2/production-records/{id}/finish` (establece `finished_at = now()`)
+  - Manualmente al actualizar con `PUT /v2/production-records/{id}` enviando `finished_at`
 
+### 📤 Métodos para Calcular Estados
+
+#### `isCompleted()` - Verificar si está Finalizado
 ```php
 public function isCompleted()
 {
     return $this->finished_at !== null;
 }
 ```
+- **Retorna**: `true` si el proceso está finalizado, `false` en caso contrario
+- **Cálculo**: Verifica si `finished_at` no es `null`
 
-Este método retorna `true` si el proceso está completado/terminado, `false` si está pendiente o en progreso.
+#### `isPending()` - Verificar si está Pendiente
+```php
+public function isPending()
+{
+    return $this->started_at === null && $this->finished_at === null;
+}
+```
+- **Retorna**: `true` si el proceso está pendiente (no iniciado), `false` en caso contrario
+- **Cálculo**: Verifica que tanto `started_at` como `finished_at` sean `null`
+
+#### `isInProgress()` - Verificar si está En Progreso
+```php
+public function isInProgress()
+{
+    return $this->started_at !== null && $this->finished_at === null;
+}
+```
+- **Retorna**: `true` si el proceso está en progreso (iniciado pero no finalizado), `false` en caso contrario
+- **Cálculo**: Verifica que `started_at` no sea `null` y `finished_at` sea `null`
+
+#### `getStatus()` - Obtener Estado como String
+```php
+public function getStatus()
+{
+    if ($this->isCompleted()) {
+        return 'completed';
+    }
+    
+    if ($this->isInProgress()) {
+        return 'in_progress';
+    }
+    
+    return 'pending';
+}
+```
+- **Retorna**: `'pending'`, `'in_progress'` o `'completed'`
+- **Útil para**: Filtros, validaciones o lógica de negocio que necesite el estado como string
 
 ### 📤 Campos en la Respuesta API
 

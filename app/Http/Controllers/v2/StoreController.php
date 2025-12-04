@@ -108,7 +108,13 @@ class StoreController extends Controller
      */
     public function show(string $id)
     {
-        return new V2StoreDetailsResource(Store::find($id));
+        $store = Store::with([
+            'palletsV2.boxes.box.productionInputs.productionRecord.production', // Cargar productionInputs para determinar disponibilidad
+            'palletsV2.boxes.box.product', // Cargar product para toArrayAssocV2
+            'palletsV2.storedPallet', // Cargar storedPallet para posición
+        ])->findOrFail($id);
+        
+        return new V2StoreDetailsResource($store);
     }
 
     /**
@@ -171,7 +177,10 @@ class StoreController extends Controller
 
     public function totalStockByProducts()
     {
-        $inventory = \App\Models\StoredPallet::all();
+        $inventory = \App\Models\StoredPallet::with([
+            'pallet.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
+            'pallet.boxes.box.product',
+        ])->get();
         $products = \App\Models\Product::with('article')->get();
 
         $productsInventory = [];
@@ -181,7 +190,8 @@ class StoreController extends Controller
 
             foreach ($inventory as $storedPallet) {
                 foreach ($storedPallet->pallet->boxes as $palletBox) {
-                    if ($palletBox->box->product->id == $product->id) {
+                    // Solo incluir cajas disponibles (no usadas en producción)
+                    if ($palletBox->box->product->id == $product->id && $palletBox->box->isAvailable) {
                         $totalNetWeight += $palletBox->box->net_weight;
                     }
                 }

@@ -10,19 +10,29 @@ class StockStatisticsService
 {
     public static function getTotalStockStats(): array
     {
+        // Filtrar solo cajas disponibles (que no han sido usadas en producción)
         $totalWeight = Pallet::query()
             ->stored()
             ->joinBoxes()
+            ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
+            ->whereNull('production_inputs.id') // Solo cajas sin production_inputs
             ->sum('boxes.net_weight');
 
         $totalPallets = Pallet::stored()->count();
 
+        // Contar solo cajas disponibles
         $totalBoxes = Pallet::stored()
             ->join('pallet_boxes', 'pallet_boxes.pallet_id', '=', 'pallets.id')
+            ->join('boxes', 'boxes.id', '=', 'pallet_boxes.box_id')
+            ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
+            ->whereNull('production_inputs.id')
             ->count('pallet_boxes.id');
 
+        // Contar especies distintas solo de cajas disponibles
         $totalSpecies = Pallet::stored()
             ->joinProducts()
+            ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
+            ->whereNull('production_inputs.id')
             ->distinct('products.species_id')
             ->count('products.species_id');
 
@@ -42,8 +52,11 @@ class StockStatisticsService
 
     public static function getSpeciesTotalsRaw(): \Illuminate\Support\Collection
     {
+        // Filtrar solo cajas disponibles (que no han sido usadas en producción)
         return Pallet::stored()
             ->joinProducts()
+            ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
+            ->whereNull('production_inputs.id') // Solo cajas sin production_inputs
             ->selectRaw('products.species_id, SUM(boxes.net_weight) as totalNetWeight')
             ->groupBy('products.species_id')
             ->get();

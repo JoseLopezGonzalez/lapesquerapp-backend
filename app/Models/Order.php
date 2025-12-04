@@ -92,6 +92,11 @@ class Order extends Model
         $summary = [];
         $this->pallets->map(function ($pallet) use (&$summary) {
             $pallet->boxes->map(function ($box) use (&$summary) {
+                // Solo incluir cajas disponibles (no usadas en producción)
+                if (!$box->box->isAvailable) {
+                    return;
+                }
+
                 $product = $box->box->product;
                 $species = $product->species;
                 $captureZone = $product->captureZone;
@@ -115,7 +120,7 @@ class Order extends Model
                 }
 
                 $summary[$key]['products'][$productKey]['boxes']++;
-                $summary[$key]['products'][$productKey]['netWeight'] += $box->netWeight;
+                $summary[$key]['products'][$productKey]['netWeight'] += $box->box->net_weight;
             });
         });
 
@@ -132,8 +137,11 @@ class Order extends Model
 
         $this->pallets->map(function ($pallet) use (&$totals) {
             $pallet->boxes->map(function ($box) use (&$totals) {
-                $totals['boxes']++;
-                $totals['netWeight'] += $box->netWeight;
+                // Solo incluir cajas disponibles (no usadas en producción)
+                if ($box->box->isAvailable) {
+                    $totals['boxes']++;
+                    $totals['netWeight'] += $box->box->net_weight;
+                }
             });
         });
 
@@ -229,14 +237,20 @@ class Order extends Model
     public function getTotalNetWeightAttribute()
     {
         return $this->pallets->sum(function ($pallet) {
-            return $pallet->boxes->sum('netWeight');
+            return $pallet->boxes->sum(function ($palletBox) {
+                // Solo incluir cajas disponibles (no usadas en producción)
+                return $palletBox->box->isAvailable ? ($palletBox->box->net_weight ?? 0) : 0;
+            });
         });
     }
 
     public function getTotalBoxesAttribute()
     {
         return $this->pallets->sum(function ($pallet) {
-            return $pallet->boxes->count();
+            return $pallet->boxes->filter(function ($palletBox) {
+                // Solo contar cajas disponibles (no usadas en producción)
+                return $palletBox->box->isAvailable;
+            })->count();
         });
     }
 
@@ -359,6 +373,11 @@ class Order extends Model
 
         $this->pallets->map(function ($pallet) use (&$summary) {
             $pallet->boxes->map(function ($box) use (&$summary) {
+                // Solo incluir cajas disponibles (no usadas en producción)
+                if (!$box->box->isAvailable) {
+                    return;
+                }
+
                 $product = $box->box->product;
                 $lot = $box->box->lot; // Lote de la caja
                 $netWeight = $box->box->net_weight; // Peso neto de la caja
@@ -418,6 +437,11 @@ class Order extends Model
         $details = [];
         $this->pallets->map(function ($pallet) use (&$details) {
             $pallet->boxes->map(function ($box) use (&$details) {
+                // Solo incluir cajas disponibles (no usadas en producción)
+                if (!$box->box->isAvailable) {
+                    return;
+                }
+
                 $product = $box->box->product;
                 $productKey = $product->id;
                 if (!isset($details[$productKey])) {
@@ -435,7 +459,7 @@ class Order extends Model
                 }
 
                 $details[$productKey]['boxes']++;
-                $details[$productKey]['netWeight'] += $box->netWeight;
+                $details[$productKey]['netWeight'] += $box->box->net_weight;
             });
         });
 
@@ -520,6 +544,11 @@ class Order extends Model
 
         $this->pallets->each(function ($pallet) use (&$species) {
             $pallet->boxes->each(function ($box) use (&$species) {
+                // Solo incluir cajas disponibles (no usadas en producción)
+                if (!$box->box->isAvailable) {
+                    return;
+                }
+
                 $product = $box->box->product;
                 if ($product && $product->species) {
                     $species->put($product->species->id, [
@@ -541,6 +570,11 @@ class Order extends Model
 
         $this->pallets->each(function ($pallet) use (&$families) {
             $pallet->boxes->each(function ($box) use (&$families) {
+                // Solo incluir cajas disponibles (no usadas en producción)
+                if (!$box->box->isAvailable) {
+                    return;
+                }
+
                 $product = $box->box->product;
                 if ($product && $product->family) {
                     $families->put($product->family->id, [
@@ -560,6 +594,11 @@ class Order extends Model
 
         $this->pallets->each(function ($pallet) use (&$categories) {
             $pallet->boxes->each(function ($box) use (&$categories) {
+                // Solo incluir cajas disponibles (no usadas en producción)
+                if (!$box->box->isAvailable) {
+                    return;
+                }
+
                 $product = $box->box->product;
                 if ($product && $product->family && $product->family->category) {
                     $categories->put($product->family->category->id, [
