@@ -17,6 +17,11 @@ Esta carpeta contiene ejemplos de respuestas JSON y documentación de ejemplos p
 
 - **[EJEMPLO-RESPUESTA-production-con-conciliacion.json](./EJEMPLO-RESPUESTA-production-con-conciliacion.json)** - Ejemplo de producción con conciliación
 
+### Production Records (Procesos)
+
+- **[EJEMPLO-RESPUESTA-production-record-completo.json](./EJEMPLO-RESPUESTA-production-record-completo.json)** - Ejemplo completo de production record con inputs, outputs y consumos (JSON)
+- **[EJEMPLO-RESPUESTA-production-record-completo.md](./EJEMPLO-RESPUESTA-production-record-completo.md)** - Documentación del ejemplo de production record
+
 ### Palets
 
 - **[EJEMPLO-RESPUESTA-PALLET.md](./EJEMPLO-RESPUESTA-PALLET.md)** - Ejemplo de respuesta de palets

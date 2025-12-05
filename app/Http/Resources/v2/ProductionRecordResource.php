@@ -76,6 +76,7 @@ class ProductionRecordResource extends JsonResource
             'yieldPercentage' => $yieldPercentage,
             'inputs' => ProductionInputResource::collection($this->whenLoaded('inputs')),
             'outputs' => ProductionOutputResource::collection($this->whenLoaded('outputs')),
+            'parentOutputConsumptions' => ProductionOutputConsumptionResource::collection($this->whenLoaded('parentOutputConsumptions')),
             'children' => ProductionRecordResource::collection($this->whenLoaded('children')),
             'createdAt' => $this->created_at?->toIso8601String(),
             'updatedAt' => $this->updated_at?->toIso8601String(),

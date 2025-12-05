@@ -95,7 +95,8 @@ class ProductionRecordController extends Controller
             'children',
             'process',
             'inputs.box.product',
-            'outputs.product'
+            'outputs.product',
+            'parentOutputConsumptions.productionOutput.product'
         ])->findOrFail($id);
 
         return response()->json([
