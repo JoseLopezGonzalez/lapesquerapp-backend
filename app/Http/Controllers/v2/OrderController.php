@@ -500,7 +500,8 @@ class OrderController extends Controller
             $dateTo = $validated['dateTo'] . ' 23:59:59';
 
             // Usar consulta directa con join para evitar problemas con accessors
-            $results = \DB::table('orders')
+            // Usar conexión tenant para multi-tenant
+            $results = \DB::connection('tenant')->table('orders')
                 ->join('pallets', 'pallets.order_id', '=', 'orders.id')
                 ->join('pallet_boxes', 'pallet_boxes.pallet_id', '=', 'pallets.id')
                 ->join('boxes', 'boxes.id', '=', 'pallet_boxes.box_id')
@@ -508,7 +509,11 @@ class OrderController extends Controller
                 ->leftJoin('salespeople', 'salespeople.id', '=', 'orders.salesperson_id')
                 ->whereBetween('orders.entry_date', [$dateFrom, $dateTo])
                 ->whereNull('production_inputs.id') // Solo cajas disponibles (sin production_inputs)
-                ->whereIn('pallets.state_id', [\App\Models\Pallet::STATE_REGISTERED, \App\Models\Pallet::STATE_STORED, \App\Models\Pallet::STATE_SHIPPED])
+                ->whereIn('pallets.state_id', [
+                    \App\Models\Pallet::STATE_REGISTERED,
+                    \App\Models\Pallet::STATE_STORED,
+                    \App\Models\Pallet::STATE_SHIPPED
+                ])
                 ->select(
                     \DB::raw('COALESCE(salespeople.name, "Sin comercial") as name'),
                     \DB::raw('SUM(boxes.net_weight) as quantity')
@@ -552,7 +557,8 @@ class OrderController extends Controller
             $to = $request->input('dateTo');
 
             // Usar consulta directa con join para evitar problemas con accessors
-            $results = \DB::table('orders')
+            // Usar conexión tenant para multi-tenant
+            $results = \DB::connection('tenant')->table('orders')
                 ->join('transports', 'transports.id', '=', 'orders.transport_id')
                 ->join('pallets', 'pallets.order_id', '=', 'orders.id')
                 ->join('pallet_boxes', 'pallet_boxes.pallet_id', '=', 'pallets.id')
@@ -561,7 +567,11 @@ class OrderController extends Controller
                 ->whereBetween('orders.load_date', [$from, $to])
                 ->whereNotNull('orders.transport_id')
                 ->whereNull('production_inputs.id') // Solo cajas disponibles (sin production_inputs)
-                ->whereIn('pallets.state_id', [\App\Models\Pallet::STATE_REGISTERED, \App\Models\Pallet::STATE_STORED, \App\Models\Pallet::STATE_SHIPPED])
+                ->whereIn('pallets.state_id', [
+                    \App\Models\Pallet::STATE_REGISTERED,
+                    \App\Models\Pallet::STATE_STORED,
+                    \App\Models\Pallet::STATE_SHIPPED
+                ])
                 ->select(
                     'transports.name',
                     \DB::raw('SUM(boxes.net_weight) as netWeight')
