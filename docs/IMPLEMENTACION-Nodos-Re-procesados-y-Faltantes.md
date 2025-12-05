@@ -10,7 +10,7 @@
 Se han implementado **DOS nuevos nodos** que cuelgan del nodo final:
 
 1. **Nodo de Re-procesados** (`reprocessed`): Cajas usadas como materia prima en otro proceso
-2. **Nodo de Faltantes** (`missing`): Cajas que realmente faltan o no están contabilizadas
+2. **Nodo de Balance** (`balance`): Balance completo (faltantes y sobras) de productos producidos
 
 ---
 
@@ -43,13 +43,13 @@ Se han implementado **DOS nuevos nodos** que cuelgan del nodo final:
   - Dentro de cada proceso: `products[]` con las cajas usadas
 
 #### `createMissingNodeForFinalNode(int $finalNodeId, ...)`
-- Crea UN SOLO nodo de faltantes por nodo final
-- Agrupa todos los productos del nodo final que tienen faltantes
-- Calcula: `producido - venta - stock - re-procesado = faltante`
+- Crea UN SOLO nodo de balance por nodo final
+- Agrupa todos los productos del nodo final que tienen desbalance (faltantes o sobras)
+- Calcula: `producido - venta - stock - re-procesado = balance`
 - Estructura:
-  - `products[]`: Array de productos con sus faltantes
-  - Cada producto muestra: `produced`, `inSales`, `inStock`, `reprocessed`, `missing`
-  - Lista las cajas individuales que faltan
+  - `products[]`: Array de productos con su balance
+  - Cada producto muestra: `produced`, `inSales`, `inStock`, `reprocessed`, `balance`
+  - Lista las cajas individuales que faltan (si hay)
 
 ### 3. Integración
 
@@ -124,12 +124,12 @@ Se han implementado **DOS nuevos nodos** que cuelgan del nodo final:
 }
 ```
 
-### Nodo de Faltantes
+### Nodo de Balance
 
 ```json
 {
-  "type": "missing",
-  "id": "missing-{finalNodeId}",
+  "type": "balance",
+  "id": "balance-{finalNodeId}",
   "parentRecordId": {finalNodeId},
   "productionId": 1,
   "products": [
@@ -154,7 +154,7 @@ Se han implementado **DOS nuevos nodos** que cuelgan del nodo final:
         "boxes": 15,
         "weight": 150.0
       },
-      "missing": {
+      "balance": {
         "boxes": 5,
         "weight": 50.0,
         "percentage": 5.0
@@ -171,8 +171,8 @@ Se han implementado **DOS nuevos nodos** que cuelgan del nodo final:
   ],
   "summary": {
     "productsCount": 1,
-    "totalMissingBoxes": 5,
-    "totalMissingWeight": 50.0
+    "totalBalanceBoxes": 5,
+    "totalBalanceWeight": 50.0
   }
 }
 ```

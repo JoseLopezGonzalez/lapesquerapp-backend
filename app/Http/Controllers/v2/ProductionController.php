@@ -81,7 +81,10 @@ class ProductionController extends Controller
 
         return response()->json([
             'message' => 'Producción obtenida correctamente.',
-            'data' => new ProductionResource($production),
+            'data' => [
+                ...(new ProductionResource($production))->toArray(request()),
+                'reconciliation' => $production->getDetailedReconciliationByProduct(), // ✨ Conciliación detallada por producto
+            ],
         ]);
     }
 

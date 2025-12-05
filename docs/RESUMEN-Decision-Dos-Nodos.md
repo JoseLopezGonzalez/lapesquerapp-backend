@@ -24,10 +24,10 @@ En lugar de crear un solo nodo de "no contabilizados", se crearán **DOS nodos s
 
 ---
 
-### 2. ⚠️ Nodo de Faltantes / No Contabilizados
+### 2. ⚠️ Nodo de Balance (Faltantes y Sobras)
 
-**Tipo**: `missing`  
-**ID**: `missing-{finalNodeId}`
+**Tipo**: `balance`  
+**ID**: `balance-{finalNodeId}`
 
 **Contiene**: Cajas que **realmente faltan** o no están contabilizadas.
 
@@ -64,7 +64,7 @@ Nodo Final
 ├── sales (productos en venta)
 ├── stock (productos almacenados)
 ├── reprocessed (productos re-procesados) ✨ NUEVO
-└── missing (productos faltantes) ✨ NUEVO
+└── balance (balance de productos: faltantes y sobras) ✨ NUEVO
 ```
 
 ---

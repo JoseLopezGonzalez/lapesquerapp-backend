@@ -180,8 +180,8 @@ Faltantes = Cajas del lote disponibles
 
 ```json
 {
-  "type": "missing",
-  "id": "missing-{finalNodeId}",
+  "type": "balance",
+  "id": "balance-{finalNodeId}",
   "parentRecordId": {finalNodeId},
   "productionId": 1,
   "products": [
@@ -206,7 +206,7 @@ Faltantes = Cajas del lote disponibles
         "boxes": 15,
         "weight": 150.0
       },
-      "missing": {
+      "balance": {
         "boxes": 5,
         "weight": 50.0,
         "percentage": 5.0
@@ -223,8 +223,8 @@ Faltantes = Cajas del lote disponibles
   ],
   "summary": {
     "productsCount": 1,
-    "totalMissingBoxes": 5,
-    "totalMissingWeight": 50.0
+    "totalBalanceBoxes": 5,
+    "totalBalanceWeight": 50.0
   },
   "children": []
 }
@@ -250,7 +250,7 @@ Nodo Final (ID: 2)
 ├── sales-2 (productos en venta)
 ├── stock-2 (productos almacenados)
 ├── reprocessed-2 (productos re-procesados) ✨ NUEVO
-└── missing-2 (productos faltantes) ✨ NUEVO
+└── balance-2 (balance de productos: faltantes y sobras) ✨ NUEVO
 ```
 
 ### Cuándo Mostrar Cada Nodo
@@ -258,7 +258,7 @@ Nodo Final (ID: 2)
 - **sales**: Solo si hay productos en venta
 - **stock**: Solo si hay productos en stock
 - **reprocessed**: Solo si hay productos re-procesados
-- **missing**: Solo si hay productos faltantes (`missing > 0`)
+- **balance**: Solo si hay productos con desbalance (`balance.weight != 0`)
 
 ---
 

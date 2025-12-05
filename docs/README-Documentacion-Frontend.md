@@ -1,7 +1,8 @@
 # 📚 Documentación Frontend - Production Tree
 
 **Última actualización**: 2025-01-27  
-**Versión actual**: v4 (con nodos re-procesados y faltantes)
+**Versión actual**: v4 (con nodos re-procesados y balance)  
+**⚠️ IMPORTANTE**: El nodo `missing` ha sido renombrado a `balance` - Ver migración abajo
 
 ---
 
@@ -15,13 +16,22 @@ GET /v2/productions/{id}/process-tree
 
 ## 📋 Documentos Disponibles
 
+### ⚠️ Migración Importante
+
+**🚨 `FRONTEND-Migracion-Missing-a-Balance.md`** ⭐ **LEER PRIMERO**
+   - Guía completa de migración de `missing` → `balance`
+   - Cambios en TypeScript
+   - Ejemplos de código actualizados
+   - Checklist de migración
+   - **Breaking change** - Requiere actualización inmediata
+
 ### Para Empezar (Recomendado)
 
 1. **🚀 `FRONTEND-Guia-Rapida-Nodos-Completos.md`**
    - Guía rápida y visual
    - Estructura de los 4 tipos de nodos
    - Ejemplos simplificados
-   - ⭐ **Empezar aquí**
+   - ⭐ **Empezar aquí** (después de leer la migración)
 
 2. **📊 `EJEMPLO-RESPUESTA-process-tree-v4-completo.json`**
    - Ejemplo JSON completo
@@ -60,7 +70,7 @@ Nodo Final
 ├── sales         → Productos en venta
 ├── stock         → Productos almacenados
 ├── reprocessed   → Productos re-procesados ✨ NUEVO
-└── missing       → Productos faltantes ✨ NUEVO
+└── balance       → Balance de productos (faltantes y sobras) ✨ NUEVO
 ```
 
 ---
@@ -70,7 +80,7 @@ Nodo Final
 - **v1**: Nodos de venta y stock iniciales (un nodo por producto+pedido/almacén)
 - **v2**: Un nodo por producto con arrays internos
 - **v3**: Un nodo por nodo final (agrupa todos los productos)
-- **v4**: v3 + nodos de re-procesados y faltantes ✨ **ACTUAL**
+- **v4**: v3 + nodos de re-procesados y balance ✨ **ACTUAL**
 
 ---
 
@@ -81,9 +91,11 @@ Nodo Final
 - `EJEMPLO-RESPUESTA-process-tree-v4-completo.json` (versión actual)
 
 ### Documentación de Cambios
+- **`FRONTEND-Migracion-Missing-a-Balance.md`** ⚠️ **ACTUAL** - Migración missing → balance
 - `FRONTEND-Cambios-Nodos-Venta-Stock-v2.md` (v1 → v2)
 - `FRONTEND-Cambios-Nodos-Venta-Stock-v3.md` (v2 → v3)
 - `RESUMEN-Documentacion-Frontend-v4.md` (resumen v4)
+- `CAMBIO-Nodo-Missing-a-Balance.md` (documentación del cambio en backend)
 
 ---
 

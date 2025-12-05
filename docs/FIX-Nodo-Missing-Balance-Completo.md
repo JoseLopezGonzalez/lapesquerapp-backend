@@ -58,7 +58,7 @@ Incluso si no hay cajas físicas, debería mostrar cuando hay un desbalance.
    - Hay faltantes positivos (productos no contabilizados)
    - Hay errores negativos (más contabilizado que producido)
 
-5. **Permite valores negativos** en `missing.weight` para detectar errores de datos.
+5. **Permite valores negativos** en `balance.weight` para detectar errores de datos (sobras).
 
 ---
 
@@ -100,8 +100,8 @@ El nodo `missing` ahora incluye **TODOS los productos** del nodo final con desba
 
 ```json
 {
-  "type": "missing",
-  "id": "missing-8",
+  "type": "balance",
+  "id": "balance-8",
   "products": [
     {
       "product": { "id": 104, "name": "Pulpo Fresco Rizado" },
@@ -109,9 +109,9 @@ El nodo `missing` ahora incluye **TODOS los productos** del nodo final con desba
       "inSales": { "boxes": 145, "weight": 725.0 },
       "inStock": { "boxes": 40, "weight": 200.0 },
       "reprocessed": { "boxes": 0, "weight": 0.0 },
-      "missing": {
+      "balance": {
         "boxes": 0,
-        "weight": -225.0,  // ⚠️ Negativo = error de datos
+        "weight": -225.0,  // ⚠️ Negativo = sobrante (error de datos)
         "percentage": 0.0
       },
       "boxes": []
@@ -122,9 +122,9 @@ El nodo `missing` ahora incluye **TODOS los productos** del nodo final con desba
       "inSales": { "boxes": 0, "weight": 0.0 },
       "inStock": { "boxes": 0, "weight": 0.0 },
       "reprocessed": { "boxes": 0, "weight": 0.0 },
-      "missing": {
+      "balance": {
         "boxes": 0,
-        "weight": 400.0,  // ✅ Faltante real
+        "weight": 400.0,  // ✅ Positivo = faltante
         "percentage": 100.0
       },
       "boxes": []
@@ -137,7 +137,7 @@ El nodo `missing` ahora incluye **TODOS los productos** del nodo final con desba
 
 ## ⚠️ Valores Negativos
 
-Si `missing.weight` es **negativo**, significa que hay **más contabilizado** (venta + stock + re-procesado) que **producido**. Esto indica un **error de datos**:
+Si `balance.weight` es **negativo**, significa que hay **más contabilizado** (venta + stock + re-procesado) que **producido**. Esto indica un **sobrante** o **error de datos**:
 
 - Cajas con lote incorrecto
 - Productos asignados a pedidos/almacenes de otro lote

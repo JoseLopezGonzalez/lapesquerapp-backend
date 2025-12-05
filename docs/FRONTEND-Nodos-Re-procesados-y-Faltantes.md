@@ -5,7 +5,7 @@
 Se han añadido **DOS nuevos tipos de nodos** al árbol de procesos que cuelgan de los nodos finales, completando la trazabilidad del 100% de los productos producidos:
 
 1. **Nodo de Re-procesados** (`type: "reprocessed"`): Cajas usadas como materia prima en otro proceso
-2. **Nodo de Faltantes** (`type: "missing"`): Cajas que realmente faltan o no están contabilizadas
+2. **Nodo de Balance** (`type: "balance"`): Balance completo (faltantes y sobras) de productos producidos
 
 **Fecha**: 2025-01-27  
 **Endpoint**: `GET /v2/productions/{id}/process-tree`
@@ -21,7 +21,7 @@ Nodo Final
 ├── sales (productos en venta)
 ├── stock (productos almacenados)
 ├── reprocessed (productos re-procesados) ✨ NUEVO
-└── missing (productos faltantes) ✨ NUEVO
+└── balance (balance de productos: faltantes y sobras) ✨ NUEVO
 ```
 
 **Balance completo**:
@@ -181,16 +181,16 @@ Representa productos del lote que **realmente faltan** o no están contabilizado
 
 ### Identificación
 
-- **Tipo**: `"missing"`
-- **ID**: `"missing-{finalNodeId}"` (donde `finalNodeId` es el ID del nodo final padre)
+- **Tipo**: `"balance"`
+- **ID**: `"balance-{finalNodeId}"` (donde `finalNodeId` es el ID del nodo final padre)
 - **Parent**: Siempre cuelga de un nodo final (o puede ser huérfano si hay ambigüedad)
 
 ### Estructura del Nodo
 
 ```json
 {
-  "type": "missing",
-  "id": "missing-2",
+  "type": "balance",
+  "id": "balance-2",
   "parentRecordId": 2,  // ID del nodo final
   "productionId": 1,
   "products": [
@@ -215,7 +215,7 @@ Representa productos del lote que **realmente faltan** o no están contabilizado
         "boxes": 2,
         "weight": 10.0
       },
-      "missing": {
+      "balance": {
         "boxes": 0,
         "weight": 0.0,
         "percentage": 0.0
@@ -243,7 +243,7 @@ Representa productos del lote que **realmente faltan** o no están contabilizado
         "boxes": 0,
         "weight": 0.0
       },
-      "missing": {
+      "balance": {
         "boxes": 2,
         "weight": 20.0,
         "percentage": 40.0  // 40% del producto producido falta
@@ -266,8 +266,8 @@ Representa productos del lote que **realmente faltan** o no están contabilizado
   ],
   "summary": {
     "productsCount": 2,
-    "totalMissingBoxes": 2,
-    "totalMissingWeight": 20.0
+    "totalBalanceBoxes": 2,
+    "totalBalanceWeight": 20.0
   },
   "children": []
 }
@@ -277,31 +277,38 @@ Representa productos del lote que **realmente faltan** o no están contabilizado
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
-| `type` | string | Siempre `"missing"` |
-| `id` | string | `"missing-{finalNodeId}"` |
+| `type` | string | Siempre `"balance"` |
+| `id` | string | `"balance-{finalNodeId}"` |
 | `parentRecordId` | number | ID del nodo final padre |
-| `products` | array | Array de productos con sus faltantes |
+| `products` | array | Array de productos con su balance |
 | `products[].produced` | object | Total producido (boxes, weight) |
 | `products[].inSales` | object | Total en venta (boxes, weight) |
 | `products[].inStock` | object | Total en stock (boxes, weight) |
 | `products[].reprocessed` | object | Total re-procesado (boxes, weight) |
-| `products[].missing` | object | **Faltante calculado** (boxes, weight, percentage) |
+| `products[].balance` | object | **Balance calculado** (boxes, weight, percentage). Positivo = faltante, Negativo = sobrante |
 | `products[].boxes` | array | Lista de cajas individuales que faltan |
-| `summary.totalMissingBoxes` | number | Total de cajas faltantes |
-| `summary.totalMissingWeight` | number | Peso total faltante |
+| `summary.totalBalanceBoxes` | number | Total de cajas (balance) |
+| `summary.totalBalanceWeight` | number | Peso total (balance, puede ser negativo) |
 
-### Cálculo de Faltantes
+### Cálculo de Balance
 
 Para cada producto:
 ```
-Faltante = Producido - En Venta - En Stock - Re-procesado
+Balance = Producido - En Venta - En Stock - Re-procesado
 
-Ejemplo:
+Ejemplo 1 (Faltante):
   Producido: 50kg (5 cajas)
   - En Venta: 30kg (3 cajas)
   - En Stock: 0kg (0 cajas)
   - Re-procesado: 0kg (0 cajas)
-  = Faltante: 20kg (2 cajas) = 40%
+  = Balance: 20kg (2 cajas) = 40% faltante
+
+Ejemplo 2 (Sobrante):
+  Producido: 50kg (5 cajas)
+  - En Venta: 60kg (6 cajas)
+  - En Stock: 10kg (1 caja)
+  - Re-procesado: 0kg (0 cajas)
+  = Balance: -20kg (sobrante, posible error de datos)
 ```
 
 ---
@@ -326,7 +333,7 @@ Nodo Final "Fileteado" (ID: 2)
 │   └── processes[]
 │       └── products[] (Producto 5, Producto 6)
 │
-└── missing-2 (productos faltantes) ✨ NUEVO
+└── balance-2 (balance de productos: faltantes y sobras) ✨ NUEVO
     └── products[]
         └── Cálculo completo + cajas individuales
 ```
@@ -392,12 +399,12 @@ interface ReprocessedNode {
 }
 ```
 
-### Interface MissingNode
+### Interface BalanceNode
 
 ```typescript
-interface MissingNode {
-    type: 'missing';
-    id: string;  // "missing-{finalNodeId}"
+interface BalanceNode {
+    type: 'balance';
+    id: string;  // "balance-{finalNodeId}"
     parentRecordId: number;  // ID del nodo final
     productionId: number;
     products: Array<{
@@ -421,10 +428,10 @@ interface MissingNode {
             boxes: number;
             weight: number;
         };
-        missing: {
+        balance: {
             boxes: number;
-            weight: number;
-            percentage: number;  // Porcentaje del total producido
+            weight: number;  // Positivo = faltante, Negativo = sobrante
+            percentage: number;  // Porcentaje del total producido (solo si es positivo)
         };
         boxes: Array<{
             id: number;
@@ -435,8 +442,8 @@ interface MissingNode {
     }>;
     summary: {
         productsCount: number;
-        totalMissingBoxes: number;
-        totalMissingWeight: number;
+        totalBalanceBoxes: number;
+        totalBalanceWeight: number;  // Puede ser negativo (sobrante)
     };
     children: [];
 }
@@ -450,7 +457,7 @@ type ProcessTreeNode =
     | SalesNode    // Nodo de venta
     | StockNode    // Nodo de stock
     | ReprocessedNode  // ✨ NUEVO
-    | MissingNode;     // ✨ NUEVO
+    | BalanceNode;     // ✨ NUEVO (antes MissingNode)
 ```
 
 ---
@@ -469,11 +476,11 @@ type ProcessTreeNode =
   "inSales": { "boxes": 6, "weight": 30.0 },
   "inStock": { "boxes": 4, "weight": 20.0 },
   "reprocessed": { "boxes": 0, "weight": 0.0 },
-  "missing": { "boxes": 0, "weight": 0.0, "percentage": 0.0 }
+  "balance": { "boxes": 0, "weight": 0.0, "percentage": 0.0 }
 }
 ```
 
-**Resultado**: No se mostraría el nodo de faltantes (no hay faltantes).
+**Resultado**: No se mostraría el nodo de balance (no hay desbalance).
 
 ### Caso 2: Producto Re-procesado
 
@@ -497,11 +504,11 @@ type ProcessTreeNode =
 
 **Información útil**: Ver en qué proceso se reutilizaron los productos.
 
-### Caso 3: Productos Faltantes
+### Caso 3: Productos con Balance (Faltantes o Sobras)
 
 ```json
 {
-  "type": "missing",
+  "type": "balance",
   "products": [
     {
       "product": { "name": "Atún en Aceite" },
@@ -509,7 +516,7 @@ type ProcessTreeNode =
       "inSales": { "boxes": 3, "weight": 30.0 },
       "inStock": { "boxes": 0, "weight": 0.0 },
       "reprocessed": { "boxes": 0, "weight": 0.0 },
-      "missing": { "boxes": 2, "weight": 20.0, "percentage": 40.0 },
+      "balance": { "boxes": 2, "weight": 20.0, "percentage": 40.0 },
       "boxes": [
         { "id": 5678, "netWeight": 10.0, "gs1_128": "..." },
         { "id": 5679, "netWeight": 10.0, "gs1_128": "..." }
@@ -530,7 +537,7 @@ type ProcessTreeNode =
 | Tipo | ID | Descripción |
 |------|-----|-------------|
 | `reprocessed` | `reprocessed-{finalNodeId}` | Productos re-procesados |
-| `missing` | `missing-{finalNodeId}` | Productos faltantes |
+| `balance` | `balance-{finalNodeId}` | Balance de productos (faltantes y sobras) |
 
 ### Estructura Mantenida
 
@@ -549,7 +556,7 @@ Este archivo contiene un ejemplo completo con:
 - Nodo de venta con 2 pedidos
 - Nodo de stock con 1 almacén
 - Nodo de re-procesados con 1 proceso
-- Nodo de faltantes con cálculo completo
+- Nodo de balance con cálculo completo (faltantes y sobras)
 
 ---
 
@@ -557,7 +564,7 @@ Este archivo contiene un ejemplo completo con:
 
 1. **Nodos opcionales**: Cada nodo solo aparece si tiene datos
    - Si no hay productos re-procesados → No aparece nodo `reprocessed`
-   - Si no hay productos faltantes → No aparece nodo `missing`
+   - Si no hay productos con desbalance → No aparece nodo `balance`
 
 2. **Agrupación por nodo final**: 
    - **UN SOLO nodo** de cada tipo por nodo final
@@ -570,14 +577,14 @@ Este archivo contiene un ejemplo completo con:
 
 4. **Nodos huérfanos**:
    - Si un producto no tiene nodo final o tiene ambigüedad
-   - Los nodos se crean con ID `"reprocessed-orphan-{productId}"` o `"missing-orphan-{productId}"`
+   - Los nodos se crean con ID `"reprocessed-orphan-{productId}"` o `"balance-orphan-{productId}"`
    - `parentRecordId: null`
 
 ---
 
 ## ✅ Checklist de Implementación Frontend
 
-- [ ] Actualizar tipos TypeScript para incluir `ReprocessedNode` y `MissingNode`
+- [ ] Actualizar tipos TypeScript para incluir `ReprocessedNode` y `BalanceNode`
 - [ ] Actualizar renderizado del árbol para mostrar los nuevos nodos
 - [ ] Implementar visualización del nodo de re-procesados
 - [ ] Implementar visualización del nodo de faltantes

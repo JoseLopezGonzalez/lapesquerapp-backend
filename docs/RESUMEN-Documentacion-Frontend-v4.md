@@ -52,7 +52,7 @@
 | `sales` | `sales-{finalNodeId}` | Productos en venta | ❌ Solo si hay venta |
 | `stock` | `stock-{finalNodeId}` | Productos almacenados | ❌ Solo si hay stock |
 | `reprocessed` | `reprocessed-{finalNodeId}` | Productos re-procesados ✨ | ❌ Solo si hay re-procesados |
-| `missing` | `missing-{finalNodeId}` | Productos faltantes ✨ | ❌ Solo si hay faltantes |
+| `balance` | `balance-{finalNodeId}` | Balance de productos (faltantes y sobras) ✨ | ❌ Solo si hay desbalance |
 
 ---
 

@@ -16,7 +16,7 @@ Nodo Final (ID: 2)
 ├── sales-2          → Productos en venta
 ├── stock-2          → Productos almacenados
 ├── reprocessed-2    → Productos re-procesados ✨ NUEVO
-└── missing-2        → Productos faltantes ✨ NUEVO
+└── balance-2        → Balance de productos (faltantes y sobras) ✨ NUEVO
 ```
 
 ---
@@ -50,17 +50,17 @@ reprocessed-{finalNodeId}
     └── products[]  ← Array de productos usados en cada proceso
 ```
 
-### 4. Missing Node (`type: "missing"`) ✨ NUEVO
+### 4. Balance Node (`type: "balance"`) ✨ NUEVO
 
 **Estructura**:
 ```
-missing-{finalNodeId}
+balance-{finalNodeId}
 └── products[]      ← Productos con cálculo completo
     ├── produced    ← Total producido
     ├── inSales     ← Total en venta
     ├── inStock     ← Total en stock
     ├── reprocessed ← Total re-procesado
-    ├── missing     ← Diferencia (faltante)
+    ├── balance     ← Diferencia (positivo = faltante, negativo = sobrante)
     └── boxes[]     ← Lista de cajas faltantes
 ```
 
@@ -117,8 +117,8 @@ missing-{finalNodeId}
       ]
     },
     {
-      "type": "missing",
-      "id": "missing-2",
+      "type": "balance",
+      "id": "balance-2",
       "products": [
         {
           "product": { "id": 5, "name": "Filetes de Atún" },
@@ -126,7 +126,7 @@ missing-{finalNodeId}
           "inSales": { "boxes": 5, "weight": 25.0 },
           "inStock": { "boxes": 1, "weight": 5.0 },
           "reprocessed": { "boxes": 2, "weight": 10.0 },
-          "missing": { "boxes": 2, "weight": 10.0, "percentage": 20.0 },
+          "balance": { "boxes": 2, "weight": 10.0, "percentage": 20.0 },
           "boxes": [
             { "id": 5678, "netWeight": 5.0, "gs1_128": "1234567890123" },
             { "id": 5679, "netWeight": 5.0, "gs1_128": "1234567890124" }
@@ -202,7 +202,7 @@ products[] (directo, no agrupa)
 ```typescript
 function getNodeType(node: ProcessTreeNode): string {
   if ('type' in node) {
-    return node.type; // 'sales', 'stock', 'reprocessed', 'missing'
+    return node.type; // 'sales', 'stock', 'reprocessed', 'balance'
   }
   return 'process'; // Nodo de proceso normal
 }
@@ -219,18 +219,18 @@ function renderNode(node: ProcessTreeNode) {
       return renderStockNode(node);
     case 'reprocessed':
       return renderReprocessedNode(node); // ✨ NUEVO
-    case 'missing':
-      return renderMissingNode(node);     // ✨ NUEVO
+    case 'balance':
+      return renderBalanceNode(node);     // ✨ NUEVO
     default:
       return renderProcessNode(node);
   }
 }
 ```
 
-### 3. Mostrar Balance en Missing Node
+### 3. Mostrar Balance en Balance Node
 
 ```typescript
-function renderMissingNode(node: MissingNode) {
+function renderBalanceNode(node: BalanceNode) {
   return node.products.map(product => (
     <div>
       <h3>{product.product.name}</h3>
@@ -239,7 +239,11 @@ function renderMissingNode(node: MissingNode) {
       <div>En Stock: {product.inStock.boxes} cajas</div>
       <div>Re-procesado: {product.reprocessed.boxes} cajas</div>
       <div className="alert">
-        ⚠️ Faltante: {product.missing.boxes} cajas ({product.missing.percentage}%)
+        {product.balance.weight > 0 ? (
+          <>⚠️ Faltante: {product.balance.boxes} cajas ({product.balance.percentage}%)</>
+        ) : (
+          <>❌ Sobrante: {Math.abs(product.balance.weight)}kg</>
+        )}
       </div>
       {product.boxes.length > 0 && (
         <div>Cajas faltantes: {product.boxes.map(b => b.id).join(', ')}</div>
