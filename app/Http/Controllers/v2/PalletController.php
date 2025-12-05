@@ -695,17 +695,15 @@ class PalletController extends Controller
      */
     public function registeredPallets()
     {
-        // Obtener todos los palets registrados (state_id = 1)
-        $pallets = Pallet::where('state_id', Pallet::STATE_REGISTERED)
-            ->with([
-                'boxes.box.productionInputs.productionRecord.production',
-                'boxes.box.product',
-            ])
-            ->orderBy('id', 'desc')
-            ->get();
+        // Obtener todos los palets registrados (state_id = 1) con relaciones cargadas
+        $query = Pallet::where('state_id', Pallet::STATE_REGISTERED);
+        $query = $this->loadPalletRelations($query);
+        $pallets = $query->orderBy('id', 'desc')->get();
 
-        // Calcular pesos totales
-        $netWeightPallets = $pallets->sum('netWeight');
+        // Calcular pesos totales - usar sum con callback para acceder al accessor
+        $netWeightPallets = $pallets->sum(function ($pallet) {
+            return $pallet->netWeight ?? 0;
+        });
         $totalNetWeight = $netWeightPallets; // No hay boxes ni bigBoxes por ahora
 
         // Formato similar a StoreDetailsResource
@@ -719,7 +717,7 @@ class PalletController extends Controller
             'content' => [
                 'pallets' => $pallets->map(function ($pallet) {
                     return $pallet->toArrayAssocV2();
-                }),
+                })->values(), // values() para resetear índices
                 'boxes' => [],
                 'bigBoxes' => [],
             ],
