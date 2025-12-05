@@ -6,16 +6,18 @@ Este documento detalla el diseño para añadir nuevos nodos al endpoint `GET /v2
 - **Nodos de Venta**: Palets asignados a pedidos con cajas disponibles
 - **Nodos de Stock**: Palets almacenados en almacenes con cajas disponibles
 
-**⚠️ IMPORTANTE**: Los nodos de venta y stock se añaden **como hijos de los nodos finales** del árbol de procesos cuando hay coincidencia de productos. Si no existe un nodo final para un producto, los nodos se crean sin padre dentro del árbol.
+**⚠️ IMPORTANTE**: Los nodos de venta y stock se añaden **como hijos de los nodos finales** del árbol de procesos. Se crea **UN SOLO nodo de venta y UN SOLO nodo de stock por cada nodo final** (no por producto), agrupando todos los productos que produce ese nodo final.
 
 **Fecha de Diseño**: 2025-01-27  
-**Fecha de Aprobación**: 2025-01-27  
-**Estado**: ✅ **Aprobado - Listo para Implementación**
+**Fecha de Actualización**: 2025-01-27 (v3 - Estructura Final)  
+**Estado**: ✅ **Implementado - Estructura Final**
 
-### Decisiones Finales Aprobadas
+### Decisiones Finales Aprobadas (v3 - Estructura Final)
 
 - ✅ **Opción B** para palets en pedidos/almacén: Si tiene pedido → venta, si no tiene pedido pero está almacenado → stock
-- ✅ **Agrupación**: Por `producto + pedido/almacén` independientemente de cantidad de palets
+- ✅ **Agrupación FINAL**: **UN SOLO nodo de venta por nodo final** (agrupa todos los productos del nodo final)
+- ✅ **Agrupación FINAL**: **UN SOLO nodo de stock por nodo final** (agrupa todos los productos del nodo final)
+- ✅ **Estructura interna**: Dentro de cada pedido/almacén hay un array de productos con sus palets
 - ✅ **Solo cajas disponibles**: Filtrar por `isAvailable = true`
 - ✅ **Filtro por lote**: Obligatorio en todas las queries (`Box.lot = Production.lot`)
 
@@ -151,18 +153,14 @@ Un palet se incluye en los nodos de venta si:
 
 ### Estructura de un Nodo de Venta
 
-**✨ IMPORTANTE**: Se crea **UN SOLO nodo de venta por producto** con desglose de todos los pedidos.
+**✨ IMPORTANTE (v3 - Estructura Final)**: Se crea **UN SOLO nodo de venta por nodo final** con todos los productos que produce ese nodo final. Dentro de cada pedido hay un array de productos.
 
 ```json
 {
   "type": "sales",
-  "id": "sales-{productId}",
-  "parentRecordId": 1,  // ✨ ID del nodo final padre (null si no tiene padre)
+  "id": "sales-{finalNodeId}",  // 👈 ID del nodo final, NO del producto
+  "parentRecordId": 2,  // ✨ ID del nodo final padre (null si no tiene padre)
   "productionId": 1,    // ID de la producción
-  "product": {
-    "id": 5,
-    "name": "Atún en Lata 200g"
-  },
   "orders": [
     {
       "order": {
@@ -175,20 +173,34 @@ Un palet se incluye en los nodos de venta si:
         "loadDate": "2024-02-15T00:00:00Z",
         "status": "pending"
       },
-      "pallets": [
+      "products": [  // 👈 Array de productos en este pedido
         {
-          "id": 789,
-          "availableBoxesCount": 10,
-          "totalAvailableWeight": 25.50
+          "product": {
+            "id": 5,
+            "name": "Atún en Lata 200g"
+          },
+          "pallets": [
+            {
+              "id": 789,
+              "availableBoxesCount": 10,
+              "totalAvailableWeight": 25.50
+            }
+          ],
+          "totalBoxes": 10,
+          "totalNetWeight": 25.50
+        },
+        {
+          "product": {
+            "id": 6,
+            "name": "Atún en Aceite"
+          },
+          "pallets": [...],
+          "totalBoxes": 5,
+          "totalNetWeight": 12.50
         }
       ],
-      "totalBoxes": 10,
-      "totalNetWeight": 25.50,
-      "summary": {
-        "palletsCount": 1,
-        "boxesCount": 10,
-        "netWeight": 25.50
-      }
+      "totalBoxes": 15,  // Total del pedido (suma de todos los productos)
+      "totalNetWeight": 38.0
     },
     {
       "order": {
@@ -201,19 +213,19 @@ Un palet se incluye en los nodos de venta si:
         "loadDate": "2024-02-20T00:00:00Z",
         "status": "pending"
       },
-      "pallets": [...],
+      "products": [...],
       "totalBoxes": 8,
-      "totalNetWeight": 20.0,
-      "summary": {...}
+      "totalNetWeight": 20.0
     }
   ],
-  "totalBoxes": 18,  // Total de todos los pedidos
-  "totalNetWeight": 45.50,  // Total de todos los pedidos
+  "totalBoxes": 23,  // Total de TODOS los pedidos
+  "totalNetWeight": 58.0,  // Total de TODOS los pedidos
   "summary": {
     "ordersCount": 2,  // Número de pedidos
-    "palletsCount": 2,  // Total de palets
-    "boxesCount": 18,  // Total de cajas
-    "netWeight": 45.50  // Peso total
+    "productsCount": 2,  // 👈 Número de productos diferentes del nodo final
+    "palletsCount": 4,  // Total de palets
+    "boxesCount": 23,  // Total de cajas
+    "netWeight": 58.0  // Peso total
   },
   "children": []  // Los nodos de venta/stock no tienen hijos
 }
@@ -228,13 +240,14 @@ Un palet se incluye en los nodos de venta si:
 4. Si hay match → El nodo de venta/stock se añade como hijo del nodo final
 5. Si NO hay match → El nodo de venta/stock se crea sin padre (`parentRecordId: null`)
 
-### Agrupación
+### Agrupación (v3 - Estructura Final)
 
-**✨ NUEVO**: Se crea **UN SOLO nodo de venta por producto**:
-- **Un nodo de venta** contiene **todos los pedidos** de ese producto (desglose en array `orders`)
-- Cada elemento en `orders` representa un pedido con sus palets, totales y resumen
-- Los totales del nodo (`totalBoxes`, `totalNetWeight`) son la suma de todos los pedidos
-- Si un pedido tiene múltiples productos del mismo lote → múltiples nodos de venta (uno por producto)
+**✨ FINAL**: Se crea **UN SOLO nodo de venta por nodo final**:
+- **Un nodo de venta** agrupa **TODOS los productos** que produce el nodo final
+- Contiene **todos los pedidos** donde están esos productos (desglose en array `orders`)
+- Dentro de cada pedido, hay un array de `products` con todos los productos del nodo final que están en ese pedido
+- Cada producto dentro de un pedido tiene sus propios palets y totales
+- Los totales del nodo (`totalBoxes`, `totalNetWeight`) son la suma de todos los pedidos y todos los productos
 
 ---
 
@@ -259,18 +272,14 @@ Un palet se incluye en los nodos de stock si:
 
 ### Estructura de un Nodo de Stock
 
-**✨ IMPORTANTE**: Se crea **UN SOLO nodo de stock por producto** con desglose de todos los almacenes.
+**✨ IMPORTANTE (v3 - Estructura Final)**: Se crea **UN SOLO nodo de stock por nodo final** con todos los productos que produce ese nodo final. Dentro de cada almacén hay un array de productos.
 
 ```json
 {
   "type": "stock",
-  "id": "stock-{productId}",
-  "parentRecordId": 1,  // ✨ ID del nodo final padre (null si no tiene padre)
+  "id": "stock-{finalNodeId}",  // 👈 ID del nodo final, NO del producto
+  "parentRecordId": 2,  // ✨ ID del nodo final padre (null si no tiene padre)
   "productionId": 1,    // ID de la producción
-  "product": {
-    "id": 5,
-    "name": "Atún en Lata 200g"
-  },
   "stores": [
     {
       "store": {
@@ -278,21 +287,35 @@ Un palet se incluye en los nodos de stock si:
         "name": "Almacén Central",
         "temperature": -18.00
       },
-      "pallets": [
+      "products": [  // 👈 Array de productos en este almacén
         {
-          "id": 456,
-          "availableBoxesCount": 15,
-          "totalAvailableWeight": 38.25,
-          "position": "A-12"
+          "product": {
+            "id": 5,
+            "name": "Atún en Lata 200g"
+          },
+          "pallets": [
+            {
+              "id": 456,
+              "availableBoxesCount": 15,
+              "totalAvailableWeight": 38.25,
+              "position": "A-12"
+            }
+          ],
+          "totalBoxes": 15,
+          "totalNetWeight": 38.25
+        },
+        {
+          "product": {
+            "id": 6,
+            "name": "Atún en Aceite"
+          },
+          "pallets": [...],
+          "totalBoxes": 8,
+          "totalNetWeight": 20.0
         }
       ],
-      "totalBoxes": 15,
-      "totalNetWeight": 38.25,
-      "summary": {
-        "palletsCount": 1,
-        "boxesCount": 15,
-        "netWeight": 38.25
-      }
+      "totalBoxes": 23,  // Total del almacén (suma de todos los productos)
+      "totalNetWeight": 58.25
     },
     {
       "store": {
@@ -300,31 +323,32 @@ Un palet se incluye en los nodos de stock si:
         "name": "Almacén Norte",
         "temperature": -20.00
       },
-      "pallets": [...],
+      "products": [...],
       "totalBoxes": 10,
-      "totalNetWeight": 25.0,
-      "summary": {...}
+      "totalNetWeight": 25.0
     }
   ],
-  "totalBoxes": 25,  // Total de todos los almacenes
-  "totalNetWeight": 63.25,  // Total de todos los almacenes
+  "totalBoxes": 33,  // Total de TODOS los almacenes
+  "totalNetWeight": 83.25,  // Total de TODOS los almacenes
   "summary": {
     "storesCount": 2,  // Número de almacenes
-    "palletsCount": 2,  // Total de palets
-    "boxesCount": 25,  // Total de cajas
-    "netWeight": 63.25  // Peso total
+    "productsCount": 2,  // 👈 Número de productos diferentes del nodo final
+    "palletsCount": 4,  // Total de palets
+    "boxesCount": 33,  // Total de cajas
+    "netWeight": 83.25  // Peso total
   },
   "children": []  // Los nodos de stock no tienen hijos
 }
 ```
 
-### Agrupación
+### Agrupación (v3 - Estructura Final)
 
-**✨ NUEVO**: Se crea **UN SOLO nodo de stock por producto**:
-- **Un nodo de stock** contiene **todos los almacenes** donde está ese producto (desglose en array `stores`)
-- Cada elemento en `stores` representa un almacén con sus palets, totales y resumen
-- Los totales del nodo (`totalBoxes`, `totalNetWeight`) son la suma de todos los almacenes
-- Si un almacén tiene múltiples productos del mismo lote → múltiples nodos de stock (uno por producto)
+**✨ FINAL**: Se crea **UN SOLO nodo de stock por nodo final**:
+- **Un nodo de stock** agrupa **TODOS los productos** que produce el nodo final
+- Contiene **todos los almacenes** donde están esos productos (desglose en array `stores`)
+- Dentro de cada almacén, hay un array de `products` con todos los productos del nodo final que están en ese almacén
+- Cada producto dentro de un almacén tiene sus propios palets y totales
+- Los totales del nodo (`totalBoxes`, `totalNetWeight`) son la suma de todos los almacenes y todos los productos
 
 ---
 
@@ -380,20 +404,31 @@ $stockData = [
 ];
 ```
 
-### Paso 3: Vincular Nodos de Venta/Stock a Nodos Finales
+### Paso 3: Vincular Nodos de Venta/Stock a Nodos Finales (v3 - Estructura Final)
 
-Para cada producto en venta/stock:
+**✨ NUEVA LÓGICA**: Agrupar por nodo final, no por producto.
 
-1. **¿Existe nodo final que produce este producto?**
-   - Buscar en `$finalNodesByProduct[$productId]`
+Para cada nodo final:
+
+1. **Obtener todos los productos que produce el nodo final**
+   - Extraer productos de los `outputs` del nodo final
    
-2. **Si existe**:
-   - Crear nodos de venta/stock para ese producto
-   - Añadirlos como hijos del nodo final (`parentRecordId = nodeId`)
+2. **Recopilar datos de venta/stock para TODOS esos productos**
+   - Buscar en `$salesData` y `$stockData` todos los productos del nodo final
    
-3. **Si NO existe**:
-   - Crear nodos de venta/stock sin padre (`parentRecordId = null`)
-   - Añadirlos al nivel raíz de `processNodes`
+3. **Si hay datos de venta para alguno de los productos**:
+   - Crear **UN SOLO nodo de venta** para el nodo final
+   - Agrupar todos los productos del nodo final en ese nodo
+   - Añadirlo como hijo del nodo final (`parentRecordId = finalNodeId`)
+   
+4. **Si hay datos de stock para alguno de los productos**:
+   - Crear **UN SOLO nodo de stock** para el nodo final
+   - Agrupar todos los productos del nodo final en ese nodo
+   - Añadirlo como hijo del nodo final (`parentRecordId = finalNodeId`)
+
+**Para productos sin nodo final o con ambigüedad** (múltiples nodos finales):
+- Crear nodos huérfanos agrupados por producto (un nodo por producto)
+- Añadirlos al nivel raíz de `processNodes` (`parentRecordId = null`)
 
 ### Paso 4: Casos Especiales
 
@@ -439,9 +474,13 @@ if (count($finalNodesByProduct[$productId]) > 1) {
 }
 ```
 
-#### Caso 2: Múltiples Productos en un Nodo Final
+#### Caso 2: Múltiples Productos en un Nodo Final (v3 - Estructura Final)
 
-Si un nodo final produce varios productos, puede tener múltiples hijos (nodos de venta/stock) uno por cada producto. Esto es normal y no requiere tratamiento especial.
+**✨ NUEVO**: Si un nodo final produce varios productos, se crea **UN SOLO nodo de venta y UN SOLO nodo de stock** que agrupan **TODOS los productos** del nodo final.
+
+- Un nodo final con 3 productos → **1 nodo de venta** (con los 3 productos) + **1 nodo de stock** (con los 3 productos)
+- No hay múltiples nodos por producto, sino un solo nodo que agrupa todos los productos del nodo final
+- Dentro de cada pedido/almacén, hay un array de productos con sus respectivos palets y totales
 
 ---
 
