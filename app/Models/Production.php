@@ -408,8 +408,42 @@ class Production extends Model
     }
 
     /**
+     * Obtener solo los outputs de nodos finales
+     * ✨ Solo cuenta las salidas de nodos finales (no incluye outputs intermedios)
+     * 
+     * @return \Illuminate\Database\Eloquent\Collection Collection de ProductionOutput
+     */
+    private function getFinalNodesOutputs()
+    {
+        // Obtener todos los records de esta producción con relaciones cargadas
+        $allRecords = $this->records()
+            ->with(['inputs', 'children', 'outputs.product'])
+            ->get();
+        
+        // Filtrar solo los que son nodos finales
+        // Usar las relaciones cargadas directamente para evitar queries adicionales
+        $finalRecords = $allRecords->filter(function ($record) {
+            // Verificar condiciones de nodo final usando relaciones cargadas
+            $hasNoInputs = $record->inputs->isEmpty();
+            $hasNoChildren = $record->children->isEmpty();
+            $hasOutputs = $record->outputs->isNotEmpty();
+            
+            return $hasNoInputs && $hasNoChildren && $hasOutputs;
+        });
+        
+        // Obtener todos los outputs de los nodos finales
+        $finalOutputs = collect();
+        foreach ($finalRecords as $record) {
+            $finalOutputs = $finalOutputs->merge($record->outputs);
+        }
+        
+        return $finalOutputs;
+    }
+
+    /**
      * Obtener conciliación detallada por producto
      * ✨ Muestra para cada producto producido: producido, en venta, en stock, re-procesado, balance
+     * ⚠️ IMPORTANTE: Solo cuenta las salidas de nodos finales (no outputs intermedios)
      * 
      * @return array Conciliación detallada con productos y resumen
      */
@@ -417,15 +451,20 @@ class Production extends Model
     {
         $lot = $this->lot;
         
-        // 1. Obtener todos los productos producidos (de todos los nodos finales)
-        // Usar allOutputs() para obtener todos los outputs de la producción
-        $allOutputs = $this->allOutputs()->with('product')->get();
+        // 1. Obtener todos los productos producidos (SOLO de nodos finales)
+        // ✨ CORRECCIÓN: Solo contar outputs de nodos finales, no todos los outputs
+        $finalOutputs = $this->getFinalNodesOutputs();
         
         $producedByProduct = [];
-        foreach ($allOutputs as $output) {
+        foreach ($finalOutputs as $output) {
             $productId = $output->product_id;
             if (!$productId) {
                 continue;
+            }
+            
+            // Asegurar que el producto esté cargado
+            if (!$output->relationLoaded('product')) {
+                $output->load('product');
             }
             
             if (!isset($producedByProduct[$productId])) {
