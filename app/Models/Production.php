@@ -310,8 +310,58 @@ class Production extends Model
     }
 
     /**
+     * Obtener solo los inputs de materia prima desde stock
+     * ✨ Solo cuenta las entradas de stock (no incluye consumos de outputs del padre)
+     * 
+     * @return array ['weight' => float, 'boxes' => int]
+     */
+    private function getStockInputsTotals()
+    {
+        // Obtener solo inputs de stock (materia prima)
+        // allInputs() ya obtiene solo ProductionInput (cajas desde stock)
+        // No incluye ProductionOutputConsumption (consumos de outputs del padre)
+        $stockInputs = $this->allInputs()
+            ->with('box')
+            ->get();
+        
+        $totalWeight = $stockInputs->sum(function ($input) {
+            return $input->box->net_weight ?? 0;
+        });
+        
+        $totalBoxes = $stockInputs->count();
+        
+        return [
+            'weight' => $totalWeight,
+            'boxes' => $totalBoxes,
+        ];
+    }
+
+    /**
+     * Obtener solo los outputs de nodos finales (totales)
+     * ✨ Solo cuenta las salidas de nodos finales (no incluye outputs intermedios)
+     * 
+     * @return array ['weight' => float, 'boxes' => int]
+     */
+    private function getFinalNodesOutputsTotals()
+    {
+        $finalOutputs = $this->getFinalNodesOutputs();
+        
+        $totalWeight = $finalOutputs->sum('weight_kg');
+        $totalBoxes = $finalOutputs->sum('boxes');
+        
+        return [
+            'weight' => $totalWeight,
+            'boxes' => $totalBoxes,
+        ];
+    }
+
+    /**
      * Calcular totales globales del lote completo
      * Incluye merma (waste) y rendimiento (yield) como en ProductionRecord
+     * 
+     * ⚠️ IMPORTANTE: 
+     * - Entradas: Solo materia prima desde stock (no incluye consumos de outputs del padre)
+     * - Salidas: Solo outputs de nodos finales (no incluye outputs intermedios)
      * 
      * Lógica:
      * - Si hay pérdida (input > output): waste > 0, yield = 0
@@ -320,8 +370,16 @@ class Production extends Model
      */
     public function calculateGlobalTotals()
     {
-        $totalInputWeight = $this->total_input_weight;
-        $totalOutputWeight = $this->total_output_weight;
+        // ✨ CORRECCIÓN: Solo contar inputs de stock (materia prima)
+        $stockInputsTotals = $this->getStockInputsTotals();
+        $totalInputWeight = $stockInputsTotals['weight'];
+        $totalInputBoxes = $stockInputsTotals['boxes'];
+        
+        // ✨ CORRECCIÓN: Solo contar outputs de nodos finales
+        $finalOutputsTotals = $this->getFinalNodesOutputsTotals();
+        $totalOutputWeight = $finalOutputsTotals['weight'];
+        $totalOutputBoxes = $finalOutputsTotals['boxes'];
+        
         $difference = $totalInputWeight - $totalOutputWeight;
 
         // Si hay pérdida (input > output)
@@ -345,9 +403,6 @@ class Production extends Model
             $totalYield = 0;
             $totalYieldPercentage = 0;
         }
-
-        $totalInputBoxes = $this->total_input_boxes;
-        $totalOutputBoxes = $this->total_output_boxes;
 
         $totals = [
             'totalInputWeight' => round($totalInputWeight, 2),
