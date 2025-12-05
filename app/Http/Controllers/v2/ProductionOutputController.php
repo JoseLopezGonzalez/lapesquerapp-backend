@@ -3,13 +3,19 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\StoreProductionOutputRequest;
+use App\Http\Requests\v2\UpdateProductionOutputRequest;
+use App\Http\Requests\v2\StoreMultipleProductionOutputsRequest;
 use App\Http\Resources\v2\ProductionOutputResource;
 use App\Models\ProductionOutput;
+use App\Services\Production\ProductionOutputService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ProductionOutputController extends Controller
 {
+    public function __construct(
+        private ProductionOutputService $productionOutputService
+    ) {}
     /**
      * Display a listing of the resource.
      */
@@ -49,20 +55,9 @@ class ProductionOutputController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreProductionOutputRequest $request)
     {
-        $validated = $request->validate([
-            'production_record_id' => 'required|exists:tenant.production_records,id',
-            'product_id' => 'required|exists:tenant.products,id',
-            'lot_id' => 'nullable|string',
-            'boxes' => 'required|integer|min:0',
-            'weight_kg' => 'required|numeric|min:0',
-        ]);
-
-        $output = ProductionOutput::create($validated);
-
-        // Cargar relaciones para la respuesta
-        $output->load(['productionRecord', 'product']);
+        $output = $this->productionOutputService->create($request->validated());
 
         return response()->json([
             'message' => 'Salida de producción creada correctamente.',
@@ -87,22 +82,10 @@ class ProductionOutputController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(UpdateProductionOutputRequest $request, string $id)
     {
         $output = ProductionOutput::findOrFail($id);
-
-        $validated = $request->validate([
-            'production_record_id' => 'sometimes|exists:tenant.production_records,id',
-            'product_id' => 'sometimes|exists:tenant.products,id',
-            'lot_id' => 'sometimes|nullable|string',
-            'boxes' => 'sometimes|integer|min:0',
-            'weight_kg' => 'sometimes|numeric|min:0',
-        ]);
-
-        $output->update($validated);
-
-        // Cargar relaciones para la respuesta
-        $output->load(['productionRecord', 'product']);
+        $output = $this->productionOutputService->update($output, $request->validated());
 
         return response()->json([
             'message' => 'Salida de producción actualizada correctamente.',
@@ -116,7 +99,7 @@ class ProductionOutputController extends Controller
     public function destroy(string $id)
     {
         $output = ProductionOutput::findOrFail($id);
-        $output->delete();
+        $this->productionOutputService->delete($output);
 
         return response()->json([
             'message' => 'Salida de producción eliminada correctamente.',
@@ -126,48 +109,20 @@ class ProductionOutputController extends Controller
     /**
      * Store multiple outputs at once
      */
-    public function storeMultiple(Request $request)
+    public function storeMultiple(StoreMultipleProductionOutputsRequest $request)
     {
-        $validated = $request->validate([
-            'production_record_id' => 'required|exists:tenant.production_records,id',
-            'outputs' => 'required|array|min:1',
-            'outputs.*.product_id' => 'required|exists:tenant.products,id',
-            'outputs.*.lot_id' => 'nullable|string',
-            'outputs.*.boxes' => 'required|integer|min:0',
-            'outputs.*.weight_kg' => 'required|numeric|min:0',
-        ]);
-
-        $created = [];
-        $errors = [];
-
-        DB::beginTransaction();
         try {
-            foreach ($validated['outputs'] as $index => $outputData) {
-                try {
-                    $output = ProductionOutput::create([
-                        'production_record_id' => $validated['production_record_id'],
-                        'product_id' => $outputData['product_id'],
-                        'lot_id' => $outputData['lot_id'] ?? null,
-                        'boxes' => $outputData['boxes'],
-                        'weight_kg' => $outputData['weight_kg'],
-                    ]);
-
-                    $output->load(['productionRecord', 'product']);
-                    $created[] = new ProductionOutputResource($output);
-                } catch (\Exception $e) {
-                    $errors[] = "Error en la salida #{$index}: " . $e->getMessage();
-                }
-            }
-
-            DB::commit();
+            $result = $this->productionOutputService->createMultiple(
+                $request->validated()['production_record_id'],
+                $request->validated()['outputs']
+            );
 
             return response()->json([
-                'message' => count($created) . ' salida(s) creada(s) correctamente.',
-                'data' => $created,
-                'errors' => $errors,
+                'message' => count($result['created']) . ' salida(s) creada(s) correctamente.',
+                'data' => ProductionOutputResource::collection($result['created']),
+                'errors' => $result['errors'],
             ], 201);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'message' => 'Error al crear las salidas.',
                 'error' => $e->getMessage(),

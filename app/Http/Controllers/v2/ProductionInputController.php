@@ -3,13 +3,18 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\StoreProductionInputRequest;
+use App\Http\Requests\v2\StoreMultipleProductionInputsRequest;
 use App\Http\Resources\v2\ProductionInputResource;
 use App\Models\ProductionInput;
+use App\Services\Production\ProductionInputService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ProductionInputController extends Controller
 {
+    public function __construct(
+        private ProductionInputService $productionInputService
+    ) {}
     /**
      * Display a listing of the resource.
      */
@@ -43,80 +48,39 @@ class ProductionInputController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreProductionInputRequest $request)
     {
-        $validated = $request->validate([
-            'production_record_id' => 'required|exists:tenant.production_records,id',
-            'box_id' => 'required|exists:tenant.boxes,id',
-        ]);
+        try {
+            $input = $this->productionInputService->create($request->validated());
 
-        // Verificar que la caja no esté ya asignada a este proceso
-        $existing = ProductionInput::where('production_record_id', $validated['production_record_id'])
-            ->where('box_id', $validated['box_id'])
-            ->first();
-
-        if ($existing) {
             return response()->json([
-                'message' => 'La caja ya está asignada a este proceso.',
+                'message' => 'Entrada de producción creada correctamente.',
+                'data' => new ProductionInputResource($input),
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
             ], 422);
         }
-
-        $input = ProductionInput::create($validated);
-
-        // Cargar relaciones para la respuesta
-        $input->load(['productionRecord', 'box.product']);
-
-        return response()->json([
-            'message' => 'Entrada de producción creada correctamente.',
-            'data' => new ProductionInputResource($input),
-        ], 201);
     }
 
     /**
      * Store multiple inputs at once
      */
-    public function storeMultiple(Request $request)
+    public function storeMultiple(StoreMultipleProductionInputsRequest $request)
     {
-        $validated = $request->validate([
-            'production_record_id' => 'required|exists:tenant.production_records,id',
-            'box_ids' => 'required|array',
-            'box_ids.*' => 'required|exists:tenant.boxes,id',
-        ]);
-
-        $created = [];
-        $errors = [];
-
-        DB::beginTransaction();
         try {
-            foreach ($validated['box_ids'] as $boxId) {
-                // Verificar que la caja no esté ya asignada
-                $existing = ProductionInput::where('production_record_id', $validated['production_record_id'])
-                    ->where('box_id', $boxId)
-                    ->first();
-
-                if ($existing) {
-                    $errors[] = "La caja {$boxId} ya está asignada a este proceso.";
-                    continue;
-                }
-
-                $input = ProductionInput::create([
-                    'production_record_id' => $validated['production_record_id'],
-                    'box_id' => $boxId,
-                ]);
-
-                $input->load(['productionRecord', 'box.product']);
-                $created[] = new ProductionInputResource($input);
-            }
-
-            DB::commit();
+            $result = $this->productionInputService->createMultiple(
+                $request->validated()['production_record_id'],
+                $request->validated()['box_ids']
+            );
 
             return response()->json([
-                'message' => count($created) . ' entradas creadas correctamente.',
-                'data' => $created,
-                'errors' => $errors,
+                'message' => count($result['created']) . ' entradas creadas correctamente.',
+                'data' => ProductionInputResource::collection($result['created']),
+                'errors' => $result['errors'],
             ], 201);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'message' => 'Error al crear las entradas.',
                 'error' => $e->getMessage(),
@@ -144,7 +108,7 @@ class ProductionInputController extends Controller
     public function destroy(string $id)
     {
         $input = ProductionInput::findOrFail($id);
-        $input->delete();
+        $this->productionInputService->delete($input);
 
         return response()->json([
             'message' => 'Entrada de producción eliminada correctamente.',

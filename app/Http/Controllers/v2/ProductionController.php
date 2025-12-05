@@ -3,67 +3,38 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\StoreProductionRequest;
+use App\Http\Requests\v2\UpdateProductionRequest;
 use App\Http\Resources\v2\ProductionResource;
 use App\Models\Production;
+use App\Services\Production\ProductionService;
 use Illuminate\Http\Request;
 
 class ProductionController extends Controller
 {
+    public function __construct(
+        private ProductionService $productionService
+    ) {}
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $query = Production::query();
-
-        // Cargar relaciones
-        $query->with(['species', 'captureZone', 'records']);
-
-        // Filtro por lot
-        if ($request->has('lot')) {
-            $query->where('lot', 'like', "%{$request->lot}%");
-        }
-
-        // Filtro por species_id
-        if ($request->has('species_id')) {
-            $query->where('species_id', $request->species_id);
-        }
-
-        // Filtro por estado (abierto/cerrado)
-        if ($request->has('status')) {
-            if ($request->status === 'open') {
-                $query->whereNotNull('opened_at')->whereNull('closed_at');
-            } elseif ($request->status === 'closed') {
-                $query->whereNotNull('closed_at');
-            }
-        }
-
-        // Ordenar por opened_at descendente
-        $query->orderBy('opened_at', 'desc');
-
+        $filters = $request->only(['lot', 'species_id', 'status']);
         $perPage = $request->input('perPage', 15);
-        return ProductionResource::collection($query->paginate($perPage));
+
+        $productions = $this->productionService->list($filters, $perPage);
+
+        return ProductionResource::collection($productions);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreProductionRequest $request)
     {
-        $validated = $request->validate([
-            'lot' => 'nullable|string',
-            'species_id' => 'nullable|exists:tenant.species,id',
-            'capture_zone_id' => 'nullable|exists:tenant.capture_zones,id',
-            'notes' => 'nullable|string',
-        ]);
-
-        $production = Production::create($validated);
-        
-        // Abrir el lote automáticamente
-        $production->open();
-
-        // Cargar relaciones para la respuesta
-        $production->load(['species', 'captureZone', 'records.process']);
+        $production = $this->productionService->create($request->validated());
 
         return response()->json([
             'message' => 'Producción creada correctamente.',
@@ -76,14 +47,15 @@ class ProductionController extends Controller
      */
     public function show(string $id)
     {
-        $production = Production::with(['species', 'captureZone', 'records.process'])
-            ->findOrFail($id);
+        $result = $this->productionService->getWithReconciliation($id);
+        $production = $result['production'];
+        $reconciliation = $result['reconciliation'];
 
         return response()->json([
             'message' => 'Producción obtenida correctamente.',
             'data' => [
                 ...(new ProductionResource($production))->toArray(request()),
-                'reconciliation' => $production->getDetailedReconciliationByProduct(), // ✨ Conciliación detallada por producto
+                'reconciliation' => $reconciliation,
             ],
         ]);
     }
@@ -91,21 +63,10 @@ class ProductionController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(UpdateProductionRequest $request, string $id)
     {
         $production = Production::findOrFail($id);
-
-        $validated = $request->validate([
-            'lot' => 'sometimes|nullable|string',
-            'species_id' => 'sometimes|nullable|exists:tenant.species,id',
-            'capture_zone_id' => 'sometimes|nullable|exists:tenant.capture_zones,id',
-            'notes' => 'sometimes|nullable|string',
-        ]);
-
-        $production->update($validated);
-
-        // Cargar relaciones para la respuesta
-        $production->load(['species', 'captureZone', 'records.process']);
+        $production = $this->productionService->update($production, $request->validated());
 
         return response()->json([
             'message' => 'Producción actualizada correctamente.',
@@ -119,7 +80,7 @@ class ProductionController extends Controller
     public function destroy(string $id)
     {
         $production = Production::findOrFail($id);
-        $production->delete();
+        $this->productionService->delete($production);
 
         return response()->json([
             'message' => 'Producción eliminada correctamente.',
@@ -193,6 +154,25 @@ class ProductionController extends Controller
         return response()->json([
             'message' => 'Conciliación obtenida correctamente.',
             'data' => $reconciliation,
+        ]);
+    }
+
+    /**
+     * Obtener productos disponibles con ese lote para facilitar creación de outputs
+     * ✨ Devuelve productos con sus totales (cajas y peso) desde stock, ventas y reprocesados
+     * 
+     * Este endpoint facilita al frontend la creación de outputs basándose en
+     * los productos que realmente existen en el sistema con ese lote.
+     */
+    public function getAvailableProductsForOutputs(string $id)
+    {
+        $production = Production::findOrFail($id);
+
+        $products = $production->getAvailableProductsForOutputs();
+
+        return response()->json([
+            'message' => 'Productos disponibles obtenidos correctamente.',
+            'data' => $products,
         ]);
     }
 }

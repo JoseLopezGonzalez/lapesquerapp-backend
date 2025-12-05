@@ -2034,4 +2034,127 @@ class Production extends Model
         
         return $orphanNodes;
     }
+
+    /**
+     * Obtener productos disponibles con ese lote para facilitar creación de outputs
+     * ✨ Agrupa por producto mostrando totales de cajas y peso desde stock, ventas y reprocesados
+     * 
+     * Este método es útil para el frontend cuando el usuario necesita crear outputs
+     * basándose en los productos que realmente existen en el sistema con ese lote.
+     * 
+     * @return array Array de productos con sus totales
+     */
+    public function getAvailableProductsForOutputs(): array
+    {
+        $lot = $this->lot;
+        
+        // Obtener datos de venta, stock y re-procesados
+        $salesData = $this->getSalesDataByProduct($lot);
+        $stockData = $this->getStockDataByProduct($lot);
+        $reprocessedData = $this->getReprocessedDataByProduct($lot);
+        
+        // Agrupar todos los productos únicos
+        $allProductIds = collect();
+        $allProductIds = $allProductIds->merge(array_keys($salesData));
+        $allProductIds = $allProductIds->merge(array_keys($stockData));
+        $allProductIds = $allProductIds->merge(array_keys($reprocessedData));
+        $allProductIds = $allProductIds->unique()->values();
+        
+        $productsData = [];
+        
+        foreach ($allProductIds as $productId) {
+            // Obtener información del producto
+            $product = null;
+            if (isset($salesData[$productId])) {
+                $firstOrder = reset($salesData[$productId]);
+                $product = $firstOrder['product'] ?? null;
+            } elseif (isset($stockData[$productId])) {
+                $firstStore = reset($stockData[$productId]);
+                $product = $firstStore['product'] ?? null;
+            } elseif (isset($reprocessedData[$productId])) {
+                $firstProcess = reset($reprocessedData[$productId]);
+                $product = $firstProcess['product'] ?? null;
+            }
+            
+            // Si no encontramos el producto, buscarlo en la BD
+            if (!$product) {
+                $product = \App\Models\Product::find($productId);
+            }
+            
+            if (!$product) {
+                continue;
+            }
+            
+            // Calcular totales desde venta
+            $salesBoxes = 0;
+            $salesWeight = 0;
+            if (isset($salesData[$productId])) {
+                foreach ($salesData[$productId] as $orderData) {
+                    foreach ($orderData['pallets'] as $palletData) {
+                        $boxes = collect($palletData['boxes']);
+                        $salesBoxes += $boxes->count();
+                        $salesWeight += $boxes->sum('net_weight');
+                    }
+                }
+            }
+            
+            // Calcular totales desde stock
+            $stockBoxes = 0;
+            $stockWeight = 0;
+            if (isset($stockData[$productId])) {
+                foreach ($stockData[$productId] as $storeData) {
+                    foreach ($storeData['pallets'] as $palletData) {
+                        $boxes = collect($palletData['boxes']);
+                        $stockBoxes += $boxes->count();
+                        $stockWeight += $boxes->sum('net_weight');
+                    }
+                }
+            }
+            
+            // Calcular totales desde reprocesados
+            $reprocessedBoxes = 0;
+            $reprocessedWeight = 0;
+            if (isset($reprocessedData[$productId])) {
+                foreach ($reprocessedData[$productId] as $processData) {
+                    $boxes = collect($processData['boxes']);
+                    $reprocessedBoxes += $boxes->count();
+                    $reprocessedWeight += $boxes->sum('net_weight');
+                }
+            }
+            
+            // Totales generales
+            $totalBoxes = $salesBoxes + $stockBoxes + $reprocessedBoxes;
+            $totalWeight = $salesWeight + $stockWeight + $reprocessedWeight;
+            
+            $productsData[] = [
+                'product' => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                ],
+                'totalBoxes' => $totalBoxes,
+                'totalWeight' => round($totalWeight, 2),
+                'sources' => [
+                    'sales' => [
+                        'boxes' => $salesBoxes,
+                        'weight' => round($salesWeight, 2),
+                    ],
+                    'stock' => [
+                        'boxes' => $stockBoxes,
+                        'weight' => round($stockWeight, 2),
+                    ],
+                    'reprocessed' => [
+                        'boxes' => $reprocessedBoxes,
+                        'weight' => round($reprocessedWeight, 2),
+                    ],
+                ],
+            ];
+        }
+        
+        // Ordenar por nombre de producto
+        usort($productsData, function ($a, $b) {
+            return strcmp($a['product']['name'], $b['product']['name']);
+        });
+        
+        return $productsData;
+    }
 }
