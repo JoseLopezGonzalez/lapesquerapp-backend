@@ -27,7 +27,7 @@
 
 ### 3. 📊 **Ejemplo JSON Completo**
 
-**`EJEMPLO-RESPUESTA-process-tree-v4-completo.json`**
+**[`../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4-completo.json`](../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4-completo.json)**
 - Respuesta JSON completa del endpoint
 - Incluye todos los tipos de nodos
 - Datos realistas y consistentes
@@ -35,7 +35,7 @@
 
 ### 4. 📖 **Explicación del Ejemplo**
 
-**`EJEMPLO-RESPUESTA-process-tree-v4.md`**
+**[`../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4.md`](../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4.md)**
 - Explicación detallada del ejemplo JSON
 - Desglose de cada nodo
 - Balance completo
@@ -88,10 +88,10 @@ Nodo Final
 
 ## 📚 Orden Recomendado de Lectura
 
-1. **Primero**: `FRONTEND-Guia-Rapida-Nodos-Completos.md` (visión general rápida)
-2. **Luego**: `EJEMPLO-RESPUESTA-process-tree-v4.md` (explicación del ejemplo)
-3. **Después**: Ver el JSON: `EJEMPLO-RESPUESTA-process-tree-v4-completo.json`
-4. **Finalmente**: `FRONTEND-Nodos-Re-procesados-y-Faltantes.md` (detalles completos)
+1. **Primero**: [`FRONTEND-Guia-Rapida-Nodos-Completos.md`](./FRONTEND-Guia-Rapida-Nodos-Completos.md) (visión general rápida)
+2. **Luego**: [`../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4.md`](../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4.md) (explicación del ejemplo)
+3. **Después**: Ver el JSON: [`../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4-completo.json`](../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4-completo.json)
+4. **Finalmente**: [`FRONTEND-Nodos-Re-procesados-y-Faltantes.md`](./FRONTEND-Nodos-Re-procesados-y-Faltantes.md) (detalles completos)
 
 ---
 

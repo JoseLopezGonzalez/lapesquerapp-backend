@@ -554,7 +554,7 @@ type ProcessTreeNode =
 
 ## 🔍 Ejemplo Completo
 
-Ver archivo: `EJEMPLO-RESPUESTA-process-tree-v4-completo.json`
+Ver archivo: [`../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4-completo.json`](../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4-completo.json)
 
 Este archivo contiene un ejemplo completo con:
 - Nodo final con 2 productos

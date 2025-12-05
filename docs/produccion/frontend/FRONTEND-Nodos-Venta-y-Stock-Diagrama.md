@@ -956,8 +956,8 @@ function TotalsComponent({ totals }: { totals: Totals }) {
 
 ## 📚 Referencias
 
-- **Documentación Backend Completa**: `docs/produccion/DISENO-Nodos-Venta-y-Stock-Production-Tree.md`
-- **Documentación del Endpoint**: `docs/produccion/11-Produccion-Lotes.md`
+- **Documentación Backend Completa**: [`../analisis/DISENO-Nodos-Venta-y-Stock-Production-Tree.md`](../analisis/DISENO-Nodos-Venta-y-Stock-Production-Tree.md)
+- **Documentación del Endpoint**: [`../11-Produccion-Lotes.md`](../11-Produccion-Lotes.md)
 - **Endpoint**: `GET /api/v2/productions/{id}/process-tree`
 
 ---

@@ -33,12 +33,12 @@ GET /v2/productions/{id}/process-tree
    - Ejemplos simplificados
    - ⭐ **Empezar aquí** (después de leer la migración)
 
-2. **📊 `EJEMPLO-RESPUESTA-process-tree-v4-completo.json`**
+2. **📊 [`../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4-completo.json`](../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4-completo.json)**
    - Ejemplo JSON completo
    - Listo para usar en desarrollo
    - Incluye todos los tipos de nodos
 
-3. **📖 `EJEMPLO-RESPUESTA-process-tree-v4.md`**
+3. **📖 [`../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4.md`](../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4.md)**
    - Explicación detallada del ejemplo
    - Balance completo
    - Casos de uso
@@ -51,7 +51,7 @@ GET /v2/productions/{id}/process-tree
    - Tipos TypeScript
    - Casos de uso
 
-5. **📗 `FRONTEND-Cambios-Nodos-Venta-Stock-v3.md`**
+5. **📗 [`../cambios/FRONTEND-Cambios-Nodos-Venta-Stock-v3.md`](../cambios/FRONTEND-Cambios-Nodos-Venta-Stock-v3.md)**
    - Documentación de nodos de venta y stock
    - Estructura v3 (un nodo por nodo final)
 
@@ -87,15 +87,15 @@ Nodo Final
 ## 📚 Archivos Relacionados
 
 ### Ejemplos JSON
-- `EJEMPLO-RESPUESTA-process-tree-v3.json` (versión anterior)
-- `EJEMPLO-RESPUESTA-process-tree-v4-completo.json` (versión actual)
+- [`../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v3.json`](../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v3.json) (versión anterior)
+- [`../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4-completo.json`](../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4-completo.json) (versión actual)
 
 ### Documentación de Cambios
-- **`FRONTEND-Migracion-Missing-a-Balance.md`** ⚠️ **ACTUAL** - Migración missing → balance
-- `FRONTEND-Cambios-Nodos-Venta-Stock-v2.md` (v1 → v2)
-- `FRONTEND-Cambios-Nodos-Venta-Stock-v3.md` (v2 → v3)
-- `RESUMEN-Documentacion-Frontend-v4.md` (resumen v4)
-- `CAMBIO-Nodo-Missing-a-Balance.md` (documentación del cambio en backend)
+- **[`FRONTEND-Migracion-Missing-a-Balance.md`](./FRONTEND-Migracion-Missing-a-Balance.md)** ⚠️ **ACTUAL** - Migración missing → balance
+- [`../cambios/FRONTEND-Cambios-Nodos-Venta-Stock-v2.md`](../cambios/FRONTEND-Cambios-Nodos-Venta-Stock-v2.md) (v1 → v2)
+- [`../cambios/FRONTEND-Cambios-Nodos-Venta-Stock-v3.md`](../cambios/FRONTEND-Cambios-Nodos-Venta-Stock-v3.md) (v2 → v3)
+- [`RESUMEN-Documentacion-Frontend-v4.md`](./RESUMEN-Documentacion-Frontend-v4.md) (resumen v4)
+- [`../cambios/CAMBIO-Nodo-Missing-a-Balance.md`](../cambios/CAMBIO-Nodo-Missing-a-Balance.md) (documentación del cambio en backend)
 
 ---
 

@@ -26,11 +26,19 @@ Documentación esencial para entender la arquitectura del sistema:
 
 ### 📁 [Producción](./produccion/) ⚠️ EN TRANSICIÓN
 Módulo de gestión de producción pesquera (el más complejo e incompleto):
+
+**Documentación Principal:**
 - **[10-Produccion-General.md](./produccion/10-Produccion-General.md)**: Visión general del módulo, conceptos, estado de migración
 - **[11-Produccion-Lotes.md](./produccion/11-Produccion-Lotes.md)**: Gestión de lotes de producción (Production)
 - **[12-Produccion-Procesos.md](./produccion/12-Produccion-Procesos.md)**: Procesos de producción (ProductionRecord)
 - **[13-Produccion-Entradas.md](./produccion/13-Produccion-Entradas.md)**: Entradas de producción (ProductionInput)
 - **[14-Produccion-Salidas.md](./produccion/14-Produccion-Salidas.md)**: Salidas de producción (ProductionOutput)
+- **[15-Produccion-Consumos-Outputs-Padre.md](./produccion/15-Produccion-Consumos-Outputs-Padre.md)**: Consumos y outputs padre
+
+**Subcarpetas Especializadas:**
+- **[Frontend](./produccion/frontend/)** - Documentación del endpoint `process-tree` para frontend
+- **[Análisis](./produccion/analisis/)** - Análisis, investigaciones y diseños del módulo
+- **[Cambios](./produccion/cambios/)** - Migraciones, cambios y fixes realizados
 
 > **⚠️ Nota**: Este módulo está en transición entre v1 (JSON único, obsoleta) y v2 (entidades relacionales, activa). Es el área más compleja del sistema.
 
@@ -115,6 +123,16 @@ Documentación de referencia técnica:
 
 ---
 
+### 📁 [Ejemplos](./ejemplos/)
+Ejemplos de respuestas JSON y documentación de ejemplos para diferentes endpoints:
+- Ejemplos del endpoint `process-tree` (v3, v4, v5)
+- Ejemplos de producción con conciliación
+- Ejemplos de palets
+
+Ver [README de ejemplos](./ejemplos/README.md) para la lista completa.
+
+---
+
 ## ⚠️ Problemas Críticos
 
 Para un resumen ejecutivo de los problemas más críticos del sistema:
@@ -134,8 +152,10 @@ Para ver todos los problemas detallados (59 en total), consultar [`referencia/98
 
 1. **Para desarrolladores nuevos**: Comienza por los archivos en [Fundamentos](./fundamentos/)
 2. **Para trabajar en un módulo específico**: Navega a la carpeta correspondiente
-3. **Para entender problemas**: Revisa la sección "Observaciones Críticas" al final de cada archivo
-4. **Para referencia rápida**: Usa los archivos en [Referencia](./referencia/)
+3. **Para frontend (Production Tree)**: Consulta [Producción > Frontend](./produccion/frontend/)
+4. **Para entender problemas**: Revisa la sección "Observaciones Críticas" al final de cada archivo
+5. **Para referencia rápida**: Usa los archivos en [Referencia](./referencia/)
+6. **Para ejemplos de respuestas**: Consulta [Ejemplos](./ejemplos/)
 
 ---
 

@@ -451,9 +451,9 @@ function getBalanceNode(node: ProcessTreeNode): BalanceNode | null {
 
 ## 📚 Referencias
 
-- **Documento del cambio**: `CAMBIO-Nodo-Missing-a-Balance.md`
-- **Documentación frontend completa**: `FRONTEND-Nodos-Re-procesados-y-Faltantes.md`
-- **Guía rápida**: `FRONTEND-Guia-Rapida-Nodos-Completos.md`
+- **Documento del cambio**: [`../cambios/CAMBIO-Nodo-Missing-a-Balance.md`](../cambios/CAMBIO-Nodo-Missing-a-Balance.md)
+- **Documentación frontend completa**: [`FRONTEND-Nodos-Re-procesados-y-Faltantes.md`](./FRONTEND-Nodos-Re-procesados-y-Faltantes.md)
+- **Guía rápida**: [`FRONTEND-Guia-Rapida-Nodos-Completos.md`](./FRONTEND-Guia-Rapida-Nodos-Completos.md)
 
 ---
 

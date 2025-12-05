@@ -257,9 +257,9 @@ function renderBalanceNode(node: BalanceNode) {
 
 ## 📚 Archivos de Referencia
 
-- **Ejemplo JSON completo**: `EJEMPLO-RESPUESTA-process-tree-v4-completo.json`
-- **Documentación detallada**: `FRONTEND-Nodos-Re-procesados-y-Faltantes.md`
-- **Documentación venta/stock**: `FRONTEND-Cambios-Nodos-Venta-Stock-v3.md`
+- **Ejemplo JSON completo**: [`../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4-completo.json`](../../ejemplos/EJEMPLO-RESPUESTA-process-tree-v4-completo.json)
+- **Documentación detallada**: [`FRONTEND-Nodos-Re-procesados-y-Faltantes.md`](./FRONTEND-Nodos-Re-procesados-y-Faltantes.md)
+- **Documentación venta/stock**: [`../cambios/FRONTEND-Cambios-Nodos-Venta-Stock-v3.md`](../cambios/FRONTEND-Cambios-Nodos-Venta-Stock-v3.md)
 
 ---
 
