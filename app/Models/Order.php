@@ -6,11 +6,31 @@ use App\Traits\UsesTenantConnection;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 
 class Order extends Model
 {
     use UsesTenantConnection;
     use HasFactory;
+
+    /**
+     * Estados válidos del pedido
+     */
+    const STATUS_PENDING = 'pending';
+    const STATUS_FINISHED = 'finished';
+    const STATUS_INCIDENT = 'incident';
+
+    /**
+     * Lista de todos los estados válidos
+     */
+    public static function getValidStatuses(): array
+    {
+        return [
+            self::STATUS_PENDING,
+            self::STATUS_FINISHED,
+            self::STATUS_INCIDENT,
+        ];
+    }
 
     protected $fillable = [
         'customer_id',
@@ -239,6 +259,9 @@ class Order extends Model
         return $this->pallets->sum(function ($pallet) {
             return $pallet->boxes->sum(function ($palletBox) {
                 // Solo incluir cajas disponibles (no usadas en producción)
+                if (!$palletBox->box) {
+                    return 0;
+                }
                 return $palletBox->box->isAvailable ? ($palletBox->box->net_weight ?? 0) : 0;
             });
         });
@@ -610,6 +633,32 @@ class Order extends Model
         });
 
         return $categories->values();
+    }
+
+    /**
+     * Boot del modelo - Validaciones y eventos
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($order) {
+            // Validar entry_date ≤ load_date
+            if ($order->entry_date && $order->load_date) {
+                if ($order->entry_date > $order->load_date) {
+                    throw ValidationException::withMessages([
+                        'load_date' => 'La fecha de carga debe ser mayor o igual a la fecha de entrada.',
+                    ]);
+                }
+            }
+
+            // Validar status valores válidos
+            if ($order->status && !in_array($order->status, self::getValidStatuses())) {
+                throw ValidationException::withMessages([
+                    'status' => 'El estado del pedido no es válido. Valores permitidos: ' . implode(', ', self::getValidStatuses()),
+                ]);
+            }
+        });
     }
 
 

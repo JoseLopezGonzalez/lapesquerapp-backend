@@ -177,10 +177,20 @@ class StoreController extends Controller
 
     public function totalStockByProducts()
     {
-        $inventory = \App\Models\StoredPallet::with([
+        // Obtener palets almacenados (desde StoredPallet)
+        $storedPallets = \App\Models\StoredPallet::with([
             'pallet.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
             'pallet.boxes.box.product',
         ])->get();
+
+        // Obtener palets registrados (state_id = 1) que no tienen StoredPallet
+        $registeredPallets = \App\Models\Pallet::where('state_id', \App\Models\Pallet::STATE_REGISTERED)
+            ->with([
+                'boxes.box.productionInputs',
+                'boxes.box.product',
+            ])
+            ->get();
+
         $products = \App\Models\Product::with('article')->get();
 
         $productsInventory = [];
@@ -188,8 +198,19 @@ class StoreController extends Controller
         foreach ($products as $product) {
             $totalNetWeight = 0;
 
-            foreach ($inventory as $storedPallet) {
+            // Procesar palets almacenados
+            foreach ($storedPallets as $storedPallet) {
                 foreach ($storedPallet->pallet->boxes as $palletBox) {
+                    // Solo incluir cajas disponibles (no usadas en producción)
+                    if ($palletBox->box->product->id == $product->id && $palletBox->box->isAvailable) {
+                        $totalNetWeight += $palletBox->box->net_weight;
+                    }
+                }
+            }
+
+            // Procesar palets registrados
+            foreach ($registeredPallets as $pallet) {
+                foreach ($pallet->boxes as $palletBox) {
                     // Solo incluir cajas disponibles (no usadas en producción)
                     if ($palletBox->box->product->id == $product->id && $palletBox->box->isAvailable) {
                         $totalNetWeight += $palletBox->box->net_weight;

@@ -17,14 +17,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Paso 1: Migrar datos existentes
-        // Palets con state_id = 3 (enviado) que NO tienen order_id → cambian a 4 (procesado)
-        DB::table('pallets')
-            ->where('state_id', 3)
-            ->whereNull('order_id')
-            ->update(['state_id' => 4]);
+        if (!Schema::hasTable('pallets')) {
+            return;
+        }
 
-        // Paso 2: Eliminar la foreign key constraint
+        // Paso 1: Eliminar la foreign key constraint PRIMERO (antes de actualizar datos)
         // Para sistemas multi-tenant, necesitamos eliminar la FK manualmente
         $connection = DB::connection();
         $driverName = $connection->getDriverName();
@@ -47,9 +44,22 @@ return new class extends Migration
             }
         } else {
             // MySQL u otros: usar Schema
-            Schema::table('pallets', function (Blueprint $table) {
-                $table->dropForeign(['state_id']);
-            });
+            try {
+                Schema::table('pallets', function (Blueprint $table) {
+                    $table->dropForeign(['state_id']);
+                });
+            } catch (\Exception $e) {
+                // La FK no existe, continuar
+            }
+        }
+
+        // Paso 2: Migrar datos existentes (ahora que la FK está eliminada)
+        // Palets con state_id = 3 (enviado) que NO tienen order_id → cambian a 4 (procesado)
+        if (Schema::hasTable('pallets')) {
+            DB::table('pallets')
+                ->where('state_id', 3)
+                ->whereNull('order_id')
+                ->update(['state_id' => 4]);
         }
 
         // Paso 3: Eliminar la tabla pallet_states si existe

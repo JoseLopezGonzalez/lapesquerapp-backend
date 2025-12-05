@@ -26,7 +26,7 @@ class StoreProductionOutputRequest extends FormRequest
             'product_id' => 'required|exists:tenant.products,id',
             'lot_id' => 'nullable|string',
             'boxes' => 'required|integer|min:0',
-            'weight_kg' => 'required|numeric|min:0',
+            'weight_kg' => 'required|numeric|gt:0',
         ];
     }
 }

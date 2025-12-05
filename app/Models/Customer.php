@@ -6,6 +6,7 @@ use App\Traits\UsesTenantConnection;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 
 class Customer extends Model
 {
@@ -139,6 +140,34 @@ class Customer extends Model
         }
 
         return $result;
+    }
+
+    /**
+     * Boot del modelo - Validaciones y eventos
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($customer) {
+            // Validar name no vacío
+            if (empty($customer->name)) {
+                throw ValidationException::withMessages([
+                    'name' => 'El nombre del cliente no puede estar vacío.',
+                ]);
+            }
+
+            // Validar name único por tenant
+            $existing = self::where('name', $customer->name)
+                ->where('id', '!=', $customer->id ?? 0)
+                ->first();
+            
+            if ($existing) {
+                throw ValidationException::withMessages([
+                    'name' => 'Ya existe un cliente con este nombre.',
+                ]);
+            }
+        });
     }
 
 }

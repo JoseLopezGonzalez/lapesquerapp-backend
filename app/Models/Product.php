@@ -12,6 +12,7 @@ use App\Models\Species;
 use App\Models\CaptureZone;
 
 use App\Models\ProductFamily;
+use Illuminate\Validation\ValidationException;
 
 class Product extends Model
 {
@@ -99,6 +100,73 @@ class Product extends Model
     public function article()
     {
         return $this->belongsTo(Article::class, 'id', 'id');
+    }
+
+    /**
+     * Boot del modelo - Validaciones y eventos
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($product) {
+            // Validar species_id y capture_zone_id requeridos
+            if (!$product->species_id) {
+                throw ValidationException::withMessages([
+                    'species_id' => 'El campo species_id es requerido.',
+                ]);
+            }
+
+            if (!$product->capture_zone_id) {
+                throw ValidationException::withMessages([
+                    'capture_zone_id' => 'El campo capture_zone_id es requerido.',
+                ]);
+            }
+
+            // Validar que name no esté vacío (desde Article)
+            if ($product->article && empty($product->article->name)) {
+                throw ValidationException::withMessages([
+                    'name' => 'El nombre del producto no puede estar vacío.',
+                ]);
+            }
+
+            // Validar GTINs únicos (si tienen valor)
+            if ($product->article_gtin) {
+                $existing = self::where('article_gtin', $product->article_gtin)
+                    ->where('id', '!=', $product->id ?? 0)
+                    ->first();
+                
+                if ($existing) {
+                    throw ValidationException::withMessages([
+                        'article_gtin' => 'Ya existe un producto con este article_gtin.',
+                    ]);
+                }
+            }
+
+            if ($product->box_gtin) {
+                $existing = self::where('box_gtin', $product->box_gtin)
+                    ->where('id', '!=', $product->id ?? 0)
+                    ->first();
+                
+                if ($existing) {
+                    throw ValidationException::withMessages([
+                        'box_gtin' => 'Ya existe un producto con este box_gtin.',
+                    ]);
+                }
+            }
+
+            if ($product->pallet_gtin) {
+                $existing = self::where('pallet_gtin', $product->pallet_gtin)
+                    ->where('id', '!=', $product->id ?? 0)
+                    ->first();
+                
+                if ($existing) {
+                    throw ValidationException::withMessages([
+                        'pallet_gtin' => 'Ya existe un producto con este pallet_gtin.',
+                    ]);
+                }
+            }
+        });
     }
 
 

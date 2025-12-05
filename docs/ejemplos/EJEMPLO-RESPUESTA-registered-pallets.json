@@ -1,0 +1,346 @@
+{
+  "id": null,
+  "name": "Palets Registrados",
+  "temperature": null,
+  "capacity": null,
+  "netWeightPallets": 1525.750,
+  "totalNetWeight": 1525.750,
+  "content": {
+    "pallets": [
+      {
+        "id": 123,
+        "observations": "Palet de atún recién recibido",
+        "state": {
+          "id": 1,
+          "name": "registered"
+        },
+        "boxes": [
+          {
+            "id": 456,
+            "palletId": 123,
+            "product": {
+              "id": 1,
+              "name": "Atún fresco",
+              "species": {
+                "id": 5,
+                "name": "Atún"
+              },
+              "captureZone": {
+                "id": 2,
+                "name": "Atlántico Norte"
+              },
+              "articleGtin": "1234567890123",
+              "boxGtin": "1234567890124",
+              "palletGtin": "1234567890125",
+              "fixedWeight": 25.0
+            },
+            "lot": "LOT-2024-001",
+            "gs1128": "1234567890123456",
+            "grossWeight": 26.0,
+            "netWeight": 25.5,
+            "createdAt": "2024-01-15",
+            "isAvailable": true,
+            "production": null
+          },
+          {
+            "id": 457,
+            "palletId": 123,
+            "product": {
+              "id": 1,
+              "name": "Atún fresco",
+              "species": {
+                "id": 5,
+                "name": "Atún"
+              },
+              "captureZone": {
+                "id": 2,
+                "name": "Atlántico Norte"
+              },
+              "articleGtin": "1234567890123",
+              "boxGtin": "1234567890124",
+              "palletGtin": "1234567890125",
+              "fixedWeight": 25.0
+            },
+            "lot": "LOT-2024-001",
+            "gs1128": "1234567890123457",
+            "grossWeight": 26.0,
+            "netWeight": 25.5,
+            "createdAt": "2024-01-15",
+            "isAvailable": true,
+            "production": null
+          },
+          {
+            "id": 458,
+            "palletId": 123,
+            "product": {
+              "id": 1,
+              "name": "Atún fresco",
+              "species": {
+                "id": 5,
+                "name": "Atún"
+              },
+              "captureZone": {
+                "id": 2,
+                "name": "Atlántico Norte"
+              },
+              "articleGtin": "1234567890123",
+              "boxGtin": "1234567890124",
+              "palletGtin": "1234567890125",
+              "fixedWeight": 25.0
+            },
+            "lot": "LOT-2024-001",
+            "gs1128": "1234567890123458",
+            "grossWeight": 26.0,
+            "netWeight": 25.5,
+            "createdAt": "2024-01-15",
+            "isAvailable": true,
+            "production": null
+          }
+        ],
+        "productsNames": ["Atún fresco"],
+        "lots": ["LOT-2024-001"],
+        "netWeight": 76.5,
+        "position": null,
+        "orderId": null,
+        "numberOfBoxes": 3,
+        "availableBoxesCount": 3,
+        "usedBoxesCount": 0,
+        "totalAvailableWeight": 76.5,
+        "totalUsedWeight": 0.0
+      },
+      {
+        "id": 124,
+        "observations": null,
+        "state": {
+          "id": 1,
+          "name": "registered"
+        },
+        "boxes": [
+          {
+            "id": 459,
+            "palletId": 124,
+            "product": {
+              "id": 2,
+              "name": "Pulpo fresco",
+              "species": {
+                "id": 8,
+                "name": "Pulpo"
+              },
+              "captureZone": {
+                "id": 1,
+                "name": "Mediterráneo"
+              },
+              "articleGtin": "9876543210123",
+              "boxGtin": "9876543210124",
+              "palletGtin": "9876543210125",
+              "fixedWeight": 20.0
+            },
+            "lot": "LOT-2024-002",
+            "gs1128": "9876543210123456",
+            "grossWeight": 21.0,
+            "netWeight": 20.5,
+            "createdAt": "2024-01-16",
+            "isAvailable": true,
+            "production": null
+          },
+          {
+            "id": 460,
+            "palletId": 124,
+            "product": {
+              "id": 2,
+              "name": "Pulpo fresco",
+              "species": {
+                "id": 8,
+                "name": "Pulpo"
+              },
+              "captureZone": {
+                "id": 1,
+                "name": "Mediterráneo"
+              },
+              "articleGtin": "9876543210123",
+              "boxGtin": "9876543210124",
+              "palletGtin": "9876543210125",
+              "fixedWeight": 20.0
+            },
+            "lot": "LOT-2024-002",
+            "gs1128": "9876543210123457",
+            "grossWeight": 21.0,
+            "netWeight": 20.5,
+            "createdAt": "2024-01-16",
+            "isAvailable": true,
+            "production": null
+          }
+        ],
+        "productsNames": ["Pulpo fresco"],
+        "lots": ["LOT-2024-002"],
+        "netWeight": 41.0,
+        "position": null,
+        "orderId": null,
+        "numberOfBoxes": 2,
+        "availableBoxesCount": 2,
+        "usedBoxesCount": 0,
+        "totalAvailableWeight": 41.0,
+        "totalUsedWeight": 0.0
+      },
+      {
+        "id": 125,
+        "observations": "Palet mixto - liberado de producción",
+        "state": {
+          "id": 1,
+          "name": "registered"
+        },
+        "boxes": [
+          {
+            "id": 461,
+            "palletId": 125,
+            "product": {
+              "id": 3,
+              "name": "Sardinas frescas",
+              "species": {
+                "id": 12,
+                "name": "Sardina"
+              },
+              "captureZone": {
+                "id": 3,
+                "name": "Atlántico Sur"
+              },
+              "articleGtin": "5555555555555",
+              "boxGtin": "5555555555556",
+              "palletGtin": "5555555555557",
+              "fixedWeight": 15.0
+            },
+            "lot": "LOT-2024-003",
+            "gs1128": "5555555555555555",
+            "grossWeight": 16.0,
+            "netWeight": 15.5,
+            "createdAt": "2024-01-17",
+            "isAvailable": true,
+            "production": null
+          },
+          {
+            "id": 462,
+            "palletId": 125,
+            "product": {
+              "id": 3,
+              "name": "Sardinas frescas",
+              "species": {
+                "id": 12,
+                "name": "Sardina"
+              },
+              "captureZone": {
+                "id": 3,
+                "name": "Atlántico Sur"
+              },
+              "articleGtin": "5555555555555",
+              "boxGtin": "5555555555556",
+              "palletGtin": "5555555555557",
+              "fixedWeight": 15.0
+            },
+            "lot": "LOT-2024-003",
+            "gs1128": "5555555555555556",
+            "grossWeight": 16.0,
+            "netWeight": 15.5,
+            "createdAt": "2024-01-17",
+            "isAvailable": true,
+            "production": null
+          },
+          {
+            "id": 463,
+            "palletId": 125,
+            "product": {
+              "id": 3,
+              "name": "Sardinas frescas",
+              "species": {
+                "id": 12,
+                "name": "Sardina"
+              },
+              "captureZone": {
+                "id": 3,
+                "name": "Atlántico Sur"
+              },
+              "articleGtin": "5555555555555",
+              "boxGtin": "5555555555556",
+              "palletGtin": "5555555555557",
+              "fixedWeight": 15.0
+            },
+            "lot": "LOT-2024-003",
+            "gs1128": "5555555555555557",
+            "grossWeight": 16.0,
+            "netWeight": 15.5,
+            "createdAt": "2024-01-17",
+            "isAvailable": true,
+            "production": null
+          },
+          {
+            "id": 464,
+            "palletId": 125,
+            "product": {
+              "id": 3,
+              "name": "Sardinas frescas",
+              "species": {
+                "id": 12,
+                "name": "Sardina"
+              },
+              "captureZone": {
+                "id": 3,
+                "name": "Atlántico Sur"
+              },
+              "articleGtin": "5555555555555",
+              "boxGtin": "5555555555556",
+              "palletGtin": "5555555555557",
+              "fixedWeight": 15.0
+            },
+            "lot": "LOT-2024-003",
+            "gs1128": "5555555555555558",
+            "grossWeight": 16.0,
+            "netWeight": 15.5,
+            "createdAt": "2024-01-17",
+            "isAvailable": true,
+            "production": null
+          },
+          {
+            "id": 465,
+            "palletId": 125,
+            "product": {
+              "id": 3,
+              "name": "Sardinas frescas",
+              "species": {
+                "id": 12,
+                "name": "Sardina"
+              },
+              "captureZone": {
+                "id": 3,
+                "name": "Atlántico Sur"
+              },
+              "articleGtin": "5555555555555",
+              "boxGtin": "5555555555556",
+              "palletGtin": "5555555555557",
+              "fixedWeight": 15.0
+            },
+            "lot": "LOT-2024-003",
+            "gs1128": "5555555555555559",
+            "grossWeight": 16.0,
+            "netWeight": 15.5,
+            "createdAt": "2024-01-17",
+            "isAvailable": true,
+            "production": null
+          }
+        ],
+        "productsNames": ["Sardinas frescas"],
+        "lots": ["LOT-2024-003"],
+        "netWeight": 77.5,
+        "position": null,
+        "orderId": null,
+        "numberOfBoxes": 5,
+        "availableBoxesCount": 5,
+        "usedBoxesCount": 0,
+        "totalAvailableWeight": 77.5,
+        "totalUsedWeight": 0.0
+      }
+    ],
+    "boxes": [],
+    "bigBoxes": []
+  },
+  "map": null
+}
+

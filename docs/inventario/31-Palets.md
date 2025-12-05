@@ -406,6 +406,8 @@ Retorna todos los palets en estado `registered` (state_id = 1) con un formato si
 }
 ```
 
+**📄 Ejemplo completo**: Ver [EJEMPLO-RESPUESTA-registered-pallets.json](../ejemplos/EJEMPLO-RESPUESTA-registered-pallets.json)
+
 **Comportamiento**:
 - Obtiene todos los palets con `state_id = 1` (registered)
 - Calcula pesos totales (similar a un almacén)

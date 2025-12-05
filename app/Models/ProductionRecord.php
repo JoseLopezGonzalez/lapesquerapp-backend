@@ -26,6 +26,130 @@ class ProductionRecord extends Model
     ];
 
     /**
+     * Boot del modelo - Validaciones y eventos
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Validar antes de guardar
+        static::saving(function ($record) {
+            $record->validateProductionRecordRules();
+        });
+
+        // Validar antes de crear
+        static::creating(function ($record) {
+            $record->validateCreationRules();
+        });
+    }
+
+    /**
+     * Validar reglas de ProductionRecord al guardar
+     */
+    protected function validateProductionRecordRules(): void
+    {
+        // Validar que parent_record_id no sea el mismo id
+        if ($this->parent_record_id !== null && $this->parent_record_id == $this->id) {
+            throw new \InvalidArgumentException(
+                'Un proceso no puede ser su propio padre. El parent_record_id no puede ser igual al id del proceso.'
+            );
+        }
+
+        // Validar que parent_record_id pertenezca al mismo production_id
+        if ($this->parent_record_id !== null) {
+            $parent = static::find($this->parent_record_id);
+            if ($parent && $parent->production_id !== $this->production_id) {
+                throw new \InvalidArgumentException(
+                    'El proceso padre debe pertenecer al mismo lote de producción. El parent_record_id no puede referenciar un proceso de otro lote.'
+                );
+            }
+        }
+
+        // Validar que no haya ciclos en el árbol
+        if ($this->parent_record_id !== null) {
+            $this->validateNoCycles();
+        }
+
+        // Validar que finished_at >= started_at
+        if ($this->finished_at !== null && $this->started_at !== null) {
+            if ($this->finished_at->lt($this->started_at)) {
+                throw new \InvalidArgumentException(
+                    'La fecha de finalización (finished_at) no puede ser anterior a la fecha de inicio (started_at).'
+                );
+            }
+        }
+
+        // Validar que finished_at solo se establezca si started_at existe
+        if ($this->finished_at !== null && $this->started_at === null) {
+            throw new \InvalidArgumentException(
+                'No se puede finalizar un proceso que no ha sido iniciado. Debe establecer started_at antes de finished_at.'
+            );
+        }
+
+        // Validar que started_at solo se establezca si el lote está abierto
+        if ($this->started_at !== null) {
+            $production = $this->production ?? Production::find($this->production_id);
+            if ($production && $production->closed_at !== null) {
+                throw new \InvalidArgumentException(
+                    'No se puede iniciar un proceso en un lote cerrado. El lote debe estar abierto (closed_at = null).'
+                );
+            }
+        }
+    }
+
+    /**
+     * Validar reglas al crear
+     */
+    protected function validateCreationRules(): void
+    {
+        // Validar que el lote esté abierto antes de crear un proceso
+        $production = Production::find($this->production_id);
+        if ($production && $production->closed_at !== null) {
+            throw new \InvalidArgumentException(
+                'No se pueden agregar procesos a un lote cerrado. El lote debe estar abierto (closed_at = null).'
+            );
+        }
+    }
+
+    /**
+     * Validar que no haya ciclos en el árbol
+     */
+    protected function validateNoCycles(): void
+    {
+        $visited = [];
+        $currentId = $this->id ?? null;
+        $parentId = $this->parent_record_id;
+
+        // Si estamos creando un nuevo registro, currentId puede ser null
+        // En ese caso, solo validamos la cadena de padres
+        while ($parentId !== null) {
+            // Si encontramos el id actual en la cadena, hay un ciclo
+            if ($currentId !== null && $parentId == $currentId) {
+                throw new \InvalidArgumentException(
+                    'Se detectó un ciclo en el árbol de procesos. Un proceso no puede tener como ancestro a sí mismo o a sus descendientes.'
+                );
+            }
+
+            // Si ya visitamos este padre, hay un ciclo
+            if (in_array($parentId, $visited)) {
+                throw new \InvalidArgumentException(
+                    'Se detectó un ciclo en el árbol de procesos. Hay referencias circulares en la cadena de padres.'
+                );
+            }
+
+            $visited[] = $parentId;
+
+            // Obtener el padre
+            $parent = static::find($parentId);
+            if (!$parent) {
+                break; // El padre no existe, no hay ciclo
+            }
+
+            $parentId = $parent->parent_record_id;
+        }
+    }
+
+    /**
      * Relación con Production (lote)
      */
     public function production()

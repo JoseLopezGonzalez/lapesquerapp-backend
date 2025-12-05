@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 use App\Models\Product;
 use App\Models\ArticleCategory;
+use Illuminate\Validation\ValidationException;
 
 class Article extends Model
 {
@@ -41,6 +42,34 @@ class Article extends Model
             'name' => $this->name,
             'category' => $this->categoria->toArrayAssoc(),
         ];
+    }
+
+    /**
+     * Boot del modelo - Validaciones y eventos
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($article) {
+            // Validar name no vacío
+            if (empty($article->name)) {
+                throw ValidationException::withMessages([
+                    'name' => 'El nombre del artículo no puede estar vacío.',
+                ]);
+            }
+
+            // Validar name único por tenant
+            $existing = self::where('name', $article->name)
+                ->where('id', '!=', $article->id ?? 0)
+                ->first();
+            
+            if ($existing) {
+                throw ValidationException::withMessages([
+                    'name' => 'Ya existe un artículo con este nombre.',
+                ]);
+            }
+        });
     }
 
 

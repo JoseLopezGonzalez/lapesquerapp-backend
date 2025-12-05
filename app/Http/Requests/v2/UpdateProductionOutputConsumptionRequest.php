@@ -22,7 +22,7 @@ class UpdateProductionOutputConsumptionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'consumed_weight_kg' => 'sometimes|numeric|min:0',
+            'consumed_weight_kg' => 'sometimes|numeric|gt:0',
             'consumed_boxes' => 'sometimes|nullable|integer|min:0',
             'notes' => 'sometimes|nullable|string',
         ];

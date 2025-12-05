@@ -30,6 +30,78 @@ class Production extends Model
         'closed_at' => 'datetime',
     ];
 
+    /**
+     * Boot del modelo - Validaciones y eventos
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Validar antes de guardar
+        static::saving(function ($production) {
+            $production->validateProductionRules();
+        });
+
+        // Validar antes de actualizar
+        static::updating(function ($production) {
+            $production->validateUpdateRules();
+        });
+    }
+
+    /**
+     * Validar reglas de producción al guardar
+     */
+    protected function validateProductionRules(): void
+    {
+        // Validar que closed_at solo se establezca si opened_at existe
+        if ($this->closed_at !== null && $this->opened_at === null) {
+            throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
+                'No se puede cerrar un lote que no ha sido abierto. Debe establecer opened_at antes de closed_at.'
+            );
+        }
+
+        // Validar que closed_at >= opened_at
+        if ($this->closed_at !== null && $this->opened_at !== null) {
+            if ($this->closed_at->lt($this->opened_at)) {
+                throw new \InvalidArgumentException(
+                    'La fecha de cierre (closed_at) no puede ser anterior a la fecha de apertura (opened_at).'
+                );
+            }
+        }
+
+        // Validar que date sea válida (si existe)
+        if ($this->date !== null) {
+            $minDate = \Carbon\Carbon::create(1900, 1, 1);
+            $maxDate = \Carbon\Carbon::now()->addYears(10);
+            
+            if ($this->date->lt($minDate) || $this->date->gt($maxDate)) {
+                throw new \InvalidArgumentException(
+                    'La fecha debe estar entre 1900 y ' . $maxDate->year . '.'
+                );
+            }
+        }
+    }
+
+    /**
+     * Validar reglas al actualizar
+     */
+    protected function validateUpdateRules(): void
+    {
+        // Si el lote está cerrado, no permitir modificaciones (excepto notes)
+        if ($this->isDirty() && $this->getOriginal('closed_at') !== null) {
+            $allowedFields = ['notes', 'updated_at'];
+            $changedFields = array_keys($this->getDirty());
+            
+            foreach ($changedFields as $field) {
+                if (!in_array($field, $allowedFields)) {
+                    throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
+                        'No se pueden modificar campos de un lote cerrado. Solo se permite modificar el campo "notes".'
+                    );
+                }
+            }
+        }
+    }
+
     /* diagram_data->totalProfit  si esque existe alguna clave */
     public function getTotalProfitAttribute()
     {
@@ -1146,17 +1218,17 @@ class Production extends Model
      */
     private function getStockDataByProduct(string $lot)
     {
-        // Obtener palets almacenados con cajas del lote disponibles
+        // Obtener palets en stock (registrados y almacenados) con cajas del lote disponibles
+        // Incluye palets con state_id = 1 (registered) y state_id = 2 (stored)
         $stockPallets = Pallet::query()
-            ->stored()  // state_id = 2
-            ->whereHas('storedPallet')
+            ->inStock()  // Incluye registered y stored
             ->whereNull('order_id')  // Solo sin pedido
             ->whereHas('boxes.box', function ($query) use ($lot) {
                 $query->where('lot', $lot)
                       ->whereDoesntHave('productionInputs');
             })
             ->with([
-                'storedPallet.store',
+                'storedPallet.store',  // Puede ser null para palets registrados
                 'boxes.box' => function ($query) use ($lot) {
                     $query->where('lot', $lot)
                           ->whereDoesntHave('productionInputs')
@@ -1165,13 +1237,19 @@ class Production extends Model
             ])
             ->get();
         
+        // Crear un objeto store virtual para palets registrados (sin almacén)
+        $virtualStore = (object) [
+            'id' => null,
+            'name' => 'Palets Registrados',
+        ];
+        
         // Agrupar por producto y almacén
         $grouped = [];
         
         foreach ($stockPallets as $pallet) {
-            if (!$pallet->storedPallet) {
-                continue;
-            }
+            // Determinar el almacén: si tiene storedPallet usa ese, si no es registrado (almacén virtual)
+            $store = $pallet->storedPallet?->store ?? $virtualStore;
+            $storeId = $store->id ?? 'registered';  // Usar 'registered' como clave para palets sin almacén
             
             foreach ($pallet->boxes as $palletBox) {
                 $box = $palletBox->box;
@@ -1180,14 +1258,13 @@ class Production extends Model
                 }
                 
                 $productId = $box->product->id;
-                $storeId = $pallet->storedPallet->store_id;
                 
                 $key = "{$productId}-{$storeId}";
                 
                 if (!isset($grouped[$key])) {
                     $grouped[$key] = [
                         'product' => $box->product,
-                        'store' => $pallet->storedPallet->store,
+                        'store' => $store,
                         'pallets' => [],
                     ];
                 }
@@ -1196,7 +1273,7 @@ class Production extends Model
                 if (!isset($grouped[$key]['pallets'][$palletKey])) {
                     $grouped[$key]['pallets'][$palletKey] = [
                         'pallet' => $pallet,
-                        'storedPallet' => $pallet->storedPallet,
+                        'storedPallet' => $pallet->storedPallet,  // Puede ser null para registrados
                         'boxes' => [],
                     ];
                 }
@@ -1212,7 +1289,9 @@ class Production extends Model
             if (!isset($byProduct[$productId])) {
                 $byProduct[$productId] = [];
             }
-            $byProduct[$productId][$data['store']->id] = $data;
+            // Usar store_id o 'registered' como clave
+            $storeKey = $data['store']->id ?? 'registered';
+            $byProduct[$productId][$storeKey] = $data;
         }
         
         return $byProduct;

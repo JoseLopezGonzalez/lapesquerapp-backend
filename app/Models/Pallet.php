@@ -62,6 +62,64 @@ class Pallet extends Model
 
     protected $fillable = ['observations', 'state_id'];
 
+    /**
+     * Boot del modelo - Validaciones y eventos
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Validar antes de guardar
+        static::saving(function ($pallet) {
+            $pallet->validatePalletRules();
+        });
+
+        // Validar antes de actualizar
+        static::updating(function ($pallet) {
+            $pallet->validateUpdateRules();
+        });
+    }
+
+    /**
+     * Validar reglas de Pallet al guardar
+     */
+    protected function validatePalletRules(): void
+    {
+        // Validar que state_id sea válido
+        if (!in_array($this->state_id, self::getValidStates())) {
+            throw new \InvalidArgumentException(
+                "El estado (state_id) debe ser uno de: " . implode(', ', self::getValidStates()) . ". Valor recibido: {$this->state_id}."
+            );
+        }
+    }
+
+    /**
+     * Validar reglas al actualizar Pallet
+     */
+    protected function validateUpdateRules(): void
+    {
+        // No permitir cambiar de state_id = 4 (procesado) a otro estado
+        $originalState = $this->getOriginal('state_id');
+        if ($originalState === self::STATE_PROCESSED && $this->isDirty('state_id')) {
+            $newState = $this->state_id;
+            if ($newState !== self::STATE_PROCESSED) {
+                throw new \InvalidArgumentException(
+                    'No se puede cambiar el estado de un palet procesado. Un palet procesado no puede revertirse a otro estado.'
+                );
+            }
+        }
+
+        // No permitir cambiar de state_id = 3 (enviado) a state_id = 1 o 2
+        if ($originalState === self::STATE_SHIPPED && $this->isDirty('state_id')) {
+            $newState = $this->state_id;
+            if (in_array($newState, [self::STATE_REGISTERED, self::STATE_STORED])) {
+                throw new \InvalidArgumentException(
+                    'No se puede cambiar un palet enviado de vuelta a registrado o almacenado. Un palet enviado no puede volver a almacén.'
+                );
+            }
+        }
+    }
+
 
     public function palletBoxes()
     {
@@ -457,6 +515,15 @@ class Pallet extends Model
     public function scopeStored($query)
     {
         return $query->where('state_id', 2);
+    }
+
+    /**
+     * Scope para palets en stock (registrados o almacenados)
+     * Incluye palets con state_id = 1 (registered) o state_id = 2 (stored)
+     */
+    public function scopeInStock($query)
+    {
+        return $query->whereIn('state_id', [self::STATE_REGISTERED, self::STATE_STORED]);
     }
 
     public function scopeJoinBoxes($query)

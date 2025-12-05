@@ -15,6 +15,76 @@ class Box extends Model
 
     protected $fillable = ['article_id', 'lot', 'gs1_128', 'gross_weight', 'net_weight'];
 
+    /**
+     * Boot del modelo - Validaciones y eventos
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Validar antes de guardar
+        static::saving(function ($box) {
+            $box->validateBoxRules();
+        });
+
+        // Validar antes de eliminar
+        static::deleting(function ($box) {
+            $box->validateDeletionRules();
+        });
+    }
+
+    /**
+     * Validar reglas de Box al guardar
+     */
+    protected function validateBoxRules(): void
+    {
+        // Validar que net_weight > 0
+        if ($this->net_weight !== null && $this->net_weight <= 0) {
+            throw new \InvalidArgumentException(
+                'El peso neto (net_weight) debe ser mayor que 0.'
+            );
+        }
+
+        // Validar que gross_weight >= net_weight (si ambos existen)
+        if ($this->gross_weight !== null && $this->net_weight !== null) {
+            if ($this->gross_weight < $this->net_weight) {
+                throw new \InvalidArgumentException(
+                    'El peso bruto (gross_weight) no puede ser menor que el peso neto (net_weight).'
+                );
+            }
+        }
+
+        // Validar que lot no esté vacío
+        if ($this->lot !== null && trim($this->lot) === '') {
+            throw new \InvalidArgumentException(
+                'El campo lote (lot) no puede estar vacío.'
+            );
+        }
+
+        // Validar que article_id exista
+        if ($this->article_id !== null) {
+            $product = Product::find($this->article_id);
+            if (!$product) {
+                throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
+                    "El producto con ID {$this->article_id} no existe."
+                );
+            }
+        }
+    }
+
+    /**
+     * Validar reglas al eliminar Box
+     */
+    protected function validateDeletionRules(): void
+    {
+        // No permitir eliminar si tiene productionInputs (fue usada en producción)
+        if ($this->productionInputs()->exists()) {
+            throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
+                'No se puede eliminar una caja que ha sido usada en producción. La caja debe mantenerse para trazabilidad histórica.'
+            );
+        }
+    }
+
     //Alguna parte del codigo usa esto todavia aunque este mal semanticamente
     public function article()
     {

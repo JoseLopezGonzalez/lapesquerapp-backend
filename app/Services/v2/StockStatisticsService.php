@@ -11,17 +11,18 @@ class StockStatisticsService
     public static function getTotalStockStats(): array
     {
         // Filtrar solo cajas disponibles (que no han sido usadas en producción)
+        // Incluye palets registrados (state_id = 1) y almacenados (state_id = 2)
         $totalWeight = Pallet::query()
-            ->stored()
+            ->inStock()  // Incluye registered y stored
             ->joinBoxes()
             ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
             ->whereNull('production_inputs.id') // Solo cajas sin production_inputs
             ->sum('boxes.net_weight');
 
-        $totalPallets = Pallet::stored()->count();
+        $totalPallets = Pallet::inStock()->count();
 
         // Contar solo cajas disponibles
-        $totalBoxes = Pallet::stored()
+        $totalBoxes = Pallet::inStock()
             ->join('pallet_boxes', 'pallet_boxes.pallet_id', '=', 'pallets.id')
             ->join('boxes', 'boxes.id', '=', 'pallet_boxes.box_id')
             ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
@@ -29,7 +30,7 @@ class StockStatisticsService
             ->count('pallet_boxes.id');
 
         // Contar especies distintas solo de cajas disponibles
-        $totalSpecies = Pallet::stored()
+        $totalSpecies = Pallet::inStock()
             ->joinProducts()
             ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
             ->whereNull('production_inputs.id')
@@ -53,7 +54,8 @@ class StockStatisticsService
     public static function getSpeciesTotalsRaw(): \Illuminate\Support\Collection
     {
         // Filtrar solo cajas disponibles (que no han sido usadas en producción)
-        return Pallet::stored()
+        // Incluye palets registrados (state_id = 1) y almacenados (state_id = 2)
+        return Pallet::inStock()  // Incluye registered y stored
             ->joinProducts()
             ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
             ->whereNull('production_inputs.id') // Solo cajas sin production_inputs

@@ -26,7 +26,7 @@ class UpdateProductionOutputRequest extends FormRequest
             'product_id' => 'sometimes|exists:tenant.products,id',
             'lot_id' => 'sometimes|nullable|string',
             'boxes' => 'sometimes|integer|min:0',
-            'weight_kg' => 'sometimes|numeric|min:0',
+            'weight_kg' => 'sometimes|numeric|gt:0',
         ];
     }
 }

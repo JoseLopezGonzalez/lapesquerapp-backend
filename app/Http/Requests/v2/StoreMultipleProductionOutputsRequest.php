@@ -27,7 +27,7 @@ class StoreMultipleProductionOutputsRequest extends FormRequest
             'outputs.*.product_id' => 'required|exists:tenant.products,id',
             'outputs.*.lot_id' => 'nullable|string',
             'outputs.*.boxes' => 'required|integer|min:0',
-            'outputs.*.weight_kg' => 'required|numeric|min:0',
+            'outputs.*.weight_kg' => 'required|numeric|gt:0',
         ];
     }
 }

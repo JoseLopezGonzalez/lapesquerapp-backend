@@ -6,6 +6,7 @@ use App\Traits\UsesTenantConnection;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 
 class OrderPlannedProductDetail  extends Model
 {
@@ -61,6 +62,30 @@ class OrderPlannedProductDetail  extends Model
             /* 'discount_type' => $this->discount_type,
             'discount_value' => $this->discount_value, */
         ];
+    }
+
+    /**
+     * Boot del modelo - Validaciones y eventos
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($detail) {
+            // Validar quantity > 0 (si se usa)
+            if ($detail->quantity !== null && $detail->quantity <= 0) {
+                throw ValidationException::withMessages([
+                    'quantity' => 'La cantidad debe ser mayor que 0.',
+                ]);
+            }
+
+            // Validar unit_price ≥ 0
+            if ($detail->unit_price !== null && $detail->unit_price < 0) {
+                throw ValidationException::withMessages([
+                    'unit_price' => 'El precio unitario no puede ser negativo.',
+                ]);
+            }
+        });
     }
 
 }

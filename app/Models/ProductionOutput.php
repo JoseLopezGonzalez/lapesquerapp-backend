@@ -25,6 +25,65 @@ class ProductionOutput extends Model
     ];
 
     /**
+     * Boot del modelo - Validaciones y eventos
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Validar antes de guardar
+        static::saving(function ($output) {
+            $output->validateProductionOutputRules();
+        });
+
+        // Validar antes de crear
+        static::creating(function ($output) {
+            $output->validateCreationRules();
+        });
+    }
+
+    /**
+     * Validar reglas de ProductionOutput al guardar
+     */
+    protected function validateProductionOutputRules(): void
+    {
+        // Validar que weight_kg > 0
+        if ($this->weight_kg <= 0) {
+            throw new \InvalidArgumentException(
+                'El peso (weight_kg) debe ser mayor que 0.'
+            );
+        }
+
+        // boxes puede ser 0 según las soluciones del usuario, pero si tiene valor debe ser >= 0
+        if ($this->boxes < 0) {
+            throw new \InvalidArgumentException(
+                'El número de cajas (boxes) no puede ser negativo.'
+            );
+        }
+    }
+
+    /**
+     * Validar reglas al crear ProductionOutput
+     */
+    protected function validateCreationRules(): void
+    {
+        // Validar que el proceso pertenezca a un lote abierto
+        $productionRecord = ProductionRecord::with('production')->find($this->production_record_id);
+        if (!$productionRecord) {
+            throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
+                "El proceso de producción con ID {$this->production_record_id} no existe."
+            );
+        }
+
+        $production = $productionRecord->production;
+        if ($production && $production->closed_at !== null) {
+            throw new \InvalidArgumentException(
+                'No se pueden agregar salidas a procesos de lotes cerrados. El lote debe estar abierto (closed_at = null).'
+            );
+        }
+    }
+
+    /**
      * Relación con ProductionRecord (proceso)
      */
     public function productionRecord()

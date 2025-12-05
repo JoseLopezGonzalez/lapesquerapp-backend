@@ -517,8 +517,8 @@ class OrderController extends Controller
 
             foreach ($order->pallets as $pallet) {
                 foreach ($pallet->boxes as $box) {
-                    // Solo incluir cajas disponibles (no usadas en producción)
-                    if ($box->box->isAvailable) {
+                    // Verificar que box existe y tiene isAvailable
+                    if ($box->box && $box->box->isAvailable) {
                         $summary[$salespersonName] += $box->box->net_weight ?? 0;
                     }
                 }
@@ -552,7 +552,10 @@ class OrderController extends Controller
         $from = $request->input('dateFrom');
         $to = $request->input('dateTo');
 
-        $orders = Order::with('transport')
+        $orders = Order::with([
+            'transport',
+            'pallets.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
+        ])
             ->whereBetween('load_date', [$from, $to])
             ->whereNotNull('transport_id')
             ->get();
