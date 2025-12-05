@@ -539,7 +539,25 @@ class Production extends Model
         $stockData = $this->getStockDataByProduct($lot);
         $reprocessedData = $this->getReprocessedDataByProduct($lot);
         
-        // 3. Calcular conciliación por producto
+        // 3. ✨ NUEVO: Obtener TODOS los productos únicos que tienen ese lote (incluyendo los no producidos)
+        $allProductIds = collect();
+        
+        // Agregar productos producidos
+        $allProductIds = $allProductIds->merge(array_keys($producedByProduct));
+        
+        // Agregar productos en venta
+        $allProductIds = $allProductIds->merge(array_keys($salesData));
+        
+        // Agregar productos en stock
+        $allProductIds = $allProductIds->merge(array_keys($stockData));
+        
+        // Agregar productos re-procesados
+        $allProductIds = $allProductIds->merge(array_keys($reprocessedData));
+        
+        // Obtener productos únicos
+        $allProductIds = $allProductIds->unique()->values();
+        
+        // 4. Calcular conciliación por producto (incluyendo productos no producidos)
         $productsData = [];
         $summary = [
             'totalProducts' => 0,
@@ -552,14 +570,34 @@ class Production extends Model
             'overallStatus' => 'ok',
         ];
         
-        foreach ($producedByProduct as $productId => $producedInfo) {
-            $product = $producedInfo['product'];
-            if (!$product) {
-                continue;
+        foreach ($allProductIds as $productId) {
+            // Obtener información del producto
+            $product = null;
+            if (isset($producedByProduct[$productId])) {
+                $product = $producedByProduct[$productId]['product'];
+            } elseif (isset($salesData[$productId])) {
+                $firstOrder = reset($salesData[$productId]);
+                $product = $firstOrder['product'] ?? null;
+            } elseif (isset($stockData[$productId])) {
+                $firstStore = reset($stockData[$productId]);
+                $product = $firstStore['product'] ?? null;
+            } elseif (isset($reprocessedData[$productId])) {
+                $firstProcess = reset($reprocessedData[$productId]);
+                $product = $firstProcess['product'] ?? null;
             }
             
-            $producedWeight = $producedInfo['weight'];
-            $producedBoxes = $producedInfo['boxes'];
+            // Si no encontramos el producto, buscarlo en la BD
+            if (!$product) {
+                $product = \App\Models\Product::find($productId);
+            }
+            
+            if (!$product) {
+                continue; // Saltar si no encontramos el producto
+            }
+            
+            // Obtener producido (puede ser 0 si no está registrado)
+            $producedWeight = $producedByProduct[$productId]['weight'] ?? 0;
+            $producedBoxes = $producedByProduct[$productId]['boxes'] ?? 0;
             
             // Calcular en venta
             $inSalesWeight = 0;
@@ -601,15 +639,27 @@ class Production extends Model
             // Calcular balance
             $contabilizedWeight = $inSalesWeight + $inStockWeight + $reprocessedWeight;
             $balanceWeight = $producedWeight - $contabilizedWeight;
-            $balancePercentage = $producedWeight > 0 
-                ? ($balanceWeight / $producedWeight) * 100 
-                : 0;
+            
+            // Calcular porcentaje de balance
+            // Si hay producido, usar ese como base
+            // Si no hay producido pero hay contabilizado, el porcentaje es 100% (todo es exceso)
+            $balancePercentage = 0;
+            if ($producedWeight > 0) {
+                $balancePercentage = ($balanceWeight / $producedWeight) * 100;
+            } elseif ($contabilizedWeight > 0) {
+                // Producto no producido pero contabilizado = 100% exceso
+                $balancePercentage = -100;
+            }
             
             // Determinar estado
             $status = 'ok';
             $message = 'Todo contabilizado correctamente';
             
-            if (abs($balanceWeight) > 0.01) {
+            // Si no hay producido pero hay contabilizado, es un error
+            if ($producedWeight == 0 && $contabilizedWeight > 0) {
+                $status = 'error';
+                $message = "Producto no registrado como producido pero existe en venta/stock/reprocesado (" . round($contabilizedWeight, 2) . "kg)";
+            } elseif (abs($balanceWeight) > 0.01) {
                 $absPercentage = abs($balancePercentage);
                 if ($absPercentage > 5) {
                     $status = 'error';
@@ -674,8 +724,11 @@ class Production extends Model
         
         // Determinar estado general
         $totalBalanceAbs = abs($summary['totalBalanceWeight']);
-        $totalBalancePercentage = $summary['totalProducedWeight'] > 0
-            ? ($totalBalanceAbs / $summary['totalProducedWeight']) * 100
+        
+        // Calcular porcentaje: usar el mayor entre producido y contabilizado como base
+        $baseWeight = max($summary['totalProducedWeight'], $summary['totalContabilizedWeight']);
+        $totalBalancePercentage = $baseWeight > 0
+            ? ($totalBalanceAbs / $baseWeight) * 100
             : 0;
         
         if ($totalBalanceAbs > 0.01) {
@@ -684,6 +737,11 @@ class Production extends Model
             } else {
                 $summary['overallStatus'] = 'warning';
             }
+        }
+        
+        // Si hay productos contabilizados pero no producidos, marcar como error
+        if ($summary['totalProducedWeight'] == 0 && $summary['totalContabilizedWeight'] > 0) {
+            $summary['overallStatus'] = 'error';
         }
         
         $summary['totalProducedWeight'] = round($summary['totalProducedWeight'], 2);
