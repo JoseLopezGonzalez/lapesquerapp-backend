@@ -548,61 +548,97 @@ class Production extends Model
      * @param array $processNodes Array de nodos del árbol de procesos
      * @return array Array de nodos con nodos de venta/stock añadidos
      */
+    /**
+     * Añadir nodos de venta y stock al árbol de procesos
+     * ✨ NUEVO: Agrupa por nodo final (no por producto)
+     * - UN SOLO nodo de venta por nodo final con TODOS sus productos
+     * - UN SOLO nodo de stock por nodo final con TODOS sus productos
+     */
     public function attachSalesAndStockNodes(array $processNodes)
     {
         $lot = $this->lot;
         
-        // 1. Identificar todos los nodos finales y sus productos
-        $finalNodesByProduct = [];
-        $this->collectFinalNodesAndProducts($processNodes, $finalNodesByProduct);
+        // 1. Obtener datos de venta y stock agrupados por producto (para luego reagrupar por nodo final)
+        $salesDataByProduct = $this->getSalesDataByProduct($lot);
+        $stockDataByProduct = $this->getStockDataByProduct($lot);
         
-        // 2. Obtener datos de venta y stock (solo del lote de la producción)
-        $salesData = $this->getSalesDataByProduct($lot);
-        $stockData = $this->getStockDataByProduct($lot);
+        // 2. Añadir nodos de venta y stock como hijos de nodos finales
+        //    UN SOLO nodo de venta y UN SOLO nodo de stock por cada nodo final
+        $this->attachSalesAndStockNodesToFinalNodes($processNodes, $salesDataByProduct, $stockDataByProduct);
         
-        // 3. Añadir nodos de venta como hijos de nodos finales
-        // ⚠️ Si hay múltiples nodos finales para un producto, se crean sin padre
-        $this->attachSalesNodesToFinalNodes($processNodes, $finalNodesByProduct, $salesData);
-        
-        // 4. Añadir nodos de stock como hijos de nodos finales
-        // ⚠️ Si hay múltiples nodos finales para un producto, se crean sin padre
-        $this->attachStockNodesToFinalNodes($processNodes, $finalNodesByProduct, $stockData);
-        
-        // 5. Añadir nodos de venta/stock sin padre:
-        //    - Sin nodo final correspondiente
-        //    - Con múltiples nodos finales (ambigüedad)
-        $orphanSalesNodes = $this->createOrphanSalesNodes($salesData, $finalNodesByProduct);
-        $orphanStockNodes = $this->createOrphanStockNodes($stockData, $finalNodesByProduct);
+        // 3. Añadir nodos huérfanos (productos sin nodo final o con ambigüedad)
+        $orphanNodes = $this->createOrphanNodes($salesDataByProduct, $stockDataByProduct, $processNodes);
         
         // Añadir nodos huérfanos al final de processNodes
-        return array_merge($processNodes, $orphanSalesNodes, $orphanStockNodes);
+        return array_merge($processNodes, $orphanNodes);
     }
 
     /**
-     * Recursivamente identificar nodos finales y sus productos
+     * Recursivamente añadir nodos de venta y stock a nodos finales
+     * ✨ Crea UN SOLO nodo de venta y UN SOLO nodo de stock por nodo final
      * 
-     * @param array $nodes Array de nodos del árbol
-     * @param array &$finalNodesByProduct Array de referencia para almacenar nodos finales por producto
+     * @param array &$nodes Array de nodos del árbol (por referencia)
+     * @param array $salesDataByProduct Datos de venta agrupados por producto
+     * @param array $stockDataByProduct Datos de stock agrupados por producto
      */
-    private function collectFinalNodesAndProducts(array $nodes, array &$finalNodesByProduct)
+    private function attachSalesAndStockNodesToFinalNodes(array &$nodes, array $salesDataByProduct, array $stockDataByProduct)
     {
-        foreach ($nodes as $node) {
+        foreach ($nodes as &$node) {
+            if (!empty($node['children'])) {
+                $this->attachSalesAndStockNodesToFinalNodes($node['children'], $salesDataByProduct, $stockDataByProduct);
+            }
+            
             if (isset($node['isFinal']) && $node['isFinal'] === true) {
-                // Extraer productos de los outputs
+                $finalNodeId = $node['id'];
+                
+                // Obtener todos los productos que produce este nodo final
+                $productIds = [];
                 foreach ($node['outputs'] ?? [] as $output) {
                     $productId = $output['productId'] ?? null;
                     if ($productId) {
-                        if (!isset($finalNodesByProduct[$productId])) {
-                            $finalNodesByProduct[$productId] = [];
-                        }
-                        $finalNodesByProduct[$productId][] = $node['id'];
+                        $productIds[] = $productId;
                     }
                 }
-            }
-            
-            // Recursivamente procesar hijos
-            if (!empty($node['children'])) {
-                $this->collectFinalNodesAndProducts($node['children'], $finalNodesByProduct);
+                
+                if (!empty($productIds)) {
+                    // Recopilar datos de venta para TODOS los productos de este nodo final
+                    $finalNodeSalesData = [];
+                    foreach ($productIds as $productId) {
+                        if (isset($salesDataByProduct[$productId])) {
+                            $finalNodeSalesData[$productId] = $salesDataByProduct[$productId];
+                        }
+                    }
+                    
+                    // Recopilar datos de stock para TODOS los productos de este nodo final
+                    $finalNodeStockData = [];
+                    foreach ($productIds as $productId) {
+                        if (isset($stockDataByProduct[$productId])) {
+                            $finalNodeStockData[$productId] = $stockDataByProduct[$productId];
+                        }
+                    }
+                    
+                    // Crear UN SOLO nodo de venta con todos los productos
+                    if (!empty($finalNodeSalesData)) {
+                        $salesNode = $this->createSalesNodeForFinalNode($finalNodeId, $finalNodeSalesData);
+                        if ($salesNode) {
+                            if (!isset($node['children'])) {
+                                $node['children'] = [];
+                            }
+                            $node['children'][] = $salesNode;
+                        }
+                    }
+                    
+                    // Crear UN SOLO nodo de stock con todos los productos
+                    if (!empty($finalNodeStockData)) {
+                        $stockNode = $this->createStockNodeForFinalNode($finalNodeId, $finalNodeStockData);
+                        if ($stockNode) {
+                            if (!isset($node['children'])) {
+                                $node['children'] = [];
+                            }
+                            $node['children'][] = $stockNode;
+                        }
+                    }
+                }
             }
         }
     }
@@ -760,325 +796,342 @@ class Production extends Model
         return $byProduct;
     }
 
-    /**
-     * Añadir nodos de venta como hijos de nodos finales
-     * ⚠️ Solo si hay UN SOLO nodo final para el producto (sin ambigüedad)
-     * 
-     * @param array &$nodes Array de nodos (por referencia)
-     * @param array $finalNodesByProduct Nodos finales agrupados por producto
-     * @param array $salesData Datos de venta agrupados por producto
-     */
-    private function attachSalesNodesToFinalNodes(array &$nodes, array $finalNodesByProduct, array $salesData)
-    {
-        foreach ($nodes as &$node) {
-            if (!empty($node['children'])) {
-                $this->attachSalesNodesToFinalNodes($node['children'], $finalNodesByProduct, $salesData);
-            }
-            
-            if (isset($node['isFinal']) && $node['isFinal'] === true) {
-                // Buscar productos en outputs de este nodo final
-                foreach ($node['outputs'] ?? [] as $output) {
-                    $productId = $output['productId'] ?? null;
-                    if ($productId && isset($salesData[$productId])) {
-                        // ⚠️ Solo asignar si hay UN SOLO nodo final para este producto
-                        // Si hay múltiples, se crearán como orphan nodes
-                        if (isset($finalNodesByProduct[$productId]) && count($finalNodesByProduct[$productId]) === 1) {
-                            // Verificar que este es el único nodo final
-                            if ($finalNodesByProduct[$productId][0] === $node['id']) {
-                                // Crear UN SOLO nodo de venta para este producto (con desglose de pedidos)
-                                $salesNodes = $this->createSalesNodesForProduct($productId, $salesData[$productId], $node['id']);
-                                
-                                // Añadir como hijo (ahora es un solo nodo)
-                                if (!isset($node['children'])) {
-                                    $node['children'] = [];
-                                }
-                                $node['children'] = array_merge($node['children'], $salesNodes);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     /**
-     * Añadir nodos de stock como hijos de nodos finales
-     * ⚠️ Solo si hay UN SOLO nodo final para el producto (sin ambigüedad)
+     * Crear UN SOLO nodo de venta para un nodo final con TODOS sus productos
+     * ✨ Agrupa todos los productos del nodo final en un solo nodo
      * 
-     * @param array &$nodes Array de nodos (por referencia)
-     * @param array $finalNodesByProduct Nodos finales agrupados por producto
-     * @param array $stockData Datos de stock agrupados por producto
+     * @param int $finalNodeId ID del nodo final
+     * @param array $salesDataByProduct Datos de venta agrupados por producto {productId => {orderId => data}}
+     * @return array|null Nodo de venta o null si no hay datos
      */
-    private function attachStockNodesToFinalNodes(array &$nodes, array $finalNodesByProduct, array $stockData)
+    private function createSalesNodeForFinalNode(int $finalNodeId, array $salesDataByProduct)
     {
-        foreach ($nodes as &$node) {
-            if (!empty($node['children'])) {
-                $this->attachStockNodesToFinalNodes($node['children'], $finalNodesByProduct, $stockData);
-            }
-            
-            if (isset($node['isFinal']) && $node['isFinal'] === true) {
-                // Buscar productos en outputs de este nodo final
-                foreach ($node['outputs'] ?? [] as $output) {
-                    $productId = $output['productId'] ?? null;
-                    if ($productId && isset($stockData[$productId])) {
-                        // ⚠️ Solo asignar si hay UN SOLO nodo final para este producto
-                        // Si hay múltiples, se crearán como orphan nodes
-                        if (isset($finalNodesByProduct[$productId]) && count($finalNodesByProduct[$productId]) === 1) {
-                            // Verificar que este es el único nodo final
-                            if ($finalNodesByProduct[$productId][0] === $node['id']) {
-                                // Crear UN SOLO nodo de stock para este producto (con desglose de almacenes)
-                                $stockNodes = $this->createStockNodesForProduct($productId, $stockData[$productId], $node['id']);
-                                
-                                // Añadir como hijo (ahora es un solo nodo)
-                                if (!isset($node['children'])) {
-                                    $node['children'] = [];
-                                }
-                                $node['children'] = array_merge($node['children'], $stockNodes);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Crear UN SOLO nodo de venta para un producto con desglose de pedidos
-     * 
-     * @param int $productId ID del producto
-     * @param array $data Datos de venta agrupados por pedido
-     * @param int|null $parentRecordId ID del nodo final padre (null si no tiene padre)
-     * @return array Array con un solo nodo de venta (con desglose de pedidos)
-     */
-    private function createSalesNodesForProduct(int $productId, array $data, ?int $parentRecordId)
-    {
-        if (empty($data)) {
-            return [];
+        if (empty($salesDataByProduct)) {
+            return null;
         }
         
-        // Obtener el producto del primer pedido (todos deberían tener el mismo producto)
-        $firstOrderData = reset($data);
-        $product = $firstOrderData['product'];
-        
-        // Crear desglose de pedidos
-        $ordersData = [];
+        // Paso 1: Agrupar por pedido (no por producto)
+        // Recopilar todos los pedidos y sus productos
+        $ordersMap = [];  // orderId => {order, products: {productId => {...}}}
+        $allProducts = [];  // Para obtener lista de productos únicos
         $totalBoxes = 0;
         $totalNetWeight = 0;
         $totalPallets = 0;
         
-        foreach ($data as $orderId => $orderData) {
-            $order = $orderData['order'];
-            
-            // Calcular totales de palets para este pedido
-            $palletsData = [];
-            $orderBoxes = 0;
-            $orderNetWeight = 0;
-            
-            foreach ($orderData['pallets'] as $palletData) {
-                $pallet = $palletData['pallet'];
-                $boxes = collect($palletData['boxes']);
+        foreach ($salesDataByProduct as $productId => $productOrders) {
+            foreach ($productOrders as $orderId => $orderData) {
+                $order = $orderData['order'];
                 
-                $availableBoxesCount = $boxes->count();
-                $totalAvailableWeight = $boxes->sum('net_weight');
+                if (!isset($ordersMap[$orderId])) {
+                    $ordersMap[$orderId] = [
+                        'order' => $order,
+                        'products' => [],
+                    ];
+                }
                 
-                $palletsData[] = [
-                    'id' => $pallet->id,
-                    'availableBoxesCount' => $availableBoxesCount,
-                    'totalAvailableWeight' => round($totalAvailableWeight, 2),
+                // Calcular palets y totales para este producto en este pedido
+                $palletsData = [];
+                $productBoxes = 0;
+                $productNetWeight = 0;
+                
+                foreach ($orderData['pallets'] as $palletData) {
+                    $pallet = $palletData['pallet'];
+                    $boxes = collect($palletData['boxes']);
+                    
+                    $availableBoxesCount = $boxes->count();
+                    $totalAvailableWeight = $boxes->sum('net_weight');
+                    
+                    $palletsData[] = [
+                        'id' => $pallet->id,
+                        'availableBoxesCount' => $availableBoxesCount,
+                        'totalAvailableWeight' => round($totalAvailableWeight, 2),
+                    ];
+                    
+                    $productBoxes += $availableBoxesCount;
+                    $productNetWeight += $totalAvailableWeight;
+                    $totalPallets++;
+                }
+                
+                // Añadir producto al pedido
+                $ordersMap[$orderId]['products'][$productId] = [
+                    'product' => [
+                        'id' => $orderData['product']->id,
+                        'name' => $orderData['product']->name,
+                    ],
+                    'pallets' => $palletsData,
+                    'totalBoxes' => $productBoxes,
+                    'totalNetWeight' => round($productNetWeight, 2),
                 ];
                 
-                $orderBoxes += $availableBoxesCount;
-                $orderNetWeight += $totalAvailableWeight;
-                $totalPallets++;
+                $allProducts[$productId] = $orderData['product'];
+                
+                $totalBoxes += $productBoxes;
+                $totalNetWeight += $productNetWeight;
             }
+        }
+        
+        // Paso 2: Convertir ordersMap a array de orders con products como array
+        $ordersData = [];
+        foreach ($ordersMap as $orderId => $orderInfo) {
+            $orderProducts = array_values($orderInfo['products']);
+            
+            // Calcular totales del pedido
+            $orderTotalBoxes = array_sum(array_column($orderProducts, 'totalBoxes'));
+            $orderTotalNetWeight = array_sum(array_column($orderProducts, 'totalNetWeight'));
             
             $ordersData[] = [
                 'order' => [
-                    'id' => $order->id,
-                    'formattedId' => $order->formatted_id,
-                    'customer' => $order->customer ? [
-                        'id' => $order->customer->id,
-                        'name' => $order->customer->name,
+                    'id' => $orderInfo['order']->id,
+                    'formattedId' => $orderInfo['order']->formatted_id,
+                    'customer' => $orderInfo['order']->customer ? [
+                        'id' => $orderInfo['order']->customer->id,
+                        'name' => $orderInfo['order']->customer->name,
                     ] : null,
-                    'loadDate' => $order->load_date 
-                        ? (\Carbon\Carbon::parse($order->load_date)->toIso8601String())
+                    'loadDate' => $orderInfo['order']->load_date 
+                        ? (\Carbon\Carbon::parse($orderInfo['order']->load_date)->toIso8601String())
                         : null,
-                    'status' => $order->status,
+                    'status' => $orderInfo['order']->status,
                 ],
-                'pallets' => $palletsData,
-                'totalBoxes' => $orderBoxes,
-                'totalNetWeight' => round($orderNetWeight, 2),
-                'summary' => [
-                    'palletsCount' => count($palletsData),
-                    'boxesCount' => $orderBoxes,
-                    'netWeight' => round($orderNetWeight, 2),
-                ],
+                'products' => $orderProducts,  // 👈 Array de productos
+                'totalBoxes' => $orderTotalBoxes,
+                'totalNetWeight' => round($orderTotalNetWeight, 2),
             ];
-            
-            $totalBoxes += $orderBoxes;
-            $totalNetWeight += $orderNetWeight;
         }
         
-        // Retornar UN SOLO nodo con desglose de pedidos
-        return [[
+        // Paso 3: Crear el nodo de venta
+        return [
             'type' => 'sales',
-            'id' => "sales-{$productId}",
-            'parentRecordId' => $parentRecordId,
+            'id' => "sales-{$finalNodeId}",  // 👈 ID del nodo final
+            'parentRecordId' => $finalNodeId,
             'productionId' => $this->id,
-            'product' => [
-                'id' => $product->id,
-                'name' => $product->name,
-            ],
             'orders' => $ordersData,
             'totalBoxes' => $totalBoxes,
             'totalNetWeight' => round($totalNetWeight, 2),
             'summary' => [
                 'ordersCount' => count($ordersData),
+                'productsCount' => count($allProducts),  // 👈 Número de productos diferentes
                 'palletsCount' => $totalPallets,
                 'boxesCount' => $totalBoxes,
                 'netWeight' => round($totalNetWeight, 2),
             ],
             'children' => [],
-        ]];
+        ];
     }
 
     /**
-     * Crear UN SOLO nodo de stock para un producto con desglose de almacenes
+     * Crear UN SOLO nodo de stock para un nodo final con TODOS sus productos
+     * ✨ Agrupa todos los productos del nodo final en un solo nodo
      * 
-     * @param int $productId ID del producto
-     * @param array $data Datos de stock agrupados por almacén
-     * @param int|null $parentRecordId ID del nodo final padre (null si no tiene padre)
-     * @return array Array con un solo nodo de stock (con desglose de almacenes)
+     * @param int $finalNodeId ID del nodo final
+     * @param array $stockDataByProduct Datos de stock agrupados por producto {productId => {storeId => data}}
+     * @return array|null Nodo de stock o null si no hay datos
      */
-    private function createStockNodesForProduct(int $productId, array $data, ?int $parentRecordId)
+    private function createStockNodeForFinalNode(int $finalNodeId, array $stockDataByProduct)
     {
-        if (empty($data)) {
-            return [];
+        if (empty($stockDataByProduct)) {
+            return null;
         }
         
-        // Obtener el producto del primer almacén (todos deberían tener el mismo producto)
-        $firstStoreData = reset($data);
-        $product = $firstStoreData['product'];
-        
-        // Crear desglose de almacenes
-        $storesData = [];
+        // Paso 1: Agrupar por almacén (no por producto)
+        // Recopilar todos los almacenes y sus productos
+        $storesMap = [];  // storeId => {store, products: {productId => {...}}}
+        $allProducts = [];  // Para obtener lista de productos únicos
         $totalBoxes = 0;
         $totalNetWeight = 0;
         $totalPallets = 0;
         
-        foreach ($data as $storeId => $storeData) {
-            $store = $storeData['store'];
-            
-            // Calcular totales de palets para este almacén
-            $palletsData = [];
-            $storeBoxes = 0;
-            $storeNetWeight = 0;
-            
-            foreach ($storeData['pallets'] as $palletData) {
-                $pallet = $palletData['pallet'];
-                $storedPallet = $palletData['storedPallet'];
-                $boxes = collect($palletData['boxes']);
+        foreach ($stockDataByProduct as $productId => $productStores) {
+            foreach ($productStores as $storeId => $storeData) {
+                $store = $storeData['store'];
                 
-                $availableBoxesCount = $boxes->count();
-                $totalAvailableWeight = $boxes->sum('net_weight');
+                if (!isset($storesMap[$storeId])) {
+                    $storesMap[$storeId] = [
+                        'store' => $store,
+                        'products' => [],
+                    ];
+                }
                 
-                $palletsData[] = [
-                    'id' => $pallet->id,
-                    'availableBoxesCount' => $availableBoxesCount,
-                    'totalAvailableWeight' => round($totalAvailableWeight, 2),
-                    'position' => $storedPallet->position,
+                // Calcular palets y totales para este producto en este almacén
+                $palletsData = [];
+                $productBoxes = 0;
+                $productNetWeight = 0;
+                
+                foreach ($storeData['pallets'] as $palletData) {
+                    $pallet = $palletData['pallet'];
+                    $storedPallet = $palletData['storedPallet'];
+                    $boxes = collect($palletData['boxes']);
+                    
+                    $availableBoxesCount = $boxes->count();
+                    $totalAvailableWeight = $boxes->sum('net_weight');
+                    
+                    $palletsData[] = [
+                        'id' => $pallet->id,
+                        'availableBoxesCount' => $availableBoxesCount,
+                        'totalAvailableWeight' => round($totalAvailableWeight, 2),
+                        'position' => $storedPallet->position,
+                    ];
+                    
+                    $productBoxes += $availableBoxesCount;
+                    $productNetWeight += $totalAvailableWeight;
+                    $totalPallets++;
+                }
+                
+                // Añadir producto al almacén
+                $storesMap[$storeId]['products'][$productId] = [
+                    'product' => [
+                        'id' => $storeData['product']->id,
+                        'name' => $storeData['product']->name,
+                    ],
+                    'pallets' => $palletsData,
+                    'totalBoxes' => $productBoxes,
+                    'totalNetWeight' => round($productNetWeight, 2),
                 ];
                 
-                $storeBoxes += $availableBoxesCount;
-                $storeNetWeight += $totalAvailableWeight;
-                $totalPallets++;
+                $allProducts[$productId] = $storeData['product'];
+                
+                $totalBoxes += $productBoxes;
+                $totalNetWeight += $productNetWeight;
             }
+        }
+        
+        // Paso 2: Convertir storesMap a array de stores con products como array
+        $storesData = [];
+        foreach ($storesMap as $storeId => $storeInfo) {
+            $storeProducts = array_values($storeInfo['products']);
+            
+            // Calcular totales del almacén
+            $storeTotalBoxes = array_sum(array_column($storeProducts, 'totalBoxes'));
+            $storeTotalNetWeight = array_sum(array_column($storeProducts, 'totalNetWeight'));
             
             $storesData[] = [
                 'store' => [
-                    'id' => $store->id,
-                    'name' => $store->name,
-                    'temperature' => $store->temperature,
+                    'id' => $storeInfo['store']->id,
+                    'name' => $storeInfo['store']->name,
+                    'temperature' => $storeInfo['store']->temperature,
                 ],
-                'pallets' => $palletsData,
-                'totalBoxes' => $storeBoxes,
-                'totalNetWeight' => round($storeNetWeight, 2),
-                'summary' => [
-                    'palletsCount' => count($palletsData),
-                    'boxesCount' => $storeBoxes,
-                    'netWeight' => round($storeNetWeight, 2),
-                ],
+                'products' => $storeProducts,  // 👈 Array de productos
+                'totalBoxes' => $storeTotalBoxes,
+                'totalNetWeight' => round($storeTotalNetWeight, 2),
             ];
-            
-            $totalBoxes += $storeBoxes;
-            $totalNetWeight += $storeNetWeight;
         }
         
-        // Retornar UN SOLO nodo con desglose de almacenes
-        return [[
+        // Paso 3: Crear el nodo de stock
+        return [
             'type' => 'stock',
-            'id' => "stock-{$productId}",
-            'parentRecordId' => $parentRecordId,
+            'id' => "stock-{$finalNodeId}",  // 👈 ID del nodo final
+            'parentRecordId' => $finalNodeId,
             'productionId' => $this->id,
-            'product' => [
-                'id' => $product->id,
-                'name' => $product->name,
-            ],
             'stores' => $storesData,
             'totalBoxes' => $totalBoxes,
             'totalNetWeight' => round($totalNetWeight, 2),
             'summary' => [
                 'storesCount' => count($storesData),
+                'productsCount' => count($allProducts),  // 👈 Número de productos diferentes
                 'palletsCount' => $totalPallets,
                 'boxesCount' => $totalBoxes,
                 'netWeight' => round($totalNetWeight, 2),
             ],
             'children' => [],
-        ]];
+        ];
     }
 
     /**
-     * Crear nodos de venta sin padre (orphan nodes):
-     * - Producto no tiene nodo final
-     * - Producto tiene múltiples nodos finales (ambigüedad)
+     * Identificar nodos finales y sus productos
+     * Retorna un mapa: productId => [nodeId1, nodeId2, ...]
      * 
-     * @param array $salesData Datos de venta agrupados por producto
-     * @param array $finalNodesByProduct Nodos finales agrupados por producto
-     * @return array Array de nodos de venta sin padre (un nodo por producto con desglose de pedidos)
+     * @param array $nodes Array de nodos del árbol
+     * @return array Mapa de productos a sus nodos finales
      */
-    private function createOrphanSalesNodes(array $salesData, array $finalNodesByProduct)
+    private function collectFinalNodesByProduct(array $nodes)
     {
-        $orphanNodes = [];
+        $finalNodesByProduct = [];
         
-        foreach ($salesData as $productId => $data) {
-            // Caso 1: No hay nodo final para este producto
-            // Caso 2: Hay múltiples nodos finales (ambigüedad)
-            if (!isset($finalNodesByProduct[$productId]) || count($finalNodesByProduct[$productId]) > 1) {
-                $orphanNodes = array_merge($orphanNodes, $this->createSalesNodesForProduct($productId, $data, null));
+        foreach ($nodes as $node) {
+            if (isset($node['isFinal']) && $node['isFinal'] === true) {
+                foreach ($node['outputs'] ?? [] as $output) {
+                    $productId = $output['productId'] ?? null;
+                    if ($productId) {
+                        if (!isset($finalNodesByProduct[$productId])) {
+                            $finalNodesByProduct[$productId] = [];
+                        }
+                        $finalNodesByProduct[$productId][] = $node['id'];
+                    }
+                }
+            }
+            
+            if (!empty($node['children'])) {
+                $childMap = $this->collectFinalNodesByProduct($node['children']);
+                foreach ($childMap as $productId => $nodeIds) {
+                    if (!isset($finalNodesByProduct[$productId])) {
+                        $finalNodesByProduct[$productId] = [];
+                    }
+                    $finalNodesByProduct[$productId] = array_merge($finalNodesByProduct[$productId], $nodeIds);
+                }
             }
         }
         
-        return $orphanNodes;
+        return $finalNodesByProduct;
     }
 
     /**
-     * Crear nodos de stock sin padre (orphan nodes):
-     * - Producto no tiene nodo final
-     * - Producto tiene múltiples nodos finales (ambigüedad)
+     * Crear nodos huérfanos (productos sin nodo final o con múltiples nodos finales)
+     * Para nodos huérfanos, agrupamos por producto (un nodo por producto)
      * 
-     * @param array $stockData Datos de stock agrupados por producto
-     * @param array $finalNodesByProduct Nodos finales agrupados por producto
-     * @return array Array de nodos de stock sin padre (un nodo por producto con desglose de almacenes)
+     * @param array $salesDataByProduct Datos de venta agrupados por producto
+     * @param array $stockDataByProduct Datos de stock agrupados por producto
+     * @param array $processNodes Nodos del árbol de procesos (para identificar nodos finales)
+     * @return array Array de nodos huérfanos
      */
-    private function createOrphanStockNodes(array $stockData, array $finalNodesByProduct)
+    private function createOrphanNodes(array $salesDataByProduct, array $stockDataByProduct, array $processNodes)
     {
         $orphanNodes = [];
         
-        foreach ($stockData as $productId => $data) {
-            // Caso 1: No hay nodo final para este producto
-            // Caso 2: Hay múltiples nodos finales (ambigüedad)
-            if (!isset($finalNodesByProduct[$productId]) || count($finalNodesByProduct[$productId]) > 1) {
-                $orphanNodes = array_merge($orphanNodes, $this->createStockNodesForProduct($productId, $data, null));
+        // Identificar qué productos tienen nodos finales únicos
+        $finalNodesByProduct = $this->collectFinalNodesByProduct($processNodes);
+        
+        // Para cada producto, verificar si es huérfano (sin nodo final o con múltiples)
+        $orphanProductIds = [];
+        
+        // Identificar productos huérfanos de venta
+        foreach ($salesDataByProduct as $productId => $data) {
+            if (!isset($finalNodesByProduct[$productId]) || count($finalNodesByProduct[$productId]) !== 1) {
+                $orphanProductIds[$productId] = true;
+            }
+        }
+        
+        // Identificar productos huérfanos de stock
+        foreach ($stockDataByProduct as $productId => $data) {
+            if (!isset($finalNodesByProduct[$productId]) || count($finalNodesByProduct[$productId]) !== 1) {
+                $orphanProductIds[$productId] = true;
+            }
+        }
+        
+        // Agrupar productos huérfanos por producto
+        // Para productos huérfanos, creamos un nodo por producto (similar a v2 pero sin padre)
+        foreach ($orphanProductIds as $productId => $_) {
+            // Nodo de venta huérfano
+            if (isset($salesDataByProduct[$productId])) {
+                $orphanSalesData = [$productId => $salesDataByProduct[$productId]];
+                // Crear un nodo "ficticio" con ID negativo para huérfanos
+                $orphanNode = $this->createSalesNodeForFinalNode(-$productId, $orphanSalesData);
+                if ($orphanNode) {
+                    $orphanNode['parentRecordId'] = null;  // Sin padre
+                    $orphanNode['id'] = "sales-orphan-{$productId}";  // ID diferente
+                    $orphanNodes[] = $orphanNode;
+                }
+            }
+            
+            // Nodo de stock huérfano
+            if (isset($stockDataByProduct[$productId])) {
+                $orphanStockData = [$productId => $stockDataByProduct[$productId]];
+                // Crear un nodo "ficticio" con ID negativo para huérfanos
+                $orphanNode = $this->createStockNodeForFinalNode(-$productId, $orphanStockData);
+                if ($orphanNode) {
+                    $orphanNode['parentRecordId'] = null;  // Sin padre
+                    $orphanNode['id'] = "stock-orphan-{$productId}";  // ID diferente
+                    $orphanNodes[] = $orphanNode;
+                }
             }
         }
         
