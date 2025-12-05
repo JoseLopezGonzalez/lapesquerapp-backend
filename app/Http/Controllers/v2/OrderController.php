@@ -499,48 +499,27 @@ class OrderController extends Controller
             $dateFrom = $validated['dateFrom'] . ' 00:00:00';
             $dateTo = $validated['dateTo'] . ' 23:59:59';
 
-            $orders = Order::with([
-                'salesperson',
-                'pallets.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
-                'pallets.boxes.box.product',
-            ])
-                ->whereBetween('entry_date', [$dateFrom, $dateTo])
+            // Usar consulta directa con join para evitar problemas con accessors
+            $results = \DB::table('orders')
+                ->join('pallets', 'pallets.order_id', '=', 'orders.id')
+                ->join('pallet_boxes', 'pallet_boxes.pallet_id', '=', 'pallets.id')
+                ->join('boxes', 'boxes.id', '=', 'pallet_boxes.box_id')
+                ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
+                ->leftJoin('salespeople', 'salespeople.id', '=', 'orders.salesperson_id')
+                ->whereBetween('orders.entry_date', [$dateFrom, $dateTo])
+                ->whereNull('production_inputs.id') // Solo cajas disponibles (sin production_inputs)
+                ->whereIn('pallets.state_id', [\App\Models\Pallet::STATE_REGISTERED, \App\Models\Pallet::STATE_STORED, \App\Models\Pallet::STATE_SHIPPED])
+                ->select(
+                    \DB::raw('COALESCE(salespeople.name, "Sin comercial") as name'),
+                    \DB::raw('SUM(boxes.net_weight) as quantity')
+                )
+                ->groupBy('salespeople.id', 'salespeople.name')
                 ->get();
 
-            $summary = [];
-
-            foreach ($orders as $order) {
-                $salespersonName = $order->salesperson->name ?? 'Sin comercial';
-
-                if (!isset($summary[$salespersonName])) {
-                    $summary[$salespersonName] = 0;
-                }
-
-                foreach ($order->pallets as $pallet) {
-                    if (!$pallet->relationLoaded('boxes')) {
-                        $pallet->load('boxes.box.productionInputs');
-                    }
-                    
-                    foreach ($pallet->boxes as $box) {
-                        // Verificar que box existe y tiene isAvailable
-                        if ($box->box) {
-                            // Asegurar que productionInputs esté cargado
-                            if (!$box->box->relationLoaded('productionInputs')) {
-                                $box->box->load('productionInputs');
-                            }
-                            
-                            if ($box->box->isAvailable) {
-                                $summary[$salespersonName] += $box->box->net_weight ?? 0;
-                            }
-                        }
-                    }
-                }
-            }
-
-            $data = collect($summary)->map(function ($quantity, $name) {
+            $data = $results->map(function ($item) {
                 return [
-                    'name' => $name,
-                    'quantity' => round($quantity, 2),
+                    'name' => $item->name,
+                    'quantity' => round((float)$item->quantity, 2),
                 ];
             })->values();
 
@@ -550,7 +529,7 @@ class OrderController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'request' => $request->all(),
             ]);
-            return response()->json(['error' => 'Error processing request'], 500);
+            return response()->json(['error' => 'Error processing request: ' . $e->getMessage()], 500);
         }
     }
 
@@ -572,24 +551,30 @@ class OrderController extends Controller
             $from = $request->input('dateFrom');
             $to = $request->input('dateTo');
 
-            $orders = Order::with([
-                'transport',
-                'pallets.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
-            ])
-                ->whereBetween('load_date', [$from, $to])
-                ->whereNotNull('transport_id')
+            // Usar consulta directa con join para evitar problemas con accessors
+            $results = \DB::table('orders')
+                ->join('transports', 'transports.id', '=', 'orders.transport_id')
+                ->join('pallets', 'pallets.order_id', '=', 'orders.id')
+                ->join('pallet_boxes', 'pallet_boxes.pallet_id', '=', 'pallets.id')
+                ->join('boxes', 'boxes.id', '=', 'pallet_boxes.box_id')
+                ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
+                ->whereBetween('orders.load_date', [$from, $to])
+                ->whereNotNull('orders.transport_id')
+                ->whereNull('production_inputs.id') // Solo cajas disponibles (sin production_inputs)
+                ->whereIn('pallets.state_id', [\App\Models\Pallet::STATE_REGISTERED, \App\Models\Pallet::STATE_STORED, \App\Models\Pallet::STATE_SHIPPED])
+                ->select(
+                    'transports.name',
+                    \DB::raw('SUM(boxes.net_weight) as netWeight')
+                )
+                ->groupBy('transports.id', 'transports.name')
                 ->get();
 
-            // Las relaciones ya están cargadas con el eager loading anterior
-
-            $result = $orders->groupBy(fn($order) => optional($order->transport)->name ?? 'Sin transportista')
-                ->map(function ($group, $name) {
-                    return [
-                        'name' => $name,
-                        'netWeight' => $group->sum(fn($order) => $order->totalNetWeight ?? 0),
-                    ];
-                })
-                ->values();
+            $result = $results->map(function ($item) {
+                return [
+                    'name' => $item->name ?? 'Sin transportista',
+                    'netWeight' => round((float)$item->netWeight, 2),
+                ];
+            })->values();
 
             return response()->json($result);
         } catch (\Exception $e) {
@@ -597,7 +582,7 @@ class OrderController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'request' => $request->all(),
             ]);
-            return response()->json(['error' => 'Error processing request'], 500);
+            return response()->json(['error' => 'Error processing request: ' . $e->getMessage()], 500);
         }
     }
 
