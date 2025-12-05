@@ -698,21 +698,20 @@ class Production extends Model
                     }
                     
                     // Crear UN SOLO nodo de faltantes con todos los productos
-                    if (!empty($finalNodeMissingData)) {
-                        $missingNode = $this->createMissingNodeForFinalNode(
-                            $finalNodeId,
-                            $finalNodeMissingData,
-                            $finalNodeSalesData,
-                            $finalNodeStockData,
-                            $finalNodeReprocessedData,
-                            $finalNodeOutputs
-                        );
-                        if ($missingNode) {
-                            if (!isset($node['children'])) {
-                                $node['children'] = [];
-                            }
-                            $node['children'][] = $missingNode;
+                    // ✨ Siempre crear el nodo si hay productos, para mostrar el balance completo
+                    $missingNode = $this->createMissingNodeForFinalNode(
+                        $finalNodeId,
+                        $finalNodeMissingData,
+                        $finalNodeSalesData,
+                        $finalNodeStockData,
+                        $finalNodeReprocessedData,
+                        $finalNodeOutputs
+                    );
+                    if ($missingNode) {
+                        if (!isset($node['children'])) {
+                            $node['children'] = [];
                         }
+                        $node['children'][] = $missingNode;
                     }
                 }
             }
@@ -1375,22 +1374,62 @@ class Production extends Model
         array $reprocessedDataByProduct,
         array $finalNodeOutputs
     ) {
-        if (empty($missingDataByProduct)) {
+        // ✨ Calcular balance completo para TODOS los productos del nodo final
+        // No solo los que tienen cajas físicas faltantes
+        
+        // Paso 1: Obtener todos los productos del nodo final desde los outputs
+        $allProductsInFinalNode = [];
+        foreach ($finalNodeOutputs as $output) {
+            $productId = $output['productId'] ?? null;
+            if ($productId && !isset($allProductsInFinalNode[$productId])) {
+                // El producto puede venir en el output directamente
+                $product = null;
+                if (isset($output['product']) && isset($output['product']['id'])) {
+                    // Crear un objeto producto simple desde los datos del output
+                    $product = (object) [
+                        'id' => $output['product']['id'],
+                        'name' => $output['product']['name'] ?? 'Producto ' . $productId,
+                    ];
+                } else {
+                    // Si no está en el output, buscarlo en los datos disponibles
+                    if (isset($salesDataByProduct[$productId])) {
+                        $firstOrder = reset($salesDataByProduct[$productId]);
+                        $product = $firstOrder['product'] ?? null;
+                    } elseif (isset($stockDataByProduct[$productId])) {
+                        $firstStore = reset($stockDataByProduct[$productId]);
+                        $product = $firstStore['product'] ?? null;
+                    } elseif (isset($reprocessedDataByProduct[$productId])) {
+                        $firstProcess = reset($reprocessedDataByProduct[$productId]);
+                        $product = $firstProcess['product'] ?? null;
+                    } elseif (isset($missingDataByProduct[$productId])) {
+                        $product = $missingDataByProduct[$productId]['product'] ?? null;
+                    }
+                    
+                    // Si aún no lo encontramos, buscarlo en la BD
+                    if (!$product) {
+                        $productModel = \App\Models\Product::find($productId);
+                        if ($productModel) {
+                            $product = $productModel;
+                        }
+                    }
+                }
+                
+                if ($product) {
+                    $allProductsInFinalNode[$productId] = $product;
+                }
+            }
+        }
+        
+        if (empty($allProductsInFinalNode)) {
             return null;
         }
         
-        // Paso 1: Calcular faltantes por producto
+        // Paso 2: Calcular balance completo por producto
         $productsData = [];
-        $allProducts = [];
         $totalMissingBoxes = 0;
         $totalMissingWeight = 0;
         
-        foreach ($missingDataByProduct as $productId => $productData) {
-            $product = $productData['product'];
-            $missingBoxes = collect($productData['boxes']);
-            $missingBoxesCount = $missingBoxes->count();
-            $missingWeight = $missingBoxes->sum('net_weight');
-            
+        foreach ($allProductsInFinalNode as $productId => $product) {
             // Obtener producción del nodo final para este producto
             $produced = 0;
             $producedBoxes = 0;
@@ -1438,51 +1477,91 @@ class Production extends Model
                 }
             }
             
-            // Calcular porcentaje de faltantes
-            $missingPercentage = $produced > 0 ? ($missingWeight / $produced) * 100 : 0;
+            // Calcular faltante teórico: Producido - Venta - Stock - Re-procesado
+            $calculatedMissing = $produced - $inSales - $inStock - $reprocessed;
             
-            $productsData[] = [
-                'product' => [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                ],
-                'produced' => [
-                    'boxes' => $producedBoxes,
-                    'weight' => round($produced, 2),
-                ],
-                'inSales' => [
-                    'boxes' => $inSalesBoxes,
-                    'weight' => round($inSales, 2),
-                ],
-                'inStock' => [
-                    'boxes' => $inStockBoxes,
-                    'weight' => round($inStock, 2),
-                ],
-                'reprocessed' => [
-                    'boxes' => $reprocessedBoxes,
-                    'weight' => round($reprocessed, 2),
-                ],
-                'missing' => [
-                    'boxes' => $missingBoxesCount,
-                    'weight' => round($missingWeight, 2),
-                    'percentage' => round($missingPercentage, 2),
-                ],
-                'boxes' => $missingBoxes->map(function ($box) {
-                    return [
-                        'id' => $box->id,
-                        'netWeight' => round($box->net_weight, 2),
-                        'gs1_128' => $box->gs1_128 ?? null,
-                        'location' => null,  // Sin ubicación asignada
-                    ];
-                })->values()->toArray(),
-            ];
+            // Obtener cajas físicas faltantes (si existen)
+            $missingBoxes = collect([]);
+            $missingBoxesCount = 0;
+            $missingWeight = 0;
+            if (isset($missingDataByProduct[$productId])) {
+                $missingBoxes = collect($missingDataByProduct[$productId]['boxes'] ?? []);
+                $missingBoxesCount = $missingBoxes->count();
+                $missingWeight = $missingBoxes->sum('net_weight');
+            }
             
-            $allProducts[$productId] = $product;
-            $totalMissingBoxes += $missingBoxesCount;
-            $totalMissingWeight += $missingWeight;
+            // Usar el faltante calculado o el de cajas físicas
+            // Si hay cajas físicas, usar ese peso; si no, usar el calculado (puede ser negativo)
+            if ($missingBoxesCount > 0) {
+                // Hay cajas físicas faltantes
+                $finalMissingWeight = $missingWeight;
+                $finalMissingBoxes = $missingBoxesCount;
+            } else {
+                // No hay cajas físicas, usar el cálculo teórico
+                // Si es negativo, significa que hay más contabilizado que producido (error de datos)
+                $finalMissingWeight = $calculatedMissing; // Permitir valores negativos para detectar errores
+                $finalMissingBoxes = 0; // No sabemos cuántas cajas son
+            }
+            
+            // Calcular porcentaje de faltantes (solo si es positivo)
+            $missingPercentage = ($produced > 0 && $finalMissingWeight > 0) 
+                ? ($finalMissingWeight / $produced) * 100 
+                : 0;
+            
+            // Incluir productos con faltantes (positivos) o con desbalance significativo
+            // Mostrar si hay faltantes positivos o si hay más contabilizado que producido (error)
+            $hasPositiveMissing = $finalMissingWeight > 0.01;
+            $hasOverCount = $calculatedMissing < -0.01; // Más en venta/stock que producido
+            
+            if ($hasPositiveMissing || $hasOverCount) {
+                $productsData[] = [
+                    'product' => [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                    ],
+                    'produced' => [
+                        'boxes' => $producedBoxes,
+                        'weight' => round($produced, 2),
+                    ],
+                    'inSales' => [
+                        'boxes' => $inSalesBoxes,
+                        'weight' => round($inSales, 2),
+                    ],
+                    'inStock' => [
+                        'boxes' => $inStockBoxes,
+                        'weight' => round($inStock, 2),
+                    ],
+                    'reprocessed' => [
+                        'boxes' => $reprocessedBoxes,
+                        'weight' => round($reprocessed, 2),
+                    ],
+                    'missing' => [
+                        'boxes' => $finalMissingBoxes,
+                        'weight' => round($finalMissingWeight, 2),
+                        'percentage' => round($missingPercentage, 2),
+                    ],
+                    'boxes' => $missingBoxes->map(function ($box) {
+                        return [
+                            'id' => $box->id,
+                            'netWeight' => round($box->net_weight, 2),
+                            'gs1_128' => $box->gs1_128 ?? null,
+                            'location' => null,  // Sin ubicación asignada
+                        ];
+                    })->values()->toArray(),
+                ];
+                
+                $totalMissingBoxes += $finalMissingBoxes;
+                // Sumar el faltante (puede ser negativo si hay error de datos)
+                $totalMissingWeight += $finalMissingWeight;
+            }
         }
         
-        // Paso 2: Crear el nodo de faltantes
+        // Solo crear el nodo si hay productos con faltantes o desbalance
+        if (empty($productsData)) {
+            return null;
+        }
+        
+        // Paso 3: Crear el nodo de faltantes
         return [
             'type' => 'missing',
             'id' => "missing-{$finalNodeId}",  // 👈 ID del nodo final
@@ -1490,7 +1569,7 @@ class Production extends Model
             'productionId' => $this->id,
             'products' => $productsData,
             'summary' => [
-                'productsCount' => count($allProducts),
+                'productsCount' => count($productsData),
                 'totalMissingBoxes' => $totalMissingBoxes,
                 'totalMissingWeight' => round($totalMissingWeight, 2),
             ],
