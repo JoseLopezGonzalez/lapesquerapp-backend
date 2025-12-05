@@ -2056,7 +2056,11 @@ class Production extends Model
 
     /**
      * Crear nodos huérfanos (productos sin nodo final o con múltiples nodos finales)
-     * Para nodos huérfanos, agrupamos por producto (un nodo por producto)
+     * ✨ NUEVO: Unifica todos los productos huérfanos en un solo nodo de cada tipo
+     * - UN SOLO nodo de venta con TODOS los productos huérfanos
+     * - UN SOLO nodo de stock con TODOS los productos huérfanos
+     * - UN SOLO nodo de re-procesados con TODOS los productos huérfanos
+     * - UN SOLO nodo de balance con TODOS los productos huérfanos
      * 
      * @param array $salesDataByProduct Datos de venta agrupados por producto
      * @param array $stockDataByProduct Datos de stock agrupados por producto
@@ -2109,63 +2113,98 @@ class Production extends Model
             }
         }
         
-        // Agrupar productos huérfanos por producto
-        // Para productos huérfanos, creamos un nodo por producto (similar a v2 pero sin padre)
+        // ✨ Agrupar todos los productos huérfanos en un solo nodo de cada tipo
+        // En lugar de crear un nodo por producto, unificamos todos los productos en uno
+        
+        // Agrupar todos los productos huérfanos de venta
+        $orphanSalesData = [];
         foreach ($orphanProductIds as $productId => $_) {
-            // Nodo de venta huérfano
             if (isset($salesDataByProduct[$productId])) {
-                $orphanSalesData = [$productId => $salesDataByProduct[$productId]];
-                // Crear un nodo "ficticio" con ID negativo para huérfanos
-                $orphanNode = $this->createSalesNodeForFinalNode(-$productId, $orphanSalesData);
-                if ($orphanNode) {
-                    $orphanNode['parentRecordId'] = null;  // Sin padre
-                    $orphanNode['id'] = "sales-orphan-{$productId}";  // ID diferente
-                    $orphanNodes[] = $orphanNode;
-                }
+                $orphanSalesData[$productId] = $salesDataByProduct[$productId];
             }
-            
-            // Nodo de stock huérfano
+        }
+        
+        // Crear UN SOLO nodo de venta con todos los productos huérfanos
+        if (!empty($orphanSalesData)) {
+            $orphanNode = $this->createSalesNodeForFinalNode(-1, $orphanSalesData);
+            if ($orphanNode) {
+                $orphanNode['parentRecordId'] = null;  // Sin padre
+                $orphanNode['id'] = "sales-orphan";  // ID único para todos los productos huérfanos
+                $orphanNodes[] = $orphanNode;
+            }
+        }
+        
+        // Agrupar todos los productos huérfanos de stock
+        $orphanStockData = [];
+        foreach ($orphanProductIds as $productId => $_) {
             if (isset($stockDataByProduct[$productId])) {
-                $orphanStockData = [$productId => $stockDataByProduct[$productId]];
-                // Crear un nodo "ficticio" con ID negativo para huérfanos
-                $orphanNode = $this->createStockNodeForFinalNode(-$productId, $orphanStockData);
-                if ($orphanNode) {
-                    $orphanNode['parentRecordId'] = null;  // Sin padre
-                    $orphanNode['id'] = "stock-orphan-{$productId}";  // ID diferente
-                    $orphanNodes[] = $orphanNode;
-                }
+                $orphanStockData[$productId] = $stockDataByProduct[$productId];
             }
-            
-            // Nodo de re-procesados huérfano
+        }
+        
+        // Crear UN SOLO nodo de stock con todos los productos huérfanos
+        if (!empty($orphanStockData)) {
+            $orphanNode = $this->createStockNodeForFinalNode(-1, $orphanStockData);
+            if ($orphanNode) {
+                $orphanNode['parentRecordId'] = null;  // Sin padre
+                $orphanNode['id'] = "stock-orphan";  // ID único para todos los productos huérfanos
+                $orphanNodes[] = $orphanNode;
+            }
+        }
+        
+        // Agrupar todos los productos huérfanos de re-procesados
+        $orphanReprocessedData = [];
+        foreach ($orphanProductIds as $productId => $_) {
             if (isset($reprocessedDataByProduct[$productId])) {
-                $orphanReprocessedData = [$productId => $reprocessedDataByProduct[$productId]];
-                // Crear un nodo "ficticio" con ID negativo para huérfanos
-                $orphanNode = $this->createReprocessedNodeForFinalNode(-$productId, $orphanReprocessedData);
-                if ($orphanNode) {
-                    $orphanNode['parentRecordId'] = null;  // Sin padre
-                    $orphanNode['id'] = "reprocessed-orphan-{$productId}";  // ID diferente
-                    $orphanNodes[] = $orphanNode;
-                }
+                $orphanReprocessedData[$productId] = $reprocessedDataByProduct[$productId];
             }
-            
-            // Nodo de balance huérfano
+        }
+        
+        // Crear UN SOLO nodo de re-procesados con todos los productos huérfanos
+        if (!empty($orphanReprocessedData)) {
+            $orphanNode = $this->createReprocessedNodeForFinalNode(-1, $orphanReprocessedData);
+            if ($orphanNode) {
+                $orphanNode['parentRecordId'] = null;  // Sin padre
+                $orphanNode['id'] = "reprocessed-orphan";  // ID único para todos los productos huérfanos
+                $orphanNodes[] = $orphanNode;
+            }
+        }
+        
+        // Agrupar todos los productos huérfanos de balance
+        $orphanMissingData = [];
+        $orphanSalesForBalance = [];
+        $orphanStockForBalance = [];
+        $orphanReprocessedForBalance = [];
+        foreach ($orphanProductIds as $productId => $_) {
             if (isset($missingDataByProduct[$productId])) {
-                $orphanMissingData = [$productId => $missingDataByProduct[$productId]];
-                // Crear un nodo "ficticio" con ID negativo para huérfanos
-                // Para faltantes huérfanos, necesitamos pasar datos vacíos para los cálculos
-                $orphanNode = $this->createMissingNodeForFinalNode(
-                    -$productId,
-                    $orphanMissingData,
-                    isset($salesDataByProduct[$productId]) ? [$productId => $salesDataByProduct[$productId]] : [],
-                    isset($stockDataByProduct[$productId]) ? [$productId => $stockDataByProduct[$productId]] : [],
-                    isset($reprocessedDataByProduct[$productId]) ? [$productId => $reprocessedDataByProduct[$productId]] : [],
-                    []  // Sin outputs del nodo final (es huérfano)
-                );
-                if ($orphanNode) {
-                    $orphanNode['parentRecordId'] = null;  // Sin padre
-                    $orphanNode['id'] = "balance-orphan-{$productId}";  // ID diferente
-                    $orphanNodes[] = $orphanNode;
-                }
+                $orphanMissingData[$productId] = $missingDataByProduct[$productId];
+            }
+            if (isset($salesDataByProduct[$productId])) {
+                $orphanSalesForBalance[$productId] = $salesDataByProduct[$productId];
+            }
+            if (isset($stockDataByProduct[$productId])) {
+                $orphanStockForBalance[$productId] = $stockDataByProduct[$productId];
+            }
+            if (isset($reprocessedDataByProduct[$productId])) {
+                $orphanReprocessedForBalance[$productId] = $reprocessedDataByProduct[$productId];
+            }
+        }
+        
+        // Crear UN SOLO nodo de balance con todos los productos huérfanos
+        // Nota: Para nodos huérfanos, no tenemos outputs del nodo final, así que pasamos array vacío
+        if (!empty($orphanMissingData) || !empty($orphanSalesForBalance) || !empty($orphanStockForBalance) || !empty($orphanReprocessedForBalance)) {
+            $orphanNode = $this->createMissingNodeForFinalNode(
+                -1,
+                $orphanMissingData,
+                $orphanSalesForBalance,
+                $orphanStockForBalance,
+                $orphanReprocessedForBalance,
+                []  // Sin outputs del nodo final (es huérfano)
+            );
+            if ($orphanNode) {
+                $orphanNode['parentRecordId'] = null;  // Sin padre
+                $orphanNode['id'] = "balance-orphan";  // ID único para todos los productos huérfanos
+                $orphanNodes[] = $orphanNode;
             }
         }
         

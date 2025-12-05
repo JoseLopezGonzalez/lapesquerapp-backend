@@ -490,49 +490,68 @@ class OrderController extends Controller
 
     public function salesBySalesperson(Request $request)
     {
-        $validated = Validator::make($request->all(), [
-            'dateFrom' => 'required|date',
-            'dateTo' => 'required|date',
-        ])->validate();
+        try {
+            $validated = Validator::make($request->all(), [
+                'dateFrom' => 'required|date',
+                'dateTo' => 'required|date',
+            ])->validate();
 
-        $dateFrom = $validated['dateFrom'] . ' 00:00:00';
-        $dateTo = $validated['dateTo'] . ' 23:59:59';
+            $dateFrom = $validated['dateFrom'] . ' 00:00:00';
+            $dateTo = $validated['dateTo'] . ' 23:59:59';
 
-        $orders = Order::with([
-            'salesperson',
-            'pallets.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
-            'pallets.boxes.box.product',
-        ])
-            ->whereBetween('entry_date', [$dateFrom, $dateTo])
-            ->get();
+            $orders = Order::with([
+                'salesperson',
+                'pallets.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
+                'pallets.boxes.box.product',
+            ])
+                ->whereBetween('entry_date', [$dateFrom, $dateTo])
+                ->get();
 
-        $summary = [];
+            $summary = [];
 
-        foreach ($orders as $order) {
-            $salespersonName = $order->salesperson->name ?? 'Sin comercial';
+            foreach ($orders as $order) {
+                $salespersonName = $order->salesperson->name ?? 'Sin comercial';
 
-            if (!isset($summary[$salespersonName])) {
-                $summary[$salespersonName] = 0;
-            }
+                if (!isset($summary[$salespersonName])) {
+                    $summary[$salespersonName] = 0;
+                }
 
-            foreach ($order->pallets as $pallet) {
-                foreach ($pallet->boxes as $box) {
-                    // Verificar que box existe y tiene isAvailable
-                    if ($box->box && $box->box->isAvailable) {
-                        $summary[$salespersonName] += $box->box->net_weight ?? 0;
+                foreach ($order->pallets as $pallet) {
+                    if (!$pallet->relationLoaded('boxes')) {
+                        $pallet->load('boxes.box.productionInputs');
+                    }
+                    
+                    foreach ($pallet->boxes as $box) {
+                        // Verificar que box existe y tiene isAvailable
+                        if ($box->box) {
+                            // Asegurar que productionInputs esté cargado
+                            if (!$box->box->relationLoaded('productionInputs')) {
+                                $box->box->load('productionInputs');
+                            }
+                            
+                            if ($box->box->isAvailable) {
+                                $summary[$salespersonName] += $box->box->net_weight ?? 0;
+                            }
+                        }
                     }
                 }
             }
+
+            $data = collect($summary)->map(function ($quantity, $name) {
+                return [
+                    'name' => $name,
+                    'quantity' => round($quantity, 2),
+                ];
+            })->values();
+
+            return response()->json($data);
+        } catch (\Exception $e) {
+            \Log::error('Error in salesBySalesperson: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all(),
+            ]);
+            return response()->json(['error' => 'Error processing request'], 500);
         }
-
-        $data = collect($summary)->map(function ($quantity, $name) {
-            return [
-                'name' => $name,
-                'quantity' => round($quantity, 2),
-            ];
-        })->values();
-
-        return response()->json($data);
     }
 
     /* Ojo, calcula la comparacion mismo rango de fechas pero un año atrás */
@@ -544,32 +563,42 @@ class OrderController extends Controller
 
     public function transportChartData(Request $request)
     {
-        $request->validate([
-            'dateFrom' => 'required|date',
-            'dateTo' => 'required|date|after_or_equal:dateFrom',
-        ]);
+        try {
+            $request->validate([
+                'dateFrom' => 'required|date',
+                'dateTo' => 'required|date|after_or_equal:dateFrom',
+            ]);
 
-        $from = $request->input('dateFrom');
-        $to = $request->input('dateTo');
+            $from = $request->input('dateFrom');
+            $to = $request->input('dateTo');
 
-        $orders = Order::with([
-            'transport',
-            'pallets.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
-        ])
-            ->whereBetween('load_date', [$from, $to])
-            ->whereNotNull('transport_id')
-            ->get();
+            $orders = Order::with([
+                'transport',
+                'pallets.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
+            ])
+                ->whereBetween('load_date', [$from, $to])
+                ->whereNotNull('transport_id')
+                ->get();
 
-        $result = $orders->groupBy(fn($order) => optional($order->transport)->name ?? 'Sin transportista')
-            ->map(function ($group, $name) {
-                return [
-                    'name' => $name,
-                    'netWeight' => $group->sum(fn($order) => $order->totalNetWeight ?? 0),
-                ];
-            })
-            ->values();
+            // Las relaciones ya están cargadas con el eager loading anterior
 
-        return response()->json($result);
+            $result = $orders->groupBy(fn($order) => optional($order->transport)->name ?? 'Sin transportista')
+                ->map(function ($group, $name) {
+                    return [
+                        'name' => $name,
+                        'netWeight' => $group->sum(fn($order) => $order->totalNetWeight ?? 0),
+                    ];
+                })
+                ->values();
+
+            return response()->json($result);
+        } catch (\Exception $e) {
+            \Log::error('Error in transportChartData: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all(),
+            ]);
+            return response()->json(['error' => 'Error processing request'], 500);
+        }
     }
 
 

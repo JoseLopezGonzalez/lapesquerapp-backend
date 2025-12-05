@@ -256,15 +256,35 @@ class Order extends Model
 
     public function getTotalNetWeightAttribute()
     {
-        return $this->pallets->sum(function ($pallet) {
-            return $pallet->boxes->sum(function ($palletBox) {
-                // Solo incluir cajas disponibles (no usadas en producción)
-                if (!$palletBox->box) {
-                    return 0;
+        try {
+            return $this->pallets->sum(function ($pallet) {
+                if (!$pallet->relationLoaded('boxes')) {
+                    $pallet->load('boxes.box.productionInputs');
                 }
-                return $palletBox->box->isAvailable ? ($palletBox->box->net_weight ?? 0) : 0;
+                
+                return $pallet->boxes->sum(function ($palletBox) {
+                    // Solo incluir cajas disponibles (no usadas en producción)
+                    if (!$palletBox->box) {
+                        return 0;
+                    }
+                    
+                    // Asegurar que productionInputs esté cargado
+                    if (!$palletBox->box->relationLoaded('productionInputs')) {
+                        $palletBox->box->load('productionInputs');
+                    }
+                    
+                    try {
+                        return $palletBox->box->isAvailable ? ($palletBox->box->net_weight ?? 0) : 0;
+                    } catch (\Exception $e) {
+                        \Log::warning('Error checking isAvailable in getTotalNetWeightAttribute: ' . $e->getMessage());
+                        return 0;
+                    }
+                });
             });
-        });
+        } catch (\Exception $e) {
+            \Log::error('Error in getTotalNetWeightAttribute: ' . $e->getMessage());
+            return 0;
+        }
     }
 
     public function getTotalBoxesAttribute()
