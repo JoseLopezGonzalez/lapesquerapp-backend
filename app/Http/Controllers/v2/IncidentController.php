@@ -81,7 +81,14 @@ class IncidentController extends Controller
         $incident->delete();
 
         /* cambiar order status a finished */
-        $order->update(['status' => 'finished']);
+        $order->status = 'finished';
+        $order->save();
+        
+        // Cambiar todos los palets del pedido a 'shipped'
+        $order->load('pallets');
+        foreach ($order->pallets as $pallet) {
+            $pallet->changeToShipped();
+        }
 
         /* return response()->noContent(); */
         /* return mensaje satisfactorio */

@@ -22,7 +22,13 @@ class ProductionInputService
         }
 
         $input = ProductionInput::create($data);
-        $input->load(['productionRecord', 'box.product']);
+        $input->load(['productionRecord', 'box.product', 'box.pallet']);
+
+        // Actualizar estado del palet si existe
+        $pallet = $input->box->pallet ?? null;
+        if ($pallet) {
+            $pallet->updateStateBasedOnBoxes();
+        }
 
         return $input;
     }
@@ -52,8 +58,14 @@ class ProductionInputService
                         'box_id' => $boxId,
                     ]);
 
-                    $input->load(['productionRecord', 'box.product']);
+                    $input->load(['productionRecord', 'box.product', 'box.pallet']);
                     $created[] = $input;
+                    
+                    // Actualizar estado del palet si existe
+                    $pallet = $input->box->pallet ?? null;
+                    if ($pallet) {
+                        $pallet->updateStateBasedOnBoxes();
+                    }
                 } catch (\Exception $e) {
                     $errors[] = "Error al crear entrada para caja {$boxId}: " . $e->getMessage();
                 }
@@ -71,7 +83,18 @@ class ProductionInputService
      */
     public function delete(ProductionInput $input): bool
     {
-        return $input->delete();
+        // Obtener el palet antes de eliminar
+        $box = $input->box;
+        $pallet = $box->pallet ?? null;
+        
+        $deleted = $input->delete();
+        
+        // Si se eliminó correctamente y hay un palet, actualizar su estado
+        if ($deleted && $pallet) {
+            $pallet->updateStateBasedOnBoxes();
+        }
+        
+        return $deleted;
     }
 }
 

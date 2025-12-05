@@ -13,6 +13,53 @@ class Pallet extends Model
     use UsesTenantConnection;
     use HasFactory;
 
+    /**
+     * Estados fijos de los palets
+     * Ya no dependen de la tabla pallet_states
+     */
+    const STATE_REGISTERED = 1;  // Registrado
+    const STATE_STORED = 2;      // Almacenado
+    const STATE_SHIPPED = 3;     // Enviado (para pedidos terminados)
+    const STATE_PROCESSED = 4;   // Procesado (consumido completamente en producción)
+
+    /**
+     * Lista de todos los estados válidos
+     */
+    public static function getValidStates(): array
+    {
+        return [
+            self::STATE_REGISTERED,
+            self::STATE_STORED,
+            self::STATE_SHIPPED,
+            self::STATE_PROCESSED,
+        ];
+    }
+
+    /**
+     * Obtener el nombre del estado como string
+     */
+    public static function getStateName(int $stateId): string
+    {
+        return match ($stateId) {
+            self::STATE_REGISTERED => 'registered',
+            self::STATE_STORED => 'stored',
+            self::STATE_SHIPPED => 'shipped',
+            self::STATE_PROCESSED => 'processed',
+            default => 'unknown',
+        };
+    }
+
+    /**
+     * Obtener el estado como array asociativo (compatible con API existente)
+     */
+    public function getStateArrayAttribute(): array
+    {
+        return [
+            'id' => $this->state_id,
+            'name' => self::getStateName($this->state_id),
+        ];
+    }
+
     protected $fillable = ['observations', 'state_id'];
 
 
@@ -21,10 +68,31 @@ class Pallet extends Model
         return $this->hasMany(PalletBox::class);
     }
 
-
+    /**
+     * @deprecated Ya no se usa la relación con PalletState
+     * Usar $pallet->state_id directamente o $pallet->stateArray
+     */
     public function palletState()
     {
-        return $this->belongsTo(PalletState::class, 'state_id');
+        // Retornar un objeto compatible con la API para mantener retrocompatibilidad temporal
+        return new class($this->state_id) {
+            public $id;
+            public $name;
+
+            public function __construct($stateId)
+            {
+                $this->id = $stateId;
+                $this->name = \App\Models\Pallet::getStateName($stateId);
+            }
+
+            public function toArrayAssoc()
+            {
+                return [
+                    'id' => $this->id,
+                    'name' => $this->name,
+                ];
+            }
+        };
     }
 
     /* getArticlesAttribute from boxes.boxes.article.article  */
@@ -228,6 +296,77 @@ class Pallet extends Model
         }
     }
 
+    /**
+     * Actualiza el estado del palet basado en las cajas disponibles/usadas
+     * Se llama automáticamente cuando cambian los ProductionInputs
+     */
+    public function updateStateBasedOnBoxes(): void
+    {
+        // Recargar el modelo y sus relaciones
+        $this->refresh();
+        
+        // Cargar cajas con producción inputs si no están cargadas
+        if (!$this->relationLoaded('boxes')) {
+            $this->load(['boxes.box.productionInputs']);
+        } elseif (!$this->boxes->first() || !$this->boxes->first()->relationLoaded('box')) {
+            $this->load(['boxes.box.productionInputs']);
+        }
+
+        $usedBoxesCount = $this->usedBoxesCount;
+        $totalBoxes = $this->numberOfBoxes;
+
+        // Si todas las cajas están usadas → procesado
+        if ($usedBoxesCount > 0 && $usedBoxesCount === $totalBoxes) {
+            $this->changeToProcessed();
+        }
+        // Si todas las cajas están disponibles (y antes tenía algunas usadas) → registrado
+        elseif ($usedBoxesCount === 0 && $totalBoxes > 0) {
+            $this->changeToRegistered();
+        }
+        // Si está parcialmente consumido, mantener estado actual
+    }
+
+    /**
+     * Cambiar palet a estado "registrado" y quitar almacenamiento
+     */
+    public function changeToRegistered(): void
+    {
+        if ($this->state_id !== self::STATE_REGISTERED) {
+            $this->state_id = self::STATE_REGISTERED;
+            $this->save();
+        }
+        // Quitar almacenamiento si existe
+        $this->unStore();
+    }
+
+    /**
+     * Cambiar palet a estado "procesado" y quitar almacenamiento
+     */
+    public function changeToProcessed(): void
+    {
+        if ($this->state_id !== self::STATE_PROCESSED) {
+            $this->state_id = self::STATE_PROCESSED;
+            $this->save();
+        }
+        // Quitar almacenamiento si existe
+        $this->unStore();
+    }
+
+    /**
+     * Cambiar palet a estado "enviado" y quitar almacenamiento
+     * Mantiene el order_id para trazabilidad
+     */
+    public function changeToShipped(): void
+    {
+        if ($this->state_id !== self::STATE_SHIPPED) {
+            $this->state_id = self::STATE_SHIPPED;
+            $this->save();
+        }
+        // Quitar almacenamiento si existe
+        $this->unStore();
+        // NO eliminar order_id - mantener vinculación
+    }
+
     public function delete()
     {
         foreach ($this->boxes as $box) {
@@ -278,7 +417,7 @@ class Pallet extends Model
         return [
             'id' => $this->id,
             'observations' => $this->observations,
-            'state' => $this->palletState->toArrayAssoc(),
+            'state' => $this->stateArray,
             'boxes' => $this->boxes->map(function ($box) {
                 return $box->toArrayAssoc();
             }),
@@ -294,7 +433,7 @@ class Pallet extends Model
         return [
             'id' => $this->id,
             'observations' => $this->observations,
-            'state' => $this->palletState->toArrayAssoc(),
+            'state' => $this->stateArray,
             'boxes' => $this->boxesV2->map(function ($box) {
                 return $box->toArrayAssocV2();
             }),

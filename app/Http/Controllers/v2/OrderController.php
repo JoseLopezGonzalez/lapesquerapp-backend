@@ -107,12 +107,12 @@ class OrderController extends Controller
                 /* if order has any pallets */
                 if ($request->palletsState == 'stored') {
                     $query->whereHas('pallets', function ($q) use ($request) {
-                        $q->where('state_id', 2);
+                        $q->where('state_id', \App\Models\Pallet::STATE_STORED);
                     });
                 } else if ($request->palletsState == 'shipping') {
                     /* Solo tiene palets en el estado 3 */
                     $query->whereHas('pallets', function ($q) use ($request) {
-                        $q->where('state_id', 3);
+                        $q->where('state_id', \App\Models\Pallet::STATE_SHIPPED);
                     });
                 }
             }
@@ -353,7 +353,16 @@ class OrderController extends Controller
             $order->load_date = $request->loadDate;
         }
         if ($request->has('status')) {
+            $previousStatus = $order->status;
             $order->status = $request->status;
+            
+            // Si el pedido cambia a 'finished', cambiar todos los palets a 'shipped'
+            if ($request->status === 'finished' && $previousStatus !== 'finished') {
+                $order->load('pallets');
+                foreach ($order->pallets as $pallet) {
+                    $pallet->changeToShipped();
+                }
+            }
         }
         if ($request->has('incoterm')) {
             $order->incoterm_id = $request->incoterm;
@@ -455,8 +464,17 @@ class OrderController extends Controller
             'pallets.boxes.box.productionInputs',
             'pallets.boxes.box.product',
         ])->findOrFail($id);
+        
+        $previousStatus = $order->status;
         $order->status = $request->status;
         $order->save();
+        
+        // Si el pedido cambia a 'finished', cambiar todos los palets a 'shipped'
+        if ($request->status === 'finished' && $previousStatus !== 'finished') {
+            foreach ($order->pallets as $pallet) {
+                $pallet->changeToShipped();
+            }
+        }
         
         // Recargar relaciones después de actualizar
         $order->load([

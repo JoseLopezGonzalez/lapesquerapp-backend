@@ -132,9 +132,9 @@ class ExcelController extends Controller
 
         if ($request->has('palletsState')) {
             if ($request->palletsState == 'stored') {
-                $query->whereHas('pallets', fn($q) => $q->where('state_id', 2));
+                $query->whereHas('pallets', fn($q) => $q->where('state_id', \App\Models\Pallet::STATE_STORED));
             } elseif ($request->palletsState == 'shipping') {
-                $query->whereHas('pallets', fn($q) => $q->where('state_id', 3));
+                $query->whereHas('pallets', fn($q) => $q->where('state_id', \App\Models\Pallet::STATE_SHIPPED));
             }
         }
 
@@ -224,9 +224,9 @@ class ExcelController extends Controller
 
         if ($request->has('palletsState')) {
             if ($request->palletsState == 'stored') {
-                $query->whereHas('pallets', fn($q) => $q->where('state_id', 2));
+                $query->whereHas('pallets', fn($q) => $q->where('state_id', \App\Models\Pallet::STATE_STORED));
             } elseif ($request->palletsState == 'shipping') {
-                $query->whereHas('pallets', fn($q) => $q->where('state_id', 3));
+                $query->whereHas('pallets', fn($q) => $q->where('state_id', \App\Models\Pallet::STATE_SHIPPED));
             }
         }
 
@@ -349,9 +349,9 @@ class ExcelController extends Controller
 
         if ($request->has('palletsState')) {
             if ($request->palletsState == 'stored') {
-                $query->whereHas('pallets', fn($q) => $q->where('state_id', 2));
+                $query->whereHas('pallets', fn($q) => $q->where('state_id', \App\Models\Pallet::STATE_STORED));
             } elseif ($request->palletsState == 'shipping') {
-                $query->whereHas('pallets', fn($q) => $q->where('state_id', 3));
+                $query->whereHas('pallets', fn($q) => $q->where('state_id', \App\Models\Pallet::STATE_SHIPPED));
             }
         }
 

@@ -177,7 +177,7 @@ class Order extends Model
     public function hasPalletsOnStorage()
     {
         return $this->pallets->some(function ($pallet) {
-            return $pallet->palletState->id == 2;
+            return $pallet->state_id == \App\Models\Pallet::STATE_STORED;
         });
     }
 

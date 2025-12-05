@@ -28,18 +28,19 @@ El modelo `Pallet` representa un **palet** que contiene múltiples cajas de prod
 |-------|------|----------|-------------|
 | `id` | bigint | NO | ID único del palet |
 | `observations` | text | YES | Observaciones sobre el palet |
-| `state_id` | bigint | NO | FK a `pallet_states` - Estado del palet |
+| `state_id` | bigint | NO | Estado del palet (1=registered, 2=stored, 3=shipped, 4=processed) |
 | `order_id` | bigint | YES | FK a `orders` - Pedido asignado (opcional) |
 | `created_at` | timestamp | NO | Fecha de creación |
 | `updated_at` | timestamp | NO | Fecha de última actualización |
 
 **Índices**:
 - `id` (primary key)
-- Foreign keys a `pallet_states` y `orders`
+- Foreign key a `orders`
 
 **Constraints**:
-- `state_id` → `pallet_states.id`
 - `order_id` → `orders.id` (onDelete: set null)
+
+**⚠️ Nota**: `state_id` ya no tiene foreign key. Los estados son valores fijos (1, 2, 3, 4).
 
 ---
 
@@ -65,13 +66,20 @@ protected $fillable = [
 
 ## 🔗 Relaciones
 
-### 1. `palletState()` - Estado del Palet
+### 1. `palletState()` - Estado del Palet (⚠️ Deprecated)
 ```php
 public function palletState()
 {
-    return $this->belongsTo(PalletState::class, 'state_id');
+    // ⚠️ DEPRECATED: Ya no usa tabla pallet_states
+    // Retorna objeto compatible para retrocompatibilidad
+    // Usar $pallet->state_id o $pallet->stateArray en su lugar
 }
 ```
+
+**⚠️ Deprecated**: Esta relación ya no existe. Usar:
+- `$pallet->state_id` para obtener el ID del estado
+- `$pallet->stateArray` para obtener `['id' => X, 'name' => '...']`
+- `Pallet::getStateName($stateId)` para obtener el nombre del estado
 
 ### 2. `order()` - Pedido Asignado
 ```php
@@ -123,16 +131,20 @@ public function palletBoxes()
 
 ## 🏷️ Estados del Palet
 
-**Modelo**: `PalletState`
+**⚠️ IMPORTANTE**: Los estados ahora son **fijos** definidos como constantes en el modelo `Pallet`. Ya no dependen de la tabla `pallet_states`.
 
-Los estados típicos son (según seeder/migración):
-- **ID 1**: `registered` (Registrado)
-- **ID 2**: `stored` (Almacenado)
-- **ID 3**: `shipped` (Enviado)
+**Estados disponibles** (constantes en `Pallet`):
+- **ID 1** (`STATE_REGISTERED`): `registered` - Registrado pero no almacenado
+- **ID 2** (`STATE_STORED`): `stored` - Almacenado en un almacén
+- **ID 3** (`STATE_SHIPPED`): `shipped` - Enviado (asociado a pedido terminado)
+- **ID 4** (`STATE_PROCESSED`): `processed` - Procesado (consumido completamente en producción)
 
 **Lógica de estados**:
 - Solo palets con `state_id = 2` (almacenado) pueden estar en un almacén
 - Al cambiar a otro estado, se elimina automáticamente de `stored_pallets`
+- Los estados cambian automáticamente según el uso en producción y pedidos
+
+**📖 Documentación detallada**: Ver [31-Palets-Estados-Fijos.md](./31-Palets-Estados-Fijos.md) para información completa sobre la lógica automática de cambios de estado.
 
 ---
 
@@ -367,7 +379,12 @@ Solo palets con `state_id = 2`.
 GET /v2/pallets/shipped-options
 ```
 
-Solo palets con `state_id = 3`.
+Solo palets con `state_id = 3` (shipped).
+
+**Filtros disponibles en `index()`**:
+- `filters[state]=stored` → Solo palets almacenados (state_id = 2)
+- `filters[state]=shipped` → Solo palets enviados (state_id = 3)
+- `filters[state]=processed` → Solo palets procesados (state_id = 4)
 
 #### `assignToPosition(Request $request)` - Asignar Posición
 ```php
@@ -397,7 +414,7 @@ POST /v2/pallets/move-to-store
 }
 ```
 
-**Validación**: El palet debe estar en estado almacenado (`state_id = 2`).
+**Validación**: El palet debe estar en estado almacenado (`state_id = 2` / `Pallet::STATE_STORED`).
 
 **Comportamiento**: Crea/actualiza `StoredPallet` y resetea la posición.
 
@@ -427,7 +444,9 @@ POST /v2/pallets/bulk-update-state
 
 **Comportamiento**:
 - Si cambia a estado no almacenado, elimina de almacén
-- Si cambia a almacenado y no tiene almacén, crea en almacén ID 4 (hardcodeado)
+- Si cambia a almacenado (`state_id = 2`) y no tiene almacén, crea en almacén ID 4 (hardcodeado)
+
+**⚠️ Nota**: El almacén ID 4 está hardcodeado. Considerar hacerlo configurable.
 
 #### `unlinkOrder($id)` - Desvincular de Pedido
 ```php
@@ -468,7 +487,24 @@ Pone `order_id = null`.
 ## 🔍 Scopes (Query Scopes)
 
 ### `scopeStored($query)`
-Filtra palets almacenados (`state_id = 2`).
+Filtra palets almacenados (`state_id = 2` / `Pallet::STATE_STORED`).
+
+### Métodos de Cambio de Estado
+
+#### `changeToRegistered()`
+Cambia el palet a estado `registered` (1) y elimina almacenamiento.
+
+#### `changeToShipped()`
+Cambia el palet a estado `shipped` (3), elimina almacenamiento, pero **mantiene** `order_id`.
+
+#### `changeToProcessed()`
+Cambia el palet a estado `processed` (4) y elimina almacenamiento.
+
+#### `updateStateBasedOnBoxes()`
+Actualiza automáticamente el estado basado en las cajas disponibles/usadas:
+- Todas las cajas usadas → `processed`
+- Todas las cajas disponibles (después de estar usadas) → `registered`
+- Parcialmente consumido → mantiene estado actual
 
 ### `scopeJoinBoxes($query)`
 Hace JOIN con `pallet_boxes` y `boxes`.
@@ -646,5 +682,25 @@ Authorization: Bearer {token}
 
 ---
 
-**Última actualización**: Documentación generada desde código fuente en fecha de generación.
+---
+
+## 🔄 Cambios Recientes - Sistema de Estados Fijos
+
+**Fecha**: 2025-01-XX  
+**Versión**: 2.0
+
+### Cambios Implementados
+
+1. **Estados fijos**: Los estados ya no dependen de la tabla `pallet_states`, son constantes en el modelo
+2. **Nuevo estado**: Agregado estado `processed` (4) para palets completamente consumidos en producción
+3. **Lógica automática**: Los estados cambian automáticamente según:
+   - Uso en producción (completamente consumido → `processed`)
+   - Liberación de producción (todas las cajas disponibles → `registered`)
+   - Finalización de pedidos (todos los palets → `shipped`)
+
+**📖 Para más detalles**: Ver [31-Palets-Estados-Fijos.md](./31-Palets-Estados-Fijos.md)
+
+---
+
+**Última actualización**: 2025-01-XX
 
