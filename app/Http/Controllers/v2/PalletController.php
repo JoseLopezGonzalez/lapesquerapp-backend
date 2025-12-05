@@ -689,4 +689,42 @@ class PalletController extends Controller
         ], 200);
     }
 
+    /**
+     * Obtener palets registrados como si fuera un almacén
+     * Retorna un formato similar a StoreDetailsResource para mantener consistencia
+     */
+    public function registeredPallets()
+    {
+        // Obtener todos los palets registrados (state_id = 1)
+        $pallets = Pallet::where('state_id', Pallet::STATE_REGISTERED)
+            ->with([
+                'boxes.box.productionInputs.productionRecord.production',
+                'boxes.box.product',
+            ])
+            ->orderBy('id', 'desc')
+            ->get();
+
+        // Calcular pesos totales
+        $netWeightPallets = $pallets->sum('netWeight');
+        $totalNetWeight = $netWeightPallets; // No hay boxes ni bigBoxes por ahora
+
+        // Formato similar a StoreDetailsResource
+        return response()->json([
+            'id' => null, // No es un almacén real
+            'name' => 'Palets Registrados',
+            'temperature' => null,
+            'capacity' => null,
+            'netWeightPallets' => round($netWeightPallets, 3),
+            'totalNetWeight' => round($totalNetWeight, 3),
+            'content' => [
+                'pallets' => $pallets->map(function ($pallet) {
+                    return $pallet->toArrayAssocV2();
+                }),
+                'boxes' => [],
+                'bigBoxes' => [],
+            ],
+            'map' => null, // No hay mapa para palets registrados
+        ], 200);
+    }
+
 }

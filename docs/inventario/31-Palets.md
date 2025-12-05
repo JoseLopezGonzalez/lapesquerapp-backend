@@ -381,6 +381,41 @@ GET /v2/pallets/shipped-options
 
 Solo palets con `state_id = 3` (shipped).
 
+#### `registeredPallets()` - Palets Registrados (Almacén Fantasma)
+```php
+GET /v2/pallets/registered
+```
+
+Retorna todos los palets en estado `registered` (state_id = 1) con un formato similar a `StoreDetailsResource`, simulando un "almacén fantasma".
+
+**Respuesta**: Similar a un almacén pero para palets registrados
+```json
+{
+    "id": null,
+    "name": "Palets Registrados",
+    "temperature": null,
+    "capacity": null,
+    "netWeightPallets": 1250.50,
+    "totalNetWeight": 1250.50,
+    "content": {
+        "pallets": [...],
+        "boxes": [],
+        "bigBoxes": []
+    },
+    "map": null
+}
+```
+
+**Comportamiento**:
+- Obtiene todos los palets con `state_id = 1` (registered)
+- Calcula pesos totales (similar a un almacén)
+- Retorna formato compatible con frontend (mismo formato que almacenes)
+- Útil para crear un "almacén fantasma" en el frontend que muestre palets sin almacén asignado
+
+**Relaciones cargadas**:
+- `boxes.box.productionInputs.productionRecord.production`
+- `boxes.box.product`
+
 **Filtros disponibles en `index()`**:
 - `filters[state]=stored` → Solo palets almacenados (state_id = 2)
 - `filters[state]=shipped` → Solo palets enviados (state_id = 3)
