@@ -498,4 +498,93 @@ class ProductionRecordController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Obtener opciones para seleccionar nodos padres en el frontend
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function options(Request $request)
+    {
+        $query = ProductionRecord::query();
+
+        // Cargar relaciones necesarias
+        $query->with(['production', 'process']);
+
+        // Filtro por production_id (recomendado para limitar resultados)
+        if ($request->has('production_id')) {
+            $query->where('production_id', $request->production_id);
+        }
+
+        // Excluir el nodo actual y sus descendientes si se está editando (para evitar ciclos)
+        if ($request->has('exclude_id')) {
+            $excludeId = $request->exclude_id;
+            // Obtener todos los IDs descendientes del nodo a excluir
+            $descendantIds = $this->getDescendantIds($excludeId);
+            // Incluir el ID del nodo actual en la lista de exclusión
+            $excludeIds = array_merge([$excludeId], $descendantIds);
+            $query->whereNotIn('id', $excludeIds);
+        }
+
+        // Ordenar por fecha de inicio (más recientes primero) y luego por ID
+        $query->orderBy('started_at', 'desc')
+              ->orderBy('id', 'desc');
+
+        $records = $query->get();
+
+        return response()->json([
+            'message' => 'Opciones de nodos padres obtenidas correctamente.',
+            'data' => $records->map(function ($record) {
+                $processName = $record->process ? $record->process->name : 'Sin proceso';
+                $productionLot = $record->production ? $record->production->lot : 'Sin lote';
+                
+                // Construir label descriptivo
+                $label = $processName;
+                if ($record->started_at) {
+                    $label .= ' - ' . $record->started_at->format('d/m/Y H:i');
+                }
+                if ($record->isFinal()) {
+                    $label .= ' (Final)';
+                }
+                if ($record->isRoot()) {
+                    $label .= ' (Raíz)';
+                }
+
+                return [
+                    'value' => $record->id,
+                    'label' => $label,
+                    'processName' => $processName,
+                    'processId' => $record->process_id,
+                    'productionId' => $record->production_id,
+                    'productionLot' => $productionLot,
+                    'isRoot' => $record->isRoot(),
+                    'isFinal' => $record->isFinal(),
+                    'isCompleted' => $record->isCompleted(),
+                    'startedAt' => $record->started_at?->toIso8601String(),
+                    'finishedAt' => $record->finished_at?->toIso8601String(),
+                ];
+            }),
+        ]);
+    }
+
+    /**
+     * Obtener todos los IDs descendientes de un nodo (recursivo)
+     * 
+     * @param int $parentId
+     * @return array
+     */
+    private function getDescendantIds($parentId)
+    {
+        $descendantIds = [];
+        $children = ProductionRecord::where('parent_record_id', $parentId)->pluck('id');
+        
+        foreach ($children as $childId) {
+            $descendantIds[] = $childId;
+            // Recursivamente obtener descendientes de los hijos
+            $descendantIds = array_merge($descendantIds, $this->getDescendantIds($childId));
+        }
+        
+        return $descendantIds;
+    }
 }

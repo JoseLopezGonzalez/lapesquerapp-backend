@@ -434,6 +434,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::get('productions/{id}/totals', [V2ProductionController::class, 'getTotals'])->name('productions.getTotals');
             Route::get('productions/{id}/reconciliation', [V2ProductionController::class, 'getReconciliation'])->name('productions.getReconciliation');
 
+            Route::get('production-records/options', [ProductionRecordController::class, 'options'])->name('production-records.options');
             Route::apiResource('production-records', ProductionRecordController::class);
             Route::get('production-records/{id}/tree', [ProductionRecordController::class, 'tree'])->name('production-records.tree');
             Route::post('production-records/{id}/finish', [ProductionRecordController::class, 'finish'])->name('production-records.finish');
