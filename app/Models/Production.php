@@ -1464,6 +1464,11 @@ class Production extends Model
                 $process = $processData['process'];
                 $productionRecord = $processData['productionRecord'];
                 
+                // Asegurar que el production esté cargado
+                if (!$productionRecord->relationLoaded('production')) {
+                    $productionRecord->load('production');
+                }
+                
                 if (!isset($processesMap[$productionRecordId])) {
                     $processesMap[$productionRecordId] = [
                         'process' => $process,
@@ -1526,6 +1531,10 @@ class Production extends Model
                         ? (\Carbon\Carbon::parse($processInfo['productionRecord']->finished_at)->toIso8601String())
                         : null,
                 ],
+                'production' => $processInfo['productionRecord']->production ? [
+                    'id' => $processInfo['productionRecord']->production->id,
+                    'lot' => $processInfo['productionRecord']->production->lot,
+                ] : null,
                 'products' => $processProducts,  // 👈 Array de productos en este proceso
                 'totalBoxes' => $processTotalBoxes,
                 'totalNetWeight' => round($processTotalNetWeight, 2),

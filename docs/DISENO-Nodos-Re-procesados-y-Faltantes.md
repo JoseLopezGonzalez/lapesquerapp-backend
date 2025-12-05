@@ -88,6 +88,10 @@ Box::where('lot', $productionLot)
             "productionId": 2,
             "startedAt": "2024-02-10T08:00:00Z"
           },
+          "production": {
+            "id": 2,
+            "lot": "LOT-2024-002"
+          },
           "boxes": [
             {
               "id": 1234,

@@ -68,6 +68,10 @@ Representa productos del lote que fueron **usados como materia prima** en otro p
         "startedAt": "2024-02-10T08:00:00Z",
         "finishedAt": "2024-02-10T12:00:00Z"
       },
+      "production": {
+        "id": 2,
+        "lot": "LOT-2024-002"
+      },
       "products": [
         {
           "product": {
@@ -163,6 +167,7 @@ Representa productos del lote que fueron **usados como materia prima** en otro p
 | `processes` | array | Array de procesos donde se usaron los productos |
 | `processes[].process` | object | Información del proceso (id, name, type) |
 | `processes[].productionRecord` | object | Información del registro de producción donde se usó |
+| `processes[].production` | object | Información de la producción destino (id, lot) ✨ NUEVO |
 | `processes[].products` | array | **Array de productos** del nodo final usados en este proceso |
 | `processes[].products[].boxes` | array | Lista de cajas individuales usadas |
 | `summary.processesCount` | number | Número de procesos diferentes |

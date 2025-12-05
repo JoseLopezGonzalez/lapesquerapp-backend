@@ -94,6 +94,10 @@ Se han implementado **DOS nuevos nodos** que cuelgan del nodo final:
         "startedAt": "2024-02-10T08:00:00Z",
         "finishedAt": "2024-02-10T12:00:00Z"
       },
+      "production": {
+        "id": 2,
+        "lot": "LOT-2024-002"
+      },
       "products": [
         {
           "product": {
