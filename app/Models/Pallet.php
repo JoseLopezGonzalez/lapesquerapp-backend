@@ -153,6 +153,35 @@ class Pallet extends Model
         };
     }
 
+    /**
+     * @deprecated Ya no se usa la relación con PalletState
+     * Prevenir que Laravel auto-resuelva una relación 'state' desde state_id
+     * Usar $pallet->state_id directamente o $pallet->stateArray
+     */
+    public function state()
+    {
+        // Retornar un objeto compatible con la API para mantener retrocompatibilidad temporal
+        // Esto previene que Laravel intente auto-resolver la relación desde state_id
+        return new class($this->state_id) {
+            public $id;
+            public $name;
+
+            public function __construct($stateId)
+            {
+                $this->id = $stateId;
+                $this->name = \App\Models\Pallet::getStateName($stateId);
+            }
+
+            public function toArrayAssoc()
+            {
+                return [
+                    'id' => $this->id,
+                    'name' => $this->name,
+                ];
+            }
+        };
+    }
+
     /* getArticlesAttribute from boxes.boxes.article.article  */
     public function getArticlesAttribute()
     {

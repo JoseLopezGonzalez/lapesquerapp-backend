@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 use \App\Models\Pallet;
 use \App\Models\Box;
 use App\Models\PalletBox;
-use App\Models\PalletState;
 use App\Models\StoredPallet;
 use Illuminate\Support\Facades\Validator;
 
