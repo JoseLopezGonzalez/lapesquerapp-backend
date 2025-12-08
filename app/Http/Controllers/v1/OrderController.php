@@ -20,11 +20,24 @@ class OrderController extends Controller
         if ($request->has('active')) {
             if ($request->active == 'true') {
                 /* where status is pending or loaddate>= today at the end of the day */
-
-                return OrderResource::collection(Order::where('status', 'pending')->orWhereDate('load_date', '>=', now())->get());
+                $orders = Order::with([
+                    'customer',
+                    'payment_term',
+                    'salesperson',
+                    'transport',
+                    'incoterm',
+                ])->where('status', 'pending')->orWhereDate('load_date', '>=', now())->get();
+                return OrderResource::collection($orders);
             } else {
                 /* where status is finished and loaddate< today at the end of the day */
-                return OrderResource::collection(Order::where('status', 'finished')->whereDate('load_date', '<', now())->get());
+                $orders = Order::with([
+                    'customer',
+                    'payment_term',
+                    'salesperson',
+                    'transport',
+                    'incoterm',
+                ])->where('status', 'finished')->whereDate('load_date', '<', now())->get();
+                return OrderResource::collection($orders);
             }
         } else {
 
@@ -120,7 +133,14 @@ class OrderController extends Controller
             /* Sort by date desc */
             $query->orderBy('load_date', 'desc');
             
-
+            // Cargar relaciones necesarias para OrderResource
+            $query->with([
+                'customer',
+                'payment_term',
+                'salesperson',
+                'transport',
+                'incoterm',
+            ]);
 
             $perPage = $request->input('perPage', 12); // Default a 10 si no se proporciona
             return OrderResource::collection($query->paginate($perPage));
@@ -190,6 +210,18 @@ class OrderController extends Controller
         $order->load_date = $request->loadDate;
         $order->status = 'pending';
         $order->save();
+        
+        // Recargar con relaciones para el resource
+        $order->load([
+            'customer',
+            'payment_term',
+            'salesperson',
+            'transport',
+            'incoterm',
+            'pallets.boxes.box.product',
+            'pallets.boxes.box.productionInputs',
+        ]);
+        
         return new OrderDetailsResource($order);
     }
 
@@ -198,7 +230,17 @@ class OrderController extends Controller
      */
     public function show(string $id)
     {
-        return new OrderDetailsResource(Order::findOrFail($id));
+        $order = Order::with([
+            'customer',
+            'payment_term',
+            'salesperson',
+            'transport',
+            'incoterm',
+            'pallets.boxes.box.product',
+            'pallets.boxes.box.productionInputs',
+        ])->findOrFail($id);
+        
+        return new OrderDetailsResource($order);
     }
 
     /**
@@ -278,6 +320,18 @@ class OrderController extends Controller
 
         $order->updated_at = now();
         $order->save();
+        
+        // Recargar con relaciones para el resource
+        $order->load([
+            'customer',
+            'payment_term',
+            'salesperson',
+            'transport',
+            'incoterm',
+            'pallets.boxes.box.product',
+            'pallets.boxes.box.productionInputs',
+        ]);
+        
         return new OrderDetailsResource($order);
     }
 
