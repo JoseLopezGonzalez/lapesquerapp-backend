@@ -62,6 +62,23 @@ class Pallet extends Model
 
     protected $fillable = ['observations', 'state_id'];
 
+    /**
+     * Lista de relaciones que NO deben ser resueltas automáticamente
+     */
+    protected $guardedRelations = ['state', 'palletState'];
+
+    /**
+     * Sobrescribir getCasts para evitar que Laravel trate state_id como relación
+     */
+    public function getCasts()
+    {
+        $casts = parent::getCasts();
+        // Asegurarnos de que state_id se trate como integer, no como relación
+        if (!isset($casts['state_id'])) {
+            $casts['state_id'] = 'integer';
+        }
+        return $casts;
+    }
 
     /**
      * Sobrescribir getRelationValue para prevenir que Laravel auto-resuelva
@@ -69,12 +86,24 @@ class Pallet extends Model
      */
     public function getRelationValue($key)
     {
-        // Si Laravel intenta acceder a 'state' o 'palletState' como relación, devolver nuestro objeto fake
+        // Interceptar ANTES de que Laravel intente resolver la relación
         if ($key === 'state' || $key === 'palletState') {
+            // Si ya está cargada como relación, eliminarla primero
+            if ($this->relationLoaded($key)) {
+                $this->unsetRelation($key);
+            }
+            // Establecer explícitamente como null para prevenir resolución automática
+            $this->setRelation($key, null);
+            
             if ($key === 'state') {
                 return $this->state();
             }
             return $this->palletState();
+        }
+        
+        // Interceptar cualquier intento de acceder a relaciones que terminen en 'State'
+        if (str_ends_with($key, 'State') && $key !== 'stateArray') {
+            $this->setRelation($key, null);
         }
         
         return parent::getRelationValue($key);
@@ -130,6 +159,7 @@ class Pallet extends Model
             $pallet->setRelation('state', null);
             $pallet->setRelation('palletState', null);
         });
+
 
         // NO usar DB::listen aquí porque se ejecutaría para todas las consultas
         // En su lugar, confiamos en getRelation, getRelationValue y getAttribute
@@ -256,15 +286,28 @@ class Pallet extends Model
      */
     public function getAttribute($key)
     {
-        // Si se intenta acceder a 'state' o 'palletState' como atributo, devolver nuestro objeto fake
-        // en lugar de dejar que Laravel intente resolverlo como relación
-        if ($key === 'state') {
-            // Siempre devolver nuestro objeto fake, nunca intentar resolver como relación
-            return $this->state();
-        }
-        if ($key === 'palletState') {
+        // Interceptar ANTES de que Laravel intente resolver la relación
+        if ($key === 'state' || $key === 'palletState') {
+            // Asegurarnos de que no se intente resolver como relación
+            if ($this->relationLoaded($key)) {
+                $this->unsetRelation($key);
+            }
+            $this->setRelation($key, null);
+            
+            if ($key === 'state') {
+                // Siempre devolver nuestro objeto fake, nunca intentar resolver como relación
+                return $this->state();
+            }
             // Siempre devolver nuestro objeto fake, nunca intentar resolver como relación
             return $this->palletState();
+        }
+        
+        // Interceptar cualquier intento de acceder a relaciones que terminen en 'State'
+        if (str_ends_with($key, 'State') && $key !== 'stateArray' && $key !== 'state_id') {
+            if ($this->relationLoaded($key)) {
+                $this->unsetRelation($key);
+            }
+            $this->setRelation($key, null);
         }
         
         return parent::getAttribute($key);
@@ -587,8 +630,46 @@ class Pallet extends Model
         return $articles;
     }
 
+    /**
+     * Sobrescribir toArray para prevenir que Laravel intente resolver
+     * automáticamente la relación 'state' desde state_id
+     */
+    public function toArray()
+    {
+        // Asegurarnos de que 'state' y 'palletState' no se intenten resolver como relaciones
+        // antes de que Laravel intente serializar
+        if ($this->relationLoaded('state')) {
+            $this->unsetRelation('state');
+        }
+        if ($this->relationLoaded('palletState')) {
+            $this->unsetRelation('palletState');
+        }
+        $this->setRelation('state', null);
+        $this->setRelation('palletState', null);
+        
+        $array = parent::toArray();
+        
+        // Reemplazar cualquier intento de relación 'state' con nuestro objeto fake
+        if (isset($array['state']) && is_array($array['state']) && isset($array['state']['id'])) {
+            // Ya está bien, es nuestro stateArray
+        }
+        
+        return $array;
+    }
+
     public function toArrayAssoc()
     {
+        // Asegurarnos de que 'state' y 'palletState' no se intenten resolver como relaciones
+        // antes de acceder a los atributos
+        if ($this->relationLoaded('state')) {
+            $this->unsetRelation('state');
+        }
+        if ($this->relationLoaded('palletState')) {
+            $this->unsetRelation('palletState');
+        }
+        $this->setRelation('state', null);
+        $this->setRelation('palletState', null);
+        
         return [
             'id' => $this->id,
             'observations' => $this->observations,

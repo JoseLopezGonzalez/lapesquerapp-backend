@@ -93,8 +93,21 @@ class Store extends Model
             'netWeightPallets' => $this->netWeightPallets,
             'totalNetWeight' => $this->totalNetWeight,
             'content' => [
-                'pallets' => $this->pallets->map(function ($pallet) {
-                    return $pallet->toArrayAssoc();
+                'pallets' => $this->pallets->map(function ($storedPallet) {
+                    // Asegurarnos de que el pallet no intente resolver la relación 'state'
+                    $pallet = $storedPallet->pallet;
+                    if ($pallet) {
+                        // Establecer explícitamente que 'state' y 'palletState' no son relaciones
+                        $pallet->setRelation('state', null);
+                        $pallet->setRelation('palletState', null);
+                        if ($pallet->relationLoaded('state')) {
+                            $pallet->unsetRelation('state');
+                        }
+                        if ($pallet->relationLoaded('palletState')) {
+                            $pallet->unsetRelation('palletState');
+                        }
+                    }
+                    return $storedPallet->toArrayAssoc();
                 }),
                 'boxes' => [],
                 'bigBoxes' => [],
