@@ -76,7 +76,7 @@ class AutoSalesController extends Controller
 
             $pallet = $order->pallets()->create([
                 'observations' => 'Autoventa',
-                'state_id' => 3,
+                'state_id' => Pallet::STATE_SHIPPED,
             ]);
 
             foreach ($request->pallet['boxes'] as $box) {

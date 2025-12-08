@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\v1\OrderDetailsResource;
 use App\Http\Resources\v1\OrderResource;
 use App\Models\Order;
+use App\Models\Pallet;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 
@@ -103,12 +104,12 @@ class OrderController extends Controller
                 
                 if($request->palletsState == 'stored'){
                     $query->whereHas('pallets', function ($q) use ($request) {
-                        $q->where('state_id', 2);
+                        $q->where('state_id', Pallet::STATE_STORED);
                     });
                 }else if ($request->palletsState == 'shipping'){
                     /* Solo tiene palets en el estado 3 */
                     $query->whereHas('pallets', function ($q) use ($request) {
-                        $q->where('state_id', 3);
+                        $q->where('state_id', Pallet::STATE_SHIPPED);
                     });
                     
                 }

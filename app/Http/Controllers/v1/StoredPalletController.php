@@ -5,8 +5,8 @@ namespace App\Http\Controllers\v1;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
-use \App\Models\Pallet;
-use \App\Models\Box;
+use App\Models\Pallet;
+use App\Models\Box;
 use App\Models\PalletBox;
 use App\Models\StoredPallet;
 use Illuminate\Support\Facades\Validator;
@@ -50,7 +50,7 @@ class StoredPalletController extends Controller
         //Insertando Palet
         $newPallet = new Pallet;
         $newPallet->observations = $pallet['observations'];
-        $newPallet->state_id = 2; // Siempre estado almacenado.
+        $newPallet->state_id = Pallet::STATE_STORED; // Siempre estado almacenado.
         $newPallet->save();
 
         //Agregando Palet a almacen

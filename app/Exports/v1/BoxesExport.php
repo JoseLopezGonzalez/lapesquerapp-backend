@@ -3,6 +3,7 @@
 namespace App\Exports\v1;
 
 use App\Models\Box;
+use App\Models\Pallet;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -34,11 +35,11 @@ class BoxesExport implements FromQuery, WithHeadings, WithMapping
         if ($this->filters->has('state')) {
             if ($this->filters->input('state') == 'stored') {
                 $query->whereHas('palletBox.pallet', function ($subQuery) {
-                    $subQuery->where('state_id', 2);
+                    $subQuery->where('state_id', Pallet::STATE_STORED);
                 });
             } else if ($this->filters->input('state') == 'shipped') {
                 $query->whereHas('palletBox.pallet', function ($subQuery) {
-                    $subQuery->where('state_id', 3);
+                    $subQuery->where('state_id', Pallet::STATE_SHIPPED);
                 });
             }
         }

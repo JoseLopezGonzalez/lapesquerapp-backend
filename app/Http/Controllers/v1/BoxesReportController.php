@@ -56,13 +56,13 @@ class BoxesReportController extends Controller
 
         if ($request->has('storeds') && $request->input('storeds') == 'on') {
             $query->whereHas('palletBox.pallet', function ($subQuery) {
-                $subQuery->where('state_id', 2);
+                $subQuery->where('state_id', Pallet::STATE_STORED);
             });
         }
 
         if ($request->has('shippeds') && $request->input('shippeds') == 'on') {
             $query->whereHas('palletBox.pallet', function ($subQuery) {
-                $subQuery->where('state_id', 3);
+                $subQuery->where('state_id', Pallet::STATE_SHIPPED);
             });
         }
 
