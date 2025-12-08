@@ -547,8 +547,8 @@ class Pallet extends Model
             'observations' => $this->observations,
             'state' => $this->stateArray,
             'boxes' => $this->boxesV2 ? $this->boxesV2->map(function ($box) {
-                return $box->toArrayAssocV2();
-            }) : [],
+                return $box ? $box->toArrayAssocV2() : null;
+            })->filter() : [],
             'netWeight' => $this->netWeight,
             'productsNames' => $this->productsNames,
             'lots' => $this->lots,

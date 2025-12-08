@@ -38,7 +38,7 @@ class ProductFamily extends Model
             'id' => $this->id,
             'name' => $this->name,
             'description' => $this->description,
-            'category' => optional($this->category)->toArrayAssoc(),
+            'category' => $this->category ? $this->category->toArrayAssoc() : null,
             'active' => $this->active,
         ];
     }

@@ -61,12 +61,12 @@ class Product extends Model
     public function toArrayAssoc()
     {
         return array_merge(
-            optional($this->article)->toArrayAssoc() ?? [],
+            $this->article ? ($this->article->toArrayAssoc() ?? []) : [],
             [
-                'species' => optional($this->species)->toArrayAssoc() ?? [],
-                'captureZone' => optional($this->captureZone)->toArrayAssoc() ?? [],
-                'category' => optional($this->family)->category ? optional($this->family->category)->toArrayAssoc() ?? [] : [],
-                'family' => optional($this->family)->toArrayAssoc() ?? [],
+                'species' => $this->species ? ($this->species->toArrayAssoc() ?? []) : [],
+                'captureZone' => $this->captureZone ? ($this->captureZone->toArrayAssoc() ?? []) : [],
+                'category' => ($this->family && $this->family->category) ? ($this->family->category->toArrayAssoc() ?? []) : [],
+                'family' => $this->family ? ($this->family->toArrayAssoc() ?? []) : [],
                 'articleGtin' => $this->article_gtin,
                 'boxGtin' => $this->box_gtin,
                 'palletGtin' => $this->pallet_gtin,
