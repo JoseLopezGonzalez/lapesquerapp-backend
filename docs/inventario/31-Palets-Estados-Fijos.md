@@ -110,10 +110,10 @@ class Pallet extends Model
 **✅ Correcto**:
 ```php
 // Usar constantes
-$pallet->state_id = Pallet::STATE_STORED;
+$pallet->status = Pallet::STATE_STORED;
 
 // Validar estado
-if ($pallet->state_id === Pallet::STATE_SHIPPED) {
+if ($pallet->status === Pallet::STATE_SHIPPED) {
     // ...
 }
 
@@ -124,7 +124,7 @@ $pallet->changeToShipped();
 **❌ Incorrecto**:
 ```php
 // NO usar números mágicos
-$pallet->state_id = 2;
+$pallet->status = 2;
 
 // NO usar relación palletState (deprecated)
 $pallet->palletState->id;
@@ -137,7 +137,7 @@ $pallet->palletState->id;
 ### Validación en Requests
 
 ```php
-'state_id' => 'required|integer|in:1,2,3,4'
+'status' => 'required|integer|in:1,2,3,4'
 'state.id' => 'sometimes|integer|in:1,2,3,4'
 ```
 
@@ -154,14 +154,18 @@ Pallet::getValidStates(); // Retorna [1, 2, 3, 4]
 ### Cambios Realizados
 
 1. **Migración de datos existentes**:
-   - Palets con `state_id = 3` (enviado) **sin** `order_id` → Cambian a `4` (procesado)
-   - Palets con `state_id = 3` (enviado) **con** `order_id` → Se mantienen en `3` (enviado)
+   - Palets con `status = 3` (enviado) **sin** `order_id` → Cambian a `4` (procesado)
+   - Palets con `status = 3` (enviado) **con** `order_id` → Se mantienen en `3` (enviado)
 
 2. **Eliminación de foreign key**:
-   - Se elimina la constraint `pallets.state_id → pallet_states.id`
+   - Se elimina la constraint `pallets.status → pallet_states.id` (ya no existe)
 
 3. **Eliminación de tabla**:
    - Se elimina la tabla `pallet_states`
+
+4. **Renombrado de columna** (2025-12-08):
+   - La columna `state_id` fue renombrada a `status` para evitar que Laravel intente resolver automáticamente relaciones `belongsTo` basadas en el nombre de la columna
+   - Migración: `2025_12_08_124753_rename_state_id_to_status_in_pallets_table.php`
 
 ### Archivo de Migración
 
@@ -202,7 +206,7 @@ El frontend puede crear un "almacén fantasma" para mostrar palets en estado `re
 
 ### 1. Almacenamiento
 
-- Solo palets con `state_id = 2` (STORED) pueden estar en `stored_pallets`
+- Solo palets con `status = 2` (STORED) pueden estar en `stored_pallets`
 - Al cambiar a otro estado, se elimina automáticamente de `stored_pallets`
 - Los palets en estados `registered`, `shipped` o `processed` no tienen almacenamiento
 
@@ -244,5 +248,7 @@ El frontend puede crear un "almacén fantasma" para mostrar palets en estado `re
 ---
 
 **Autor**: Sistema de Estados Fijos  
-**Última actualización**: 2025-01-XX
+**Última actualización**: 2025-12-08
+
+**Cambio reciente**: La columna `state_id` fue renombrada a `status` el 2025-12-08 para evitar que Laravel intente resolver automáticamente relaciones `belongsTo` basadas en el nombre de la columna.
 

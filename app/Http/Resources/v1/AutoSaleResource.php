@@ -31,15 +31,6 @@ class AutoSaleResource extends JsonResource
             'loadDate' => $this->load_date,
             'status' => $this->status,
             'pallets' => $this->pallets->map(function ($pallet) {
-                // Asegurarnos de que el pallet no intente resolver la relación 'state'
-                $pallet->setRelation('state', null);
-                $pallet->setRelation('palletState', null);
-                if ($pallet->relationLoaded('state')) {
-                    $pallet->unsetRelation('state');
-                }
-                if ($pallet->relationLoaded('palletState')) {
-                    $pallet->unsetRelation('palletState');
-                }
                 return $pallet->toArrayAssoc();
             }),
             'incoterm' => $this->incoterm->toArrayAssoc(),

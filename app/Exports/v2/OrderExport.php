@@ -69,11 +69,11 @@ class OrderExport implements FromQuery, WithHeadings, WithMapping
         if (!empty($this->filters['palletsState'])) {
             if ($this->filters['palletsState'] == 'stored') {
                 $query->whereHas('pallets', function ($q) {
-                    $q->where('state_id', 2);
+                    $q->where('status', 2);
                 });
             } elseif ($this->filters['palletsState'] == 'shipping') {
                 $query->whereHas('pallets', function ($q) {
-                    $q->where('state_id', 3);
+                    $q->where('status', 3);
                 });
             }
         }

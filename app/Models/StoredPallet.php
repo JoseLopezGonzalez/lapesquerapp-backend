@@ -32,19 +32,6 @@ class StoredPallet extends Model
 
     public function toArrayAssoc()
     {
-        // Asegurarnos de que el pallet no intente resolver la relación 'state'
-        if ($this->pallet) {
-            // Establecer explícitamente que 'state' y 'palletState' no son relaciones
-            $this->pallet->setRelation('state', null);
-            $this->pallet->setRelation('palletState', null);
-            if ($this->pallet->relationLoaded('state')) {
-                $this->pallet->unsetRelation('state');
-            }
-            if ($this->pallet->relationLoaded('palletState')) {
-                $this->pallet->unsetRelation('palletState');
-            }
-        }
-
         return array_merge($this->pallet->toArrayAssoc(), [
             //'storeId' => $this->store_id,
             'position' => $this->position,
@@ -58,7 +45,7 @@ public function scopeStored($query)
 {
     return $query
         ->join('pallets', 'pallets.id', '=', 'stored_pallets.pallet_id')
-        ->where('pallets.state_id', Pallet::STATE_STORED);
+        ->where('pallets.status', Pallet::STATE_STORED);
 }
 
 }

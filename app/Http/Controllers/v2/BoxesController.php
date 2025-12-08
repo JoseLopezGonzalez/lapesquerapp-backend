@@ -97,11 +97,11 @@ class BoxesController extends Controller
         if ($request->has('palletState')) {
             if ($request->palletState === 'stored') {
                 $query->whereHas('palletBox.pallet', function ($query) {
-                    $query->where('state_id', \App\Models\Pallet::STATE_STORED);
+                    $query->where('status', \App\Models\Pallet::STATE_STORED);
                 });
             } elseif ($request->palletState === 'shipped') {
                 $query->whereHas('palletBox.pallet', function ($query) {
-                    $query->where('state_id', \App\Models\Pallet::STATE_SHIPPED);
+                    $query->where('status', \App\Models\Pallet::STATE_SHIPPED);
                 });
             }
         }
@@ -253,10 +253,10 @@ class BoxesController extends Controller
             });
         }
 
-        // Solo cajas que están en palets almacenados (state_id = 2)
+        // Solo cajas que están en palets almacenados (status = 2)
         if ($request->has('onlyStored') && $request->onlyStored === 'true') {
             $query->whereHas('palletBox.pallet', function ($q) {
-                $q->where('state_id', \App\Models\Pallet::STATE_STORED);
+                $q->where('status', \App\Models\Pallet::STATE_STORED);
             });
         }
 

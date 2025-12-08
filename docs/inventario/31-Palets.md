@@ -28,7 +28,7 @@ El modelo `Pallet` representa un **palet** que contiene múltiples cajas de prod
 |-------|------|----------|-------------|
 | `id` | bigint | NO | ID único del palet |
 | `observations` | text | YES | Observaciones sobre el palet |
-| `state_id` | bigint | NO | Estado del palet (1=registered, 2=stored, 3=shipped, 4=processed) |
+| `status` | bigint | NO | Estado del palet (1=registered, 2=stored, 3=shipped, 4=processed) |
 | `order_id` | bigint | YES | FK a `orders` - Pedido asignado (opcional) |
 | `created_at` | timestamp | NO | Fecha de creación |
 | `updated_at` | timestamp | NO | Fecha de última actualización |
@@ -40,7 +40,7 @@ El modelo `Pallet` representa un **palet** que contiene múltiples cajas de prod
 **Constraints**:
 - `order_id` → `orders.id` (onDelete: set null)
 
-**⚠️ Nota**: `state_id` ya no tiene foreign key. Los estados son valores fijos (1, 2, 3, 4).
+**⚠️ Nota**: `status` ya no tiene foreign key. Los estados son valores fijos (1, 2, 3, 4). La columna fue renombrada de `state_id` a `status` para evitar que Laravel intente resolver automáticamente relaciones.
 
 ---
 
@@ -51,7 +51,7 @@ El modelo `Pallet` representa un **palet** que contiene múltiples cajas de prod
 ```php
 protected $fillable = [
     'observations',
-    'state_id',
+    'status',
 ];
 ```
 
@@ -77,9 +77,9 @@ public function palletState()
 ```
 
 **⚠️ Deprecated**: Esta relación ya no existe. Usar:
-- `$pallet->state_id` para obtener el ID del estado
+- `$pallet->status` para obtener el ID del estado
 - `$pallet->stateArray` para obtener `['id' => X, 'name' => '...']`
-- `Pallet::getStateName($stateId)` para obtener el nombre del estado
+- `Pallet::getStateName($status)` para obtener el nombre del estado
 
 ### 2. `order()` - Pedido Asignado
 ```php
@@ -140,7 +140,7 @@ public function palletBoxes()
 - **ID 4** (`STATE_PROCESSED`): `processed` - Procesado (consumido completamente en producción)
 
 **Lógica de estados**:
-- Solo palets con `state_id = 2` (almacenado) pueden estar en un almacén
+- Solo palets con `status = 2` (almacenado) pueden estar en un almacén
 - Al cambiar a otro estado, se elimina automáticamente de `stored_pallets`
 - Los estados cambian automáticamente según el uso en producción y pedidos
 
@@ -324,7 +324,7 @@ PUT /v2/pallets/{id}
 
 **Comportamiento complejo**:
 - Actualiza `observations`
-- Cambia `state_id` (si cambia y no es almacenado, elimina de almacén)
+- Cambia `status` (si cambia y no es almacenado, elimina de almacén)
 - Cambia `order_id` (puede ser `null` para desvincular)
 - Cambia almacén (actualiza `stored_pallets`)
 - Actualiza/crea/elimina cajas según el array recibido
@@ -372,21 +372,21 @@ Retorna todos los palets con `id` y `name` (id).
 GET /v2/pallets/stored-options
 ```
 
-Solo palets con `state_id = 2`.
+Solo palets con `status = 2`.
 
 #### `shippedOptions()` - Opciones de Palets Enviados
 ```php
 GET /v2/pallets/shipped-options
 ```
 
-Solo palets con `state_id = 3` (shipped).
+Solo palets con `status = 3` (shipped).
 
 #### `registeredPallets()` - Palets Registrados (Almacén Fantasma)
 ```php
 GET /v2/pallets/registered
 ```
 
-Retorna todos los palets en estado `registered` (state_id = 1) con un formato similar a `StoreDetailsResource`, simulando un "almacén fantasma".
+Retorna todos los palets en estado `registered` (status = 1) con un formato similar a `StoreDetailsResource`, simulando un "almacén fantasma".
 
 **Respuesta**: Similar a un almacén pero para palets registrados
 ```json
@@ -409,7 +409,7 @@ Retorna todos los palets en estado `registered` (state_id = 1) con un formato si
 **📄 Ejemplo completo**: Ver [EJEMPLO-RESPUESTA-registered-pallets.json](../ejemplos/EJEMPLO-RESPUESTA-registered-pallets.json)
 
 **Comportamiento**:
-- Obtiene todos los palets con `state_id = 1` (registered)
+- Obtiene todos los palets con `status = 1` (registered)
 - Calcula pesos totales (similar a un almacén)
 - Retorna formato compatible con frontend (mismo formato que almacenes)
 - Útil para crear un "almacén fantasma" en el frontend que muestre palets sin almacén asignado
@@ -419,9 +419,9 @@ Retorna todos los palets en estado `registered` (state_id = 1) con un formato si
 - `boxes.box.product`
 
 **Filtros disponibles en `index()`**:
-- `filters[state]=stored` → Solo palets almacenados (state_id = 2)
-- `filters[state]=shipped` → Solo palets enviados (state_id = 3)
-- `filters[state]=processed` → Solo palets procesados (state_id = 4)
+- `filters[state]=stored` → Solo palets almacenados (status = 2)
+- `filters[state]=shipped` → Solo palets enviados (status = 3)
+- `filters[state]=processed` → Solo palets procesados (status = 4)
 
 #### `assignToPosition(Request $request)` - Asignar Posición
 ```php
@@ -451,7 +451,7 @@ POST /v2/pallets/move-to-store
 }
 ```
 
-**Validación**: El palet debe estar en estado almacenado (`state_id = 2` / `Pallet::STATE_STORED`).
+**Validación**: El palet debe estar en estado almacenado (`status = 2` / `Pallet::STATE_STORED`).
 
 **Comportamiento**: Crea/actualiza `StoredPallet` y resetea la posición.
 
@@ -470,7 +470,7 @@ POST /v2/pallets/bulk-update-state
 **Request body**:
 ```json
 {
-    "state_id": 2,
+    "status": 2,
     "ids": [1, 2, 3],
     // O
     "filters": { ... },
@@ -481,7 +481,7 @@ POST /v2/pallets/bulk-update-state
 
 **Comportamiento**:
 - Si cambia a estado no almacenado, elimina de almacén
-- Si cambia a almacenado (`state_id = 2`) y no tiene almacén, crea en almacén ID 4 (hardcodeado)
+- Si cambia a almacenado (`status = 2`) y no tiene almacén, crea en almacén ID 4 (hardcodeado)
 
 **⚠️ Nota**: El almacén ID 4 está hardcodeado. Considerar hacerlo configurable.
 
@@ -524,7 +524,7 @@ Pone `order_id = null`.
 ## 🔍 Scopes (Query Scopes)
 
 ### `scopeStored($query)`
-Filtra palets almacenados (`state_id = 2` / `Pallet::STATE_STORED`).
+Filtra palets almacenados (`status = 2` / `Pallet::STATE_STORED`).
 
 ### Métodos de Cambio de Estado
 
@@ -739,5 +739,7 @@ Authorization: Bearer {token}
 
 ---
 
-**Última actualización**: 2025-01-XX
+**Última actualización**: 2025-12-08
+
+**Cambio reciente**: La columna `state_id` fue renombrada a `status` el 2025-12-08 para evitar que Laravel intente resolver automáticamente relaciones `belongsTo` basadas en el nombre de la columna.
 

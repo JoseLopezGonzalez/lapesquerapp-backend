@@ -114,17 +114,17 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
         if (!empty($filters['palletState'])) {
             if ($filters['palletState'] === 'stored') {
                 $query->whereHas('palletBox.pallet', function ($query) {
-                    $query->where('state_id', \App\Models\Pallet::STATE_STORED);
+                    $query->where('status', \App\Models\Pallet::STATE_STORED);
                 });
             } elseif ($filters['palletState'] === 'shipped') {
                 $query->whereHas('palletBox.pallet', function ($query) {
-                    $query->where('state_id', \App\Models\Pallet::STATE_SHIPPED);
+                    $query->where('status', \App\Models\Pallet::STATE_SHIPPED);
                 });
             } elseif ($filters['palletState'] === 'processed') {
                 $query->whereHas('palletBox.pallet', function ($query) {
-                    $query->where('state_id', \App\Models\Pallet::STATE_PROCESSED);
+                    $query->where('status', \App\Models\Pallet::STATE_PROCESSED);
                 });
-                    $query->where('state_id', 3);
+                    $query->where('status', 3);
                 });
             }
         }
@@ -299,7 +299,7 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
             return '-';
         }
 
-        $stateId = $pallet->state_id;
+        $stateId = $pallet->status;
         
         switch ($stateId) {
             case \App\Models\Pallet::STATE_REGISTERED:

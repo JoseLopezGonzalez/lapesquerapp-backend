@@ -11,7 +11,7 @@ class StockStatisticsService
     public static function getTotalStockStats(): array
     {
         // Filtrar solo cajas disponibles (que no han sido usadas en producción)
-        // Incluye palets registrados (state_id = 1) y almacenados (state_id = 2)
+        // Incluye palets registrados (status = 1) y almacenados (status = 2)
         $totalWeight = Pallet::query()
             ->inStock()  // Incluye registered y stored
             ->joinBoxes()
@@ -54,7 +54,7 @@ class StockStatisticsService
     public static function getSpeciesTotalsRaw(): \Illuminate\Support\Collection
     {
         // Filtrar solo cajas disponibles (que no han sido usadas en producción)
-        // Incluye palets registrados (state_id = 1) y almacenados (state_id = 2)
+        // Incluye palets registrados (status = 1) y almacenados (status = 2)
         return Pallet::inStock()  // Incluye registered y stored
             ->joinProducts()
             ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')

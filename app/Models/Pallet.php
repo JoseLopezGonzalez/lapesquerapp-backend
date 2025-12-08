@@ -55,87 +55,12 @@ class Pallet extends Model
     public function getStateArrayAttribute(): array
     {
         return [
-            'id' => $this->state_id,
-            'name' => self::getStateName($this->state_id),
+            'id' => $this->status,
+            'name' => self::getStateName($this->status),
         ];
     }
 
-    protected $fillable = ['observations', 'state_id'];
-
-    /**
-     * Lista de relaciones que NO deben ser resueltas automáticamente
-     */
-    protected $guardedRelations = ['state', 'palletState'];
-
-    /**
-     * Sobrescribir getCasts para evitar que Laravel trate state_id como relación
-     */
-    public function getCasts()
-    {
-        $casts = parent::getCasts();
-        // Asegurarnos de que state_id se trate como integer, no como relación
-        if (!isset($casts['state_id'])) {
-            $casts['state_id'] = 'integer';
-        }
-        return $casts;
-    }
-
-    /**
-     * Sobrescribir getRelationValue para prevenir que Laravel auto-resuelva
-     * la relación 'state' desde state_id y cause consultas a pallet_states
-     */
-    public function getRelationValue($key)
-    {
-        // Interceptar ANTES de que Laravel intente resolver la relación
-        if ($key === 'state' || $key === 'palletState') {
-            // Si ya está cargada como relación, eliminarla primero
-            if ($this->relationLoaded($key)) {
-                $this->unsetRelation($key);
-            }
-            // Establecer explícitamente como null para prevenir resolución automática
-            $this->setRelation($key, null);
-            
-            if ($key === 'state') {
-                return $this->state();
-            }
-            return $this->palletState();
-        }
-        
-        // Interceptar cualquier intento de acceder a relaciones que terminen en 'State'
-        if (str_ends_with($key, 'State') && $key !== 'stateArray') {
-            $this->setRelation($key, null);
-        }
-        
-        return parent::getRelationValue($key);
-    }
-
-    /**
-     * Sobrescribir getRelation para prevenir que Laravel intente resolver
-     * 'state' o 'palletState' como una relación Eloquent basada en state_id
-     */
-    public function getRelation($name)
-    {
-        // Si Laravel intenta obtener la relación 'state' o 'palletState', devolver null
-        // para prevenir que intente resolverla automáticamente
-        if ($name === 'state' || $name === 'palletState') {
-            return null;
-        }
-        
-        return parent::getRelation($name);
-    }
-
-    /**
-     * Sobrescribir relationLoaded para prevenir que Laravel intente cargar
-     * la relación 'state' o 'palletState' automáticamente
-     */
-    public function relationLoaded($key)
-    {
-        if ($key === 'state' || $key === 'palletState') {
-            return false; // Decirle a Laravel que la relación no está cargada
-        }
-        
-        return parent::relationLoaded($key);
-    }
+    protected $fillable = ['observations', 'status'];
 
     /**
      * Boot del modelo - Validaciones y eventos
@@ -143,26 +68,6 @@ class Pallet extends Model
     protected static function boot()
     {
         parent::boot();
-
-        // Prevenir que Laravel intente resolver automáticamente la relación 'state' o 'palletState'
-        // desde state_id cuando se carga el modelo
-        static::retrieved(function ($pallet) {
-            // Marcar explícitamente que 'state' y 'palletState' no son relaciones cargadas
-            // para prevenir que Laravel intente resolverlas automáticamente
-            if ($pallet->relationLoaded('state')) {
-                $pallet->unsetRelation('state');
-            }
-            if ($pallet->relationLoaded('palletState')) {
-                $pallet->unsetRelation('palletState');
-            }
-            // Establecer explícitamente que 'state' no es una relación para prevenir resolución automática
-            $pallet->setRelation('state', null);
-            $pallet->setRelation('palletState', null);
-        });
-
-
-        // NO usar DB::listen aquí porque se ejecutaría para todas las consultas
-        // En su lugar, confiamos en getRelation, getRelationValue y getAttribute
 
         // Validar antes de guardar
         static::saving(function ($pallet) {
@@ -180,10 +85,10 @@ class Pallet extends Model
      */
     protected function validatePalletRules(): void
     {
-        // Validar que state_id sea válido
-        if (!in_array($this->state_id, self::getValidStates())) {
+        // Validar que status sea válido
+        if (!in_array($this->status, self::getValidStates())) {
             throw new \InvalidArgumentException(
-                "El estado (state_id) debe ser uno de: " . implode(', ', self::getValidStates()) . ". Valor recibido: {$this->state_id}."
+                "El estado (status) debe ser uno de: " . implode(', ', self::getValidStates()) . ". Valor recibido: {$this->status}."
             );
         }
     }
@@ -193,10 +98,10 @@ class Pallet extends Model
      */
     protected function validateUpdateRules(): void
     {
-        // No permitir cambiar de state_id = 4 (procesado) a otro estado
-        $originalState = $this->getOriginal('state_id');
-        if ($originalState === self::STATE_PROCESSED && $this->isDirty('state_id')) {
-            $newState = $this->state_id;
+        // No permitir cambiar de status = 4 (procesado) a otro estado
+        $originalState = $this->getOriginal('status');
+        if ($originalState === self::STATE_PROCESSED && $this->isDirty('status')) {
+            $newState = $this->status;
             if ($newState !== self::STATE_PROCESSED) {
                 throw new \InvalidArgumentException(
                     'No se puede cambiar el estado de un palet procesado. Un palet procesado no puede revertirse a otro estado.'
@@ -204,9 +109,9 @@ class Pallet extends Model
             }
         }
 
-        // No permitir cambiar de state_id = 3 (enviado) a state_id = 1 o 2
-        if ($originalState === self::STATE_SHIPPED && $this->isDirty('state_id')) {
-            $newState = $this->state_id;
+        // No permitir cambiar de status = 3 (enviado) a status = 1 o 2
+        if ($originalState === self::STATE_SHIPPED && $this->isDirty('status')) {
+            $newState = $this->status;
             if (in_array($newState, [self::STATE_REGISTERED, self::STATE_STORED])) {
                 throw new \InvalidArgumentException(
                     'No se puede cambiar un palet enviado de vuelta a registrado o almacenado. Un palet enviado no puede volver a almacén.'
@@ -223,12 +128,12 @@ class Pallet extends Model
 
     /**
      * @deprecated Ya no se usa la relación con PalletState
-     * Usar $pallet->state_id directamente o $pallet->stateArray
+     * Usar $pallet->status directamente o $pallet->stateArray
      */
     public function palletState()
     {
         // Retornar un objeto compatible con la API para mantener retrocompatibilidad temporal
-        return new class($this->state_id) {
+        return new class($this->status) {
             public $id;
             public $name;
 
@@ -250,8 +155,7 @@ class Pallet extends Model
 
     /**
      * @deprecated Ya no se usa la relación con PalletState
-     * Prevenir que Laravel auto-resuelva una relación 'state' desde state_id
-     * Usar $pallet->state_id directamente o $pallet->stateArray
+     * Usar $pallet->status directamente o $pallet->stateArray
      * 
      * NOTA: Este método NO es una relación Eloquent, es un método helper
      * que retorna un objeto fake para mantener compatibilidad con la API
@@ -259,8 +163,7 @@ class Pallet extends Model
     public function state()
     {
         // Retornar un objeto compatible con la API para mantener retrocompatibilidad temporal
-        // Esto previene que Laravel intente auto-resolver la relación desde state_id
-        return new class($this->state_id) {
+        return new class($this->status) {
             public $id;
             public $name;
 
@@ -278,39 +181,6 @@ class Pallet extends Model
                 ];
             }
         };
-    }
-
-    /**
-     * Sobrescribir getAttribute para prevenir que Laravel intente resolver
-     * 'state' o 'palletState' como una relación automáticamente desde state_id
-     */
-    public function getAttribute($key)
-    {
-        // Interceptar ANTES de que Laravel intente resolver la relación
-        if ($key === 'state' || $key === 'palletState') {
-            // Asegurarnos de que no se intente resolver como relación
-            if ($this->relationLoaded($key)) {
-                $this->unsetRelation($key);
-            }
-            $this->setRelation($key, null);
-            
-            if ($key === 'state') {
-                // Siempre devolver nuestro objeto fake, nunca intentar resolver como relación
-                return $this->state();
-            }
-            // Siempre devolver nuestro objeto fake, nunca intentar resolver como relación
-            return $this->palletState();
-        }
-        
-        // Interceptar cualquier intento de acceder a relaciones que terminen en 'State'
-        if (str_ends_with($key, 'State') && $key !== 'stateArray' && $key !== 'state_id') {
-            if ($this->relationLoaded($key)) {
-                $this->unsetRelation($key);
-            }
-            $this->setRelation($key, null);
-        }
-        
-        return parent::getAttribute($key);
     }
 
     /* getArticlesAttribute from boxes.boxes.article.article  */
@@ -549,8 +419,8 @@ class Pallet extends Model
      */
     public function changeToRegistered(): void
     {
-        if ($this->state_id !== self::STATE_REGISTERED) {
-            $this->state_id = self::STATE_REGISTERED;
+        if ($this->status !== self::STATE_REGISTERED) {
+            $this->status = self::STATE_REGISTERED;
             $this->save();
         }
         // Quitar almacenamiento si existe
@@ -562,8 +432,8 @@ class Pallet extends Model
      */
     public function changeToProcessed(): void
     {
-        if ($this->state_id !== self::STATE_PROCESSED) {
-            $this->state_id = self::STATE_PROCESSED;
+        if ($this->status !== self::STATE_PROCESSED) {
+            $this->status = self::STATE_PROCESSED;
             $this->save();
         }
         // Quitar almacenamiento si existe
@@ -576,8 +446,8 @@ class Pallet extends Model
      */
     public function changeToShipped(): void
     {
-        if ($this->state_id !== self::STATE_SHIPPED) {
-            $this->state_id = self::STATE_SHIPPED;
+        if ($this->status !== self::STATE_SHIPPED) {
+            $this->status = self::STATE_SHIPPED;
             $this->save();
         }
         // Quitar almacenamiento si existe
@@ -630,46 +500,8 @@ class Pallet extends Model
         return $articles;
     }
 
-    /**
-     * Sobrescribir toArray para prevenir que Laravel intente resolver
-     * automáticamente la relación 'state' desde state_id
-     */
-    public function toArray()
-    {
-        // Asegurarnos de que 'state' y 'palletState' no se intenten resolver como relaciones
-        // antes de que Laravel intente serializar
-        if ($this->relationLoaded('state')) {
-            $this->unsetRelation('state');
-        }
-        if ($this->relationLoaded('palletState')) {
-            $this->unsetRelation('palletState');
-        }
-        $this->setRelation('state', null);
-        $this->setRelation('palletState', null);
-        
-        $array = parent::toArray();
-        
-        // Reemplazar cualquier intento de relación 'state' con nuestro objeto fake
-        if (isset($array['state']) && is_array($array['state']) && isset($array['state']['id'])) {
-            // Ya está bien, es nuestro stateArray
-        }
-        
-        return $array;
-    }
-
     public function toArrayAssoc()
     {
-        // Asegurarnos de que 'state' y 'palletState' no se intenten resolver como relaciones
-        // antes de acceder a los atributos
-        if ($this->relationLoaded('state')) {
-            $this->unsetRelation('state');
-        }
-        if ($this->relationLoaded('palletState')) {
-            $this->unsetRelation('palletState');
-        }
-        $this->setRelation('state', null);
-        $this->setRelation('palletState', null);
-        
         return [
             'id' => $this->id,
             'observations' => $this->observations,
@@ -712,16 +544,16 @@ class Pallet extends Model
 
     public function scopeStored($query)
     {
-        return $query->where('state_id', 2);
+        return $query->where('status', self::STATE_STORED);
     }
 
     /**
      * Scope para palets en stock (registrados o almacenados)
-     * Incluye palets con state_id = 1 (registered) o state_id = 2 (stored)
+     * Incluye palets con status = 1 (registered) o status = 2 (stored)
      */
     public function scopeInStock($query)
     {
-        return $query->whereIn('state_id', [self::STATE_REGISTERED, self::STATE_STORED]);
+        return $query->whereIn('status', [self::STATE_REGISTERED, self::STATE_STORED]);
     }
 
     public function scopeJoinBoxes($query)

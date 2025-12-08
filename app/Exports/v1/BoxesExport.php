@@ -35,11 +35,11 @@ class BoxesExport implements FromQuery, WithHeadings, WithMapping
         if ($this->filters->has('state')) {
             if ($this->filters->input('state') == 'stored') {
                 $query->whereHas('palletBox.pallet', function ($subQuery) {
-                    $subQuery->where('state_id', Pallet::STATE_STORED);
+                    $subQuery->where('status', Pallet::STATE_STORED);
                 });
             } else if ($this->filters->input('state') == 'shipped') {
                 $query->whereHas('palletBox.pallet', function ($subQuery) {
-                    $subQuery->where('state_id', Pallet::STATE_SHIPPED);
+                    $subQuery->where('status', Pallet::STATE_SHIPPED);
                 });
             }
         }

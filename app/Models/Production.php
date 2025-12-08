@@ -1219,7 +1219,7 @@ class Production extends Model
     private function getStockDataByProduct(string $lot)
     {
         // Obtener palets en stock (registrados y almacenados) con cajas del lote disponibles
-        // Incluye palets con state_id = 1 (registered) y state_id = 2 (stored)
+        // Incluye palets con status = 1 (registered) y status = 2 (stored)
         $stockPallets = Pallet::query()
             ->inStock()  // Incluye registered y stored
             ->whereNull('order_id')  // Solo sin pedido

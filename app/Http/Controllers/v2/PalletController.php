@@ -59,11 +59,11 @@ class PalletController extends Controller
 
         if (!empty($filters['state'])) {
             if ($filters['state'] === 'stored') {
-                $query->where('state_id', Pallet::STATE_STORED);
+                $query->where('status', Pallet::STATE_STORED);
             } elseif ($filters['state'] === 'shipped') {
-                $query->where('state_id', Pallet::STATE_SHIPPED);
+                $query->where('status', Pallet::STATE_SHIPPED);
             } elseif ($filters['state'] === 'processed') {
-                $query->where('state_id', Pallet::STATE_PROCESSED);
+                $query->where('status', Pallet::STATE_PROCESSED);
             }
         }
 
@@ -226,7 +226,7 @@ class PalletController extends Controller
         //Insertando Palet
         $newPallet = new Pallet;
         $newPallet->observations = $pallet['observations'];
-        $newPallet->state_id = $pallet['state']['id'] ?? 1; // Por defecto, estado registrado
+        $newPallet->status = $pallet['state']['id'] ?? 1; // Por defecto, estado registrado
         $newPallet->order_id = $pallet['orderId'] ?? null; // Si se proporciona, asignar la orden
         $newPallet->save();
 
@@ -323,15 +323,15 @@ class PalletController extends Controller
 
         //Updating State
         if ($request->has('state')) {
-            //echo '$updatedPallet->state_id = '.$updatedPallet->state_id . '!= $pallet[state][id] = '.$pallet["state"]["id"];
-            if ($updatedPallet->state_id != $pallet['state']['id']) {
+            //echo '$updatedPallet->status = '.$updatedPallet->status . '!= $pallet[state][id] = '.$pallet["state"]["id"];
+            if ($updatedPallet->status != $pallet['state']['id']) {
                 // UnStoring pallet if it is in a store
                 //echo '$updatedPallet->store ='. $updatedPallet->store. '!= null && $pallet[state][id] ='.$pallet['state']['id'].' != 2';
                 if ($updatedPallet->store != null && $pallet['state']['id'] != Pallet::STATE_STORED) {
                     $updatedPallet->unStore();
                     //return response()->json(['errors' => ['state' => ['El palet se encuentra en un almacen, no se puede cambiar el estado']]], 422);
                 }
-                $updatedPallet->state_id = $pallet['state']['id'];
+                $updatedPallet->status = $pallet['state']['id'];
             }
         }
 
@@ -490,7 +490,7 @@ class PalletController extends Controller
         ]; */
 
         $pallets = Pallet::select('id', 'id as name')
-            ->where('state_id', Pallet::STATE_STORED)
+            ->where('status', Pallet::STATE_STORED)
             ->orderBy('id')
             ->get();
 
@@ -508,7 +508,7 @@ class PalletController extends Controller
         ]; */
         /* id as name */
         $pallets = Pallet::select('id', 'id as name')
-            ->where('state_id', Pallet::STATE_SHIPPED)
+            ->where('status', Pallet::STATE_SHIPPED)
             ->orderBy('id')
             ->get();
 
@@ -565,7 +565,7 @@ class PalletController extends Controller
 
         $pallet = Pallet::findOrFail($palletId);
 
-        if ($pallet->state_id !== Pallet::STATE_STORED) {
+        if ($pallet->status !== Pallet::STATE_STORED) {
             return response()->json(['error' => 'El palet no está en estado almacenado'], 400);
         }
 
@@ -603,7 +603,7 @@ class PalletController extends Controller
     public function bulkUpdateState(Request $request)
     {
         $validated = Validator::make($request->all(), [
-            'state_id' => 'required|integer|in:1,2,3,4',
+            'status' => 'required|integer|in:1,2,3,4',
             'ids' => 'array|required_without_all:filters,applyToAll',
             'ids.*' => 'integer|exists:tenant.pallets,id',
             'filters' => 'array|required_without_all:ids,applyToAll',
@@ -614,7 +614,7 @@ class PalletController extends Controller
             return response()->json(['errors' => $validated->errors()], 422);
         }
 
-        $stateId = $request->input('state_id');
+        $stateId = $request->input('status');
         $palletsQuery = Pallet::with('storedPallet');
 
         if ($request->filled('ids')) {
@@ -630,7 +630,7 @@ class PalletController extends Controller
         $updatedCount = 0;
 
         foreach ($pallets as $pallet) {
-            if ($pallet->state_id != $stateId) {
+            if ($pallet->status != $stateId) {
                 if ($stateId !== Pallet::STATE_STORED && $pallet->storedPallet) {
                     $pallet->unStore();
                 }
@@ -642,7 +642,7 @@ class PalletController extends Controller
                     ]);
                 }
 
-                $pallet->state_id = $stateId;
+                $pallet->status = $stateId;
                 $pallet->save();
                 $updatedCount++;
             }
@@ -695,8 +695,8 @@ class PalletController extends Controller
      */
     public function registeredPallets()
     {
-        // Obtener todos los palets registrados (state_id = 1) con relaciones cargadas
-        $query = Pallet::where('state_id', Pallet::STATE_REGISTERED);
+        // Obtener todos los palets registrados (status = 1) con relaciones cargadas
+        $query = Pallet::where('status', Pallet::STATE_REGISTERED);
         $query = $this->loadPalletRelations($query);
         $pallets = $query->orderBy('id', 'desc')->get();
 

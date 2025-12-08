@@ -107,12 +107,12 @@ class OrderController extends Controller
                 /* if order has any pallets */
                 if ($request->palletsState == 'stored') {
                     $query->whereHas('pallets', function ($q) use ($request) {
-                        $q->where('state_id', \App\Models\Pallet::STATE_STORED);
+                        $q->where('status', \App\Models\Pallet::STATE_STORED);
                     });
                 } else if ($request->palletsState == 'shipping') {
                     /* Solo tiene palets en el estado 3 */
                     $query->whereHas('pallets', function ($q) use ($request) {
-                        $q->where('state_id', \App\Models\Pallet::STATE_SHIPPED);
+                        $q->where('status', \App\Models\Pallet::STATE_SHIPPED);
                     });
                 }
             }
@@ -509,7 +509,7 @@ class OrderController extends Controller
                 ->leftJoin('salespeople', 'salespeople.id', '=', 'orders.salesperson_id')
                 ->whereBetween('orders.entry_date', [$dateFrom, $dateTo])
                 ->whereNull('production_inputs.id') // Solo cajas disponibles (sin production_inputs)
-                ->whereIn('pallets.state_id', [
+                ->whereIn('pallets.status', [
                     \App\Models\Pallet::STATE_REGISTERED,
                     \App\Models\Pallet::STATE_STORED,
                     \App\Models\Pallet::STATE_SHIPPED
@@ -567,7 +567,7 @@ class OrderController extends Controller
                 ->whereBetween('orders.load_date', [$from, $to])
                 ->whereNotNull('orders.transport_id')
                 ->whereNull('production_inputs.id') // Solo cajas disponibles (sin production_inputs)
-                ->whereIn('pallets.state_id', [
+                ->whereIn('pallets.status', [
                     \App\Models\Pallet::STATE_REGISTERED,
                     \App\Models\Pallet::STATE_STORED,
                     \App\Models\Pallet::STATE_SHIPPED

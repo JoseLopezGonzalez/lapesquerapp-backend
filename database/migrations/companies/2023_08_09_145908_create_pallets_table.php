@@ -14,10 +14,9 @@ return new class extends Migration
         Schema::create('pallets', function (Blueprint $table) {
             $table->id();
             $table->text('observations')->nullable();
-            $table->unsignedBigInteger('state_id');
+            $table->unsignedBigInteger('status')->default(1);
             $table->unsignedBigInteger('order_id')->nullable();
             //$table->unsignedBigInteger('store_id')->nullable();
-            $table->foreign('state_id')->references('id')->on('pallet_states');
             //$table->foreign('store_id')->references('id')->on('stores')->onDelete('set null');    
             $table->foreign('order_id')->references('id')->on('orders')->onDelete('set null');
             $table->timestamps();

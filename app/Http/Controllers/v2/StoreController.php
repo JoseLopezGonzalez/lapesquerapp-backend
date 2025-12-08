@@ -183,8 +183,8 @@ class StoreController extends Controller
             'pallet.boxes.box.product',
         ])->get();
 
-        // Obtener palets registrados (state_id = 1) que no tienen StoredPallet
-        $registeredPallets = \App\Models\Pallet::where('state_id', \App\Models\Pallet::STATE_REGISTERED)
+        // Obtener palets registrados (status = 1) que no tienen StoredPallet
+        $registeredPallets = \App\Models\Pallet::where('status', \App\Models\Pallet::STATE_REGISTERED)
             ->with([
                 'boxes.box.productionInputs',
                 'boxes.box.product',

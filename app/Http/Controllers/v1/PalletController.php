@@ -41,9 +41,9 @@ class PalletController extends Controller
 
         if ($request->has('state')) {
             if ($request->input('state') == 'stored') {
-                $query->where('state_id', Pallet::STATE_STORED);
+                $query->where('status', Pallet::STATE_STORED);
             } else if ($request->input('state') == 'shipped') {
-                $query->where('state_id', Pallet::STATE_SHIPPED);
+                $query->where('status', Pallet::STATE_SHIPPED);
             }
         }
 
@@ -207,7 +207,7 @@ class PalletController extends Controller
         //Insertando Palet
         $newPallet = new Pallet;
         $newPallet->observations = $pallet['observations'];
-        $newPallet->state_id = Pallet::STATE_REGISTERED; // Siempre estado registrado.
+        $newPallet->status = Pallet::STATE_REGISTERED; // Siempre estado registrado.
         $newPallet->save();
 
         //Insertando Cajas
@@ -290,15 +290,15 @@ class PalletController extends Controller
 
         //Updating State
         if ($request->has('state')) {
-            //echo '$updatedPallet->state_id = '.$updatedPallet->state_id . '!= $pallet[state][id] = '.$pallet["state"]["id"];
-            if ($updatedPallet->state_id != $pallet['state']['id']) {
+            //echo '$updatedPallet->status = '.$updatedPallet->status . '!= $pallet[state][id] = '.$pallet["state"]["id"];
+            if ($updatedPallet->status != $pallet['state']['id']) {
                 // UnStoring pallet if it is in a store
                 //echo '$updatedPallet->store ='. $updatedPallet->store. '!= null && $pallet[state][id] ='.$pallet['state']['id'].' != 2';
                 if ($updatedPallet->store != null && $pallet['state']['id'] != Pallet::STATE_STORED) {
                     $updatedPallet->unStore();
                     //return response()->json(['errors' => ['state' => ['El palet se encuentra en un almacen, no se puede cambiar el estado']]], 422);
                 }
-                $updatedPallet->state_id = $pallet['state']['id'];
+                $updatedPallet->status = $pallet['state']['id'];
             }
         }
 

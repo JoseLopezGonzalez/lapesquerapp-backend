@@ -50,7 +50,7 @@ class StoredPalletController extends Controller
         //Insertando Palet
         $newPallet = new Pallet;
         $newPallet->observations = $pallet['observations'];
-        $newPallet->state_id = Pallet::STATE_STORED; // Siempre estado almacenado.
+        $newPallet->status = Pallet::STATE_STORED; // Siempre estado almacenado.
         $newPallet->save();
 
         //Agregando Palet a almacen

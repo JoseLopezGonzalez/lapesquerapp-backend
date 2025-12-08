@@ -22,7 +22,7 @@ return new class extends Migration
         Schema::table('pallets', function (Blueprint $table) {
             // Verificar si la columna existe, si no, crearla
             if (!Schema::hasColumn('pallets', 'order_id')) {
-                $table->unsignedBigInteger('order_id')->nullable()->after('state_id');
+                $table->unsignedBigInteger('order_id')->nullable()->after('status');
             }
         });
         
