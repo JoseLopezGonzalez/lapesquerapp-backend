@@ -63,6 +63,35 @@ class Pallet extends Model
     protected $fillable = ['observations', 'state_id'];
 
     /**
+     * Sobrescribir getRelationValue para prevenir que Laravel auto-resuelva
+     * la relación 'state' desde state_id y cause consultas a pallet_states
+     */
+    public function getRelationValue($key)
+    {
+        // Si Laravel intenta acceder a 'state' como relación, devolver nuestro objeto fake
+        if ($key === 'state') {
+            return $this->state();
+        }
+        
+        return parent::getRelationValue($key);
+    }
+
+    /**
+     * Sobrescribir getRelation para prevenir que Laravel intente resolver
+     * 'state' como una relación Eloquent basada en state_id
+     */
+    public function getRelation($name)
+    {
+        // Si Laravel intenta obtener la relación 'state', devolver null
+        // para prevenir que intente resolverla automáticamente
+        if ($name === 'state') {
+            return null;
+        }
+        
+        return parent::getRelation($name);
+    }
+
+    /**
      * Boot del modelo - Validaciones y eventos
      */
     protected static function boot()
@@ -157,6 +186,9 @@ class Pallet extends Model
      * @deprecated Ya no se usa la relación con PalletState
      * Prevenir que Laravel auto-resuelva una relación 'state' desde state_id
      * Usar $pallet->state_id directamente o $pallet->stateArray
+     * 
+     * NOTA: Este método NO es una relación Eloquent, es un método helper
+     * que retorna un objeto fake para mantener compatibilidad con la API
      */
     public function state()
     {
@@ -180,6 +212,21 @@ class Pallet extends Model
                 ];
             }
         };
+    }
+
+    /**
+     * Sobrescribir getAttribute para prevenir que Laravel intente resolver
+     * 'state' como una relación automáticamente desde state_id
+     */
+    public function getAttribute($key)
+    {
+        // Si se intenta acceder a 'state' como atributo, devolver nuestro objeto fake
+        // en lugar de dejar que Laravel intente resolverlo como relación
+        if ($key === 'state' && !$this->relationLoaded('state')) {
+            return $this->state();
+        }
+        
+        return parent::getAttribute($key);
     }
 
     /* getArticlesAttribute from boxes.boxes.article.article  */
