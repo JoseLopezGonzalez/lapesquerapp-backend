@@ -92,11 +92,37 @@ class Pallet extends Model
     }
 
     /**
+     * Sobrescribir relationLoaded para prevenir que Laravel intente cargar
+     * la relación 'state' automáticamente
+     */
+    public function relationLoaded($key)
+    {
+        if ($key === 'state') {
+            return false; // Decirle a Laravel que la relación no está cargada
+        }
+        
+        return parent::relationLoaded($key);
+    }
+
+    /**
      * Boot del modelo - Validaciones y eventos
      */
     protected static function boot()
     {
         parent::boot();
+
+        // Prevenir que Laravel intente resolver automáticamente la relación 'state'
+        // desde state_id cuando se carga el modelo
+        static::retrieved(function ($pallet) {
+            // Marcar explícitamente que 'state' no es una relación cargada
+            // para prevenir que Laravel intente resolverla automáticamente
+            if ($pallet->relationLoaded('state')) {
+                $pallet->unsetRelation('state');
+            }
+        });
+
+        // NO usar DB::listen aquí porque se ejecutaría para todas las consultas
+        // En su lugar, confiamos en getRelation, getRelationValue y getAttribute
 
         // Validar antes de guardar
         static::saving(function ($pallet) {
@@ -222,7 +248,8 @@ class Pallet extends Model
     {
         // Si se intenta acceder a 'state' como atributo, devolver nuestro objeto fake
         // en lugar de dejar que Laravel intente resolverlo como relación
-        if ($key === 'state' && !$this->relationLoaded('state')) {
+        if ($key === 'state') {
+            // Siempre devolver nuestro objeto fake, nunca intentar resolver como relación
             return $this->state();
         }
         
