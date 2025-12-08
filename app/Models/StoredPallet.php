@@ -46,7 +46,7 @@ public function scopeStored($query)
 {
     return $query
         ->join('pallets', 'pallets.id', '=', 'stored_pallets.pallet_id')
-        ->where('pallets.state_id', 2);
+        ->where('pallets.state_id', Pallet::STATE_STORED);
 }
 
 }
