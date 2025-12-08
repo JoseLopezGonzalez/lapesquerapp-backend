@@ -30,6 +30,7 @@ class OrderController extends Controller
                     'salesperson',
                     'transport',
                     'incoterm',
+                    'pallets', // Eager load pallets for numberOfPallets and hasPalletsOnStorage
                 ])->where('status', 'pending')->orWhereDate('load_date', '>=', now())->get();
                 return OrderResource::collection($orders);
             } else {
@@ -44,6 +45,7 @@ class OrderController extends Controller
                     'salesperson',
                     'transport',
                     'incoterm',
+                    'pallets', // Eager load pallets for numberOfPallets and hasPalletsOnStorage
                 ])->where('status', 'finished')->whereDate('load_date', '<', now())->get();
                 return OrderResource::collection($orders);
             }
@@ -152,6 +154,7 @@ class OrderController extends Controller
                 'salesperson',
                 'transport',
                 'incoterm',
+                'pallets', // Eager load pallets for numberOfPallets and hasPalletsOnStorage
             ]);
 
             $perPage = $request->input('perPage', 12); // Default a 10 si no se proporciona

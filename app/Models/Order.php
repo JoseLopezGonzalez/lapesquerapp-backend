@@ -155,15 +155,19 @@ class Order extends Model
             'netWeight' => 0
         ];
 
-        $this->pallets->map(function ($pallet) use (&$totals) {
-            $pallet->boxes->map(function ($box) use (&$totals) {
-                // Solo incluir cajas disponibles (no usadas en producción)
-                if ($box->box->isAvailable) {
-                    $totals['boxes']++;
-                    $totals['netWeight'] += $box->box->net_weight;
+        if ($this->pallets) {
+            $this->pallets->map(function ($pallet) use (&$totals) {
+                if ($pallet && $pallet->boxes) {
+                    $pallet->boxes->map(function ($box) use (&$totals) {
+                        // Solo incluir cajas disponibles (no usadas en producción)
+                        if ($box && $box->box && $box->box->isAvailable) {
+                            $totals['boxes']++;
+                            $totals['netWeight'] += $box->box->net_weight ?? 0;
+                        }
+                    });
                 }
             });
-        });
+        }
 
         return $totals;
     }
@@ -172,32 +176,37 @@ class Order extends Model
 
     public function getNumberOfPalletsAttribute()
     {
-        return $this->pallets->count();
+        return $this->pallets ? $this->pallets->count() : 0;
     }
 
     public function getLotsAttribute()
     {
-
         $lots = [];
         // Asumiendo que $this->pallets es una colección
-        $this->pallets->each(function ($pallet) use (&$lots) {
-            // Asegúrate de que $pallet->lots sea un array antes de intentar iterar sobre él
-            foreach ($pallet->lots as $lot) {
-                if (!in_array($lot, $lots)) {
-                    $lots[] = $lot;
+        if ($this->pallets) {
+            $this->pallets->each(function ($pallet) use (&$lots) {
+                if ($pallet && is_array($pallet->lots)) {
+                    // Asegúrate de que $pallet->lots sea un array antes de intentar iterar sobre él
+                    foreach ($pallet->lots as $lot) {
+                        if (!in_array($lot, $lots)) {
+                            $lots[] = $lot;
+                        }
+                    }
                 }
-            }
-        });
+            });
+        }
 
         return $lots; // Devuelve la lista acumulada de lotes únicos
-
     }
 
     /* some pallets on storage status */
     public function hasPalletsOnStorage()
     {
+        if (!$this->pallets) {
+            return false;
+        }
         return $this->pallets->some(function ($pallet) {
-            return $pallet->status == \App\Models\Pallet::STATE_STORED;
+            return $pallet && $pallet->status == \App\Models\Pallet::STATE_STORED;
         });
     }
 

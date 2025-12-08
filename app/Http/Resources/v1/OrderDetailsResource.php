@@ -31,6 +31,15 @@ class OrderDetailsResource extends JsonResource
             'loadDate' => $this->load_date,
             'status' => $this->status,
             'pallets' => $this->pallets ? $this->pallets->map(function ($pallet) {
+                // Ensure state/palletState relations are not loaded before calling toArrayAssoc
+                if ($pallet->relationLoaded('state')) {
+                    $pallet->unsetRelation('state');
+                }
+                if ($pallet->relationLoaded('palletState')) {
+                    $pallet->unsetRelation('palletState');
+                }
+                $pallet->setRelation('state', null);
+                $pallet->setRelation('palletState', null);
                 return $pallet->toArrayAssoc();
             }) : [],
             'incoterm' => $this->incoterm ? $this->incoterm->toArrayAssoc() : null,
