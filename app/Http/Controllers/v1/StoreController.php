@@ -38,8 +38,13 @@ class StoreController extends Controller
      */
     public function show(string $id)
     {
-        //return Store::find($id)->toArrayAssoc();
-        return new StoreDetailsResource(Store::find($id));
+        $store = Store::with([
+            'palletsV2.boxes.box.productionInputs.productionRecord.production', // Cargar productionInputs para determinar disponibilidad
+            'palletsV2.boxes.box.product', // Cargar product para toArrayAssocV2
+            'palletsV2.storedPallet', // Cargar storedPallet para posición
+        ])->findOrFail($id);
+        
+        return new StoreDetailsResource($store);
     }
 
     /**

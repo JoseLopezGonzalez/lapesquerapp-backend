@@ -45,23 +45,9 @@ class Store extends Model
     //Accessor 
     public function getNetWeightPalletsAttribute()
     {
-        //$netWeightPallets = 0;
-
-        return $this->pallets->reduce(function ($carry, $pallet) {
-            return $carry + $pallet->pallet->netWeight;
-        }, 0);
-
-        /*  $this->pallets->map(function ($pallet) {
-             global $netWeightPallets;
-             $netWeightPallets += $pallet->netWeight;
-         }); */
-
-
-
-        /* foreach ($this->pallets as $pallet) {
-            $netWeightPallets += $pallet->netWeight; //Implementar atributo accesor en pallet pesoNeto
-        } */
-        //return $netWeightPallets;
+        return $this->palletsV2->sum(function ($pallet) {
+            return $pallet->netWeight ?? 0;
+        });
     }
 
     //Accessor 
@@ -93,21 +79,8 @@ class Store extends Model
             'netWeightPallets' => $this->netWeightPallets,
             'totalNetWeight' => $this->totalNetWeight,
             'content' => [
-                'pallets' => $this->pallets->map(function ($storedPallet) {
-                    // Asegurarnos de que el pallet no intente resolver la relación 'state'
-                    $pallet = $storedPallet->pallet;
-                    if ($pallet) {
-                        // Establecer explícitamente que 'state' y 'palletState' no son relaciones
-                        $pallet->setRelation('state', null);
-                        $pallet->setRelation('palletState', null);
-                        if ($pallet->relationLoaded('state')) {
-                            $pallet->unsetRelation('state');
-                        }
-                        if ($pallet->relationLoaded('palletState')) {
-                            $pallet->unsetRelation('palletState');
-                        }
-                    }
-                    return $storedPallet->toArrayAssoc();
+                'pallets' => $this->palletsV2->map(function ($pallet) {
+                    return $pallet->toArrayAssocV2();
                 }),
                 'boxes' => [],
                 'bigBoxes' => [],
