@@ -45,6 +45,9 @@ class Store extends Model
     //Accessor 
     public function getNetWeightPalletsAttribute()
     {
+        if (!$this->palletsV2) {
+            return 0;
+        }
         return $this->palletsV2->sum(function ($pallet) {
             return $pallet->netWeight ?? 0;
         });

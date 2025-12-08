@@ -164,7 +164,7 @@ class Box extends Model
         return [
             'id' => $this->id,
             'palletId' => $this->pallet_id,
-            'article' => $this->article->toArrayAssoc(),
+            'article' => $this->article ? $this->article->toArrayAssoc() : null,
             'lot' => $this->lot,
             'gs1128' => $this->gs1_128,
             'grossWeight' => $this->gross_weight,
@@ -181,7 +181,7 @@ class Box extends Model
         return [
             'id' => $this->id,
             'palletId' => $this->pallet_id,
-            'product' => $this->product->toArrayAssoc(), // Asegúrate que también esté limpio este método
+            'product' => $this->product ? $this->product->toArrayAssoc() : null,
             'lot' => $this->lot,
             'gs1128' => $this->gs1_128,
             'grossWeight' => (float) $this->gross_weight,

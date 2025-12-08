@@ -251,23 +251,18 @@ class Pallet extends Model
     //Accessor
     public function getNetWeightAttribute()
     {
-        /* $netWeight = 0;
-        $this->boxes->map(function ($box) {
-            global $netWeight;
-            var_dump($box->net_weight);
-            $netWeight += $box->net_weight;
-        });
-        return $netWeight; */
-        //dd($this->boxes);
+        if (!$this->boxes) {
+            return 0;
+        }
         return $this->boxes->reduce(function ($carry, $box) {
-            return $carry + $box->net_weight;
+            return $carry + ($box->net_weight ?? 0);
         }, 0);
     }
 
     /* numero total de cajas */
     public function getNumberOfBoxesAttribute()
     {
-        return $this->boxes->count();
+        return $this->boxes ? $this->boxes->count() : 0;
     }
 
     /**
@@ -275,8 +270,11 @@ class Pallet extends Model
      */
     public function getAvailableBoxesCountAttribute()
     {
+        if (!$this->boxes) {
+            return 0;
+        }
         return $this->boxes->filter(function ($palletBox) {
-            return $palletBox->box->isAvailable;
+            return $palletBox && $palletBox->box && $palletBox->box->isAvailable;
         })->count();
     }
 
@@ -285,8 +283,11 @@ class Pallet extends Model
      */
     public function getUsedBoxesCountAttribute()
     {
+        if (!$this->boxes) {
+            return 0;
+        }
         return $this->boxes->filter(function ($palletBox) {
-            return !$palletBox->box->isAvailable;
+            return $palletBox && $palletBox->box && !$palletBox->box->isAvailable;
         })->count();
     }
 
@@ -295,8 +296,11 @@ class Pallet extends Model
      */
     public function getTotalAvailableWeightAttribute()
     {
+        if (!$this->boxes) {
+            return 0;
+        }
         return $this->boxes->filter(function ($palletBox) {
-            return $palletBox->box->isAvailable;
+            return $palletBox && $palletBox->box && $palletBox->box->isAvailable;
         })->sum(function ($palletBox) {
             return $palletBox->box->net_weight ?? 0;
         });
@@ -307,8 +311,11 @@ class Pallet extends Model
      */
     public function getTotalUsedWeightAttribute()
     {
+        if (!$this->boxes) {
+            return 0;
+        }
         return $this->boxes->filter(function ($palletBox) {
-            return !$palletBox->box->isAvailable;
+            return $palletBox && $palletBox->box && !$palletBox->box->isAvailable;
         })->sum(function ($palletBox) {
             return $palletBox->box->net_weight ?? 0;
         });
@@ -468,14 +475,17 @@ class Pallet extends Model
     public function getLotsAttribute()
     {
         $lots = [];
-        $this->boxes->map(function ($box) use (&$lots) {
-            $lot = $box->box->lot;
-            /* push lot si no hay igual, almacenar un array de lots sin clave*/
-            if (!in_array($lot, $lots)) {
-                $lots[] = $lot;
-            }
-        });
-
+        if ($this->boxes) {
+            $this->boxes->map(function ($box) use (&$lots) {
+                if ($box && $box->box) {
+                    $lot = $box->box->lot;
+                    /* push lot si no hay igual, almacenar un array de lots sin clave*/
+                    if (!in_array($lot, $lots)) {
+                        $lots[] = $lot;
+                    }
+                }
+            });
+        }
         return $lots;
     }
 
@@ -506,9 +516,9 @@ class Pallet extends Model
             'id' => $this->id,
             'observations' => $this->observations,
             'state' => $this->stateArray,
-            'boxes' => $this->boxes->map(function ($box) {
+            'boxes' => $this->boxes ? $this->boxes->map(function ($box) {
                 return $box->toArrayAssoc();
-            }),
+            }) : [],
             'netWeight' => $this->netWeight,
             'productsNames' => $this->productsNames,
             'lots' => $this->lots,
@@ -522,9 +532,9 @@ class Pallet extends Model
             'id' => $this->id,
             'observations' => $this->observations,
             'state' => $this->stateArray,
-            'boxes' => $this->boxesV2->map(function ($box) {
+            'boxes' => $this->boxesV2 ? $this->boxesV2->map(function ($box) {
                 return $box->toArrayAssocV2();
-            }),
+            }) : [],
             'netWeight' => $this->netWeight,
             'productsNames' => $this->productsNames,
             'lots' => $this->lots,
