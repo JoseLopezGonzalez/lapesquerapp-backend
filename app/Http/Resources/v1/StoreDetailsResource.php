@@ -14,6 +14,21 @@ class StoreDetailsResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return $this->toArrayAssoc();
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'temperature' => $this->temperature,
+            'capacity' => $this->capacity,
+            'netWeightPallets' => $this->netWeightPallets,
+            'totalNetWeight' => $this->totalNetWeight,
+            'content' => [
+                'pallets' => $this->palletsV2->map(function ($pallet) {
+                    return $pallet->toArrayAssocV2();
+                }),
+                'boxes' => [],
+                'bigBoxes' => [],
+            ],
+            'map' => json_decode($this->map, true),
+        ];
     }
 }
