@@ -45,7 +45,7 @@ class PalletBox extends Model
 
     public function getNetWeightAttribute()
     {
-        return $this->box->net_weight;
+        return $this->box ? $this->box->net_weight : 0;
     }
 
     public function delete()

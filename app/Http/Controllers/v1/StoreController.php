@@ -39,8 +39,11 @@ class StoreController extends Controller
     public function show(string $id)
     {
         $store = Store::with([
-            'palletsV2.boxes.box.productionInputs.productionRecord.production', // Cargar productionInputs para determinar disponibilidad
-            'palletsV2.boxes.box.product', // Cargar product para toArrayAssocV2
+            'palletsV2.boxesV2.productionInputs.productionRecord.production', // Cargar productionInputs para determinar disponibilidad
+            'palletsV2.boxesV2.product.article.categoria', // Cargar product y sus relaciones anidadas
+            'palletsV2.boxesV2.product.family.category', // Cargar family y category
+            'palletsV2.boxesV2.product.species', // Cargar species
+            'palletsV2.boxesV2.product.captureZone', // Cargar captureZone
             'palletsV2.storedPallet', // Cargar storedPallet para posición
         ])->findOrFail($id);
         

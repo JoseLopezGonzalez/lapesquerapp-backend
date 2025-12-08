@@ -22,6 +22,10 @@ class OrderController extends Controller
                 /* where status is pending or loaddate>= today at the end of the day */
                 $orders = Order::with([
                     'customer',
+                    'customer.payment_term',
+                    'customer.salesperson',
+                    'customer.country',
+                    'customer.transport',
                     'payment_term',
                     'salesperson',
                     'transport',
@@ -32,6 +36,10 @@ class OrderController extends Controller
                 /* where status is finished and loaddate< today at the end of the day */
                 $orders = Order::with([
                     'customer',
+                    'customer.payment_term',
+                    'customer.salesperson',
+                    'customer.country',
+                    'customer.transport',
                     'payment_term',
                     'salesperson',
                     'transport',
@@ -136,6 +144,10 @@ class OrderController extends Controller
             // Cargar relaciones necesarias para OrderResource
             $query->with([
                 'customer',
+                'customer.payment_term',
+                'customer.salesperson',
+                'customer.country',
+                'customer.transport',
                 'payment_term',
                 'salesperson',
                 'transport',
@@ -214,11 +226,19 @@ class OrderController extends Controller
         // Recargar con relaciones para el resource
         $order->load([
             'customer',
+            'customer.payment_term',
+            'customer.salesperson',
+            'customer.country',
+            'customer.transport',
             'payment_term',
             'salesperson',
             'transport',
             'incoterm',
-            'pallets.boxes.box.product',
+            'pallets.boxes.box.product.article.categoria',
+            'pallets.boxes.box.product.family.category',
+            'pallets.boxes.box.product.species',
+            'pallets.boxes.box.product.captureZone',
+            'pallets.boxes.box.article.categoria',
             'pallets.boxes.box.productionInputs',
         ]);
         
@@ -232,11 +252,19 @@ class OrderController extends Controller
     {
         $order = Order::with([
             'customer',
+            'customer.payment_term',
+            'customer.salesperson',
+            'customer.country',
+            'customer.transport',
             'payment_term',
             'salesperson',
             'transport',
             'incoterm',
-            'pallets.boxes.box.product',
+            'pallets.boxes.box.product.article.categoria',
+            'pallets.boxes.box.product.family.category',
+            'pallets.boxes.box.product.species',
+            'pallets.boxes.box.product.captureZone',
+            'pallets.boxes.box.article.categoria',
             'pallets.boxes.box.productionInputs',
         ])->findOrFail($id);
         
@@ -324,11 +352,19 @@ class OrderController extends Controller
         // Recargar con relaciones para el resource
         $order->load([
             'customer',
+            'customer.payment_term',
+            'customer.salesperson',
+            'customer.country',
+            'customer.transport',
             'payment_term',
             'salesperson',
             'transport',
             'incoterm',
-            'pallets.boxes.box.product',
+            'pallets.boxes.box.product.article.categoria',
+            'pallets.boxes.box.product.family.category',
+            'pallets.boxes.box.product.species',
+            'pallets.boxes.box.product.captureZone',
+            'pallets.boxes.box.article.categoria',
             'pallets.boxes.box.productionInputs',
         ]);
         

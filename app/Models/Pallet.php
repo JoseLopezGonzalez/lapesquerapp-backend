@@ -187,12 +187,16 @@ class Pallet extends Model
     public function getArticlesAttribute()
     {
         $articles = [];
-        $this->boxes->map(function ($box) use (&$articles) {
-            $article = $box->box->article->article;
-            if (!isset($articles[$article->id])) {
-                $articles[$article->id] = $article;
-            }
-        });
+        if ($this->boxes) {
+            $this->boxes->map(function ($box) use (&$articles) {
+                if ($box && $box->box && $box->box->article && $box->box->article->article) {
+                    $article = $box->box->article->article;
+                    if (!isset($articles[$article->id])) {
+                        $articles[$article->id] = $article;
+                    }
+                }
+            });
+        }
         return $articles;
     }
 
@@ -232,19 +236,23 @@ class Pallet extends Model
     public function getSummaryAttribute()
     {
         $summary = [];
-        $this->boxes->map(function ($box) use (&$summary) {
-            $product = $box->box->product;
-            if (!isset($summary[$product->id])) {
-                $summary[$product->id] = [
-                    'product' => $product,
-                    'species' => $product->species,
-                    'boxes' => 0,
-                    'netWeight' => 0,
-                ];
-            }
-            $summary[$product->id]['boxes']++;
-            $summary[$product->id]['netWeight'] += $box->box->net_weight;
-        });
+        if ($this->boxes) {
+            $this->boxes->map(function ($box) use (&$summary) {
+                if ($box && $box->box && $box->box->product) {
+                    $product = $box->box->product;
+                    if (!isset($summary[$product->id])) {
+                        $summary[$product->id] = [
+                            'product' => $product,
+                            'species' => $product->species ?? null,
+                            'boxes' => 0,
+                            'netWeight' => 0,
+                        ];
+                    }
+                    $summary[$product->id]['boxes']++;
+                    $summary[$product->id]['netWeight'] += $box->box->net_weight ?? 0;
+                }
+            });
+        }
         return $summary;
     }
 
@@ -375,10 +383,12 @@ class Pallet extends Model
             'boxes' => 0,
             'netWeight' => 0,
         ];
-        $this->boxes->map(function ($box) use (&$totals) {
-            $totals['boxes']++;
-            $totals['netWeight'] += $box->net_weight;
-        });
+        if ($this->boxes) {
+            $this->boxes->map(function ($box) use (&$totals) {
+                $totals['boxes']++;
+                $totals['netWeight'] += $box->net_weight ?? 0;
+            });
+        }
         return $totals;
     }
 
@@ -501,12 +511,16 @@ class Pallet extends Model
     public function getProductsAttribute()
     {
         $articles = [];
-        $this->boxes->map(function ($box) use (&$articles) {
-            $article = $box->box->article->article;
-            if (!isset($articles[$article->id])) {
-                $articles[$article->id] = $article;
-            }
-        });
+        if ($this->boxes) {
+            $this->boxes->map(function ($box) use (&$articles) {
+                if ($box && $box->box && $box->box->article && $box->box->article->article) {
+                    $article = $box->box->article->article;
+                    if (!isset($articles[$article->id])) {
+                        $articles[$article->id] = $article;
+                    }
+                }
+            });
+        }
         return $articles;
     }
 

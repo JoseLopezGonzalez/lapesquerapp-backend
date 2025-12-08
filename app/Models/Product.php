@@ -83,7 +83,7 @@ class Product extends Model
     /* name attribute */
     public function getNameAttribute()
     {
-        return $this->article->name;
+        return $this->article ? $this->article->name : null;
     }
 
     public function productionNodes()
