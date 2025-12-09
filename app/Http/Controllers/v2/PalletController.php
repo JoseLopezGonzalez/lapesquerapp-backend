@@ -276,6 +276,14 @@ class PalletController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        // Validar que no se pueda modificar un palet de recepción
+        $pallet = Pallet::findOrFail($id);
+        if ($pallet->reception_id !== null) {
+            return response()->json([
+                'error' => 'No se puede modificar un palet que proviene de una recepción. Modifique desde la recepción.'
+            ], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'id' => 'required|integer',
             'observations' => 'sometimes|nullable|string',
@@ -300,21 +308,21 @@ class PalletController extends Controller
 
 
 
-        $pallet = $request->all();
+        $palletData = $request->all();
 
         //Creating Pallet
-        $updatedPallet = Pallet::find($id);
+        $updatedPallet = $pallet;
 
         //Updating Order
         if ($request->has('orderId')) {
 
-            if ($pallet['orderId'] == null) {
+            if ($palletData['orderId'] == null) {
                 $updatedPallet->order_id = null;
             } else {
-                if (Order::find($pallet['orderId']) == null) {
+                if (Order::find($palletData['orderId']) == null) {
                     return response()->json(['errors' => ['orderId' => ['El pedido no existe']]], 422);
                 } else {
-                    $updatedPallet->order_id = $pallet['orderId'];
+                    $updatedPallet->order_id = $palletData['orderId'];
                 }
             }
         }
@@ -324,29 +332,29 @@ class PalletController extends Controller
         //Updating State
         if ($request->has('state')) {
             //echo '$updatedPallet->status = '.$updatedPallet->status . '!= $pallet[state][id] = '.$pallet["state"]["id"];
-            if ($updatedPallet->status != $pallet['state']['id']) {
+            if ($updatedPallet->status != $palletData['state']['id']) {
                 // UnStoring pallet if it is in a store
                 //echo '$updatedPallet->store ='. $updatedPallet->store. '!= null && $pallet[state][id] ='.$pallet['state']['id'].' != 2';
-                if ($updatedPallet->store != null && $pallet['state']['id'] != Pallet::STATE_STORED) {
+                if ($updatedPallet->store != null && $palletData['state']['id'] != Pallet::STATE_STORED) {
                     $updatedPallet->unStore();
                     //return response()->json(['errors' => ['state' => ['El palet se encuentra en un almacen, no se puede cambiar el estado']]], 422);
                 }
-                $updatedPallet->status = $pallet['state']['id'];
+                $updatedPallet->status = $palletData['state']['id'];
             }
         }
 
         //Updating Observations
         if ($request->has('observations')) {
-            if ($pallet['observations'] != $updatedPallet->observations) {
-                $updatedPallet->observations = $pallet['observations'];
+            if ($palletData['observations'] != $updatedPallet->observations) {
+                $updatedPallet->observations = $palletData['observations'];
             }
         }
 
         $updatedPallet->save();
 
         // Updating Store
-        if (array_key_exists("store", $pallet)) {
-            $storeId = $pallet['store']['id'] ?? null;
+        if (array_key_exists("store", $palletData)) {
+            $storeId = $palletData['store']['id'] ?? null;
 
             $isPalletStored = StoredPallet::where('pallet_id', $updatedPallet->id)->first();
             if ($isPalletStored) {
@@ -372,8 +380,8 @@ class PalletController extends Controller
         }
 
         //Updating Boxes
-        if (array_key_exists("boxes", $pallet)) {
-            $boxes = $pallet['boxes'];
+        if (array_key_exists("boxes", $palletData)) {
+            $boxes = $palletData['boxes'];
 
             //Eliminando Cajas y actualizando
             $updatedPallet->boxes->map(function ($box) use (&$boxes) {
@@ -435,9 +443,16 @@ class PalletController extends Controller
      */
     public function destroy(string $id)
     {
-        DB::transaction(function () use ($id) {
-            $pallet = Pallet::findOrFail($id);
-            
+        $pallet = Pallet::findOrFail($id);
+        
+        // Validar que no se pueda eliminar un palet de recepción
+        if ($pallet->reception_id !== null) {
+            return response()->json([
+                'error' => 'No se puede eliminar un palet que proviene de una recepción. Elimine la recepción o modifique desde la recepción.'
+            ], 403);
+        }
+
+        DB::transaction(function () use ($pallet) {
             // Eliminar registros relacionados primero
             if ($pallet->storedPallet) {
                 $pallet->storedPallet->delete();

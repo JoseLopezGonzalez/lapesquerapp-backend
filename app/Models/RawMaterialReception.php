@@ -18,7 +18,34 @@ class RawMaterialReception extends Model
 
     /* hacer numeros  declared_total_amount y declared_total_net_weight*/
     
-
+    /**
+     * Boot del modelo - Validaciones y eventos
+     */
+    protected static function boot()
+    {
+        parent::boot();
+  
+        // Validación antes de eliminar
+        static::deleting(function ($reception) {
+            foreach ($reception->pallets as $pallet) {
+                // Validar que el palet no esté en uso
+                if ($pallet->order_id !== null) {
+                    throw new \Exception("No se puede eliminar la recepción: el palet #{$pallet->id} está vinculado a un pedido");
+                }
+          
+                if ($pallet->status === Pallet::STATE_STORED) {
+                    throw new \Exception("No se puede eliminar la recepción: el palet #{$pallet->id} está almacenado");
+                }
+          
+                // Validar que las cajas no estén en producción
+                foreach ($pallet->boxes as $palletBox) {
+                    if ($palletBox->box->productionInputs()->exists()) {
+                        throw new \Exception("No se puede eliminar la recepción: la caja #{$palletBox->box->id} está siendo usada en producción");
+                    }
+                }
+            }
+        });
+    }
 
     public function supplier()
     {
@@ -28,6 +55,14 @@ class RawMaterialReception extends Model
     public function products()
     {
         return $this->hasMany(RawMaterialReceptionProduct::class, 'reception_id');
+    }
+
+    /**
+     * Relación con palets creados desde esta recepción
+     */
+    public function pallets()
+    {
+        return $this->hasMany(Pallet::class, 'reception_id');
     }
 
     public function getNetWeightAttribute()

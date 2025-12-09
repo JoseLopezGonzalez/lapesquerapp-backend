@@ -21,7 +21,9 @@ class RawMaterialReceptionResource extends JsonResource
             'notes' => $this->notes,
             'netWeight' => $this->netWeight,
             'species' => $this->species,
-            'details' => RawMaterialReceptionProductResource::collection($this->products) // Asumiendo que tienes un resource para RawMaterialReceptionProduct
+            'details' => RawMaterialReceptionProductResource::collection($this->products),
+            'pallets' => \App\Http\Resources\v2\PalletResource::collection($this->pallets), // Nuevo
+            'totalAmount' => $this->totalAmount,
         ];
     }
 

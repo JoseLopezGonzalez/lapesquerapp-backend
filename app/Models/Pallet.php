@@ -77,6 +77,19 @@ class Pallet extends Model
         // Validar antes de actualizar
         static::updating(function ($pallet) {
             $pallet->validateUpdateRules();
+            
+            // No permitir cambiar la recepción de un palet
+            if ($pallet->reception_id !== null && $pallet->isDirty('reception_id')) {
+                throw new \Exception('No se puede cambiar la recepción de un palet.');
+            }
+        });
+        
+        // Validar antes de eliminar
+        static::deleting(function ($pallet) {
+            // No permitir eliminar un palet que proviene de una recepción directamente
+            if ($pallet->reception_id !== null) {
+                throw new \Exception('No se puede eliminar un palet que proviene de una recepción. Elimine la recepción o modifique desde la recepción.');
+            }
         });
     }
 
@@ -232,6 +245,22 @@ class Pallet extends Model
         return $this->belongsTo(Order::class);
     }
 
+    /**
+     * Relación con recepción de materia prima
+     */
+    public function reception()
+    {
+        return $this->belongsTo(RawMaterialReception::class, 'reception_id');
+    }
+
+    /**
+     * Determina si el palet proviene de una recepción
+     */
+    public function getIsFromReceptionAttribute(): bool
+    {
+        return $this->reception_id !== null;
+    }
+
     //Resumen de articulos : devuelve un array de articulos, cajas por articulos y cantidad total por articulos
     public function getSummaryAttribute()
     {
@@ -327,6 +356,59 @@ class Pallet extends Model
         })->sum(function ($palletBox) {
             return $palletBox->box->net_weight ?? 0;
         });
+    }
+
+    /**
+     * Calcula el coste por kg del palet (media ponderada de las cajas)
+     */
+    public function getCostPerKgAttribute(): ?float
+    {
+        if (!$this->boxes || $this->boxes->isEmpty()) {
+            return null;
+        }
+  
+        $totalCost = 0;
+        $totalWeight = 0;
+  
+        foreach ($this->boxes as $palletBox) {
+            $box = $palletBox->box;
+            $boxCost = $box->total_cost;
+            $boxWeight = $box->net_weight;
+      
+            if ($boxCost !== null && $boxWeight > 0) {
+                $totalCost += $boxCost;
+                $totalWeight += $boxWeight;
+            }
+        }
+  
+        if ($totalWeight == 0) {
+            return null;
+        }
+  
+        return $totalCost / $totalWeight;
+    }
+
+    /**
+     * Calcula el coste total del palet (suma de costes de cajas)
+     */
+    public function getTotalCostAttribute(): ?float
+    {
+        if (!$this->boxes || $this->boxes->isEmpty()) {
+            return null;
+        }
+  
+        $totalCost = 0;
+        $hasCost = false;
+  
+        foreach ($this->boxes as $palletBox) {
+            $boxCost = $palletBox->box->total_cost;
+            if ($boxCost !== null) {
+                $totalCost += $boxCost;
+                $hasCost = true;
+            }
+        }
+  
+        return $hasCost ? $totalCost : null;
     }
 
     public function getPositionAttribute()
@@ -560,6 +642,11 @@ class Pallet extends Model
             'usedBoxesCount' => $this->usedBoxesCount,
             'totalAvailableWeight' => $this->totalAvailableWeight !== null ? round($this->totalAvailableWeight, 3) : null,
             'totalUsedWeight' => $this->totalUsedWeight !== null ? round($this->totalUsedWeight, 3) : null,
+            // Nuevos campos de recepción y coste
+            'receptionId' => $this->reception_id,
+            'isFromReception' => $this->isFromReception,
+            'costPerKg' => $this->cost_per_kg !== null ? round($this->cost_per_kg, 4) : null,
+            'totalCost' => $this->total_cost !== null ? round($this->total_cost, 2) : null,
         ];
     }
 

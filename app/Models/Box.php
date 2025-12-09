@@ -159,6 +159,37 @@ class Box extends Model
         return $latestInput?->productionRecord?->production;
     }
 
+    /**
+     * Obtiene el coste por kg de la caja desde la recepción
+     */
+    public function getCostPerKgAttribute(): ?float
+    {
+        $pallet = $this->pallet;
+        if (!$pallet || !$pallet->reception_id) {
+            return null;
+        }
+  
+        $reception = $pallet->reception;
+        $receptionProduct = $reception->products()
+            ->where('product_id', $this->article_id)
+            ->first();
+  
+        return $receptionProduct?->price;
+    }
+
+    /**
+     * Calcula el coste total de la caja
+     */
+    public function getTotalCostAttribute(): ?float
+    {
+        $costPerKg = $this->cost_per_kg;
+        if ($costPerKg === null) {
+            return null;
+        }
+  
+        return $this->net_weight * $costPerKg;
+    }
+
     public function toArrayAssoc()
     {
         return [
@@ -192,6 +223,8 @@ class Box extends Model
                 'id' => $production->id,
                 'lot' => $production->lot,
             ] : null, // Información de la producción más reciente en la que se usó esta caja
+            'costPerKg' => $this->cost_per_kg, // Nuevo (accessor)
+            'totalCost' => $this->total_cost, // Nuevo (accessor)
         ];
     }
 
