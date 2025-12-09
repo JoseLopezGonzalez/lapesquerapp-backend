@@ -124,8 +124,6 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
                 $query->whereHas('palletBox.pallet', function ($query) {
                     $query->where('status', \App\Models\Pallet::STATE_PROCESSED);
                 });
-                    $query->where('status', 3);
-                });
             }
         }
 
