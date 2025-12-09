@@ -36,6 +36,42 @@ class RawMaterialReceptionProduct extends Model
     }
 
     /**
+     * Obtener el lote de las cajas de este producto en la recepción
+     */
+    public function getLotAttribute(): ?string
+    {
+        if (!$this->reception) {
+            return null;
+        }
+
+        // Obtener las cajas de los palets de la recepción que corresponden a este producto
+        $box = Box::whereHas('palletBox.pallet', function ($query) {
+            $query->where('reception_id', $this->reception_id);
+        })
+        ->where('article_id', $this->product_id)
+        ->first();
+
+        return $box ? $box->lot : null;
+    }
+
+    /**
+     * Obtener el número de cajas de este producto en la recepción
+     */
+    public function getBoxesAttribute(): int
+    {
+        if (!$this->reception) {
+            return 0;
+        }
+
+        // Contar las cajas de los palets de la recepción que corresponden a este producto
+        return Box::whereHas('palletBox.pallet', function ($query) {
+            $query->where('reception_id', $this->reception_id);
+        })
+        ->where('article_id', $this->product_id)
+        ->count();
+    }
+
+    /**
      * Boot del modelo - Validaciones y eventos
      */
     protected static function boot()

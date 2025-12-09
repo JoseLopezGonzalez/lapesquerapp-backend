@@ -19,10 +19,11 @@ class RawMaterialReceptionResource extends JsonResource
             'supplier' => $this->supplier,
             'date' => $this->date,
             'notes' => $this->notes,
+            'creationMode' => $this->creation_mode, // 'lines' o 'pallets'
             'netWeight' => $this->netWeight,
             'species' => $this->species,
             'details' => RawMaterialReceptionProductResource::collection($this->products),
-            'pallets' => \App\Http\Resources\v2\PalletResource::collection($this->pallets), // Nuevo
+            'pallets' => \App\Http\Resources\v2\PalletResource::collection($this->pallets),
             'totalAmount' => $this->totalAmount,
         ];
     }

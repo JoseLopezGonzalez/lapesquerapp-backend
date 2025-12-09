@@ -25,6 +25,7 @@ El modelo `RawMaterialReception` representa una **recepción de materia prima** 
 **Migraciones adicionales**:
 - `2025_04_25_093016_add_declared_total_amount_to_raw_material_receptions_table.php` - Agrega `declared_total_amount`
 - `2025_04_25_101036_add_declared_total_net_weight_to_raw_material_receptions_table.php` - Agrega `declared_total_net_weight`
+- `2025_12_09_181100_add_creation_mode_to_raw_material_receptions_table.php` - Agrega `creation_mode`
 
 **Campos**:
 
@@ -36,6 +37,7 @@ El modelo `RawMaterialReception` representa una **recepción de materia prima** 
 | `declared_total_amount` | decimal(10,2) | YES | Importe total declarado (agregado después) |
 | `declared_total_net_weight` | decimal(10,2) | YES | Peso neto total declarado (agregado después) |
 | `notes` | text | YES | Notas adicionales |
+| `creation_mode` | string(20) | YES | Modo de creación: `'lines'` (por líneas) o `'pallets'` (por palets) |
 | `created_at` | timestamp | NO | Fecha de creación |
 | `updated_at` | timestamp | NO | Fecha de última actualización |
 
@@ -87,7 +89,12 @@ protected $fillable = [
     'notes',
     'declared_total_amount',
     'declared_total_net_weight',
+    'creation_mode',
 ];
+
+// Constantes para creation_mode
+const CREATION_MODE_LINES = 'lines';
+const CREATION_MODE_PALLETS = 'pallets';
 ```
 
 #### Appended Attributes
@@ -340,15 +347,19 @@ GET /v2/raw-material-receptions/{id}
 PUT /v2/raw-material-receptions/{id}
 ```
 
-**Validación**: Igual que `store()`
+**Validación**: Similar a `store()`, pero solo acepta `details` (modo automático por líneas)
 
-**Validación**: Similar a `store()`, pero solo acepta `details` (modo automático)
-
-**Comportamiento**:
+**Restricciones importantes**:
+- **Solo se puede editar por líneas si la recepción fue creada por líneas** (`creation_mode === 'lines'`)
+- Si la recepción fue creada por palets (`creation_mode === 'pallets'`), no se puede editar por líneas. Debe modificar los palets directamente.
 - Solo se puede modificar si hay **un solo palet** asociado y no está en uso
 - Si el palet está vinculado a un pedido, almacenado o tiene cajas en producción, no se puede modificar
+
+**Comportamiento**:
+- Valida que `creation_mode === 'lines'` antes de permitir la edición
 - Elimina el palet y cajas existentes, luego recrea todo según los nuevos `details`
 - Actualiza la recepción y recrea los productos recibidos
+- El `creation_mode` se mantiene como `'lines'` (no se puede cambiar)
 
 #### `destroy($id)` - Eliminar Recepción
 ```php
@@ -439,10 +450,11 @@ GET /v2/raw-material-receptions/a3erp-xls
     "supplier": {...},
     "date": "2025-01-15",
     "notes": "...",
+    "creationMode": "lines", // 'lines' o 'pallets'
     "netWeight": 1000.50,
     "species": {...},
     "details": [...],
-    "pallets": [...], // Nuevo: Palets creados desde esta recepción
+    "pallets": [...], // Palets creados desde esta recepción
     "totalAmount": 12500.00
 }
 ```

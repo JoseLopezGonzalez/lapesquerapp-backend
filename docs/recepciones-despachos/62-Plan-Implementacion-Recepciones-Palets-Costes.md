@@ -27,6 +27,7 @@ Este documento describe el plan de implementación para vincular las **recepcion
   - `id`, `supplier_id`, `date`, `notes`
   - `declared_total_amount` (importe total declarado)
   - `declared_total_net_weight` (peso neto total declarado)
+  - `creation_mode` (string, nullable): `'lines'` (creada por líneas) o `'pallets'` (creada por palets)
 - **Productos de recepción** (`RawMaterialReceptionProduct`):
   - `reception_id`, `product_id`, `net_weight`, `price`
   - **✅ Confirmado**: El campo `price` existe en la base de datos
@@ -89,6 +90,26 @@ Schema::table('pallets', function (Blueprint $table) {
 - Si se elimina una recepción, los palets asociados deben eliminarse también
 - Las validaciones en el modelo impedirán eliminar recepciones si los palets están en uso
 
+#### 1.1.1 Migración de `creation_mode` en Recepciones
+
+**Nueva migración**: `add_creation_mode_to_raw_material_receptions_table.php`
+
+```php
+Schema::table('raw_material_receptions', function (Blueprint $table) {
+    if (!Schema::hasColumn('raw_material_receptions', 'creation_mode')) {
+        $table->string('creation_mode', 20)->nullable()->after('notes')
+              ->comment('Modo de creación: "lines" (por líneas) o "pallets" (por palets)');
+    }
+});
+```
+
+**Propósito**: Distinguir si una recepción fue creada por líneas (modo automático) o por palets (modo manual). Esto permite validar que solo se puedan editar por líneas las recepciones que fueron creadas por líneas, evitando perder los pesos reales de las cajas en recepciones creadas por palets.
+
+**Valores posibles**:
+- `'lines'`: Recepción creada por líneas (modo automático) - Las cajas tienen pesos promedios
+- `'pallets'`: Recepción creada por palets (modo manual) - Las cajas tienen pesos reales específicos
+- `null`: Recepciones antiguas (antes de esta implementación)
+
 #### 1.2 Actualización del Modelo Pallet
 
 **Archivo**: `app/Models/Pallet.php`
@@ -135,6 +156,20 @@ protected static function boot()
 **Archivo**: `app/Models/RawMaterialReception.php`
 
 ```php
+// Agregar creation_mode a fillable
+protected $fillable = [
+    'supplier_id',
+    'date',
+    'notes',
+    'declared_total_amount',
+    'declared_total_net_weight',
+    'creation_mode',
+];
+
+// Constantes para creation_mode
+const CREATION_MODE_LINES = 'lines';
+const CREATION_MODE_PALLETS = 'pallets';
+
 // Nueva relación
 public function pallets()
 {
@@ -567,6 +602,14 @@ public function store(Request $request)
         $reception->supplier_id = $request->supplier['id'];
         $reception->date = $request->date;
         $reception->notes = $request->notes ?? null;
+        
+        // Determinar y guardar el modo de creación
+        if ($request->has('pallets') && !empty($request->pallets)) {
+            $reception->creation_mode = RawMaterialReception::CREATION_MODE_PALLETS;
+        } else {
+            $reception->creation_mode = RawMaterialReception::CREATION_MODE_LINES;
+        }
+        
         $reception->save();
 
         // 2. Crear palets y líneas según el modo
@@ -726,10 +769,14 @@ private function generateGS1128(RawMaterialReception $reception, int $productId,
 
 **Restricciones importantes**:
 
+- **Solo se pueden editar por líneas si la recepción fue creada por líneas** (`creation_mode === 'lines'`)
+- Si la recepción fue creada por palets (`creation_mode === 'pallets'`), no se puede editar por líneas. Debe modificar los palets directamente.
 - Solo se pueden modificar las líneas si:
   - Existe **un solo palet** asociado a la recepción
   - El palet **NO está en uso** (no tiene `order_id`, no está almacenado, no tiene cajas en producción)
 - Si hay más palets, será necesario actualizar la recepción mediante el método de palets directamente
+
+**Razón**: Las recepciones creadas por palets tienen cajas con pesos reales específicos. Si se editan por líneas, se perderían esos pesos reales y se crearían cajas con pesos promedios, rompiendo la lógica de negocio.
 
 ```php
 public function update(Request $request, $id)
@@ -742,13 +789,18 @@ public function update(Request $request, $id)
         'details.*.product.id' => 'required|exists:tenant.products,id',
         'details.*.netWeight' => 'required|numeric',
         'details.*.price' => 'nullable|numeric|min:0',
-        'details.*.lot' => 'nullable|string', // NUEVO
-        'details.*.boxes' => 'nullable|integer|min:0', // NUEVO
+        'details.*.lot' => 'nullable|string',
+        'details.*.boxes' => 'nullable|integer|min:0',
     ]);
 
     $reception = RawMaterialReception::findOrFail($id);
   
     return DB::transaction(function () use ($reception, $validated, $request) {
+        // Validar que solo se puede editar por líneas si fue creada por líneas
+        if ($reception->creation_mode === RawMaterialReception::CREATION_MODE_PALLETS) {
+            throw new \Exception('No se puede modificar una recepción creada por palets usando el método de líneas. Debe modificar los palets directamente.');
+        }
+        
         // Validar que se puede modificar
         $pallets = $reception->pallets;
       
@@ -817,8 +869,9 @@ public function toArray($request)
         'supplier' => new SupplierResource($this->supplier),
         'date' => $this->date,
         'notes' => $this->notes,
+        'creationMode' => $this->creation_mode, // 'lines' o 'pallets'
         'products' => RawMaterialReceptionProductResource::collection($this->products),
-        'pallets' => PalletResource::collection($this->pallets), // Nuevo
+        'pallets' => PalletResource::collection($this->pallets),
         'totalNetWeight' => $this->netWeight,
         'totalAmount' => $this->totalAmount,
     ];

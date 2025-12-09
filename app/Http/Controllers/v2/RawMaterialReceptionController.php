@@ -108,6 +108,14 @@ class RawMaterialReceptionController extends Controller
             $reception->supplier_id = $request->supplier['id'];
             $reception->date = $request->date;
             $reception->notes = $request->notes ?? null;
+            
+            // Determinar y guardar el modo de creación
+            if ($request->has('pallets') && !empty($request->pallets)) {
+                $reception->creation_mode = RawMaterialReception::CREATION_MODE_PALLETS;
+            } else {
+                $reception->creation_mode = RawMaterialReception::CREATION_MODE_LINES;
+            }
+            
             $reception->save();
 
             // 2. Crear palets y líneas según el modo
@@ -149,6 +157,11 @@ class RawMaterialReceptionController extends Controller
         $reception = RawMaterialReception::findOrFail($id);
   
         return DB::transaction(function () use ($reception, $validated, $request) {
+            // Validar que solo se puede editar por líneas si fue creada por líneas
+            if ($reception->creation_mode === RawMaterialReception::CREATION_MODE_PALLETS) {
+                throw new \Exception('No se puede modificar una recepción creada por palets usando el método de líneas. Debe modificar los palets directamente.');
+            }
+            
             // Validar que se puede modificar
             $pallets = $reception->pallets;
       

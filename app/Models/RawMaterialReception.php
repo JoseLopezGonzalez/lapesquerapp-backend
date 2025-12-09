@@ -12,7 +12,11 @@ class RawMaterialReception extends Model
     use UsesTenantConnection;
     use HasFactory;
 
-    protected $fillable = ['supplier_id', 'date', 'notes', 'declared_total_amount', 'declared_total_net_weight'];
+    protected $fillable = ['supplier_id', 'date', 'notes', 'declared_total_amount', 'declared_total_net_weight', 'creation_mode'];
+
+    // Constantes para creation_mode
+    const CREATION_MODE_LINES = 'lines';
+    const CREATION_MODE_PALLETS = 'pallets';
 
     protected $appends = ['total_amount'];
 
