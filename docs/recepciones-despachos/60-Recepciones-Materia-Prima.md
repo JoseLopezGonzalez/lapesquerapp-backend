@@ -12,7 +12,7 @@ El modelo `RawMaterialReception` representa una **recepción de materia prima** 
 
 **Archivo del modelo**: `app/Models/RawMaterialReception.php`
 
-**Relación con Inventario**: Las recepciones registran la entrada de productos, pero **NO crean automáticamente** palets o cajas en inventario. Son un registro contable/logístico.
+**Relación con Inventario**: Las recepciones **crean automáticamente palets y cajas** en inventario. Los palets son la unidad mínima almacenable según la lógica del ERP. Cada recepción genera palets con sus cajas correspondientes, estableciendo una trazabilidad completa desde la recepción hasta el inventario físico.
 
 ---
 
@@ -136,6 +136,16 @@ public function products()
 }
 ```
 
+#### 3. `pallets()` - Palets Creados
+```php
+public function pallets()
+{
+    return $this->hasMany(Pallet::class, 'reception_id');
+}
+```
+
+**Nueva relación**: Cada recepción puede tener múltiples palets asociados. Los palets se crean automáticamente al crear la recepción.
+
 ### RawMaterialReceptionProduct
 
 #### 1. `reception()` - Recepción
@@ -228,19 +238,40 @@ GET /v2/raw-material-receptions
 POST /v2/raw-material-receptions
 ```
 
-**Validación**:
+**Validación** (Modo Automático - details):
 ```php
 [
     'supplier.id' => 'required',
     'date' => 'required|date',
     'notes' => 'nullable|string',
-    'details' => 'required|array',
-    'details.*.product.id' => 'required|exists:tenant.products,id',
-    'details.*.netWeight' => 'required|numeric',
+    'details' => 'required_without:pallets|array',
+    'details.*.product.id' => 'required_with:details|exists:tenant.products,id',
+    'details.*.netWeight' => 'required_with:details|numeric',
+    'details.*.price' => 'nullable|numeric|min:0',
+    'details.*.lot' => 'nullable|string',
+    'details.*.boxes' => 'nullable|integer|min:0', // Número de cajas (0 = 1)
 ]
 ```
 
-**Request body**:
+**Validación** (Modo Manual - pallets):
+```php
+[
+    'supplier.id' => 'required',
+    'date' => 'required|date',
+    'notes' => 'nullable|string',
+    'pallets' => 'required_without:details|array',
+    'pallets.*.product.id' => 'required_with:pallets|exists:tenant.products,id',
+    'pallets.*.price' => 'required_with:pallets|numeric|min:0',
+    'pallets.*.lot' => 'nullable|string',
+    'pallets.*.observations' => 'nullable|string',
+    'pallets.*.boxes' => 'required_with:pallets|array',
+    'pallets.*.boxes.*.gs1128' => 'required|string',
+    'pallets.*.boxes.*.grossWeight' => 'required|numeric',
+    'pallets.*.boxes.*.netWeight' => 'required|numeric',
+]
+```
+
+**Request body** (Modo Automático):
 ```json
 {
     "supplier": {
@@ -253,23 +284,56 @@ POST /v2/raw-material-receptions
             "product": {
                 "id": 10
             },
-            "netWeight": 1000.50
+            "netWeight": 1000.50,
+            "price": 12.50,
+            "lot": "LOT-2025-001",
+            "boxes": 20
+        }
+    ]
+}
+```
+
+**Request body** (Modo Manual):
+```json
+{
+    "supplier": {
+        "id": 1
+    },
+    "date": "2025-01-15",
+    "notes": "Recepción normal",
+    "pallets": [
+        {
+            "product": {
+                "id": 10
+            },
+            "price": 12.50,
+            "lot": "LOT-2025-001",
+            "observations": "Palet 1",
+            "boxes": [
+                {
+                    "gs1128": "GS1-001",
+                    "grossWeight": 25.5,
+                    "netWeight": 25.0
+                }
+            ]
         }
     ]
 }
 ```
 
 **Comportamiento**:
-- Crea la recepción
-- Crea los productos recibidos (details)
-- **No guarda precios** (no están en la validación ni en la creación)
+- **Modo Automático (details)**: Crea 1 palet por recepción, distribuye el peso entre las cajas según el campo `boxes`, crea líneas de recepción automáticamente
+- **Modo Manual (pallets)**: Crea palets según especificación, crea líneas de recepción automáticamente agrupando por producto y lote
+- Si no se proporciona `price`, intenta obtenerlo del último precio del mismo producto y proveedor
+- Si no se proporciona `lot`, se genera automáticamente
+- Si `boxes` es 0 o null, se cuenta como 1
 
 #### `show($id)` - Mostrar Recepción
 ```php
 GET /v2/raw-material-receptions/{id}
 ```
 
-**Eager Loading**: `supplier`, `products.product`
+**Eager Loading**: `supplier`, `products.product`, `pallets`
 
 #### `update(Request $request, $id)` - Actualizar Recepción
 ```php
@@ -278,10 +342,13 @@ PUT /v2/raw-material-receptions/{id}
 
 **Validación**: Igual que `store()`
 
+**Validación**: Similar a `store()`, pero solo acepta `details` (modo automático)
+
 **Comportamiento**:
-- Actualiza la recepción
-- **Elimina todos los productos** y los vuelve a crear
-- **⚠️ No preserva IDs** de productos al actualizar
+- Solo se puede modificar si hay **un solo palet** asociado y no está en uso
+- Si el palet está vinculado a un pedido, almacenado o tiene cajas en producción, no se puede modificar
+- Elimina el palet y cajas existentes, luego recrea todo según los nuevos `details`
+- Actualiza la recepción y recrea los productos recibidos
 
 #### `destroy($id)` - Eliminar Recepción
 ```php
@@ -374,7 +441,9 @@ GET /v2/raw-material-receptions/a3erp-xls
     "notes": "...",
     "netWeight": 1000.50,
     "species": {...},
-    "details": [...]
+    "details": [...],
+    "pallets": [...], // Nuevo: Palets creados desde esta recepción
+    "totalAmount": 12500.00
 }
 ```
 
