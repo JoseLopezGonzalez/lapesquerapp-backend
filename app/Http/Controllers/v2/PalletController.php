@@ -58,7 +58,9 @@ class PalletController extends Controller
         }
 
         if (!empty($filters['state'])) {
-            if ($filters['state'] === 'stored') {
+            if ($filters['state'] === 'registered') {
+                $query->where('status', Pallet::STATE_REGISTERED);
+            } elseif ($filters['state'] === 'stored') {
                 $query->where('status', Pallet::STATE_STORED);
             } elseif ($filters['state'] === 'shipped') {
                 $query->where('status', Pallet::STATE_SHIPPED);

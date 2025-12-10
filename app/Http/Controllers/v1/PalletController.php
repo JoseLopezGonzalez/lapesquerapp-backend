@@ -40,10 +40,15 @@ class PalletController extends Controller
         }
 
         if ($request->has('state')) {
-            if ($request->input('state') == 'stored') {
+            $state = $request->input('state');
+            if ($state == 'registered') {
+                $query->where('status', Pallet::STATE_REGISTERED);
+            } else if ($state == 'stored') {
                 $query->where('status', Pallet::STATE_STORED);
-            } else if ($request->input('state') == 'shipped') {
+            } else if ($state == 'shipped') {
                 $query->where('status', Pallet::STATE_SHIPPED);
+            } else if ($state == 'processed') {
+                $query->where('status', Pallet::STATE_PROCESSED);
             }
         }
 
