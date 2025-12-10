@@ -31,7 +31,7 @@ class RawMaterialReceptionProduct extends Model
     {
         /* Find RawMaterial(product_id) */
         $rawMaterial = RawMaterial::where('id', $this->product_id)->first();
-        return $rawMaterial->alias;
+        return $rawMaterial?->alias ?? null;
         /* return $this->product->rawMaterials->where('id', $this->product_id)->first()->alias; */
     }
 
