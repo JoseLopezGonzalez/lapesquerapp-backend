@@ -16,7 +16,9 @@ class RawMaterialReceptionResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'supplier' => $this->supplier,
+            'supplier' => $this->whenLoaded('supplier', function () {
+                return new SupplierResource($this->supplier);
+            }),
             'date' => $this->date,
             'notes' => $this->notes,
             'creationMode' => $this->creation_mode, // 'lines' o 'pallets'

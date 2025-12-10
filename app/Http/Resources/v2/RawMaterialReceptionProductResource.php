@@ -16,7 +16,9 @@ class RawMaterialReceptionProductResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'product' => $this->product,
+            'product' => $this->whenLoaded('product', function () {
+                return new ProductResource($this->product);
+            }),
             'netWeight' => $this->net_weight,
             'price' => $this->price,
             'lot' => $this->lot,

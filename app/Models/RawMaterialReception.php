@@ -78,7 +78,16 @@ class RawMaterialReception extends Model
     /* GEnerar atributo especie segun la especie a la que pertenezca sus productos */
     public function getSpeciesAttribute()
     {
-        return $this->products->first()->product->species;
+        if ($this->products->isEmpty()) {
+            return null;
+        }
+        
+        $firstProduct = $this->products->first();
+        if (!$firstProduct->relationLoaded('product') || !$firstProduct->product) {
+            return null;
+        }
+        
+        return $firstProduct->product->species;
     }
 
     public function getTotalAmountAttribute()
