@@ -163,11 +163,13 @@ class RawMaterialReceptionController extends Controller
                 'date' => 'required|date',
                 'notes' => 'nullable|string',
                 'pallets' => 'required|array',
+                'pallets.*.id' => 'nullable|integer|exists:tenant.pallets,id',
                 'pallets.*.product.id' => 'required|exists:tenant.products,id',
                 'pallets.*.price' => 'required|numeric|min:0',
                 'pallets.*.lot' => 'nullable|string',
                 'pallets.*.observations' => 'nullable|string',
                 'pallets.*.boxes' => 'required|array',
+                'pallets.*.boxes.*.id' => 'nullable|integer|exists:tenant.boxes,id',
                 'pallets.*.boxes.*.gs1128' => 'required|string',
                 'pallets.*.boxes.*.grossWeight' => 'required|numeric',
                 'pallets.*.boxes.*.netWeight' => 'required|numeric',
@@ -198,27 +200,16 @@ class RawMaterialReceptionController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
-            // Eliminar palets y cajas existentes
-            foreach ($reception->pallets as $pallet) {
-                foreach ($pallet->boxes as $palletBox) {
-                    $palletBox->box->delete();
-                }
-                $pallet->delete();
-            }
-
-            // Eliminar líneas antiguas
-            $reception->products()->delete();
-
-            // Crear nuevos datos según el modo
+            // Actualizar datos según el modo (editar en lugar de eliminar/recrear)
             if ($reception->creation_mode === RawMaterialReception::CREATION_MODE_PALLETS) {
-                // Modo palets: crear palets y generar líneas
-                $this->createPalletsFromRequest($reception, $validated['pallets']);
+                // Modo palets: editar palets y cajas existentes
+                $this->updatePalletsFromRequest($reception, $validated['pallets']);
             } else {
-                // Modo líneas o recepciones antiguas: crear líneas y generar palet
-                $this->createDetailsFromRequest($reception, $validated['details'], $request->supplier['id']);
+                // Modo líneas o recepciones antiguas: editar palet único y cajas
+                $this->updateDetailsFromRequest($reception, $validated['details'], $request->supplier['id']);
             }
 
-            $reception->load('supplier', 'products.product', 'pallets');
+            $reception->load('supplier', 'products.product', 'pallets.boxes.box.productionInputs');
             return new RawMaterialReceptionResource($reception);
         });
     }
@@ -242,6 +233,139 @@ class RawMaterialReceptionController extends Controller
         RawMaterialReception::whereIn('id', $ids)->delete();
 
         return response()->json(['message' => 'Recepciones de materia prima eliminadas con éxito']);
+    }
+
+    /**
+     * Actualizar palets desde request (modo manual - edición)
+     */
+    private function updatePalletsFromRequest(RawMaterialReception $reception, array $palletsData): void
+    {
+        // Cargar palets existentes con sus cajas
+        $reception->load('pallets.boxes.box');
+        $existingPallets = $reception->pallets->keyBy('id');
+        $processedPalletIds = [];
+        $groupedByProduct = [];
+
+        foreach ($palletsData as $palletData) {
+            $productId = $palletData['product']['id'];
+            $lot = $palletData['lot'] ?? $this->generateLotFromReception($reception, $productId);
+            
+            // Determinar si es palet existente o nuevo
+            $palletId = $palletData['id'] ?? null;
+            
+            if ($palletId && $existingPallets->has($palletId)) {
+                // Actualizar palet existente
+                $pallet = $existingPallets->get($palletId);
+                $pallet->observations = $palletData['observations'] ?? null;
+                $pallet->save();
+                $processedPalletIds[] = $palletId;
+                // Recargar cajas del palet
+                $pallet->load('boxes.box');
+            } else {
+                // Crear nuevo palet
+                $pallet = new Pallet();
+                $pallet->reception_id = $reception->id;
+                $pallet->observations = $palletData['observations'] ?? null;
+                $pallet->status = Pallet::STATE_REGISTERED;
+                $pallet->save();
+                $palletId = $pallet->id;
+            }
+
+            // Procesar cajas del palet
+            $existingBoxes = $pallet->boxes->keyBy(function ($palletBox) {
+                return $palletBox->box_id;
+            });
+            
+            $processedBoxIds = [];
+            $totalWeight = 0;
+
+            foreach ($palletData['boxes'] as $boxData) {
+                $boxId = $boxData['id'] ?? null;
+                
+                if ($boxId && $existingBoxes->has($boxId)) {
+                    // Actualizar caja existente
+                    $box = $existingBoxes->get($boxId)->box;
+                    $box->article_id = $productId;
+                    $box->lot = $lot;
+                    $box->gs1_128 = $boxData['gs1128'];
+                    $box->gross_weight = $boxData['grossWeight'];
+                    $box->net_weight = $boxData['netWeight'];
+                    $box->save();
+                    $processedBoxIds[] = $boxId;
+                } else {
+                    // Crear nueva caja
+                    $box = new Box();
+                    $box->article_id = $productId;
+                    $box->lot = $lot;
+                    $box->gs1_128 = $boxData['gs1128'];
+                    $box->gross_weight = $boxData['grossWeight'];
+                    $box->net_weight = $boxData['netWeight'];
+                    $box->save();
+                    
+                    // Crear relación palet-caja
+                    PalletBox::create([
+                        'pallet_id' => $pallet->id,
+                        'box_id' => $box->id,
+                    ]);
+                }
+                
+                $totalWeight += $box->net_weight;
+            }
+
+            // Eliminar cajas que ya no están en el request
+            $boxesToDelete = $pallet->boxes->filter(function ($palletBox) use ($processedBoxIds) {
+                return !in_array($palletBox->box_id, $processedBoxIds);
+            });
+            
+            foreach ($boxesToDelete as $palletBox) {
+                // Eliminar caja (ya validamos que no está en producción en validateCanEdit)
+                $palletBox->box->delete();
+                $palletBox->delete();
+            }
+            
+            // Recargar relación después de eliminar
+            if ($boxesToDelete->isNotEmpty()) {
+                $pallet->load('boxes.box');
+            }
+
+            // Agrupar por producto y lote para crear líneas
+            $key = "{$productId}_{$lot}";
+            if (!isset($groupedByProduct[$key])) {
+                $groupedByProduct[$key] = [
+                    'product_id' => $productId,
+                    'lot' => $lot,
+                    'net_weight' => 0,
+                    'price' => $palletData['price'],
+                ];
+            }
+            $groupedByProduct[$key]['net_weight'] += $totalWeight;
+        }
+
+        // Eliminar palets que ya no están en el request
+        foreach ($reception->pallets as $pallet) {
+            if (!in_array($pallet->id, $processedPalletIds)) {
+                // Cargar cajas del palet
+                $pallet->load('boxes.box');
+                
+                // Eliminar relaciones palet-caja y cajas (usando eliminación directa de BD)
+                foreach ($pallet->boxes as $palletBox) {
+                    DB::table('boxes')->where('id', $palletBox->box_id)->delete();
+                }
+                DB::table('pallet_boxes')->where('pallet_id', $pallet->id)->delete();
+                // Eliminar palet (usando eliminación directa de BD para evitar el evento)
+                DB::table('pallets')->where('id', $pallet->id)->delete();
+            }
+        }
+
+        // Eliminar líneas antiguas y crear nuevas
+        $reception->products()->delete();
+        foreach ($groupedByProduct as $group) {
+            $reception->products()->create([
+                'product_id' => $group['product_id'],
+                'net_weight' => $group['net_weight'],
+                'price' => $group['price'],
+            ]);
+        }
     }
 
     /**
@@ -302,6 +426,77 @@ class RawMaterialReceptionController extends Controller
                 'net_weight' => $group['net_weight'],
                 'price' => $group['price'],
             ]);
+        }
+    }
+
+    /**
+     * Actualizar detalles desde request (modo automático - edición)
+     * En modo LINES, las cajas se generan automáticamente, así que mantenemos el palet
+     * pero recreamos las cajas según los nuevos detalles
+     */
+    private function updateDetailsFromRequest(RawMaterialReception $reception, array $details, int $supplierId): void
+    {
+        // Cargar palet único de la recepción
+        $reception->load('pallets.boxes.box');
+        $pallet = $reception->pallets->first();
+        
+        if (!$pallet) {
+            // Si no existe palet, crear uno nuevo
+            $pallet = new Pallet();
+            $pallet->reception_id = $reception->id;
+            $pallet->observations = "Auto-generado desde recepción #{$reception->id}";
+            $pallet->status = Pallet::STATE_REGISTERED;
+            $pallet->save();
+        } else {
+            // Actualizar observaciones del palet existente (mantener el palet)
+            $pallet->observations = "Auto-generado desde recepción #{$reception->id}";
+            $pallet->save();
+            
+            // Eliminar cajas existentes (se recrearán según los nuevos detalles)
+            foreach ($pallet->boxes as $palletBox) {
+                // Usar eliminación directa de BD para evitar el evento deleting
+                DB::table('boxes')->where('id', $palletBox->box_id)->delete();
+            }
+            // Eliminar relaciones palet-caja
+            DB::table('pallet_boxes')->where('pallet_id', $pallet->id)->delete();
+        }
+
+        // Eliminar líneas antiguas
+        $reception->products()->delete();
+
+        // Crear nuevas líneas y cajas según los detalles
+        foreach ($details as $detail) {
+            $productId = $detail['product']['id'];
+        
+            // Obtener precio (del request o del histórico)
+            $price = $detail['price'] ?? $this->getDefaultPrice($productId, $supplierId);
+        
+            // Crear línea de recepción
+            $reception->products()->create([
+                'product_id' => $productId,
+                'net_weight' => $detail['netWeight'],
+                'price' => $price,
+            ]);
+      
+            $lot = $detail['lot'] ?? $this->generateLotFromReception($reception, $productId);
+            $numBoxes = max(1, $detail['boxes'] ?? 1);
+            $weightPerBox = $detail['netWeight'] / $numBoxes;
+      
+            // Crear nuevas cajas
+            for ($i = 0; $i < $numBoxes; $i++) {
+                $box = new Box();
+                $box->article_id = $productId;
+                $box->lot = $lot;
+                $box->gs1_128 = $this->generateGS1128($reception, $productId, $i);
+                $box->gross_weight = $weightPerBox * 1.02; // 2% estimado
+                $box->net_weight = $weightPerBox;
+                $box->save();
+          
+                PalletBox::create([
+                    'pallet_id' => $pallet->id,
+                    'box_id' => $box->id,
+                ]);
+            }
         }
     }
 

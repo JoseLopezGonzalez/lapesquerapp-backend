@@ -353,7 +353,9 @@ PUT /v2/raw-material-receptions/{id}
 
 **Validación**: Según el `creation_mode` de la recepción:
 - Si `creation_mode === 'lines'` → Acepta `details` (modo automático)
-- Si `creation_mode === 'pallets'` → Acepta `pallets` (modo manual)
+- Si `creation_mode === 'pallets'` → Acepta `pallets` (modo manual) con IDs opcionales:
+  - `pallets.*.id` (opcional): ID del palet existente
+  - `pallets.*.boxes.*.id` (opcional): ID de la caja existente
 - Si `creation_mode === null` (recepciones antiguas) → Acepta `details`
 
 **Restricciones importantes**:
@@ -367,10 +369,17 @@ PUT /v2/raw-material-receptions/{id}
 **Comportamiento**:
 - Valida las restricciones comunes antes de editar
 - Valida que el modo de edición coincida con el modo de creación
-- Elimina todos los palets y cajas existentes
-- Recrea todo según el modo de creación
+- **Modo PALLETS**: Edita palets y cajas existentes (si vienen con `id`), crea nuevos (si no vienen con `id`), elimina los que no están en el request
+- **Modo LINES**: Mantiene el palet único, recrea las cajas según los nuevos detalles
 - Regenera las líneas de recepción automáticamente
 - El `creation_mode` se mantiene (no se puede cambiar)
+
+**Lógica de Edición**:
+- Si `pallets[].id` existe → actualiza el palet existente
+- Si `pallets[].id` no existe → crea un nuevo palet
+- Si `boxes[].id` existe → actualiza la caja existente
+- Si `boxes[].id` no existe → crea una nueva caja
+- Elimina palets/cajas que no están en el request
 
 #### `destroy($id)` - Eliminar Recepción
 ```php

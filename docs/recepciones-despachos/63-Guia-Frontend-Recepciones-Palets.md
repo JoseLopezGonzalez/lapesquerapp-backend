@@ -174,12 +174,14 @@ Los palets que provienen de una recepción **no se pueden modificar ni eliminar 
   "notes": "Notas actualizadas",
   "pallets": [
     {
+      "id": 15,  // ← ID del palet existente (opcional, si no viene se crea nuevo)
       "product": { "id": 5 },
       "price": 12.50,
       "lot": "LOT-2025-001",
       "observations": "Palet 1",
       "boxes": [
         {
+          "id": 42,  // ← ID de la caja existente (opcional, si no viene se crea nueva)
           "gs1128": "GS1-001",
           "grossWeight": 25.5,
           "netWeight": 25.0
@@ -190,10 +192,14 @@ Los palets que provienen de una recepción **no se pueden modificar ni eliminar 
 }
 ```
 
+**⚠️ IMPORTANTE**: Para editar en lugar de recrear:
+- **Modo PALLETS**: Debes incluir los `id` de palets y cajas existentes en el request
+- **Modo LINES**: No es necesario enviar IDs (las cajas se regeneran automáticamente)
+
 **Comportamiento**:
 - Valida las restricciones antes de editar
-- Elimina palets y cajas existentes
-- Recrea todo según el modo de creación
+- **Modo PALLETS**: Edita palets y cajas existentes (si vienen con `id`), crea nuevos (si no vienen con `id`), elimina los que no están en el request
+- **Modo LINES**: Mantiene el palet único, recrea las cajas según los nuevos detalles
 - Regenera las líneas de recepción automáticamente
 
 ### Eliminar Recepción
@@ -569,6 +575,8 @@ POST /api/v2/raw-material-receptions
 
 ## 🔗 Referencias
 
+- [Guía Frontend de Edición](./64-Guia-Frontend-Edicion-Recepciones.md)
+- [Guía Backend de Edición](./65-Guia-Backend-Edicion-Recepciones.md)
 - [Documentación Técnica Completa](./62-Plan-Implementacion-Recepciones-Palets-Costes.md)
 - [Documentación de Recepciones](./60-Recepciones-Materia-Prima.md)
 - [Documentación de Palets](../inventario/31-Palets.md)

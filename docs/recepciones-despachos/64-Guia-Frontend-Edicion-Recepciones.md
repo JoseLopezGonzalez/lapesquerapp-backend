@@ -110,6 +110,32 @@ if (reception.creationMode === 'lines') {
 }
 ```
 
+### Paso 3: Incluir IDs en el Request (Modo PALLETS)
+
+**⚠️ IMPORTANTE**: En modo PALLETS, debes incluir los IDs de palets y cajas existentes para que se editen en lugar de recrearse:
+
+```javascript
+// Al preparar el request para editar
+const requestBody = {
+  supplier: { id: reception.supplier.id },
+  date: reception.date,
+  notes: reception.notes,
+  pallets: reception.pallets.map(pallet => ({
+    id: pallet.id,  // ← Incluir ID del palet
+    product: { id: pallet.product.id },
+    price: pallet.price,
+    lot: pallet.lot,
+    observations: pallet.observations,
+    boxes: pallet.boxes.map(box => ({
+      id: box.id,  // ← Incluir ID de la caja
+      gs1128: box.gs1128,
+      grossWeight: box.grossWeight,
+      netWeight: box.netWeight
+    }))
+  }))
+};
+```
+
 ---
 
 ## ✏️ Editar Recepción
@@ -159,6 +185,7 @@ if (reception.creationMode === 'lines') {
   "notes": "Notas actualizadas",
   "pallets": [
     {
+      "id": 15,  // ← ID del palet existente (opcional)
       "product": {
         "id": 5
       },
@@ -167,12 +194,13 @@ if (reception.creationMode === 'lines') {
       "observations": "Palet 1",
       "boxes": [
         {
+          "id": 42,  // ← ID de la caja existente (opcional)
           "gs1128": "GS1-001",
           "grossWeight": 25.5,
           "netWeight": 25.0
         },
         {
-          "gs1128": "GS1-002",
+          "gs1128": "GS1-002",  // ← Sin ID = nueva caja
           "grossWeight": 25.5,
           "netWeight": 25.0
         }
@@ -185,7 +213,18 @@ if (reception.creationMode === 'lines') {
 **Validaciones**:
 - `creationMode` debe ser `'pallets'`
 - `canEdit` debe ser `true`
-- El formato es idéntico al de creación en modo manual
+- `pallets[].id` es opcional (si viene, edita el palet existente; si no, crea uno nuevo)
+- `pallets[].boxes[].id` es opcional (si viene, edita la caja existente; si no, crea una nueva)
+
+**Comportamiento**:
+- Si `pallets[].id` existe → actualiza el palet existente
+- Si `pallets[].id` no existe → crea un nuevo palet
+- Si `boxes[].id` existe → actualiza la caja existente
+- Si `boxes[].id` no existe → crea una nueva caja
+- Elimina palets/cajas que no están en el request
+- Regenera líneas de recepción automáticamente
+
+**⚠️ RECOMENDACIÓN**: Siempre incluye los IDs de palets y cajas existentes para mantener los IDs originales y evitar recreaciones innecesarias.
 
 ---
 
@@ -318,7 +357,8 @@ function EditReceptionForm({ reception }) {
       {isLinesMode ? (
         <DetailsFields details={reception.details} />
       ) : (
-        <PalletsFields pallets={reception.pallets} />
+        // IMPORTANTE: Incluir IDs de palets y cajas para que se editen
+        <PalletsFields pallets={reception.pallets} includeIds={true} />
       )}
       
       <SubmitButton />
@@ -326,6 +366,8 @@ function EditReceptionForm({ reception }) {
   );
 }
 ```
+
+**⚠️ Nota**: En modo PALLETS, asegúrate de incluir los `id` de palets y cajas en el formulario para que se editen en lugar de recrearse.
 
 ### Ejemplo 3: Lista de Palets con Edición Condicional
 
@@ -352,6 +394,46 @@ function PalletList({ pallets, reception }) {
       )}
     </PalletCard>
   ));
+}
+```
+
+### Ejemplo 4: Preparar Request con IDs
+
+```javascript
+function prepareUpdateRequest(reception, formData) {
+  if (reception.creationMode === 'pallets') {
+    return {
+      supplier: { id: formData.supplierId },
+      date: formData.date,
+      notes: formData.notes,
+      pallets: formData.pallets.map(palletForm => ({
+        id: palletForm.id,  // ← ID del palet (si existe)
+        product: { id: palletForm.productId },
+        price: palletForm.price,
+        lot: palletForm.lot,
+        observations: palletForm.observations,
+        boxes: palletForm.boxes.map(boxForm => ({
+          id: boxForm.id,  // ← ID de la caja (si existe)
+          gs1128: boxForm.gs1128,
+          grossWeight: boxForm.grossWeight,
+          netWeight: boxForm.netWeight
+        }))
+      }))
+    };
+  } else {
+    return {
+      supplier: { id: formData.supplierId },
+      date: formData.date,
+      notes: formData.notes,
+      details: formData.details.map(detail => ({
+        product: { id: detail.productId },
+        netWeight: detail.netWeight,
+        price: detail.price,
+        lot: detail.lot,
+        boxes: detail.boxes
+      }))
+    };
+  }
 }
 ```
 
@@ -442,6 +524,7 @@ function PalletList({ pallets, reception }) {
 ## 🔗 Referencias
 
 - [Guía Completa de Recepciones y Palets](./63-Guia-Frontend-Recepciones-Palets.md)
+- [Guía Backend de Edición](./65-Guia-Backend-Edicion-Recepciones.md)
 - [Documentación Técnica de Recepciones](./60-Recepciones-Materia-Prima.md)
 - [Documentación de Palets](../inventario/31-Palets.md)
 
