@@ -100,8 +100,12 @@ const CREATION_MODE_PALLETS = 'pallets';
 #### Appended Attributes
 
 ```php
-protected $appends = ['total_amount'];
+protected $appends = ['total_amount', 'can_edit', 'cannot_edit_reason'];
 ```
+
+**Nuevos accessors**:
+- `canEdit`: Boolean que indica si la recepción se puede editar
+- `cannotEditReason`: String con la razón si no se puede editar (null si se puede editar)
 
 ### Traits
 
@@ -347,19 +351,26 @@ GET /v2/raw-material-receptions/{id}
 PUT /v2/raw-material-receptions/{id}
 ```
 
-**Validación**: Similar a `store()`, pero solo acepta `details` (modo automático por líneas)
+**Validación**: Según el `creation_mode` de la recepción:
+- Si `creation_mode === 'lines'` → Acepta `details` (modo automático)
+- Si `creation_mode === 'pallets'` → Acepta `pallets` (modo manual)
+- Si `creation_mode === null` (recepciones antiguas) → Acepta `details`
 
 **Restricciones importantes**:
-- **Solo se puede editar por líneas si la recepción fue creada por líneas** (`creation_mode === 'lines'`)
-- Si la recepción fue creada por palets (`creation_mode === 'pallets'`), no se puede editar por líneas. Debe modificar los palets directamente.
-- Solo se puede modificar si hay **un solo palet** asociado y no está en uso
-- Si el palet está vinculado a un pedido, almacenado o tiene cajas en producción, no se puede modificar
+- **Restricciones comunes** (aplican a ambos modos):
+  - No se puede editar si algún palet está vinculado a un pedido (`order_id !== null`)
+  - No se puede editar si alguna caja está siendo usada en producción (`productionInputs()->exists()`)
+- **Modo de edición debe coincidir con modo de creación**:
+  - Si `creation_mode === 'lines'` → Solo se puede editar con `details`
+  - Si `creation_mode === 'pallets'` → Solo se puede editar con `pallets`
 
 **Comportamiento**:
-- Valida que `creation_mode === 'lines'` antes de permitir la edición
-- Elimina el palet y cajas existentes, luego recrea todo según los nuevos `details`
-- Actualiza la recepción y recrea los productos recibidos
-- El `creation_mode` se mantiene como `'lines'` (no se puede cambiar)
+- Valida las restricciones comunes antes de editar
+- Valida que el modo de edición coincida con el modo de creación
+- Elimina todos los palets y cajas existentes
+- Recrea todo según el modo de creación
+- Regenera las líneas de recepción automáticamente
+- El `creation_mode` se mantiene (no se puede cambiar)
 
 #### `destroy($id)` - Eliminar Recepción
 ```php
@@ -455,7 +466,9 @@ GET /v2/raw-material-receptions/a3erp-xls
     "species": {...},
     "details": [...],
     "pallets": [...], // Palets creados desde esta recepción
-    "totalAmount": 12500.00
+    "totalAmount": 12500.00,
+    "canEdit": true, // Nuevo: indica si se puede editar
+    "cannotEditReason": null // Nuevo: razón si no se puede editar
 }
 ```
 

@@ -141,17 +141,60 @@ Los palets que provienen de una recepción **no se pueden modificar ni eliminar 
 **PUT** `/api/v2/raw-material-receptions/{id}`
 
 **Restricciones**:
-- Solo se puede modificar si hay **un solo palet** asociado
-- El palet **NO debe estar en uso**:
-  - No vinculado a un pedido
-  - No almacenado
-  - Sin cajas usadas en producción
+- **No se puede editar si**:
+  - Algún palet está vinculado a un pedido (`order_id !== null`)
+  - Alguna caja está siendo usada en producción (`productionInputs()->exists()`)
+- **Modo de edición debe coincidir con modo de creación**:
+  - Si `creationMode = 'lines'` → Solo se puede editar con `details`
+  - Si `creationMode = 'pallets'` → Solo se puede editar con `pallets`
 
-**Request Body**: Similar a crear en modo automático (solo acepta `details`)
+**Request Body** (Modo LINES):
+```json
+{
+  "supplier": { "id": 1 },
+  "date": "2025-01-15",
+  "notes": "Notas actualizadas",
+  "details": [
+    {
+      "product": { "id": 5 },
+      "netWeight": 500.00,
+      "price": 12.50,
+      "lot": "LOT-2025-001",
+      "boxes": 20
+    }
+  ]
+}
+```
+
+**Request Body** (Modo PALLETS):
+```json
+{
+  "supplier": { "id": 1 },
+  "date": "2025-01-15",
+  "notes": "Notas actualizadas",
+  "pallets": [
+    {
+      "product": { "id": 5 },
+      "price": 12.50,
+      "lot": "LOT-2025-001",
+      "observations": "Palet 1",
+      "boxes": [
+        {
+          "gs1128": "GS1-001",
+          "grossWeight": 25.5,
+          "netWeight": 25.0
+        }
+      ]
+    }
+  ]
+}
+```
 
 **Comportamiento**:
-- Si se cumplen las restricciones, elimina el palet y cajas existentes
-- Recrea todo según los nuevos `details`
+- Valida las restricciones antes de editar
+- Elimina palets y cajas existentes
+- Recrea todo según el modo de creación
+- Regenera las líneas de recepción automáticamente
 
 ### Eliminar Recepción
 
@@ -177,6 +220,7 @@ Los palets que provienen de una recepción **no se pueden modificar ni eliminar 
   },
   "date": "2025-01-15",
   "notes": "Recepción de prueba",
+  "creationMode": "lines",
   "netWeight": 500.00,
   "species": {...},
   "details": [
@@ -203,9 +247,15 @@ Los palets que provienen de una recepción **no se pueden modificar ni eliminar 
       "netWeight": 500.00
     }
   ],
-  "totalAmount": 6250.00
+  "totalAmount": 6250.00,
+  "canEdit": true,
+  "cannotEditReason": null
 }
 ```
+
+**Nuevos campos**:
+- `canEdit` (boolean): Indica si la recepción se puede editar
+- `cannotEditReason` (string | null): Razón por la que no se puede editar (si `canEdit = false`)
 
 ---
 
@@ -240,21 +290,38 @@ Los palets ahora incluyen información de recepción y costes:
 
 #### 2. Restricciones en Palets de Recepción
 
-**⚠️ IMPORTANTE**: Los palets que provienen de una recepción (`isFromReception: true`) tienen restricciones:
+**⚠️ IMPORTANTE**: Los palets que provienen de una recepción (`isFromReception: true`) tienen restricciones según el modo de creación:
 
-**No se pueden modificar**:
-- `PUT /api/v2/pallets/{id}` retorna error 403 si `receptionId` no es null
-- No se pueden añadir, modificar ni eliminar cajas
+**Palets de recepciones creadas en modo LINES**:
+- **No se pueden modificar** desde el endpoint de palets
+- **No se pueden eliminar** desde el endpoint de palets
 - Todo debe hacerse desde la recepción
 
-**No se pueden eliminar**:
-- `DELETE /api/v2/pallets/{id}` retorna error 403 si `receptionId` no es null
-- Solo se pueden eliminar eliminando la recepción
+**Palets de recepciones creadas en modo PALLETS**:
+- **SÍ se pueden modificar** desde `PUT /api/v2/pallets/{id}` (con restricciones)
+- **No se pueden eliminar** desde el endpoint de palets
+- Al editar un palet, se regeneran automáticamente las líneas de recepción
 
-**Mensaje de error**:
+**Restricciones para editar palets de recepción**:
+- No se puede editar si el palet está vinculado a un pedido
+- No se puede editar si alguna caja está en producción
+
+**Mensajes de error**:
 ```json
 {
-  "error": "No se puede modificar/eliminar un palet que proviene de una recepción. Modifique desde la recepción."
+  "error": "No se puede modificar un palet que proviene de una recepción creada por líneas. Modifique desde la recepción."
+}
+```
+
+```json
+{
+  "error": "No se puede modificar el palet: está vinculado a un pedido"
+}
+```
+
+```json
+{
+  "error": "No se puede modificar el palet: la caja #123 está siendo usada en producción"
 }
 ```
 
@@ -262,9 +329,17 @@ Los palets ahora incluyen información de recepción y costes:
 
 **PUT** `/api/v2/pallets/{id}`
 
-**Validación previa**: Si el palet tiene `receptionId`, retorna error 403.
+**Validación previa**:
+- Si el palet pertenece a una recepción creada en modo `lines`, retorna error 403
+- Si el palet pertenece a una recepción creada en modo `pallets`, permite editar (con restricciones)
 
-**Comportamiento normal**: Solo funciona para palets que NO provienen de recepción.
+**Restricciones para palets de recepción**:
+- No se puede editar si está vinculado a un pedido
+- No se puede editar si alguna caja está en producción
+
+**Comportamiento**:
+- Si el palet pertenece a una recepción en modo `pallets`, al editar se regeneran automáticamente las líneas de recepción
+- Funciona normalmente para palets que NO provienen de recepción
 
 ### Eliminar Palet
 
@@ -337,14 +412,19 @@ Los costes se calculan automáticamente mediante accessors (campos calculados):
 
 ### Modificar Recepción
 
-1. **Verificar restricciones**:
-   - Solo se puede modificar si hay 1 palet
-   - El palet no debe estar en uso
-   - Mostrar mensaje claro si no se puede modificar
+1. **Verificar si se puede editar**:
+   - Usar el campo `canEdit` de la respuesta
+   - Si `canEdit = false`, mostrar `cannotEditReason` como mensaje
+   - Deshabilitar botón de edición si `canEdit = false`
 
-2. **Si se puede modificar**:
-   - Usar el mismo formato que crear (solo modo automático con `details`)
+2. **Determinar modo de edición**:
+   - Si `creationMode = 'lines'` → Usar `details` (mismo formato que crear en modo automático)
+   - Si `creationMode = 'pallets'` → Usar `pallets` (mismo formato que crear en modo manual)
+
+3. **Si se puede modificar**:
+   - Enviar request según el modo de creación
    - El sistema elimina y recrea todo
+   - Las líneas de recepción se regeneran automáticamente
 
 ### Eliminar Recepción
 
@@ -359,7 +439,12 @@ Los costes se calculan automáticamente mediante accessors (campos calculados):
 
 1. **Verificar origen**:
    - Si `isFromReception: true` → Mostrar indicador visual
-   - Deshabilitar botones de editar/eliminar
+   - **Si la recepción fue creada en modo `pallets`**:
+     - Permitir editar el palet (con validaciones)
+     - Al editar, se regeneran las líneas de recepción automáticamente
+   - **Si la recepción fue creada en modo `lines`**:
+     - Deshabilitar botón de editar (debe editarse desde la recepción)
+   - Deshabilitar botón de eliminar (siempre)
    - Mostrar link a la recepción
 
 2. **Mostrar costes**:
@@ -392,9 +477,13 @@ Si no se proporciona `price` en modo automático:
 
 ### 4. Validaciones de Modificación
 
-- Solo se puede modificar recepción con 1 palet
-- El palet no debe estar en uso
-- Si hay más palets, mostrar mensaje: "No se puede modificar una recepción con más de un palet"
+- **Restricciones comunes** (aplican a ambos modos):
+  - No se puede editar si algún palet está vinculado a un pedido
+  - No se puede editar si alguna caja está en producción
+- **Modo de edición**:
+  - Debe coincidir con el modo de creación (`creationMode`)
+  - Recepciones en modo `lines` solo se editan con `details`
+  - Recepciones en modo `pallets` se pueden editar con `pallets` o editando palets individualmente
 
 ### 5. Estados de Palets
 

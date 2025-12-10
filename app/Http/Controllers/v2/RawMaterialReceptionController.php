@@ -19,7 +19,7 @@ class RawMaterialReceptionController extends Controller
     public function index(Request $request)
     {
         $query = RawMaterialReception::query();
-        $query->with('supplier', 'products.product', 'pallets');
+        $query->with('supplier', 'products.product', 'pallets.boxes.box.productionInputs');
 
         if ($request->has('id')) {
             $query->where('id', $request->id);
@@ -128,7 +128,7 @@ class RawMaterialReceptionController extends Controller
             }
 
             // 3. Cargar relaciones para respuesta
-            $reception->load('supplier', 'products.product', 'pallets');
+            $reception->load('supplier', 'products.product', 'pallets.boxes.box.productionInputs');
       
             return new RawMaterialReceptionResource($reception);
         });
@@ -136,78 +136,88 @@ class RawMaterialReceptionController extends Controller
 
     public function show($id)
     {
-        $reception = RawMaterialReception::with('supplier', 'products.product', 'pallets')->findOrFail($id);
+        $reception = RawMaterialReception::with('supplier', 'products.product', 'pallets.boxes.box.productionInputs')->findOrFail($id);
         return new RawMaterialReceptionResource($reception);
     }
 
     public function update(Request $request, $id)
     {
-        $validated = $request->validate([
-            'supplier.id' => 'required',
-            'date' => 'required|date',
-            'notes' => 'nullable|string',
-            'details' => 'required|array',
-            'details.*.product.id' => 'required|exists:tenant.products,id',
-            'details.*.netWeight' => 'required|numeric',
-            'details.*.price' => 'nullable|numeric|min:0',
-            'details.*.lot' => 'nullable|string',
-            'details.*.boxes' => 'nullable|integer|min:0',
-        ]);
+        $reception = RawMaterialReception::with('pallets.boxes.box.productionInputs')->findOrFail($id);
 
-        $reception = RawMaterialReception::findOrFail($id);
-  
+        // Validar según el modo de creación
+        if ($reception->creation_mode === RawMaterialReception::CREATION_MODE_LINES) {
+            $validated = $request->validate([
+                'supplier.id' => 'required',
+                'date' => 'required|date',
+                'notes' => 'nullable|string',
+                'details' => 'required|array',
+                'details.*.product.id' => 'required|exists:tenant.products,id',
+                'details.*.netWeight' => 'required|numeric',
+                'details.*.price' => 'nullable|numeric|min:0',
+                'details.*.lot' => 'nullable|string',
+                'details.*.boxes' => 'nullable|integer|min:0',
+            ]);
+        } elseif ($reception->creation_mode === RawMaterialReception::CREATION_MODE_PALLETS) {
+            $validated = $request->validate([
+                'supplier.id' => 'required',
+                'date' => 'required|date',
+                'notes' => 'nullable|string',
+                'pallets' => 'required|array',
+                'pallets.*.product.id' => 'required|exists:tenant.products,id',
+                'pallets.*.price' => 'required|numeric|min:0',
+                'pallets.*.lot' => 'nullable|string',
+                'pallets.*.observations' => 'nullable|string',
+                'pallets.*.boxes' => 'required|array',
+                'pallets.*.boxes.*.gs1128' => 'required|string',
+                'pallets.*.boxes.*.grossWeight' => 'required|numeric',
+                'pallets.*.boxes.*.netWeight' => 'required|numeric',
+            ]);
+        } else {
+            // Recepciones antiguas sin creation_mode - permitir edición por líneas
+            $validated = $request->validate([
+                'supplier.id' => 'required',
+                'date' => 'required|date',
+                'notes' => 'nullable|string',
+                'details' => 'required|array',
+                'details.*.product.id' => 'required|exists:tenant.products,id',
+                'details.*.netWeight' => 'required|numeric',
+                'details.*.price' => 'nullable|numeric|min:0',
+                'details.*.lot' => 'nullable|string',
+                'details.*.boxes' => 'nullable|integer|min:0',
+            ]);
+        }
+
         return DB::transaction(function () use ($reception, $validated, $request) {
-            // Validar que solo se puede editar por líneas si fue creada por líneas
-            if ($reception->creation_mode === RawMaterialReception::CREATION_MODE_PALLETS) {
-                throw new \Exception('No se puede modificar una recepción creada por palets usando el método de líneas. Debe modificar los palets directamente.');
-            }
+            // Validar restricciones comunes (cajas en producción, palets vinculados)
+            $this->validateCanEdit($reception);
             
-            // Validar que se puede modificar
-            $pallets = $reception->pallets;
-      
-            if ($pallets->count() > 1) {
-                throw new \Exception('No se puede modificar una recepción con más de un palet. Use el método de palets directamente.');
-            }
-      
-            if ($pallets->count() === 1) {
-                $pallet = $pallets->first();
-          
-                // Validar que el palet no esté en uso
-                if ($pallet->order_id !== null) {
-                    throw new \Exception('No se puede modificar la recepción: el palet está vinculado a un pedido');
-                }
-          
-                if ($pallet->status === Pallet::STATE_STORED) {
-                    throw new \Exception('No se puede modificar la recepción: el palet está almacenado');
-                }
-          
-                // Validar que las cajas no estén en producción
-                foreach ($pallet->boxes as $palletBox) {
-                    if ($palletBox->box->productionInputs()->exists()) {
-                        throw new \Exception('No se puede modificar la recepción: hay cajas siendo usadas en producción');
-                    }
-                }
-          
-                // Eliminar palet y cajas existentes
-                foreach ($pallet->boxes as $palletBox) {
-                    $palletBox->box->delete();
-                }
-                $pallet->delete();
-            }
-      
             // Actualizar recepción
             $reception->update([
                 'supplier_id' => $validated['supplier']['id'],
                 'date' => $validated['date'],
                 'notes' => $validated['notes'] ?? null,
             ]);
-      
+
+            // Eliminar palets y cajas existentes
+            foreach ($reception->pallets as $pallet) {
+                foreach ($pallet->boxes as $palletBox) {
+                    $palletBox->box->delete();
+                }
+                $pallet->delete();
+            }
+
             // Eliminar líneas antiguas
             $reception->products()->delete();
-      
-            // Crear nuevas líneas y palets
-            $this->createDetailsFromRequest($reception, $validated['details'], $request->supplier['id']);
-      
+
+            // Crear nuevos datos según el modo
+            if ($reception->creation_mode === RawMaterialReception::CREATION_MODE_PALLETS) {
+                // Modo palets: crear palets y generar líneas
+                $this->createPalletsFromRequest($reception, $validated['pallets']);
+            } else {
+                // Modo líneas o recepciones antiguas: crear líneas y generar palet
+                $this->createDetailsFromRequest($reception, $validated['details'], $request->supplier['id']);
+            }
+
             $reception->load('supplier', 'products.product', 'pallets');
             return new RawMaterialReceptionResource($reception);
         });
@@ -383,5 +393,31 @@ class RawMaterialReceptionController extends Controller
     private function generateGS1128(RawMaterialReception $reception, int $productId, int $index = 0): string
     {
         return 'GS1-' . $reception->id . '-' . $productId . '-' . $index . '-' . time();
+    }
+
+    /**
+     * Validar que la recepción se puede editar
+     * Lanza excepción si no se puede editar
+     */
+    private function validateCanEdit(RawMaterialReception $reception): void
+    {
+        // Cargar relaciones si no están cargadas
+        if (!$reception->relationLoaded('pallets')) {
+            $reception->load('pallets.boxes.box.productionInputs');
+        }
+
+        foreach ($reception->pallets as $pallet) {
+            // Validar que el palet no esté vinculado a un pedido
+            if ($pallet->order_id !== null) {
+                throw new \Exception("No se puede modificar la recepción: el palet #{$pallet->id} está vinculado a un pedido");
+            }
+
+            // Validar que las cajas no estén en producción
+            foreach ($pallet->boxes as $palletBox) {
+                if ($palletBox->box && $palletBox->box->productionInputs()->exists()) {
+                    throw new \Exception("No se puede modificar la recepción: la caja #{$palletBox->box->id} está siendo usada en producción");
+                }
+            }
+        }
     }
 }

@@ -25,6 +25,8 @@ class RawMaterialReceptionResource extends JsonResource
             'details' => RawMaterialReceptionProductResource::collection($this->products),
             'pallets' => \App\Http\Resources\v2\PalletResource::collection($this->pallets),
             'totalAmount' => $this->totalAmount,
+            'canEdit' => $this->can_edit,
+            'cannotEditReason' => $this->cannot_edit_reason,
         ];
     }
 

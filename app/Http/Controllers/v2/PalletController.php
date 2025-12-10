@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\OrderPallet;
 use App\Models\Pallet;
 use App\Models\PalletBox;
+use App\Models\RawMaterialReception;
 use App\Models\StoredPallet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -278,12 +279,34 @@ class PalletController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        // Validar que no se pueda modificar un palet de recepción
-        $pallet = Pallet::findOrFail($id);
+        $pallet = Pallet::with('reception', 'boxes.box.productionInputs')->findOrFail($id);
+        
+        // Si el palet pertenece a una recepción, validar que se pueda editar
         if ($pallet->reception_id !== null) {
-            return response()->json([
-                'error' => 'No se puede modificar un palet que proviene de una recepción. Modifique desde la recepción.'
-            ], 403);
+            $reception = $pallet->reception;
+            
+            // Solo permitir editar palets de recepciones creadas en modo palets
+            if ($reception->creation_mode !== RawMaterialReception::CREATION_MODE_PALLETS) {
+                return response()->json([
+                    'error' => 'No se puede modificar un palet que proviene de una recepción creada por líneas. Modifique desde la recepción.'
+                ], 403);
+            }
+            
+            // Validar que el palet no esté vinculado a un pedido
+            if ($pallet->order_id !== null) {
+                return response()->json([
+                    'error' => "No se puede modificar el palet: está vinculado a un pedido"
+                ], 403);
+            }
+            
+            // Validar que las cajas no estén en producción
+            foreach ($pallet->boxes as $palletBox) {
+                if ($palletBox->box && $palletBox->box->productionInputs()->exists()) {
+                    return response()->json([
+                        'error' => "No se puede modificar el palet: la caja #{$palletBox->box->id} está siendo usada en producción"
+                    ], 403);
+                }
+            }
         }
 
         $validator = Validator::make($request->all(), [
@@ -308,60 +331,62 @@ class PalletController extends Controller
             return response()->json(['errors' => $validator->errors()], 422); // Código de estado 422 - Unprocessable Entity
         }
 
+        return DB::transaction(function () use ($request, $pallet, $id) {
+            $palletData = $request->all();
 
+            //Creating Pallet
+            $updatedPallet = $pallet;
 
-        $palletData = $request->all();
-
-        //Creating Pallet
-        $updatedPallet = $pallet;
-
-        //Updating Order
-        if ($request->has('orderId')) {
-
-            if ($palletData['orderId'] == null) {
-                $updatedPallet->order_id = null;
-            } else {
-                if (Order::find($palletData['orderId']) == null) {
-                    return response()->json(['errors' => ['orderId' => ['El pedido no existe']]], 422);
+            //Updating Order
+            if ($request->has('orderId')) {
+                if ($palletData['orderId'] == null) {
+                    $updatedPallet->order_id = null;
                 } else {
-                    $updatedPallet->order_id = $palletData['orderId'];
+                    if (Order::find($palletData['orderId']) == null) {
+                        return response()->json(['errors' => ['orderId' => ['El pedido no existe']]], 422);
+                    } else {
+                        $updatedPallet->order_id = $palletData['orderId'];
+                    }
                 }
             }
-        }
 
-
-
-        //Updating State
-        if ($request->has('state')) {
-            //echo '$updatedPallet->status = '.$updatedPallet->status . '!= $pallet[state][id] = '.$pallet["state"]["id"];
-            if ($updatedPallet->status != $palletData['state']['id']) {
-                // UnStoring pallet if it is in a store
-                //echo '$updatedPallet->store ='. $updatedPallet->store. '!= null && $pallet[state][id] ='.$pallet['state']['id'].' != 2';
-                if ($updatedPallet->store != null && $palletData['state']['id'] != Pallet::STATE_STORED) {
-                    $updatedPallet->unStore();
-                    //return response()->json(['errors' => ['state' => ['El palet se encuentra en un almacen, no se puede cambiar el estado']]], 422);
+            //Updating State
+            if ($request->has('state')) {
+                if ($updatedPallet->status != $palletData['state']['id']) {
+                    // UnStoring pallet if it is in a store
+                    if ($updatedPallet->store != null && $palletData['state']['id'] != Pallet::STATE_STORED) {
+                        $updatedPallet->unStore();
+                    }
+                    $updatedPallet->status = $palletData['state']['id'];
                 }
-                $updatedPallet->status = $palletData['state']['id'];
             }
-        }
 
-        //Updating Observations
-        if ($request->has('observations')) {
-            if ($palletData['observations'] != $updatedPallet->observations) {
-                $updatedPallet->observations = $palletData['observations'];
+            //Updating Observations
+            if ($request->has('observations')) {
+                if ($palletData['observations'] != $updatedPallet->observations) {
+                    $updatedPallet->observations = $palletData['observations'];
+                }
             }
-        }
 
-        $updatedPallet->save();
+            $updatedPallet->save();
 
-        // Updating Store
-        if (array_key_exists("store", $palletData)) {
-            $storeId = $palletData['store']['id'] ?? null;
+            // Updating Store
+            if (array_key_exists("store", $palletData)) {
+                $storeId = $palletData['store']['id'] ?? null;
 
-            $isPalletStored = StoredPallet::where('pallet_id', $updatedPallet->id)->first();
-            if ($isPalletStored) {
-                if ($isPalletStored->store_id != $storeId) {
-                    $isPalletStored->delete();
+                $isPalletStored = StoredPallet::where('pallet_id', $updatedPallet->id)->first();
+                if ($isPalletStored) {
+                    if ($isPalletStored->store_id != $storeId) {
+                        $isPalletStored->delete();
+                        if ($storeId) {
+                            //Agregando Palet a almacen
+                            $newStoredPallet = new StoredPallet;
+                            $newStoredPallet->pallet_id = $updatedPallet->id;
+                            $newStoredPallet->store_id = $storeId;
+                            $newStoredPallet->save();
+                        }
+                    }
+                } else {
                     if ($storeId) {
                         //Agregando Palet a almacen
                         $newStoredPallet = new StoredPallet;
@@ -370,72 +395,69 @@ class PalletController extends Controller
                         $newStoredPallet->save();
                     }
                 }
-            } else {
-                if ($storeId) {
-                    //Agregando Palet a almacen
-                    $newStoredPallet = new StoredPallet;
-                    $newStoredPallet->pallet_id = $updatedPallet->id;
-                    $newStoredPallet->store_id = $storeId;
-                    $newStoredPallet->save();
-                }
             }
-        }
 
-        //Updating Boxes
-        if (array_key_exists("boxes", $palletData)) {
-            $boxes = $palletData['boxes'];
+            //Updating Boxes
+            if (array_key_exists("boxes", $palletData)) {
+                $boxes = $palletData['boxes'];
 
-            //Eliminando Cajas y actualizando
-            $updatedPallet->boxes->map(function ($box) use (&$boxes) {
+                //Eliminando Cajas y actualizando
+                $updatedPallet->boxes->map(function ($box) use (&$boxes) {
+                    $hasBeenUpdated = false;
 
-                $hasBeenUpdated = false;
-
-                foreach ($boxes as $index => $updatedBox) {
-                    if ($updatedBox['id'] == $box->box->id) {
-
-                        $box->box->article_id = $updatedBox['product']['id'];
-                        $box->box->lot = $updatedBox['lot'];
-                        $box->box->gs1_128 = $updatedBox['gs1128'];
-                        $box->box->gross_weight = $updatedBox['grossWeight'];
-                        $box->box->net_weight = $updatedBox['netWeight'];
-                        $box->box->save();
-                        $hasBeenUpdated = true;
-                        //Eliminando Caja del array para añadir
-                        unset($boxes[$index]);
+                    foreach ($boxes as $index => $updatedBox) {
+                        if ($updatedBox['id'] == $box->box->id) {
+                            $box->box->article_id = $updatedBox['product']['id'];
+                            $box->box->lot = $updatedBox['lot'];
+                            $box->box->gs1_128 = $updatedBox['gs1128'];
+                            $box->box->gross_weight = $updatedBox['grossWeight'];
+                            $box->box->net_weight = $updatedBox['netWeight'];
+                            $box->box->save();
+                            $hasBeenUpdated = true;
+                            //Eliminando Caja del array para añadir
+                            unset($boxes[$index]);
+                        }
                     }
+
+                    if (!$hasBeenUpdated) {
+                        $box->box->delete();
+                    }
+                });
+
+                $boxes = array_values($boxes);
+
+                //Insertando Cajas
+                foreach ($boxes as $box) {
+                    $newBox = new Box;
+                    $newBox->article_id = $box['product']['id'];
+                    $newBox->lot = $box['lot'];
+                    $newBox->gs1_128 = $box['gs1128'];
+                    $newBox->gross_weight = $box['grossWeight'];
+                    $newBox->net_weight = $box['netWeight'];
+                    $newBox->save();
+
+                    //Agregando Cajas a Palet
+                    $newPalletBox = new PalletBox;
+                    $newPalletBox->pallet_id = $updatedPallet->id;
+                    $newPalletBox->box_id = $newBox->id;
+                    $newPalletBox->save();
                 }
-
-                if (!$hasBeenUpdated) {
-                    $box->box->delete();
-                }
-            });
-
-            $boxes = array_values($boxes);
-
-
-            //Insertando Cajas
-            foreach ($boxes as $box) {
-                $newBox = new Box;
-                $newBox->article_id = $box['product']['id'];
-                $newBox->lot = $box['lot'];
-                $newBox->gs1_128 = $box['gs1128'];
-                $newBox->gross_weight = $box['grossWeight'];
-                $newBox->net_weight = $box['netWeight'];
-                $newBox->save();
-
-                //Agregando Cajas a Palet
-                $newPalletBox = new PalletBox;
-                $newPalletBox->pallet_id = $updatedPallet->id;
-                $newPalletBox->box_id = $newBox->id;
-                $newPalletBox->save();
             }
-        }
 
-        $updatedPallet->refresh();
+            $updatedPallet->refresh();
 
-        // Cargar relaciones y devolver el palet actualizado
-        $updatedPallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->firstOrFail();
-        return response()->json(new PalletResource($updatedPallet), 201);
+            // Si el palet pertenece a una recepción creada en modo palets, actualizar las líneas de recepción
+            if ($updatedPallet->reception_id !== null) {
+                $reception = $updatedPallet->reception;
+                if ($reception && $reception->creation_mode === RawMaterialReception::CREATION_MODE_PALLETS) {
+                    $this->updateReceptionLinesFromPallets($reception);
+                }
+            }
+
+            // Cargar relaciones y devolver el palet actualizado
+            $updatedPallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->firstOrFail();
+            return response()->json(new PalletResource($updatedPallet), 201);
+        });
 
         //return response()->json($updatedPallet->toArrayAssoc(), 201);
     }
@@ -710,6 +732,73 @@ class PalletController extends Controller
      * Obtener palets registrados como si fuera un almacén
      * Retorna un formato similar a StoreDetailsResource para mantener consistencia
      */
+    /**
+     * Actualizar líneas de recepción basándose en los palets actualizados
+     * Se llama cuando se edita un palet de una recepción creada en modo palets
+     */
+    private function updateReceptionLinesFromPallets(RawMaterialReception $reception): void
+    {
+        // Cargar todos los palets de la recepción con sus cajas y líneas existentes
+        $reception->load('pallets.boxes.box', 'products');
+        
+        // Obtener precios existentes por producto (usar el precio de la línea con más peso si hay múltiples)
+        $existingPrices = [];
+        foreach ($reception->products as $product) {
+            $productId = $product->product_id;
+            if (!isset($existingPrices[$productId]) || 
+                ($product->net_weight > ($existingPrices[$productId]['weight'] ?? 0))) {
+                $existingPrices[$productId] = [
+                    'price' => $product->price,
+                    'weight' => $product->net_weight,
+                ];
+            }
+        }
+        
+        $groupedByProduct = [];
+        
+        foreach ($reception->pallets as $pallet) {
+            foreach ($pallet->boxes as $palletBox) {
+                $box = $palletBox->box;
+                if (!$box) {
+                    continue;
+                }
+                
+                $productId = $box->article_id;
+                $lot = $box->lot;
+                $netWeight = $box->net_weight ?? 0;
+                
+                // Obtener el precio de las líneas existentes del mismo producto
+                $price = $existingPrices[$productId]['price'] ?? null;
+                
+                // Agrupar por producto y lote
+                $key = "{$productId}_{$lot}";
+                if (!isset($groupedByProduct[$key])) {
+                    $groupedByProduct[$key] = [
+                        'product_id' => $productId,
+                        'lot' => $lot,
+                        'net_weight' => 0,
+                        'price' => $price,
+                    ];
+                }
+                $groupedByProduct[$key]['net_weight'] += $netWeight;
+            }
+        }
+        
+        // Eliminar líneas antiguas
+        $reception->products()->delete();
+        
+        // Crear nuevas líneas de recepción
+        foreach ($groupedByProduct as $group) {
+            if ($group['net_weight'] > 0) {
+                $reception->products()->create([
+                    'product_id' => $group['product_id'],
+                    'net_weight' => $group['net_weight'],
+                    'price' => $group['price'],
+                ]);
+            }
+        }
+    }
+
     public function registeredPallets()
     {
         // Obtener todos los palets registrados (status = 1) con relaciones cargadas

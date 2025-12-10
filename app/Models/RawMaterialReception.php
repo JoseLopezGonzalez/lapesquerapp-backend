@@ -18,7 +18,7 @@ class RawMaterialReception extends Model
     const CREATION_MODE_LINES = 'lines';
     const CREATION_MODE_PALLETS = 'pallets';
 
-    protected $appends = ['total_amount'];
+    protected $appends = ['total_amount', 'can_edit', 'cannot_edit_reason'];
 
     /* hacer numeros  declared_total_amount y declared_total_net_weight*/
     
@@ -86,6 +86,67 @@ class RawMaterialReception extends Model
         return $this->products->sum(function ($product) {
             return ($product->net_weight ?? 0) * ($product->price ?? 0);
         });
+    }
+
+    /**
+     * Verificar si la recepción se puede editar
+     * No se puede editar si:
+     * - Alguna caja está siendo usada en producción
+     * - Algún palet está vinculado a un pedido
+     */
+    public function getCanEditAttribute(): bool
+    {
+        // Cargar relaciones si no están cargadas
+        if (!$this->relationLoaded('pallets')) {
+            $this->load('pallets.boxes.box.productionInputs');
+        }
+
+        foreach ($this->pallets as $pallet) {
+            // Verificar si el palet está vinculado a un pedido
+            if ($pallet->order_id !== null) {
+                return false;
+            }
+
+            // Verificar si alguna caja está en producción
+            foreach ($pallet->boxes as $palletBox) {
+                if ($palletBox->box && $palletBox->box->productionInputs()->exists()) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Obtener la razón por la que no se puede editar
+     */
+    public function getCannotEditReasonAttribute(): ?string
+    {
+        if ($this->can_edit) {
+            return null;
+        }
+
+        // Cargar relaciones si no están cargadas
+        if (!$this->relationLoaded('pallets')) {
+            $this->load('pallets.boxes.box.productionInputs');
+        }
+
+        foreach ($this->pallets as $pallet) {
+            // Verificar si el palet está vinculado a un pedido
+            if ($pallet->order_id !== null) {
+                return "El palet #{$pallet->id} está vinculado a un pedido";
+            }
+
+            // Verificar si alguna caja está en producción
+            foreach ($pallet->boxes as $palletBox) {
+                if ($palletBox->box && $palletBox->box->productionInputs()->exists()) {
+                    return "La caja #{$palletBox->box->id} está siendo usada en producción";
+                }
+            }
+        }
+
+        return "No se puede editar la recepción";
     }
 
 }
