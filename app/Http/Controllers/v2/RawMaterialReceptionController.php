@@ -716,8 +716,8 @@ class RawMaterialReceptionController extends Controller
         // F: Código FAO (del producto->species->fao)
         $faoCode = $product->species->fao ?? '';
         
-        // X: ID de zona de captura (del producto->capture_zone_id)
-        $captureZoneId = $product->capture_zone_id;
+        // X: ID de zona de captura (del producto->capture_zone_id) - siempre 2 dígitos con ceros a la izquierda
+        $captureZoneId = str_pad((string)$product->capture_zone_id, 2, '0', STR_PAD_LEFT);
         
         // REC: Literal "REC"
         $rec = 'REC';

@@ -112,7 +112,7 @@ if (!$product->species || !$product->capture_zone_id) {
 - **MM**: Mes (2 dígitos, con cero a la izquierda si es necesario)
 - **AA**: Año (2 últimos dígitos)
 - **F**: Código FAO del producto (obtenido de `product->species->fao`)
-- **X**: ID de zona de captura (obtenido de `product->capture_zone_id`)
+- **X**: ID de zona de captura (obtenido de `product->capture_zone_id`) - siempre 2 dígitos, rellenado con ceros a la izquierda si es necesario (ej: 3 → "03", 15 → "15")
 - **REC**: Literal "REC" (de recepción)
 
 **Ejemplo**:
@@ -141,8 +141,8 @@ private function generateLotFromReception(RawMaterialReception $reception, Produ
     // F: Código FAO (del producto->species->fao)
     $faoCode = $product->species->fao ?? '';
     
-    // X: ID de zona de captura (del producto->capture_zone_id)
-    $captureZoneId = $product->capture_zone_id;
+    // X: ID de zona de captura (del producto->capture_zone_id) - siempre 2 dígitos con ceros a la izquierda
+    $captureZoneId = str_pad((string)$product->capture_zone_id, 2, '0', STR_PAD_LEFT);
     
     // REC: Literal "REC"
     $rec = 'REC';
@@ -347,7 +347,7 @@ private function generateLotFromReception(RawMaterialReception $reception, Produ
     $month = date('m', $date);         // MM
     $year = date('y', $date);           // AA
     $faoCode = $product->species->fao ?? '';  // F
-    $captureZoneId = $product->capture_zone_id; // X
+    $captureZoneId = str_pad((string)$product->capture_zone_id, 2, '0', STR_PAD_LEFT); // X - siempre 2 dígitos
     $rec = 'REC';                       // REC
     
     return $day . $month . $year . $faoCode . $captureZoneId . $rec;
