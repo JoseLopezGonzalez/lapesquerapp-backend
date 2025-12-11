@@ -8,6 +8,7 @@ use App\Models\Article;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class ProductController extends Controller
 {
@@ -91,7 +92,28 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        // Normalize snake_case to camelCase for backward compatibility
+        $requestData = $request->all();
+        if (isset($requestData['species_id']) && !isset($requestData['speciesId'])) {
+            $requestData['speciesId'] = $requestData['species_id'];
+        }
+        if (isset($requestData['capture_zone_id']) && !isset($requestData['captureZoneId'])) {
+            $requestData['captureZoneId'] = $requestData['capture_zone_id'];
+        }
+        if (isset($requestData['family_id']) && !isset($requestData['familyId'])) {
+            $requestData['familyId'] = $requestData['family_id'];
+        }
+        if (isset($requestData['article_gtin']) && !isset($requestData['articleGtin'])) {
+            $requestData['articleGtin'] = $requestData['article_gtin'];
+        }
+        if (isset($requestData['box_gtin']) && !isset($requestData['boxGtin'])) {
+            $requestData['boxGtin'] = $requestData['box_gtin'];
+        }
+        if (isset($requestData['pallet_gtin']) && !isset($requestData['palletGtin'])) {
+            $requestData['palletGtin'] = $requestData['pallet_gtin'];
+        }
+        
+        $validator = Validator::make($requestData, [
             'name' => 'required|string|min:3|max:255',
             'speciesId' => 'required|exists:tenant.species,id',
             'captureZoneId' => 'required|exists:tenant.capture_zones,id',
@@ -102,6 +124,15 @@ class ProductController extends Controller
             'a3erp_code' => 'nullable|string|max:255',
             'facil_com_code' => 'nullable|string|max:255',
         ]);
+        
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error de validación.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+        
+        $validated = $validator->validated();
 
         $articleId = null;
 
@@ -163,7 +194,28 @@ class ProductController extends Controller
         $product = Product::findOrFail($id);
         $article = Article::findOrFail($id); // mismo ID
 
-        $validated = $request->validate([
+        // Normalize snake_case to camelCase for backward compatibility
+        $requestData = $request->all();
+        if (isset($requestData['species_id']) && !isset($requestData['speciesId'])) {
+            $requestData['speciesId'] = $requestData['species_id'];
+        }
+        if (isset($requestData['capture_zone_id']) && !isset($requestData['captureZoneId'])) {
+            $requestData['captureZoneId'] = $requestData['capture_zone_id'];
+        }
+        if (isset($requestData['family_id']) && !isset($requestData['familyId'])) {
+            $requestData['familyId'] = $requestData['family_id'];
+        }
+        if (isset($requestData['article_gtin']) && !isset($requestData['articleGtin'])) {
+            $requestData['articleGtin'] = $requestData['article_gtin'];
+        }
+        if (isset($requestData['box_gtin']) && !isset($requestData['boxGtin'])) {
+            $requestData['boxGtin'] = $requestData['box_gtin'];
+        }
+        if (isset($requestData['pallet_gtin']) && !isset($requestData['palletGtin'])) {
+            $requestData['palletGtin'] = $requestData['pallet_gtin'];
+        }
+        
+        $validator = Validator::make($requestData, [
             'name' => 'required|string|min:3|max:255',
             'speciesId' => 'required|exists:tenant.species,id',
             'captureZoneId' => 'required|exists:tenant.capture_zones,id',
@@ -174,6 +226,15 @@ class ProductController extends Controller
             'a3erp_code' => 'nullable|string|max:255',
             'facil_com_code' => 'nullable|string|max:255',
         ]);
+        
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error de validación.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+        
+        $validated = $validator->validated();
 
         DB::transaction(function () use ($article, $product, $validated) {
             $article->update([
