@@ -382,7 +382,7 @@ class RawMaterialReceptionController extends Controller
                     ]);
                 }
                 
-                // Agrupar por producto y lote de caja para crear líneas
+                // Agrupar por producto y lote (el constraint único es reception_id + product_id + lot)
                 $key = "{$productId}_{$boxLot}";
                 if (!isset($groupedByProduct[$key])) {
                     // Buscar precio en el mapa de precios, si no existe buscar del histórico
@@ -504,7 +504,7 @@ class RawMaterialReceptionController extends Controller
                     'box_id' => $box->id,
                 ]);
                 
-                // Agrupar por producto y lote de caja para crear líneas
+                // Agrupar por producto y lote (el constraint único es reception_id + product_id + lot)
                 $key = "{$productId}_{$boxLot}";
                 if (!isset($groupedByProduct[$key])) {
                     // Buscar precio en el mapa de precios, si no existe buscar del histórico
@@ -521,7 +521,7 @@ class RawMaterialReceptionController extends Controller
             }
         }
   
-        // Crear líneas de recepción agrupadas por producto y lote de caja
+        // Crear líneas de recepción agrupadas por producto y lote
         foreach ($groupedByProduct as $group) {
             $reception->products()->create([
                 'product_id' => $group['product_id'],

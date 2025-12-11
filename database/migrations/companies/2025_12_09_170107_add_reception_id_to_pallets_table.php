@@ -14,6 +14,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Solo ejecutar en contexto tenant
+        if (config('database.default') !== 'tenant') {
+            return;
+        }
+
         if (!Schema::hasTable('pallets')) {
             return;
         }
@@ -58,6 +63,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Solo ejecutar en contexto tenant
+        if (config('database.default') !== 'tenant') {
+            return;
+        }
+
         Schema::table('pallets', function (Blueprint $table) {
             // Eliminar la foreign key
             try {
