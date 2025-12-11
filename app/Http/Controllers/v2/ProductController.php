@@ -113,6 +113,17 @@ class ProductController extends Controller
             $requestData['palletGtin'] = $requestData['pallet_gtin'];
         }
         
+        // Convert empty strings to null for GTINs to allow null values
+        if (isset($requestData['articleGtin']) && $requestData['articleGtin'] === '') {
+            $requestData['articleGtin'] = null;
+        }
+        if (isset($requestData['boxGtin']) && $requestData['boxGtin'] === '') {
+            $requestData['boxGtin'] = null;
+        }
+        if (isset($requestData['palletGtin']) && $requestData['palletGtin'] === '') {
+            $requestData['palletGtin'] = null;
+        }
+        
         $validator = Validator::make($requestData, [
             'name' => 'required|string|min:3|max:255',
             'speciesId' => 'required|exists:tenant.species,id',
@@ -213,6 +224,17 @@ class ProductController extends Controller
         }
         if (isset($requestData['pallet_gtin']) && !isset($requestData['palletGtin'])) {
             $requestData['palletGtin'] = $requestData['pallet_gtin'];
+        }
+        
+        // Convert empty strings to null for GTINs to allow null values
+        if (isset($requestData['articleGtin']) && $requestData['articleGtin'] === '') {
+            $requestData['articleGtin'] = null;
+        }
+        if (isset($requestData['boxGtin']) && $requestData['boxGtin'] === '') {
+            $requestData['boxGtin'] = null;
+        }
+        if (isset($requestData['palletGtin']) && $requestData['palletGtin'] === '') {
+            $requestData['palletGtin'] = null;
         }
         
         $validator = Validator::make($requestData, [
