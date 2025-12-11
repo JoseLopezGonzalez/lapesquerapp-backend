@@ -35,9 +35,9 @@ El modelo `Product` representa un **producto** del catálogo. Los productos tien
 | `family_id` | bigint | YES | FK a `product_families` - Familia del producto |
 | `species_id` | bigint | NO | FK a `species` - Especie pesquera |
 | `capture_zone_id` | bigint | NO | FK a `capture_zones` - Zona de captura |
-| `article_gtin` | string | NO | GTIN del artículo |
-| `box_gtin` | string | NO | GTIN de la caja |
-| `pallet_gtin` | string | NO | GTIN del palet |
+| `article_gtin` | string | YES | GTIN del artículo (opcional, puede ser null) |
+| `box_gtin` | string | YES | GTIN de la caja (opcional, puede ser null) |
+| `pallet_gtin` | string | YES | GTIN del palet (opcional, puede ser null) |
 | `fixed_weight` | decimal(6,2) | NO | Peso fijo del producto |
 | `a3erp_code` | string | YES | Código para sistema A3ERP |
 | `facil_com_code` | string | YES | Código para sistema Facilcom |
@@ -206,7 +206,7 @@ GET /v2/products
 POST /v2/products
 ```
 
-**Request body**:
+**Request body** (con GTINs):
 ```json
 {
     "name": "Filetes de atún",
@@ -221,12 +221,26 @@ POST /v2/products
 }
 ```
 
+**Request body** (sin GTINs - también válido):
+```json
+{
+    "name": "Filetes de atún",
+    "speciesId": 1,
+    "captureZoneId": 2,
+    "familyId": 3,
+    "a3erp_code": "ATU001",
+    "facil_com_code": "FAC001"
+}
+```
+
+**Nota**: Los campos `articleGtin`, `boxGtin` y `palletGtin` son completamente opcionales. Pueden omitirse, enviarse como `null`, o como string vacío `""` (que se normaliza a `null` automáticamente).
+
 **Validación**:
 - `name`: Requerido, string 3-255 caracteres
 - `speciesId`: Requerido, existe en `species`
 - `captureZoneId`: Requerido, existe en `capture_zones`
 - `familyId`: Opcional, existe en `product_families`
-- `articleGtin`, `boxGtin`, `palletGtin`: Opcional, regex `^[0-9]{8,14}$`
+- `articleGtin`, `boxGtin`, `palletGtin`: Opcional (puede ser null o string vacío), si tiene valor debe cumplir regex `^[0-9]{8,14}$`
 - `a3erp_code`, `facil_com_code`: Opcional, string max 255
 
 **Comportamiento**:

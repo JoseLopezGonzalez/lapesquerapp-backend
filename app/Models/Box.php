@@ -45,15 +45,6 @@ class Box extends Model
             );
         }
 
-        // Validar que gross_weight >= net_weight (si ambos existen)
-        if ($this->gross_weight !== null && $this->net_weight !== null) {
-            if ($this->gross_weight < $this->net_weight) {
-                throw new \InvalidArgumentException(
-                    'El peso bruto (gross_weight) no puede ser menor que el peso neto (net_weight).'
-                );
-            }
-        }
-
         // Validar que lot no esté vacío
         if ($this->lot !== null && trim($this->lot) === '') {
             throw new \InvalidArgumentException(
