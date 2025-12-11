@@ -37,6 +37,7 @@ class PalletController extends Controller
     {
         return $query->with([
             'storedPallet',
+            'reception', // Cargar recepción para incluir información en el JSON
             'boxes.box.productionInputs.productionRecord.production', // Cargar productionInputs y su producción para determinar disponibilidad y mostrar info de producción
             'boxes.box.product', // Asegurar que product esté cargado para toArrayAssocV2
         ]);
@@ -229,15 +230,24 @@ class PalletController extends Controller
         //Insertando Palet
         $newPallet = new Pallet;
         $newPallet->observations = $pallet['observations'];
-        $newPallet->status = $pallet['state']['id'] ?? 1; // Por defecto, estado registrado
+        
+        // Determinar estado según si se indica almacén
+        // Si se indica almacén → almacenado, si no → registrado
+        $storeId = $pallet['store']['id'] ?? null;
+        if ($storeId) {
+            $newPallet->status = Pallet::STATE_STORED; // Almacenado
+        } else {
+            $newPallet->status = $pallet['state']['id'] ?? Pallet::STATE_REGISTERED; // Registrado por defecto
+        }
+        
         $newPallet->order_id = $pallet['orderId'] ?? null; // Si se proporciona, asignar la orden
         $newPallet->save();
 
         // Crear vínculo con almacén si se proporciona
-        if (isset($pallet['store']['id'])) {
+        if ($storeId) {
             StoredPallet::create([
                 'pallet_id' => $newPallet->id,
-                'store_id' => $pallet['store']['id'],
+                'store_id' => $storeId,
             ]);
         }
 

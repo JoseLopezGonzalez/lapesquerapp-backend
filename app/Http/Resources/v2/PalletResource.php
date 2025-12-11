@@ -39,11 +39,6 @@ class PalletResource extends JsonResource
             'totalUsedWeight' => $this->totalUsedWeight !== null ? round($this->totalUsedWeight, 3) : null,
             // Nuevos campos de recepción y coste
             'receptionId' => $this->reception_id,
-            'reception' => $this->reception ? [
-                'id' => $this->reception->id,
-                'date' => $this->reception->date,
-            ] : null,
-            'isFromReception' => $this->isFromReception,
             'costPerKg' => $this->cost_per_kg !== null ? round($this->cost_per_kg, 4) : null,
             'totalCost' => $this->total_cost !== null ? round($this->total_cost, 2) : null,
         ];

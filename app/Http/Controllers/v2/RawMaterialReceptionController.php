@@ -10,6 +10,7 @@ use App\Models\RawMaterialReceptionProduct;
 use App\Models\Pallet;
 use App\Models\Box;
 use App\Models\PalletBox;
+use App\Models\StoredPallet;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class RawMaterialReceptionController extends Controller
     public function index(Request $request)
     {
         $query = RawMaterialReception::query();
-        $query->with('supplier', 'products.product', 'pallets.boxes.box.productionInputs');
+        $query->with('supplier', 'products.product', 'pallets.reception', 'pallets.boxes.box.productionInputs');
 
         if ($request->has('id')) {
             $query->where('id', $request->id);
@@ -128,7 +129,7 @@ class RawMaterialReceptionController extends Controller
             }
 
             // 3. Cargar relaciones para respuesta
-            $reception->load('supplier', 'products.product', 'pallets.boxes.box.productionInputs');
+            $reception->load('supplier', 'products.product', 'pallets.reception', 'pallets.boxes.box.productionInputs');
       
             return new RawMaterialReceptionResource($reception);
         });
@@ -136,13 +137,13 @@ class RawMaterialReceptionController extends Controller
 
     public function show($id)
     {
-        $reception = RawMaterialReception::with('supplier', 'products.product', 'pallets.boxes.box.productionInputs')->findOrFail($id);
+        $reception = RawMaterialReception::with('supplier', 'products.product', 'pallets.reception', 'pallets.boxes.box.productionInputs')->findOrFail($id);
         return new RawMaterialReceptionResource($reception);
     }
 
     public function update(Request $request, $id)
     {
-        $reception = RawMaterialReception::with('pallets.boxes.box.productionInputs')->findOrFail($id);
+        $reception = RawMaterialReception::with('pallets.reception', 'pallets.boxes.box.productionInputs')->findOrFail($id);
 
         // Validar según el modo de creación
         if ($reception->creation_mode === RawMaterialReception::CREATION_MODE_LINES) {
@@ -209,7 +210,7 @@ class RawMaterialReceptionController extends Controller
                 $this->updateDetailsFromRequest($reception, $validated['details'], $request->supplier['id']);
             }
 
-            $reception->load('supplier', 'products.product', 'pallets.boxes.box.productionInputs');
+            $reception->load('supplier', 'products.product', 'pallets.reception', 'pallets.boxes.box.productionInputs');
             return new RawMaterialReceptionResource($reception);
         });
     }
@@ -253,11 +254,46 @@ class RawMaterialReceptionController extends Controller
             // Determinar si es palet existente o nuevo
             $palletId = $palletData['id'] ?? null;
             
+            // Obtener almacén del request
+            $storeId = $palletData['store']['id'] ?? null;
+            
             if ($palletId && $existingPallets->has($palletId)) {
                 // Actualizar palet existente
                 $pallet = $existingPallets->get($palletId);
                 $pallet->observations = $palletData['observations'] ?? null;
+                
+                // Actualizar estado según almacén
+                if ($storeId) {
+                    $pallet->status = Pallet::STATE_STORED; // Almacenado
+                } else {
+                    $pallet->status = Pallet::STATE_REGISTERED; // Registrado
+                }
+                
                 $pallet->save();
+                
+                // Actualizar almacenamiento
+                $storedPallet = StoredPallet::where('pallet_id', $pallet->id)->first();
+                if ($storeId) {
+                    if ($storedPallet) {
+                        // Actualizar almacén existente
+                        if ($storedPallet->store_id != $storeId) {
+                            $storedPallet->store_id = $storeId;
+                            $storedPallet->save();
+                        }
+                    } else {
+                        // Crear nuevo almacenamiento
+                        StoredPallet::create([
+                            'pallet_id' => $pallet->id,
+                            'store_id' => $storeId,
+                        ]);
+                    }
+                } else {
+                    // Eliminar almacenamiento si ya no hay almacén
+                    if ($storedPallet) {
+                        $storedPallet->delete();
+                    }
+                }
+                
                 $processedPalletIds[] = $palletId;
                 // Recargar cajas del palet
                 $pallet->load('boxes.box');
@@ -266,9 +302,24 @@ class RawMaterialReceptionController extends Controller
                 $pallet = new Pallet();
                 $pallet->reception_id = $reception->id;
                 $pallet->observations = $palletData['observations'] ?? null;
-                $pallet->status = Pallet::STATE_REGISTERED;
+                
+                // Determinar estado según si se indica almacén
+                if ($storeId) {
+                    $pallet->status = Pallet::STATE_STORED; // Almacenado
+                } else {
+                    $pallet->status = Pallet::STATE_REGISTERED; // Registrado
+                }
+                
                 $pallet->save();
                 $palletId = $pallet->id;
+                
+                // Crear vínculo con almacén si se proporciona
+                if ($storeId) {
+                    StoredPallet::create([
+                        'pallet_id' => $pallet->id,
+                        'store_id' => $storeId,
+                    ]);
+                }
             }
 
             // Procesar cajas del palet
@@ -383,8 +434,25 @@ class RawMaterialReceptionController extends Controller
             $pallet = new Pallet();
             $pallet->reception_id = $reception->id;
             $pallet->observations = $palletData['observations'] ?? null;
-            $pallet->status = Pallet::STATE_REGISTERED;
+            
+            // Determinar estado según si se indica almacén
+            // Si se indica almacén → almacenado, si no → registrado
+            $storeId = $palletData['store']['id'] ?? null;
+            if ($storeId) {
+                $pallet->status = Pallet::STATE_STORED; // Almacenado
+            } else {
+                $pallet->status = Pallet::STATE_REGISTERED; // Registrado
+            }
+            
             $pallet->save();
+            
+            // Crear vínculo con almacén si se proporciona
+            if ($storeId) {
+                StoredPallet::create([
+                    'pallet_id' => $pallet->id,
+                    'store_id' => $storeId,
+                ]);
+            }
       
             $totalWeight = 0;
       
@@ -598,7 +666,7 @@ class RawMaterialReceptionController extends Controller
     {
         // Cargar relaciones si no están cargadas
         if (!$reception->relationLoaded('pallets')) {
-            $reception->load('pallets.boxes.box.productionInputs');
+            $reception->load('pallets.reception', 'pallets.boxes.box.productionInputs');
         }
 
         foreach ($reception->pallets as $pallet) {
