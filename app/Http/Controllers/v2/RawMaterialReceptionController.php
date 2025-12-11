@@ -11,6 +11,7 @@ use App\Models\Pallet;
 use App\Models\Box;
 use App\Models\PalletBox;
 use App\Models\StoredPallet;
+use App\Models\Product;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -97,10 +98,11 @@ class RawMaterialReceptionController extends Controller
             'pallets.*.boxes.*.gs1128' => 'required|string',
             'pallets.*.boxes.*.grossWeight' => 'required|numeric',
             'pallets.*.boxes.*.netWeight' => 'required|numeric',
-            'pallets.*.prices' => 'required_with:pallets|array',
-            'pallets.*.prices.*.product.id' => 'required|exists:tenant.products,id',
-            'pallets.*.prices.*.lot' => 'required|string',
-            'pallets.*.prices.*.price' => 'required|numeric|min:0',
+            // Precios en la raíz de la recepción (compartidos por todos los palets)
+            'prices' => 'required_with:pallets|array',
+            'prices.*.product.id' => 'required_with:prices|exists:tenant.products,id',
+            'prices.*.lot' => 'required_with:prices|string',
+            'prices.*.price' => 'required_with:prices|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -126,7 +128,8 @@ class RawMaterialReceptionController extends Controller
             // 2. Crear palets y líneas según el modo
             if ($request->has('pallets') && !empty($request->pallets)) {
                 // Modo manual: crear palets y generar líneas
-                $this->createPalletsFromRequest($reception, $request->pallets);
+                $prices = $request->prices ?? [];
+                $this->createPalletsFromRequest($reception, $request->pallets, $prices);
             } else {
                 // Modo automático: crear líneas y generar palet
                 $this->createDetailsFromRequest($reception, $request->details, $request->supplier['id']);
@@ -178,10 +181,11 @@ class RawMaterialReceptionController extends Controller
                 'pallets.*.boxes.*.gs1128' => 'required|string',
                 'pallets.*.boxes.*.grossWeight' => 'required|numeric',
                 'pallets.*.boxes.*.netWeight' => 'required|numeric',
-                'pallets.*.prices' => 'required|array',
-                'pallets.*.prices.*.product.id' => 'required|exists:tenant.products,id',
-                'pallets.*.prices.*.lot' => 'required|string',
-                'pallets.*.prices.*.price' => 'required|numeric|min:0',
+                // Precios en la raíz de la recepción (compartidos por todos los palets)
+                'prices' => 'required|array',
+                'prices.*.product.id' => 'required|exists:tenant.products,id',
+                'prices.*.lot' => 'required|string',
+                'prices.*.price' => 'required|numeric|min:0',
             ]);
         } else {
             // Recepciones antiguas sin creation_mode - permitir edición por líneas
@@ -212,7 +216,8 @@ class RawMaterialReceptionController extends Controller
             // Actualizar datos según el modo (editar en lugar de eliminar/recrear)
             if ($reception->creation_mode === RawMaterialReception::CREATION_MODE_PALLETS) {
                 // Modo palets: editar palets y cajas existentes
-                $this->updatePalletsFromRequest($reception, $validated['pallets']);
+                $prices = $validated['prices'] ?? [];
+                $this->updatePalletsFromRequest($reception, $validated['pallets'], $prices);
             } else {
                 // Modo líneas o recepciones antiguas: editar palet único y cajas
                 $this->updateDetailsFromRequest($reception, $validated['details'], $request->supplier['id']);
@@ -247,7 +252,7 @@ class RawMaterialReceptionController extends Controller
     /**
      * Actualizar palets desde request (modo manual - edición)
      */
-    private function updatePalletsFromRequest(RawMaterialReception $reception, array $palletsData): void
+    private function updatePalletsFromRequest(RawMaterialReception $reception, array $palletsData, array $prices = []): void
     {
         // Cargar palets existentes con sus cajas
         $reception->load('pallets.boxes.box');
@@ -255,15 +260,16 @@ class RawMaterialReceptionController extends Controller
         $processedPalletIds = [];
         $groupedByProduct = [];
 
+        // Crear mapa de precios por producto+lote (compartido por todos los palets)
+        $pricesMap = [];
+        foreach ($prices as $priceData) {
+            $productId = $priceData['product']['id'];
+            $lot = $priceData['lot'];
+            $key = "{$productId}_{$lot}";
+            $pricesMap[$key] = $priceData['price'];
+        }
+
         foreach ($palletsData as $palletData) {
-            // Crear mapa de precios por producto+lote para este palet
-            $pricesMap = [];
-            foreach ($palletData['prices'] ?? [] as $priceData) {
-                $productId = $priceData['product']['id'];
-                $lot = $priceData['lot'];
-                $key = "{$productId}_{$lot}";
-                $pricesMap[$key] = $priceData['price'];
-            }
             
             // Determinar si es palet existente o nuevo
             $palletId = $palletData['id'] ?? null;
@@ -440,19 +446,20 @@ class RawMaterialReceptionController extends Controller
     /**
      * Crear palets desde request (modo manual)
      */
-    private function createPalletsFromRequest(RawMaterialReception $reception, array $pallets): void
+    private function createPalletsFromRequest(RawMaterialReception $reception, array $pallets, array $prices = []): void
     {
+        // Crear mapa de precios por producto+lote (compartido por todos los palets)
+        $pricesMap = [];
+        foreach ($prices as $priceData) {
+            $productId = $priceData['product']['id'];
+            $lot = $priceData['lot'];
+            $key = "{$productId}_{$lot}";
+            $pricesMap[$key] = $priceData['price'];
+        }
+        
         $groupedByProduct = [];
   
         foreach ($pallets as $palletData) {
-            // Crear mapa de precios por producto+lote para este palet
-            $pricesMap = [];
-            foreach ($palletData['prices'] ?? [] as $priceData) {
-                $productId = $priceData['product']['id'];
-                $lot = $priceData['lot'];
-                $key = "{$productId}_{$lot}";
-                $pricesMap[$key] = $priceData['price'];
-            }
       
             // Crear palet
             $pallet = new Pallet();
@@ -675,10 +682,48 @@ class RawMaterialReceptionController extends Controller
 
     /**
      * Generar lote desde recepción
+     * Formato: DDMMAAFFFXXREC
+     * DD: Día, MM: Mes, AA: Año (2 dígitos), F: Código FAO, X: ID zona captura, REC: Literal
      */
     private function generateLotFromReception(RawMaterialReception $reception, int $productId): string
     {
-        return date('Ymd', strtotime($reception->date)) . '-' . $reception->id . '-' . $productId;
+        // Cargar producto con relaciones necesarias
+        $product = Product::with(['species', 'captureZone'])->find($productId);
+        
+        if (!$product) {
+            // Fallback al formato antiguo si no se encuentra el producto
+            return date('Ymd', strtotime($reception->date)) . '-' . $reception->id . '-' . $productId;
+        }
+        
+        // Validar que tiene especie y zona de captura
+        if (!$product->species || !$product->capture_zone_id) {
+            // Fallback al formato antiguo si faltan datos
+            return date('Ymd', strtotime($reception->date)) . '-' . $reception->id . '-' . $productId;
+        }
+        
+        // Obtener fecha de la recepción
+        $date = strtotime($reception->date);
+        
+        // DD: Día (2 dígitos)
+        $day = date('d', $date);
+        
+        // MM: Mes (2 dígitos)
+        $month = date('m', $date);
+        
+        // AA: Año (2 últimos dígitos)
+        $year = date('y', $date);
+        
+        // F: Código FAO (del producto->species->fao)
+        $faoCode = $product->species->fao ?? '';
+        
+        // X: ID de zona de captura (del producto->capture_zone_id)
+        $captureZoneId = $product->capture_zone_id;
+        
+        // REC: Literal "REC"
+        $rec = 'REC';
+        
+        // Construir lote: DDMMAAFFFXXREC
+        return $day . $month . $year . $faoCode . $captureZoneId . $rec;
     }
 
     /**

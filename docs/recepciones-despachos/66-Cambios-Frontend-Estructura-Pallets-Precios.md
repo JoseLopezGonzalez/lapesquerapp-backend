@@ -13,14 +13,15 @@ Este documento describe los **cambios en la estructura del request** para crear 
 ### ❌ Campos Eliminados (ya no se usan)
 
 - `pallets[].product.id` - **ELIMINADO** (ahora cada caja tiene su producto)
-- `pallets[].price` - **ELIMINADO** (ahora se usa el array `prices`)
+- `pallets[].price` - **ELIMINADO** (ahora se usa el array `prices` en la raíz)
 - `pallets[].lot` - **ELIMINADO** (ahora cada caja tiene su lote)
+- `pallets[].prices` - **ELIMINADO** (ahora está en la raíz de la recepción)
 
 ### ✅ Campos Nuevos/Modificados
 
 - `pallets[].boxes[].product.id` - **NUEVO** (requerido en cada caja)
 - `pallets[].boxes[].lot` - **MODIFICADO** (ahora es por caja, no por palet)
-- `pallets[].prices` - **NUEVO** (array de precios por producto+lote)
+- `prices` - **NUEVO** (array de precios en la raíz de la recepción, compartido por todos los palets)
 
 ---
 
@@ -56,6 +57,23 @@ Este documento describe los **cambios en la estructura del request** para crear 
   "supplier": { "id": 1 },
   "date": "2025-01-15",
   "notes": "Recepción de prueba",
+  "prices": [                         // ✅ REQUERIDO: Array de precios en la RAÍZ (compartido por todos los palets)
+    {
+      "product": { "id": 5 },
+      "lot": "LOT-A",
+      "price": 12.50
+    },
+    {
+      "product": { "id": 5 },
+      "lot": "LOT-B",
+      "price": 13.00
+    },
+    {
+      "product": { "id": 6 },
+      "lot": "LOT-C",
+      "price": 15.00
+    }
+  ],
   "pallets": [
     {
       "observations": "Palet 1",
@@ -82,22 +100,17 @@ Este documento describe los **cambios en la estructura del request** para crear 
           "grossWeight": 30.0,
           "netWeight": 29.5
         }
-      ],
-      "prices": [                     // ✅ REQUERIDO: Array de precios por producto+lote
+      ]
+    },
+    {
+      "observations": "Palet 2",
+      "boxes": [
         {
-          "product": { "id": 5 },
+          "product": { "id": 5 },     // ✅ Mismo producto+lote que Palet 1
           "lot": "LOT-A",
-          "price": 12.50
-        },
-        {
-          "product": { "id": 5 },
-          "lot": "LOT-B",
-          "price": 13.00
-        },
-        {
-          "product": { "id": 6 },
-          "lot": "LOT-C",
-          "price": 15.00
+          "gs1128": "GS1-004",
+          "grossWeight": 25.5,
+          "netWeight": 25.0
         }
       ]
     }
@@ -111,15 +124,15 @@ Este documento describe los **cambios en la estructura del request** para crear 
 
 ### Campos Requeridos
 
+- `prices` - Array de precios en la raíz de la recepción (requerido si hay palets)
+- `prices[].product.id` - ID del producto (requerido)
+- `prices[].lot` - Lote (requerido)
+- `prices[].price` - Precio por kg (requerido, ≥ 0)
 - `pallets[].boxes` - Array con al menos 1 caja
 - `pallets[].boxes[].product.id` - ID del producto (requerido en cada caja)
 - `pallets[].boxes[].gs1128` - Código GS1-128 (requerido)
 - `pallets[].boxes[].grossWeight` - Peso bruto (requerido, numérico)
 - `pallets[].boxes[].netWeight` - Peso neto (requerido, numérico)
-- `pallets[].prices` - Array de precios (requerido)
-- `pallets[].prices[].product.id` - ID del producto (requerido)
-- `pallets[].prices[].lot` - Lote (requerido)
-- `pallets[].prices[].price` - Precio por kg (requerido, ≥ 0)
 
 ### Campos Opcionales
 
@@ -137,6 +150,13 @@ La estructura es **idéntica** a la de creación, pero con campos adicionales pa
 {
   "supplier": { "id": 1 },
   "date": "2025-01-15",
+  "prices": [
+    {
+      "product": { "id": 5 },
+      "lot": "LOT-A",
+      "price": 12.50
+    }
+  ],
   "pallets": [
     {
       "id": 10,                       // ID del palet existente (opcional, si no existe se crea uno nuevo)
@@ -150,13 +170,6 @@ La estructura es **idéntica** a la de creación, pero con campos adicionales pa
           "gs1128": "GS1-001",
           "grossWeight": 25.5,
           "netWeight": 25.0
-        }
-      ],
-      "prices": [
-        {
-          "product": { "id": 5 },
-          "lot": "LOT-A",
-          "price": 12.50
         }
       ]
     }
@@ -180,10 +193,12 @@ La estructura es **idéntica** a la de creación, pero con campos adicionales pa
 - Un palet puede contener múltiples lotes del mismo producto
 - Cada caja puede tener su propio producto y lote
 
-### 2. **Precios Granulares**
+### 2. **Precios Granulares y Compartidos**
 - Precios diferentes para el mismo producto con diferentes lotes
-- Precios diferentes para diferentes productos en el mismo palet
-- El precio se especifica una vez por combinación producto+lote en el array `prices`
+- Precios diferentes para diferentes productos
+- El precio se especifica **una vez por combinación producto+lote** en el array `prices` en la raíz
+- **Ventaja**: Si dos palets comparten el mismo producto+lote, solo se especifica el precio una vez
+- Los precios son compartidos por todos los palets de la recepción
 
 ### 3. **Consistencia**
 - El lote se toma directamente de las cajas (no se inventa)
@@ -198,6 +213,13 @@ La estructura es **idéntica** a la de creación, pero con campos adicionales pa
 
 ```json
 {
+  "prices": [
+    {
+      "product": { "id": 5 },
+      "lot": "LOT-001",
+      "price": 12.50
+    }
+  ],
   "pallets": [
     {
       "observations": "Palet simple",
@@ -216,13 +238,6 @@ La estructura es **idéntica** a la de creación, pero con campos adicionales pa
           "grossWeight": 25.5,
           "netWeight": 25.0
         }
-      ],
-      "prices": [
-        {
-          "product": { "id": 5 },
-          "lot": "LOT-001",
-          "price": 12.50
-        }
       ]
     }
   ]
@@ -233,6 +248,18 @@ La estructura es **idéntica** a la de creación, pero con campos adicionales pa
 
 ```json
 {
+  "prices": [
+    {
+      "product": { "id": 5 },
+      "lot": "LOT-A",
+      "price": 12.50
+    },
+    {
+      "product": { "id": 5 },
+      "lot": "LOT-B",
+      "price": 13.00
+    }
+  ],
   "pallets": [
     {
       "observations": "Palet con múltiples lotes",
@@ -251,31 +278,31 @@ La estructura es **idéntica** a la de creación, pero con campos adicionales pa
           "grossWeight": 25.5,
           "netWeight": 25.0
         }
-      ],
-      "prices": [
-        {
-          "product": { "id": 5 },
-          "lot": "LOT-A",
-          "price": 12.50
-        },
-        {
-          "product": { "id": 5 },
-          "lot": "LOT-B",
-          "price": 13.00
-        }
       ]
     }
   ]
 }
 ```
 
-### Ejemplo 3: Palet con múltiples productos
+### Ejemplo 3: Múltiples palets compartiendo productos y lotes
 
 ```json
 {
+  "prices": [
+    {
+      "product": { "id": 5 },
+      "lot": "LOT-A",
+      "price": 12.50
+    },
+    {
+      "product": { "id": 6 },
+      "lot": "LOT-B",
+      "price": 15.00
+    }
+  ],
   "pallets": [
     {
-      "observations": "Palet mixto",
+      "observations": "Palet 1",
       "boxes": [
         {
           "product": { "id": 5 },
@@ -291,17 +318,17 @@ La estructura es **idéntica** a la de creación, pero con campos adicionales pa
           "grossWeight": 30.0,
           "netWeight": 29.5
         }
-      ],
-      "prices": [
+      ]
+    },
+    {
+      "observations": "Palet 2",
+      "boxes": [
         {
           "product": { "id": 5 },
-          "lot": "LOT-A",
-          "price": 12.50
-        },
-        {
-          "product": { "id": 6 },
-          "lot": "LOT-B",
-          "price": 15.00
+          "lot": "LOT-A",  // ← Mismo producto+lote que Palet 1
+          "gs1128": "GS1-003",
+          "grossWeight": 25.5,
+          "netWeight": 25.0
         }
       ]
     }
@@ -309,14 +336,17 @@ La estructura es **idéntica** a la de creación, pero con campos adicionales pa
 }
 ```
 
+**Ventaja**: El precio para producto 5 + LOT-A solo se especifica una vez en `prices`, aunque aparezca en múltiples palets.
+
 ---
 
 ## ⚠️ Notas Importantes
 
 ### 1. **Validación de Precios**
-- Todas las combinaciones producto+lote en `boxes` deben tener su precio correspondiente en `prices`
+- Todas las combinaciones producto+lote en **todas las cajas de todos los palets** deben tener su precio correspondiente en `prices` (en la raíz)
 - Si falta un precio para una combinación, el backend intentará buscarlo del histórico
 - Si no se encuentra en el histórico, el precio será `null` y no se calcularán costes
+- **Importante**: El array `prices` debe contener todas las combinaciones únicas de producto+lote que aparecen en cualquier palet
 
 ### 2. **Generación Automática de Lotes**
 - Si una caja no tiene `lot`, se genera automáticamente con el formato: `YYYYMMDD-{reception_id}-{product_id}`
@@ -355,13 +385,13 @@ Si tienes código que usa la estructura antigua, necesitas:
    box.lot
    ```
 
-3. **Convertir `price` a array `prices`**:
+3. **Mover `prices` a la raíz de la recepción**:
    ```javascript
-   // Antes
-   pallet.price
+   // Antes (dentro de cada palet)
+   pallet.prices = [...]
    
-   // Ahora
-   pallet.prices = [
+   // Ahora (en la raíz)
+   reception.prices = [
      {
        product: { id: productId },
        lot: lot,
@@ -370,9 +400,11 @@ Si tienes código que usa la estructura antigua, necesitas:
    ]
    ```
 
-4. **Agrupar precios por producto+lote**:
-   - Si todas las cajas tienen el mismo producto y lote → un solo elemento en `prices`
-   - Si hay diferentes lotes → un elemento por cada lote en `prices`
+4. **Agrupar precios únicos por producto+lote**:
+   - Recorrer todos los palets y todas sus cajas
+   - Extraer todas las combinaciones únicas de producto+lote
+   - Crear un solo array `prices` en la raíz con todas las combinaciones únicas
+   - Si dos palets comparten el mismo producto+lote, solo aparece una vez en `prices`
 
 ---
 

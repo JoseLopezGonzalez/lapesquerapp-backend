@@ -319,6 +319,22 @@ POST /v2/raw-material-receptions
     },
     "date": "2025-01-15",
     "notes": "Recepción normal",
+    "prices": [
+        {
+            "product": {
+                "id": 10
+            },
+            "lot": "LOT-A",
+            "price": 12.50
+        },
+        {
+            "product": {
+                "id": 10
+            },
+            "lot": "LOT-B",
+            "price": 13.00
+        }
+    ],
     "pallets": [
         {
             "observations": "Palet 1",
@@ -344,22 +360,6 @@ POST /v2/raw-material-receptions
                     "grossWeight": 25.5,
                     "netWeight": 25.0
                 }
-            ],
-            "prices": [
-                {
-                    "product": {
-                        "id": 10
-                    },
-                    "lot": "LOT-A",
-                    "price": 12.50
-                },
-                {
-                    "product": {
-                        "id": 10
-                    },
-                    "lot": "LOT-B",
-                    "price": 13.00
-                }
             ]
         }
     ]
@@ -369,9 +369,9 @@ POST /v2/raw-material-receptions
 **Comportamiento**:
 - **Modo Automático (details)**: Crea 1 palet por recepción, distribuye el peso entre las cajas según el campo `boxes`, crea líneas de recepción automáticamente
 - **Modo Manual (pallets)**: Crea palets según especificación, cada caja puede tener su propio producto y lote
-- **Precios**: Se especifican en el array `prices` como resumen por producto+lote. Si falta un precio, se busca del histórico
+- **Precios**: Se especifican en el array `prices` en la raíz de la recepción (compartido por todos los palets). Si dos palets comparten el mismo producto+lote, solo se especifica el precio una vez. Si falta un precio, se busca del histórico
 - **Lotes**: Cada caja puede tener su propio lote. Si no se proporciona, se genera automáticamente
-- **Flexibilidad**: Un palet puede contener múltiples productos y lotes diferentes
+- **Flexibilidad**: Un palet puede contener múltiples productos y lotes diferentes. Múltiples palets pueden compartir productos y lotes
 - Las líneas de recepción se crean automáticamente agrupando por producto y lote
 - Si `boxes` es 0 o null (en modo automático), se cuenta como 1
 

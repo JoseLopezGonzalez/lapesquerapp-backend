@@ -60,7 +60,7 @@ class Pallet extends Model
         ];
     }
 
-    protected $fillable = ['observations', 'status'];
+    protected $fillable = ['observations', 'status', 'reception_id'];
 
     /**
      * Boot del modelo - Validaciones y eventos

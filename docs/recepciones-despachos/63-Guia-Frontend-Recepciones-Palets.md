@@ -158,6 +158,10 @@ Los palets que provienen de una recepción **no se pueden modificar ni eliminar 
 ```
 
 **Campos**:
+- `prices` (requerido si hay `pallets`): Array de precios en la raíz de la recepción (compartido por todos los palets)
+  - `prices[].product.id` (requerido): ID del producto
+  - `prices[].lot` (requerido): Lote
+  - `prices[].price` (requerido): Precio por kg (≥ 0)
 - `pallets` (requerido si no hay `details`): Array de palets
   - `pallets[].observations` (opcional): Observaciones del palet
   - `pallets[].store.id` (opcional): ID del almacén (si se proporciona, el palet se crea como almacenado)
@@ -167,16 +171,13 @@ Los palets que provienen de una recepción **no se pueden modificar ni eliminar 
     - `boxes[].gs1128` (requerido): Código GS1-128
     - `boxes[].grossWeight` (requerido): Peso bruto en kg
     - `boxes[].netWeight` (requerido): Peso neto en kg
-  - `pallets[].prices` (requerido): Array de precios por producto+lote
-    - `prices[].product.id` (requerido): ID del producto
-    - `prices[].lot` (requerido): Lote
-    - `prices[].price` (requerido): Precio por kg (≥ 0)
 
 **Comportamiento**:
 - Crea los palets según especificación
 - Cada caja puede tener su propio producto y lote (máxima flexibilidad)
 - Un palet puede contener múltiples productos y lotes diferentes
-- Los precios se especifican en el array `prices` como resumen por producto+lote
+- Los precios se especifican en el array `prices` en la raíz de la recepción (compartido por todos los palets)
+- Si dos palets comparten el mismo producto+lote, solo se especifica el precio una vez en `prices`
 - Si una combinación producto+lote no tiene precio en `prices`, se busca del histórico
 - Agrupa cajas por producto y lote para crear líneas de recepción
 - Crea líneas de recepción automáticamente con el resumen (suma de pesos por producto/lote)
@@ -217,6 +218,18 @@ Los palets que provienen de una recepción **no se pueden modificar ni eliminar 
   "supplier": { "id": 1 },
   "date": "2025-01-15",
   "notes": "Notas actualizadas",
+  "prices": [
+    {
+      "product": { "id": 5 },
+      "lot": "LOT-A",
+      "price": 12.50
+    },
+    {
+      "product": { "id": 5 },
+      "lot": "LOT-B",
+      "price": 13.00
+    }
+  ],
   "pallets": [
     {
       "id": 15,  // ← ID del palet existente (opcional, si no viene se crea nuevo)
@@ -237,18 +250,6 @@ Los palets que provienen de una recepción **no se pueden modificar ni eliminar 
           "gs1128": "GS1-002",
           "grossWeight": 25.5,
           "netWeight": 25.0
-        }
-      ],
-      "prices": [
-        {
-          "product": { "id": 5 },
-          "lot": "LOT-A",
-          "price": 12.50
-        },
-        {
-          "product": { "id": 5 },
-          "lot": "LOT-B",
-          "price": 13.00
         }
       ]
     }
