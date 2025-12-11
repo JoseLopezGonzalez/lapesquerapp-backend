@@ -59,8 +59,9 @@ El modelo `RawMaterialReception` representa una **recepción de materia prima** 
 | `id` | bigint | NO | ID único |
 | `reception_id` | bigint | NO | FK a `raw_material_receptions` |
 | `product_id` | bigint | NO | FK a `products` |
+| `lot` | string | YES | Lote del producto (agregado en migración 2025_12_11) |
 | `net_weight` | decimal(8,2) | NO | Peso neto recibido |
-| `price` | decimal | YES | Precio unitario (en fillable pero no en migración) |
+| `price` | decimal(10,2) | YES | Precio unitario por kg |
 | `created_at` | timestamp | NO | Fecha de creación |
 | `updated_at` | timestamp | NO | Fecha de última actualización |
 
@@ -72,7 +73,9 @@ El modelo `RawMaterialReception` representa una **recepción de materia prima** 
 - `reception_id` → `raw_material_receptions.id` (onDelete: cascade)
 - `product_id` → `products.id` (onDelete: cascade)
 
-**⚠️ Nota**: El campo `price` está en fillable del modelo pero no existe en la migración base.
+**⚠️ Notas**: 
+- El campo `price` se agregó en migración `2025_04_25_094428_add_price_to_raw_material_reception_products_table.php`
+- El campo `lot` se agregó en migración `2025_12_11_093042_add_lot_to_raw_material_reception_products_table.php`
 
 ---
 
@@ -271,14 +274,18 @@ POST /v2/raw-material-receptions
     'date' => 'required|date',
     'notes' => 'nullable|string',
     'pallets' => 'required_without:details|array',
-    'pallets.*.product.id' => 'required_with:pallets|exists:tenant.products,id',
-    'pallets.*.price' => 'required_with:pallets|numeric|min:0',
-    'pallets.*.lot' => 'nullable|string',
     'pallets.*.observations' => 'nullable|string',
-    'pallets.*.boxes' => 'required_with:pallets|array',
+    'pallets.*.store.id' => 'nullable|integer|exists:tenant.stores,id',
+    'pallets.*.boxes' => 'required_with:pallets|array|min:1',
+    'pallets.*.boxes.*.product.id' => 'required|exists:tenant.products,id',
+    'pallets.*.boxes.*.lot' => 'nullable|string',
     'pallets.*.boxes.*.gs1128' => 'required|string',
     'pallets.*.boxes.*.grossWeight' => 'required|numeric',
     'pallets.*.boxes.*.netWeight' => 'required|numeric',
+    'pallets.*.prices' => 'required_with:pallets|array',
+    'pallets.*.prices.*.product.id' => 'required|exists:tenant.products,id',
+    'pallets.*.prices.*.lot' => 'required|string',
+    'pallets.*.prices.*.price' => 'required|numeric|min:0',
 ]
 ```
 
@@ -314,17 +321,44 @@ POST /v2/raw-material-receptions
     "notes": "Recepción normal",
     "pallets": [
         {
-            "product": {
-                "id": 10
-            },
-            "price": 12.50,
-            "lot": "LOT-2025-001",
             "observations": "Palet 1",
+            "store": {
+                "id": 1
+            },
             "boxes": [
                 {
+                    "product": {
+                        "id": 10
+                    },
+                    "lot": "LOT-A",
                     "gs1128": "GS1-001",
                     "grossWeight": 25.5,
                     "netWeight": 25.0
+                },
+                {
+                    "product": {
+                        "id": 10
+                    },
+                    "lot": "LOT-B",
+                    "gs1128": "GS1-002",
+                    "grossWeight": 25.5,
+                    "netWeight": 25.0
+                }
+            ],
+            "prices": [
+                {
+                    "product": {
+                        "id": 10
+                    },
+                    "lot": "LOT-A",
+                    "price": 12.50
+                },
+                {
+                    "product": {
+                        "id": 10
+                    },
+                    "lot": "LOT-B",
+                    "price": 13.00
                 }
             ]
         }
@@ -334,10 +368,12 @@ POST /v2/raw-material-receptions
 
 **Comportamiento**:
 - **Modo Automático (details)**: Crea 1 palet por recepción, distribuye el peso entre las cajas según el campo `boxes`, crea líneas de recepción automáticamente
-- **Modo Manual (pallets)**: Crea palets según especificación, crea líneas de recepción automáticamente agrupando por producto y lote
-- Si no se proporciona `price`, intenta obtenerlo del último precio del mismo producto y proveedor
-- Si no se proporciona `lot`, se genera automáticamente
-- Si `boxes` es 0 o null, se cuenta como 1
+- **Modo Manual (pallets)**: Crea palets según especificación, cada caja puede tener su propio producto y lote
+- **Precios**: Se especifican en el array `prices` como resumen por producto+lote. Si falta un precio, se busca del histórico
+- **Lotes**: Cada caja puede tener su propio lote. Si no se proporciona, se genera automáticamente
+- **Flexibilidad**: Un palet puede contener múltiples productos y lotes diferentes
+- Las líneas de recepción se crean automáticamente agrupando por producto y lote
+- Si `boxes` es 0 o null (en modo automático), se cuenta como 1
 
 #### `show($id)` - Mostrar Recepción
 ```php

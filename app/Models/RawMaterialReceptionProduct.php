@@ -13,7 +13,7 @@ class RawMaterialReceptionProduct extends Model
     use UsesTenantConnection;
     use HasFactory;
 
-    protected $fillable = ['reception_id', 'product_id', 'net_weight' , 'price'];
+    protected $fillable = ['reception_id', 'product_id', 'net_weight', 'price', 'lot'];
 
     public function reception()
     {

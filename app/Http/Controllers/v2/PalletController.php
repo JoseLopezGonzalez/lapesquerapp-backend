@@ -614,8 +614,15 @@ class PalletController extends Controller
 
         $pallet = Pallet::findOrFail($palletId);
 
-        if ($pallet->status !== Pallet::STATE_STORED) {
-            return response()->json(['error' => 'El palet no está en estado almacenado'], 400);
+        // Permitir mover desde almacén ghost (estado registrado) o desde almacén almacenado
+        // Si está en estado registrado, cambiar automáticamente a almacenado
+        if ($pallet->status === Pallet::STATE_REGISTERED) {
+            // Cambiar automáticamente el estado a almacenado cuando se mueve desde el almacén ghost
+            $pallet->status = Pallet::STATE_STORED;
+            $pallet->save();
+        } elseif ($pallet->status !== Pallet::STATE_STORED) {
+            // No permitir mover palets en otros estados (shipped, processed)
+            return response()->json(['error' => 'El palet no está en estado almacenado o registrado'], 400);
         }
 
         $storedPallet = StoredPallet::firstOrNew(['pallet_id' => $palletId]);
@@ -751,13 +758,15 @@ class PalletController extends Controller
         // Cargar todos los palets de la recepción con sus cajas y líneas existentes
         $reception->load('pallets.boxes.box', 'products');
         
-        // Obtener precios existentes por producto (usar el precio de la línea con más peso si hay múltiples)
+        // Obtener precios existentes por producto+lote (usar el precio de la línea con más peso si hay múltiples)
         $existingPrices = [];
         foreach ($reception->products as $product) {
             $productId = $product->product_id;
-            if (!isset($existingPrices[$productId]) || 
-                ($product->net_weight > ($existingPrices[$productId]['weight'] ?? 0))) {
-                $existingPrices[$productId] = [
+            $lot = $product->lot;
+            $key = "{$productId}_{$lot}";
+            if (!isset($existingPrices[$key]) || 
+                ($product->net_weight > ($existingPrices[$key]['weight'] ?? 0))) {
+                $existingPrices[$key] = [
                     'price' => $product->price,
                     'weight' => $product->net_weight,
                 ];
@@ -777,8 +786,9 @@ class PalletController extends Controller
                 $lot = $box->lot;
                 $netWeight = $box->net_weight ?? 0;
                 
-                // Obtener el precio de las líneas existentes del mismo producto
-                $price = $existingPrices[$productId]['price'] ?? null;
+                // Obtener el precio de las líneas existentes del mismo producto+lote
+                $key = "{$productId}_{$lot}";
+                $price = $existingPrices[$key]['price'] ?? null;
                 
                 // Agrupar por producto y lote
                 $key = "{$productId}_{$lot}";
@@ -802,6 +812,7 @@ class PalletController extends Controller
             if ($group['net_weight'] > 0) {
                 $reception->products()->create([
                     'product_id' => $group['product_id'],
+                    'lot' => $group['lot'],
                     'net_weight' => $group['net_weight'],
                     'price' => $group['price'],
                 ]);

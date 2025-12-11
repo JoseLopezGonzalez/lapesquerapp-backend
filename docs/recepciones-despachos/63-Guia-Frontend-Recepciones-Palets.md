@@ -96,22 +96,60 @@ Los palets que provienen de una recepción **no se pueden modificar ni eliminar 
   "notes": "Recepción de prueba",
   "pallets": [
     {
-      "product": {
-        "id": 5
-      },
-      "price": 12.50,
-      "lot": "LOT-2025-001",
       "observations": "Palet 1",
+      "store": {
+        "id": 1
+      },
       "boxes": [
         {
+          "product": {
+            "id": 5
+          },
+          "lot": "LOT-A",
           "gs1128": "GS1-001",
           "grossWeight": 25.5,
           "netWeight": 25.0
         },
         {
+          "product": {
+            "id": 5
+          },
+          "lot": "LOT-B",
           "gs1128": "GS1-002",
           "grossWeight": 25.5,
           "netWeight": 25.0
+        },
+        {
+          "product": {
+            "id": 6
+          },
+          "lot": "LOT-C",
+          "gs1128": "GS1-003",
+          "grossWeight": 30.0,
+          "netWeight": 29.5
+        }
+      ],
+      "prices": [
+        {
+          "product": {
+            "id": 5
+          },
+          "lot": "LOT-A",
+          "price": 12.50
+        },
+        {
+          "product": {
+            "id": 5
+          },
+          "lot": "LOT-B",
+          "price": 13.00
+        },
+        {
+          "product": {
+            "id": 6
+          },
+          "lot": "LOT-C",
+          "price": 15.00
         }
       ]
     }
@@ -121,19 +159,26 @@ Los palets que provienen de una recepción **no se pueden modificar ni eliminar 
 
 **Campos**:
 - `pallets` (requerido si no hay `details`): Array de palets
-  - `pallets[].product.id` (requerido): ID del producto
-  - `pallets[].price` (requerido): Precio por kg (obligatorio en modo manual)
-  - `pallets[].lot` (opcional): Lote para todas las cajas del palet
   - `pallets[].observations` (opcional): Observaciones del palet
+  - `pallets[].store.id` (opcional): ID del almacén (si se proporciona, el palet se crea como almacenado)
   - `pallets[].boxes` (requerido): Array de cajas
+    - `boxes[].product.id` (requerido): ID del producto de la caja
+    - `boxes[].lot` (opcional): Lote de la caja. Si no se proporciona, se genera automáticamente
     - `boxes[].gs1128` (requerido): Código GS1-128
     - `boxes[].grossWeight` (requerido): Peso bruto en kg
     - `boxes[].netWeight` (requerido): Peso neto en kg
+  - `pallets[].prices` (requerido): Array de precios por producto+lote
+    - `prices[].product.id` (requerido): ID del producto
+    - `prices[].lot` (requerido): Lote
+    - `prices[].price` (requerido): Precio por kg (≥ 0)
 
 **Comportamiento**:
 - Crea los palets según especificación
-- Crea las cajas dentro de cada palet
-- Agrupa cajas por producto y lote
+- Cada caja puede tener su propio producto y lote (máxima flexibilidad)
+- Un palet puede contener múltiples productos y lotes diferentes
+- Los precios se especifican en el array `prices` como resumen por producto+lote
+- Si una combinación producto+lote no tiene precio en `prices`, se busca del histórico
+- Agrupa cajas por producto y lote para crear líneas de recepción
 - Crea líneas de recepción automáticamente con el resumen (suma de pesos por producto/lote)
 
 ### Actualizar Recepción
@@ -175,16 +220,35 @@ Los palets que provienen de una recepción **no se pueden modificar ni eliminar 
   "pallets": [
     {
       "id": 15,  // ← ID del palet existente (opcional, si no viene se crea nuevo)
-      "product": { "id": 5 },
-      "price": 12.50,
-      "lot": "LOT-2025-001",
       "observations": "Palet 1",
+      "store": { "id": 1 },
       "boxes": [
         {
           "id": 42,  // ← ID de la caja existente (opcional, si no viene se crea nueva)
+          "product": { "id": 5 },
+          "lot": "LOT-A",
           "gs1128": "GS1-001",
           "grossWeight": 25.5,
           "netWeight": 25.0
+        },
+        {
+          "product": { "id": 5 },
+          "lot": "LOT-B",
+          "gs1128": "GS1-002",
+          "grossWeight": 25.5,
+          "netWeight": 25.0
+        }
+      ],
+      "prices": [
+        {
+          "product": { "id": 5 },
+          "lot": "LOT-A",
+          "price": 12.50
+        },
+        {
+          "product": { "id": 5 },
+          "lot": "LOT-B",
+          "price": 13.00
         }
       ]
     }

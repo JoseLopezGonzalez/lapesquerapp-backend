@@ -161,6 +161,7 @@ class Box extends Model
 
     /**
      * Obtiene el coste por kg de la caja desde la recepción
+     * Busca por producto y lote para obtener el precio correcto
      */
     public function getCostPerKgAttribute(): ?float
     {
@@ -172,6 +173,7 @@ class Box extends Model
         $reception = $pallet->reception;
         $receptionProduct = $reception->products()
             ->where('product_id', $this->article_id)
+            ->where('lot', $this->lot)
             ->first();
   
         return $receptionProduct?->price;

@@ -89,14 +89,18 @@ class RawMaterialReceptionController extends Controller
             'details.*.boxes' => 'nullable|integer|min:0', // Número de cajas (0 = 1)
             // Opción 2: Palets manuales con creación automática de líneas
             'pallets' => 'required_without:details|array',
-            'pallets.*.product.id' => 'required_with:pallets|exists:tenant.products,id',
-            'pallets.*.price' => 'required_with:pallets|numeric|min:0', // Obligatorio en modo manual
-            'pallets.*.lot' => 'nullable|string',
             'pallets.*.observations' => 'nullable|string',
-            'pallets.*.boxes' => 'required_with:pallets|array',
+            'pallets.*.store.id' => 'nullable|integer|exists:tenant.stores,id',
+            'pallets.*.boxes' => 'required_with:pallets|array|min:1',
+            'pallets.*.boxes.*.product.id' => 'required|exists:tenant.products,id',
+            'pallets.*.boxes.*.lot' => 'nullable|string',
             'pallets.*.boxes.*.gs1128' => 'required|string',
             'pallets.*.boxes.*.grossWeight' => 'required|numeric',
             'pallets.*.boxes.*.netWeight' => 'required|numeric',
+            'pallets.*.prices' => 'required_with:pallets|array',
+            'pallets.*.prices.*.product.id' => 'required|exists:tenant.products,id',
+            'pallets.*.prices.*.lot' => 'required|string',
+            'pallets.*.prices.*.price' => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -165,15 +169,19 @@ class RawMaterialReceptionController extends Controller
                 'notes' => 'nullable|string',
                 'pallets' => 'required|array',
                 'pallets.*.id' => 'nullable|integer|exists:tenant.pallets,id',
-                'pallets.*.product.id' => 'required|exists:tenant.products,id',
-                'pallets.*.price' => 'required|numeric|min:0',
-                'pallets.*.lot' => 'nullable|string',
                 'pallets.*.observations' => 'nullable|string',
-                'pallets.*.boxes' => 'required|array',
+                'pallets.*.store.id' => 'nullable|integer|exists:tenant.stores,id',
+                'pallets.*.boxes' => 'required|array|min:1',
                 'pallets.*.boxes.*.id' => 'nullable|integer|exists:tenant.boxes,id',
+                'pallets.*.boxes.*.product.id' => 'required|exists:tenant.products,id',
+                'pallets.*.boxes.*.lot' => 'nullable|string',
                 'pallets.*.boxes.*.gs1128' => 'required|string',
                 'pallets.*.boxes.*.grossWeight' => 'required|numeric',
                 'pallets.*.boxes.*.netWeight' => 'required|numeric',
+                'pallets.*.prices' => 'required|array',
+                'pallets.*.prices.*.product.id' => 'required|exists:tenant.products,id',
+                'pallets.*.prices.*.lot' => 'required|string',
+                'pallets.*.prices.*.price' => 'required|numeric|min:0',
             ]);
         } else {
             // Recepciones antiguas sin creation_mode - permitir edición por líneas
@@ -248,8 +256,14 @@ class RawMaterialReceptionController extends Controller
         $groupedByProduct = [];
 
         foreach ($palletsData as $palletData) {
-            $productId = $palletData['product']['id'];
-            $lot = $palletData['lot'] ?? $this->generateLotFromReception($reception, $productId);
+            // Crear mapa de precios por producto+lote para este palet
+            $pricesMap = [];
+            foreach ($palletData['prices'] ?? [] as $priceData) {
+                $productId = $priceData['product']['id'];
+                $lot = $priceData['lot'];
+                $key = "{$productId}_{$lot}";
+                $pricesMap[$key] = $priceData['price'];
+            }
             
             // Determinar si es palet existente o nuevo
             $palletId = $palletData['id'] ?? null;
@@ -328,16 +342,18 @@ class RawMaterialReceptionController extends Controller
             });
             
             $processedBoxIds = [];
-            $totalWeight = 0;
 
             foreach ($palletData['boxes'] as $boxData) {
                 $boxId = $boxData['id'] ?? null;
+                $productId = $boxData['product']['id'];
+                // Tomar el lote de la caja, si no tiene generar uno automáticamente
+                $boxLot = $boxData['lot'] ?? $this->generateLotFromReception($reception, $productId);
                 
                 if ($boxId && $existingBoxes->has($boxId)) {
                     // Actualizar caja existente
                     $box = $existingBoxes->get($boxId)->box;
                     $box->article_id = $productId;
-                    $box->lot = $lot;
+                    $box->lot = $boxLot;
                     $box->gs1_128 = $boxData['gs1128'];
                     $box->gross_weight = $boxData['grossWeight'];
                     $box->net_weight = $boxData['netWeight'];
@@ -347,7 +363,7 @@ class RawMaterialReceptionController extends Controller
                     // Crear nueva caja
                     $box = new Box();
                     $box->article_id = $productId;
-                    $box->lot = $lot;
+                    $box->lot = $boxLot;
                     $box->gs1_128 = $boxData['gs1128'];
                     $box->gross_weight = $boxData['grossWeight'];
                     $box->net_weight = $boxData['netWeight'];
@@ -360,7 +376,20 @@ class RawMaterialReceptionController extends Controller
                     ]);
                 }
                 
-                $totalWeight += $box->net_weight;
+                // Agrupar por producto y lote de caja para crear líneas
+                $key = "{$productId}_{$boxLot}";
+                if (!isset($groupedByProduct[$key])) {
+                    // Buscar precio en el mapa de precios, si no existe buscar del histórico
+                    $price = $pricesMap[$key] ?? $this->getDefaultPrice($productId, $reception->supplier_id);
+                    
+                    $groupedByProduct[$key] = [
+                        'product_id' => $productId,
+                        'lot' => $boxLot,
+                        'net_weight' => 0,
+                        'price' => $price,
+                    ];
+                }
+                $groupedByProduct[$key]['net_weight'] += $box->net_weight;
             }
 
             // Eliminar cajas que ya no están en el request
@@ -378,18 +407,6 @@ class RawMaterialReceptionController extends Controller
             if ($boxesToDelete->isNotEmpty()) {
                 $pallet->load('boxes.box');
             }
-
-            // Agrupar por producto y lote para crear líneas
-            $key = "{$productId}_{$lot}";
-            if (!isset($groupedByProduct[$key])) {
-                $groupedByProduct[$key] = [
-                    'product_id' => $productId,
-                    'lot' => $lot,
-                    'net_weight' => 0,
-                    'price' => $palletData['price'],
-                ];
-            }
-            $groupedByProduct[$key]['net_weight'] += $totalWeight;
         }
 
         // Eliminar palets que ya no están en el request
@@ -413,6 +430,7 @@ class RawMaterialReceptionController extends Controller
         foreach ($groupedByProduct as $group) {
             $reception->products()->create([
                 'product_id' => $group['product_id'],
+                'lot' => $group['lot'],
                 'net_weight' => $group['net_weight'],
                 'price' => $group['price'],
             ]);
@@ -427,8 +445,14 @@ class RawMaterialReceptionController extends Controller
         $groupedByProduct = [];
   
         foreach ($pallets as $palletData) {
-            $productId = $palletData['product']['id'];
-            $lot = $palletData['lot'] ?? $this->generateLotFromReception($reception, $productId);
+            // Crear mapa de precios por producto+lote para este palet
+            $pricesMap = [];
+            foreach ($palletData['prices'] ?? [] as $priceData) {
+                $productId = $priceData['product']['id'];
+                $lot = $priceData['lot'];
+                $key = "{$productId}_{$lot}";
+                $pricesMap[$key] = $priceData['price'];
+            }
       
             // Crear palet
             $pallet = new Pallet();
@@ -454,43 +478,47 @@ class RawMaterialReceptionController extends Controller
                 ]);
             }
       
-            $totalWeight = 0;
-      
-            // Crear cajas
+            // Crear cajas y agrupar por producto+lote
             foreach ($palletData['boxes'] as $boxData) {
+                $productId = $boxData['product']['id'];
+                // Tomar el lote de la caja, si no tiene generar uno automáticamente
+                $boxLot = $boxData['lot'] ?? $this->generateLotFromReception($reception, $productId);
+                
                 $box = new Box();
                 $box->article_id = $productId;
-                $box->lot = $lot;
+                $box->lot = $boxLot;
                 $box->gs1_128 = $boxData['gs1128'];
                 $box->gross_weight = $boxData['grossWeight'];
                 $box->net_weight = $boxData['netWeight'];
                 $box->save();
           
-                $totalWeight += $box->net_weight;
-          
                 PalletBox::create([
                     'pallet_id' => $pallet->id,
                     'box_id' => $box->id,
                 ]);
+                
+                // Agrupar por producto y lote de caja para crear líneas
+                $key = "{$productId}_{$boxLot}";
+                if (!isset($groupedByProduct[$key])) {
+                    // Buscar precio en el mapa de precios, si no existe buscar del histórico
+                    $price = $pricesMap[$key] ?? $this->getDefaultPrice($productId, $reception->supplier_id);
+                    
+                    $groupedByProduct[$key] = [
+                        'product_id' => $productId,
+                        'lot' => $boxLot,
+                        'net_weight' => 0,
+                        'price' => $price,
+                    ];
+                }
+                $groupedByProduct[$key]['net_weight'] += $box->net_weight;
             }
-      
-            // Agrupar por producto y lote para crear líneas
-            $key = "{$productId}_{$lot}";
-            if (!isset($groupedByProduct[$key])) {
-                $groupedByProduct[$key] = [
-                    'product_id' => $productId,
-                    'lot' => $lot,
-                    'net_weight' => 0,
-                    'price' => $palletData['price'],
-                ];
-            }
-            $groupedByProduct[$key]['net_weight'] += $totalWeight;
         }
   
-        // Crear líneas de recepción
+        // Crear líneas de recepción agrupadas por producto y lote de caja
         foreach ($groupedByProduct as $group) {
             $reception->products()->create([
                 'product_id' => $group['product_id'],
+                'lot' => $group['lot'],
                 'net_weight' => $group['net_weight'],
                 'price' => $group['price'],
             ]);
@@ -539,14 +567,15 @@ class RawMaterialReceptionController extends Controller
             // Obtener precio (del request o del histórico)
             $price = $detail['price'] ?? $this->getDefaultPrice($productId, $supplierId);
         
+            $lot = $detail['lot'] ?? $this->generateLotFromReception($reception, $productId);
+        
             // Crear línea de recepción
             $reception->products()->create([
                 'product_id' => $productId,
+                'lot' => $lot,
                 'net_weight' => $detail['netWeight'],
                 'price' => $price,
             ]);
-      
-            $lot = $detail['lot'] ?? $this->generateLotFromReception($reception, $productId);
             $numBoxes = max(1, $detail['boxes'] ?? 1);
             $weightPerBox = $detail['netWeight'] / $numBoxes;
       
@@ -586,14 +615,16 @@ class RawMaterialReceptionController extends Controller
             // Obtener precio (del request o del histórico)
             $price = $detail['price'] ?? $this->getDefaultPrice($productId, $supplierId);
         
+            $lot = $detail['lot'] ?? $this->generateLotFromReception($reception, $productId);
+        
             // Crear línea de recepción
             $reception->products()->create([
                 'product_id' => $productId,
+                'lot' => $lot,
                 'net_weight' => $detail['netWeight'],
                 'price' => $price,
             ]);
       
-            $lot = $detail['lot'] ?? $this->generateLotFromReception($reception, $productId);
             $numBoxes = max(1, $detail['boxes'] ?? 1);
             $weightPerBox = $detail['netWeight'] / $numBoxes;
       
