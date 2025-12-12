@@ -423,11 +423,11 @@ class RawMaterialReceptionController extends Controller
                 
                 // Eliminar relaciones palet-caja y cajas (usando eliminación directa de BD)
                 foreach ($pallet->boxes as $palletBox) {
-                    DB::table('boxes')->where('id', $palletBox->box_id)->delete();
+                    DB::connection('tenant')->table('boxes')->where('id', $palletBox->box_id)->delete();
                 }
-                DB::table('pallet_boxes')->where('pallet_id', $pallet->id)->delete();
+                DB::connection('tenant')->table('pallet_boxes')->where('pallet_id', $pallet->id)->delete();
                 // Eliminar palet (usando eliminación directa de BD para evitar el evento)
-                DB::table('pallets')->where('id', $pallet->id)->delete();
+                DB::connection('tenant')->table('pallets')->where('id', $pallet->id)->delete();
             }
         }
 
@@ -558,10 +558,10 @@ class RawMaterialReceptionController extends Controller
             // Eliminar cajas existentes (se recrearán según los nuevos detalles)
             foreach ($pallet->boxes as $palletBox) {
                 // Usar eliminación directa de BD para evitar el evento deleting
-                DB::table('boxes')->where('id', $palletBox->box_id)->delete();
+                DB::connection('tenant')->table('boxes')->where('id', $palletBox->box_id)->delete();
             }
             // Eliminar relaciones palet-caja
-            DB::table('pallet_boxes')->where('pallet_id', $pallet->id)->delete();
+            DB::connection('tenant')->table('pallet_boxes')->where('pallet_id', $pallet->id)->delete();
         }
 
         // Eliminar líneas antiguas
