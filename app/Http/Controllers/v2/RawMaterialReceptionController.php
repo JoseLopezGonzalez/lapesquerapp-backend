@@ -584,7 +584,16 @@ class RawMaterialReceptionController extends Controller
                 'price' => $price,
             ]);
             $numBoxes = max(1, $detail['boxes'] ?? 1);
-            $weightPerBox = $detail['netWeight'] / $numBoxes;
+            $totalWeight = $detail['netWeight'];
+            
+            // Calcular peso promedio por caja (redondeado a 2 decimales)
+            $weightPerBox = round($totalWeight / $numBoxes, 2);
+            
+            // Calcular el peso acumulado de las primeras (n-1) cajas
+            $accumulatedWeight = $weightPerBox * ($numBoxes - 1);
+            
+            // La última caja ajusta la diferencia para que la suma sea exacta
+            $lastBoxWeight = $totalWeight - $accumulatedWeight;
       
             // Crear nuevas cajas
             for ($i = 0; $i < $numBoxes; $i++) {
@@ -592,8 +601,11 @@ class RawMaterialReceptionController extends Controller
                 $box->article_id = $productId;
                 $box->lot = $lot;
                 $box->gs1_128 = $this->generateGS1128($reception, $productId, $i);
-                $box->gross_weight = $weightPerBox * 1.02; // 2% estimado
-                $box->net_weight = $weightPerBox;
+                
+                // La última caja usa el peso ajustado, las demás el promedio
+                $boxNetWeight = ($i === $numBoxes - 1) ? $lastBoxWeight : $weightPerBox;
+                $box->gross_weight = round($boxNetWeight * 1.02, 2); // 2% estimado
+                $box->net_weight = $boxNetWeight;
                 $box->save();
           
                 PalletBox::create([
@@ -633,7 +645,16 @@ class RawMaterialReceptionController extends Controller
             ]);
       
             $numBoxes = max(1, $detail['boxes'] ?? 1);
-            $weightPerBox = $detail['netWeight'] / $numBoxes;
+            $totalWeight = $detail['netWeight'];
+            
+            // Calcular peso promedio por caja (redondeado a 2 decimales)
+            $weightPerBox = round($totalWeight / $numBoxes, 2);
+            
+            // Calcular el peso acumulado de las primeras (n-1) cajas
+            $accumulatedWeight = $weightPerBox * ($numBoxes - 1);
+            
+            // La última caja ajusta la diferencia para que la suma sea exacta
+            $lastBoxWeight = $totalWeight - $accumulatedWeight;
       
             // Crear cajas
             for ($i = 0; $i < $numBoxes; $i++) {
@@ -641,8 +662,11 @@ class RawMaterialReceptionController extends Controller
                 $box->article_id = $productId;
                 $box->lot = $lot;
                 $box->gs1_128 = $this->generateGS1128($reception, $productId, $i);
-                $box->gross_weight = $weightPerBox * 1.02; // 2% estimado
-                $box->net_weight = $weightPerBox;
+                
+                // La última caja usa el peso ajustado, las demás el promedio
+                $boxNetWeight = ($i === $numBoxes - 1) ? $lastBoxWeight : $weightPerBox;
+                $box->gross_weight = round($boxNetWeight * 1.02, 2); // 2% estimado
+                $box->net_weight = $boxNetWeight;
                 $box->save();
           
                 PalletBox::create([
