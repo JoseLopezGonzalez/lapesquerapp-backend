@@ -444,9 +444,10 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::put('production-records/{id}/outputs', [ProductionRecordController::class, 'syncOutputs'])->name('production-records.syncOutputs');
             Route::put('production-records/{id}/parent-output-consumptions', [ProductionRecordController::class, 'syncConsumptions'])->name('production-records.syncConsumptions');
 
-            Route::apiResource('production-inputs', ProductionInputController::class);
+            // Las rutas específicas deben ir ANTES del apiResource para evitar conflictos
             Route::post('production-inputs/multiple', [ProductionInputController::class, 'storeMultiple'])->name('production-inputs.storeMultiple');
             Route::delete('production-inputs/multiple', [ProductionInputController::class, 'destroyMultiple'])->name('production-inputs.destroyMultiple');
+            Route::apiResource('production-inputs', ProductionInputController::class);
 
             Route::apiResource('production-outputs', ProductionOutputController::class);
             Route::post('production-outputs/multiple', [ProductionOutputController::class, 'storeMultiple'])->name('production-outputs.storeMultiple');
