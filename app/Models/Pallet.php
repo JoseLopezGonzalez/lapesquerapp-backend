@@ -489,16 +489,14 @@ class Pallet extends Model
      */
     public function updateStateBasedOnBoxes(): void
     {
-        // Recargar el modelo y sus relaciones
+        // Recargar el modelo desde la base de datos para obtener datos frescos
         $this->refresh();
         
-        // Cargar cajas con producción inputs si no están cargadas
-        if (!$this->relationLoaded('boxes')) {
-            $this->load(['boxes.box.productionInputs']);
-        } elseif (!$this->boxes->first() || !$this->boxes->first()->relationLoaded('box')) {
-            $this->load(['boxes.box.productionInputs']);
-        }
+        // Siempre recargar las relaciones necesarias después del refresh
+        // para asegurar que tenemos los datos más recientes de productionInputs
+        $this->load(['boxes.box.productionInputs']);
 
+        // Calcular conteos usando los datos frescos
         $usedBoxesCount = $this->usedBoxesCount;
         $totalBoxes = $this->numberOfBoxes;
 

@@ -41,6 +41,7 @@ class ProductionInputService
         return DB::transaction(function () use ($productionRecordId, $boxIds) {
             $created = [];
             $errors = [];
+            $palletsToUpdate = []; // Track pallets that need state update
 
             foreach ($boxIds as $boxId) {
                 try {
@@ -61,13 +62,21 @@ class ProductionInputService
                     $input->load(['productionRecord', 'box.product', 'box.pallet']);
                     $created[] = $input;
                     
-                    // Actualizar estado del palet si existe
+                    // Track pallet for state update (avoid duplicates)
                     $pallet = $input->box->pallet ?? null;
-                    if ($pallet) {
-                        $pallet->updateStateBasedOnBoxes();
+                    if ($pallet && !in_array($pallet->id, $palletsToUpdate)) {
+                        $palletsToUpdate[] = $pallet->id;
                     }
                 } catch (\Exception $e) {
                     $errors[] = "Error al crear entrada para caja {$boxId}: " . $e->getMessage();
+                }
+            }
+
+            // Update each pallet state only once after all inputs are created
+            foreach ($palletsToUpdate as $palletId) {
+                $pallet = \App\Models\Pallet::find($palletId);
+                if ($pallet) {
+                    $pallet->updateStateBasedOnBoxes();
                 }
             }
 
