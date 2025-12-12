@@ -111,20 +111,22 @@ class Pallet extends Model
      */
     protected function validateUpdateRules(): void
     {
-        // No permitir cambiar de status = 4 (procesado) a otro estado
         $originalState = $this->getOriginal('status');
+        $newState = $this->status;
+        
+        // Permitir cambiar de PROCESSED a REGISTERED cuando se liberan cajas de producción
+        // Esto se hace automáticamente cuando se eliminan ProductionInputs
         if ($originalState === self::STATE_PROCESSED && $this->isDirty('status')) {
-            $newState = $this->status;
-            if ($newState !== self::STATE_PROCESSED) {
+            // Solo permitir cambiar a REGISTERED (cuando se liberan cajas)
+            if ($newState !== self::STATE_PROCESSED && $newState !== self::STATE_REGISTERED) {
                 throw new \InvalidArgumentException(
-                    'No se puede cambiar el estado de un palet procesado. Un palet procesado no puede revertirse a otro estado.'
+                    'Un palet procesado solo puede cambiar a registrado cuando se liberan cajas de producción. No se puede cambiar a otros estados.'
                 );
             }
         }
 
         // No permitir cambiar de status = 3 (enviado) a status = 1 o 2
         if ($originalState === self::STATE_SHIPPED && $this->isDirty('status')) {
-            $newState = $this->status;
             if (in_array($newState, [self::STATE_REGISTERED, self::STATE_STORED])) {
                 throw new \InvalidArgumentException(
                     'No se puede cambiar un palet enviado de vuelta a registrado o almacenado. Un palet enviado no puede volver a almacén.'
@@ -532,11 +534,19 @@ class Pallet extends Model
         if ($usedBoxesCount > 0 && $usedBoxesCount === $totalBoxes) {
             $this->changeToProcessed();
         }
-        // Si todas las cajas están disponibles (y antes tenía algunas usadas) → registrado
+        // Si todas las cajas están disponibles → registrado
         elseif ($usedBoxesCount === 0 && $totalBoxes > 0) {
             $this->changeToRegistered();
         }
-        // Si está parcialmente consumido, mantener estado actual
+        // Si está parcialmente consumido
+        else {
+            // Si el palet estaba completamente procesado (PROCESSED) y ahora solo algunas cajas están usadas,
+            // debe volver a REGISTERED porque ya no todas las cajas están consumidas
+            if ($this->status === self::STATE_PROCESSED) {
+                $this->changeToRegistered();
+            }
+            // Si está parcialmente consumido pero no estaba en PROCESSED, mantener estado actual
+        }
     }
 
     /**
