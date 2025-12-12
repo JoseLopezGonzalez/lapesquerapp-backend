@@ -446,6 +446,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
             Route::apiResource('production-inputs', ProductionInputController::class);
             Route::post('production-inputs/multiple', [ProductionInputController::class, 'storeMultiple'])->name('production-inputs.storeMultiple');
+            Route::delete('production-inputs/multiple', [ProductionInputController::class, 'destroyMultiple'])->name('production-inputs.destroyMultiple');
 
             Route::apiResource('production-outputs', ProductionOutputController::class);
             Route::post('production-outputs/multiple', [ProductionOutputController::class, 'storeMultiple'])->name('production-outputs.storeMultiple');

@@ -114,4 +114,31 @@ class ProductionInputController extends Controller
             'message' => 'Entrada de producción eliminada correctamente.',
         ], 200);
     }
+
+    /**
+     * Remove multiple resources from storage.
+     */
+    public function destroyMultiple(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (!is_array($ids) || empty($ids)) {
+            return response()->json([
+                'message' => 'No se han proporcionado IDs válidos',
+            ], 400);
+        }
+
+        try {
+            $deletedCount = $this->productionInputService->deleteMultiple($ids);
+
+            return response()->json([
+                'message' => "{$deletedCount} entrada(s) de producción eliminada(s) correctamente.",
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al eliminar las entradas de producción.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

@@ -110,5 +110,44 @@ class ProductionInputService
         
         return $deleted;
     }
+
+    /**
+     * Delete multiple production inputs
+     */
+    public function deleteMultiple(array $ids): int
+    {
+        return DB::transaction(function () use ($ids) {
+            // Cargar todos los inputs con sus relaciones
+            $inputs = ProductionInput::with(['box.palletBox.pallet'])
+                ->whereIn('id', $ids)
+                ->get();
+
+            // Rastrear palets que necesitan actualización (evitar duplicados)
+            $palletsToUpdate = [];
+
+            foreach ($inputs as $input) {
+                // Obtener el palet antes de eliminar
+                // Acceder al palet a través de palletBox para evitar problemas con accessors
+                $pallet = $input->box->palletBox->pallet ?? null;
+                
+                if ($pallet && !in_array($pallet->id, $palletsToUpdate)) {
+                    $palletsToUpdate[] = $pallet->id;
+                }
+            }
+
+            // Eliminar los inputs
+            $deletedCount = ProductionInput::whereIn('id', $ids)->delete();
+
+            // Actualizar cada palet una sola vez después de todas las eliminaciones
+            foreach ($palletsToUpdate as $palletId) {
+                $pallet = \App\Models\Pallet::find($palletId);
+                if ($pallet) {
+                    $pallet->updateStateBasedOnBoxes();
+                }
+            }
+
+            return $deletedCount;
+        });
+    }
 }
 
