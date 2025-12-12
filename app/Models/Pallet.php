@@ -496,9 +496,37 @@ class Pallet extends Model
         // para asegurar que tenemos los datos más recientes de productionInputs
         $this->load(['boxes.box.productionInputs']);
 
-        // Calcular conteos usando los datos frescos
-        $usedBoxesCount = $this->usedBoxesCount;
-        $totalBoxes = $this->numberOfBoxes;
+        // Calcular conteos directamente desde los datos cargados
+        // para evitar problemas con accessors que pueden hacer consultas adicionales
+        $totalBoxes = 0;
+        $usedBoxesCount = 0;
+        
+        if ($this->boxes) {
+            foreach ($this->boxes as $palletBox) {
+                if (!$palletBox || !$palletBox->box) {
+                    continue;
+                }
+                
+                $totalBoxes++;
+                
+                // Verificar directamente si la caja tiene productionInputs
+                // usando los datos cargados en lugar del accessor isAvailable
+                $box = $palletBox->box;
+                $hasProductionInputs = false;
+                
+                if ($box->relationLoaded('productionInputs')) {
+                    // Si la relación está cargada, usar isEmpty()
+                    $hasProductionInputs = !$box->productionInputs->isEmpty();
+                } else {
+                    // Si no está cargada (no debería pasar, pero por seguridad)
+                    $hasProductionInputs = $box->productionInputs()->exists();
+                }
+                
+                if ($hasProductionInputs) {
+                    $usedBoxesCount++;
+                }
+            }
+        }
 
         // Si todas las cajas están usadas → procesado
         if ($usedBoxesCount > 0 && $usedBoxesCount === $totalBoxes) {

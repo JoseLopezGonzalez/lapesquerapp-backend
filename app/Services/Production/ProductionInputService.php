@@ -22,10 +22,11 @@ class ProductionInputService
         }
 
         $input = ProductionInput::create($data);
-        $input->load(['productionRecord', 'box.product', 'box.pallet']);
+        $input->load(['productionRecord', 'box.product', 'box.palletBox.pallet']);
 
         // Actualizar estado del palet si existe
-        $pallet = $input->box->pallet ?? null;
+        // Acceder al palet a través de palletBox para evitar problemas con accessors
+        $pallet = $input->box->palletBox->pallet ?? null;
         if ($pallet) {
             $pallet->updateStateBasedOnBoxes();
         }
@@ -59,11 +60,12 @@ class ProductionInputService
                         'box_id' => $boxId,
                     ]);
 
-                    $input->load(['productionRecord', 'box.product', 'box.pallet']);
+                    $input->load(['productionRecord', 'box.product', 'box.palletBox.pallet']);
                     $created[] = $input;
                     
                     // Track pallet for state update (avoid duplicates)
-                    $pallet = $input->box->pallet ?? null;
+                    // Acceder al palet a través de palletBox para evitar problemas con accessors
+                    $pallet = $input->box->palletBox->pallet ?? null;
                     if ($pallet && !in_array($pallet->id, $palletsToUpdate)) {
                         $palletsToUpdate[] = $pallet->id;
                     }
@@ -92,9 +94,12 @@ class ProductionInputService
      */
     public function delete(ProductionInput $input): bool
     {
+        // Cargar relaciones necesarias antes de eliminar
+        $input->load(['box.palletBox.pallet']);
+        
         // Obtener el palet antes de eliminar
-        $box = $input->box;
-        $pallet = $box->pallet ?? null;
+        // Acceder al palet a través de palletBox para evitar problemas con accessors
+        $pallet = $input->box->palletBox->pallet ?? null;
         
         $deleted = $input->delete();
         
