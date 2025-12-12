@@ -320,6 +320,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::get('/pallets/stored-options', [V2PalletController::class, 'storedOptions']);
             Route::get('/pallets/shipped-options', [V2PalletController::class, 'shippedOptions']);
             Route::get('/pallets/registered', [V2PalletController::class, 'registeredPallets']);
+            Route::get('/pallets/search-by-lot', [V2PalletController::class, 'searchByLot']);
             Route::get('/stores/options', [V2StoreController::class, 'options']);
             Route::get('/orders/options', [V2OrderController::class, 'options']);
             Route::post('/pallets/assign-to-position', [V2PalletController::class, 'assignToPosition']);

@@ -820,6 +820,78 @@ class PalletController extends Controller
         }
     }
 
+    /**
+     * Buscar palets registrados por lote
+     * Retorna solo palets que tienen cajas disponibles con el lote especificado
+     */
+    public function searchByLot(Request $request)
+    {
+        $lot = $request->query('lot');
+
+        if (!$lot) {
+            return response()->json(['message' => 'El parámetro lot es requerido'], 400);
+        }
+
+        // Buscar palets registrados que tengan cajas con el lote especificado y que estén disponibles
+        $pallets = Pallet::where('status', Pallet::STATE_REGISTERED)
+            ->whereHas('boxes.box', function ($query) use ($lot) {
+                $query->where('lot', $lot)
+                      ->whereDoesntHave('productionInputs'); // Solo cajas disponibles
+            })
+            ->with([
+                'boxes.box' => function ($query) use ($lot) {
+                    // Cargar todas las cajas del palet, luego filtraremos
+                    $query->with(['product', 'productionInputs.productionRecord.production']);
+                },
+                'storedPallet',
+                'reception'
+            ])
+            ->orderBy('id', 'desc')
+            ->get();
+
+        // Filtrar las cajas y formatear los palets
+        $formattedPallets = $pallets->map(function ($pallet) use ($lot) {
+            // Filtrar cajas: solo las del lote especificado y disponibles
+            $filteredBoxes = $pallet->boxes->filter(function ($palletBox) use ($lot) {
+                $box = $palletBox->box;
+                if (!$box) {
+                    return false;
+                }
+                // Verificar que el lote coincida (case-insensitive) y que esté disponible
+                return strtolower($box->lot ?? '') === strtolower($lot) && $box->isAvailable;
+            });
+
+            // Si no hay cajas después del filtrado, excluir este palet
+            if ($filteredBoxes->isEmpty()) {
+                return null;
+            }
+
+            // Obtener el array base del palet
+            $palletArray = $pallet->toArrayAssocV2();
+            
+            // Reemplazar las cajas con las filtradas
+            $palletArray['boxes'] = $filteredBoxes->map(function ($palletBox) {
+                return $palletBox->box ? $palletBox->box->toArrayAssocV2() : null;
+            })->filter()->values();
+
+            return $palletArray;
+        })->filter()->values(); // Filtrar nulls
+
+        // Calcular totales
+        $total = $formattedPallets->count();
+        $totalBoxes = $formattedPallets->sum(function ($pallet) {
+            return count($pallet['boxes'] ?? []);
+        });
+
+        return response()->json([
+            'data' => [
+                'pallets' => $formattedPallets,
+                'total' => $total,
+                'totalBoxes' => $totalBoxes,
+            ],
+        ], 200);
+    }
+
     public function registeredPallets()
     {
         // Obtener todos los palets registrados (status = 1) con relaciones cargadas
