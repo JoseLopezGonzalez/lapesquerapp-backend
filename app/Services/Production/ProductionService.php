@@ -5,6 +5,7 @@ namespace App\Services\Production;
 use App\Models\Production;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class ProductionService
 {
@@ -66,6 +67,17 @@ class ProductionService
     public function delete(Production $production): bool
     {
         return $production->delete();
+    }
+
+    /**
+     * Delete multiple productions
+     */
+    public function deleteMultiple(array $ids): int
+    {
+        return DB::transaction(function () use ($ids) {
+            $deletedCount = Production::whereIn('id', $ids)->delete();
+            return $deletedCount;
+        });
     }
 
     /**

@@ -1602,7 +1602,7 @@ class Production extends Model
                         'id' => $pallet->id,
                         'availableBoxesCount' => $availableBoxesCount,
                         'totalAvailableWeight' => round($totalAvailableWeight, 2),
-                        'position' => $storedPallet->position,
+                        'position' => $storedPallet?->position,
                     ];
                     
                     $productBoxes += $availableBoxesCount;

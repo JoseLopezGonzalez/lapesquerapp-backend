@@ -88,6 +88,33 @@ class ProductionController extends Controller
     }
 
     /**
+     * Remove multiple resources from storage.
+     */
+    public function destroyMultiple(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (!is_array($ids) || empty($ids)) {
+            return response()->json([
+                'message' => 'No se han proporcionado IDs válidos',
+            ], 400);
+        }
+
+        try {
+            $deletedCount = $this->productionService->deleteMultiple($ids);
+
+            return response()->json([
+                'message' => "{$deletedCount} producción(es) eliminada(s) correctamente.",
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al eliminar las producciones.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Obtener el diagrama calculado dinámicamente para una producción
      */
     public function getDiagram(string $id)

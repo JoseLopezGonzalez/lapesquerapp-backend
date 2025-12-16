@@ -430,6 +430,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::apiResource('labels', LabelController::class);
 
             /* Production Module v2 */
+            // Las rutas específicas deben ir ANTES del apiResource para evitar conflictos
+            Route::delete('productions/multiple', [V2ProductionController::class, 'destroyMultiple'])->name('productions.destroyMultiple');
             Route::apiResource('productions', V2ProductionController::class);
             Route::get('productions/{id}/diagram', [V2ProductionController::class, 'getDiagram'])->name('productions.getDiagram');
             Route::get('productions/{id}/process-tree', [V2ProductionController::class, 'getProcessTree'])->name('productions.getProcessTree');
