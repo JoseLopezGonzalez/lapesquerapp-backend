@@ -155,6 +155,11 @@ class OrderStatisticsService
             ->leftJoin('taxes', 'order_planned_product_details.tax_id', '=', 'taxes.id')
             ->whereBetween('orders.load_date', [$dateFrom, $dateTo]);
 
+        // Join articles table when grouping by product (products.id = articles.id, 1:1 relationship)
+        if ($groupBy === 'product') {
+            $query->join('articles', 'products.id', '=', 'articles.id');
+        }
+
         if ($speciesId) {
             $query->where('products.species_id', $speciesId);
         }
@@ -162,7 +167,7 @@ class OrderStatisticsService
         $groupByField = match ($groupBy) {
             'client' => 'customers.name',
             'country' => 'countries.name',
-            'product' => 'products.name',
+            'product' => 'articles.name',
         };
 
         $valueField = match ($valueType) {
