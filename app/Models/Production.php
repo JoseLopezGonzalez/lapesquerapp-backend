@@ -1929,9 +1929,23 @@ class Production extends Model
             }
             
             // Usar el balance calculado o el de cajas físicas
-            // Si hay cajas físicas, usar ese peso; si no, usar el calculado (puede ser negativo = sobrante)
+            // Si hay cajas físicas, verificar que coincidan con el balance calculado
+            // Si el balance calculado es 0 (o muy cercano), no hay desbalance real
+            $tolerance = 0.01; // Tolerancia para errores de redondeo
+            
             if ($missingBoxesCount > 0) {
                 // Hay cajas físicas faltantes
+                // Verificar si el balance calculado coincide con las cajas físicas
+                // Si el balance calculado es 0, significa que todo está contabilizado correctamente
+                // y las cajas físicas "faltantes" probablemente están mal clasificadas
+                if (abs($calculatedMissing) < $tolerance) {
+                    // Balance calculado es 0: todo está contabilizado correctamente
+                    // No mostrar estas cajas como balance, ya que no hay desbalance real
+                    // (Las cajas físicas pueden estar mal clasificadas pero no afectan el balance)
+                    continue; // Saltar este producto, no hay desbalance real
+                }
+                
+                // El balance calculado no es 0, usar las cajas físicas
                 $finalMissingWeight = $missingWeight;
                 $finalMissingBoxes = $missingBoxesCount;
             } else {
@@ -1949,8 +1963,9 @@ class Production extends Model
             
             // Incluir productos con faltantes (positivos) o sobras (negativos)
             // Mostrar si hay faltantes positivos o si hay más contabilizado que producido (sobrante/error)
-            $hasPositiveMissing = $finalMissingWeight > 0.01;
-            $hasOverCount = $calculatedMissing < -0.01; // Más en venta/stock que producido = sobrante
+            // Solo si el balance es significativo (mayor que la tolerancia)
+            $hasPositiveMissing = $finalMissingWeight > $tolerance;
+            $hasOverCount = $calculatedMissing < -$tolerance; // Más en venta/stock que producido = sobrante
             
             if ($hasPositiveMissing || $hasOverCount) {
                 $productsData[] = [
