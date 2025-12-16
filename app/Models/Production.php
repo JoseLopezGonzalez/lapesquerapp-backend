@@ -1641,7 +1641,7 @@ class Production extends Model
                 'store' => [
                     'id' => $storeInfo['store']->id,
                     'name' => $storeInfo['store']->name,
-                    'temperature' => $storeInfo['store']->temperature,
+                    'temperature' => $storeInfo['store']->temperature ?? null,
                 ],
                 'products' => $storeProducts,  // 👈 Array de productos
                 'totalBoxes' => $storeTotalBoxes,
