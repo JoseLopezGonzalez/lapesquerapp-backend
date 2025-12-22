@@ -711,6 +711,130 @@ class PalletController extends Controller
     }
 
     /**
+     * Link a pallet to an order
+     *
+     * @param Request $request
+     * @param string $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function linkOrder(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'orderId' => 'required|integer|exists:tenant.orders,id',
+        ]);
+
+        $pallet = Pallet::findOrFail($id);
+
+        // Check if pallet is already linked to this order
+        if ($pallet->order_id == $validated['orderId']) {
+            $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->first();
+            return response()->json([
+                'message' => 'El palet ya está vinculado a este pedido',
+                'pallet' => new PalletResource($pallet)
+            ], 200);
+        }
+
+        // Check if pallet is already linked to a different order
+        if ($pallet->order_id !== null) {
+            return response()->json([
+                'error' => "El palet #{$id} ya está vinculado al pedido #{$pallet->order_id}. Debe desvincularlo primero."
+            ], 400);
+        }
+
+        // Link the pallet to the order
+        $pallet->order_id = $validated['orderId'];
+        $pallet->save();
+
+        $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->first();
+        return response()->json([
+            'message' => 'Palet vinculado correctamente al pedido',
+            'pallet_id' => $id,
+            'order_id' => $validated['orderId'],
+            'pallet' => new PalletResource($pallet)
+        ], 200);
+    }
+
+    /**
+     * Link multiple pallets to orders
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function linkOrders(Request $request)
+    {
+        $validated = $request->validate([
+            'pallets' => 'required|array|min:1',
+            'pallets.*.id' => 'required|integer|exists:tenant.pallets,id',
+            'pallets.*.orderId' => 'required|integer|exists:tenant.orders,id',
+        ]);
+
+        $results = [];
+        $errors = [];
+
+        foreach ($validated['pallets'] as $palletData) {
+            $palletId = $palletData['id'];
+            $orderId = $palletData['orderId'];
+
+            try {
+                $pallet = Pallet::findOrFail($palletId);
+
+                // Check if pallet is already linked to this order
+                if ($pallet->order_id == $orderId) {
+                    $results[] = [
+                        'pallet_id' => $palletId,
+                        'order_id' => $orderId,
+                        'status' => 'already_linked',
+                        'message' => 'El palet ya estaba vinculado a este pedido'
+                    ];
+                    continue;
+                }
+
+                // Check if palet is already linked to a different order
+                if ($pallet->order_id !== null) {
+                    $errors[] = [
+                        'pallet_id' => $palletId,
+                        'order_id' => $orderId,
+                        'error' => "El palet #{$palletId} ya está vinculado al pedido #{$pallet->order_id}"
+                    ];
+                    continue;
+                }
+
+                // Link the pallet to the order
+                $pallet->order_id = $orderId;
+                $pallet->save();
+
+                $results[] = [
+                    'pallet_id' => $palletId,
+                    'order_id' => $orderId,
+                    'status' => 'linked',
+                    'message' => 'Palet vinculado correctamente'
+                ];
+            } catch (\Exception $e) {
+                $errors[] = [
+                    'pallet_id' => $palletId,
+                    'order_id' => $orderId,
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        $response = [
+            'message' => 'Proceso de vinculación completado',
+            'linked' => count(array_filter($results, fn($r) => $r['status'] === 'linked')),
+            'already_linked' => count(array_filter($results, fn($r) => $r['status'] === 'already_linked')),
+            'errors' => count($errors),
+            'results' => $results,
+        ];
+
+        if (!empty($errors)) {
+            $response['errors_details'] = $errors;
+        }
+
+        $statusCode = empty($errors) ? 200 : 207; // 207 Multi-Status si hay algunos errores
+        return response()->json($response, $statusCode);
+    }
+
+    /**
      * Unlink a pallet from its associated order
      *
      * @param string $id
@@ -921,6 +1045,100 @@ class PalletController extends Controller
                 'bigBoxes' => [],
             ],
             'map' => null, // No hay mapa para palets registrados
+        ], 200);
+    }
+
+    /**
+     * Listar palets disponibles para vincular a un pedido
+     * 
+     * Solo palets almacenados o registrados, excluyendo los que están vinculados a otros pedidos
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function availableForOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'orderId' => 'nullable|integer|exists:tenant.orders,id',
+            'id' => 'nullable|string', // Filtro por ID con coincidencias
+            'perPage' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $orderId = $validated['orderId'] ?? null;
+        $idFilter = $validated['id'] ?? null;
+        $perPage = $validated['perPage'] ?? 20;
+
+        // Construir query base
+        $query = Pallet::query()
+            ->whereIn('status', [Pallet::STATE_REGISTERED, Pallet::STATE_STORED])
+            ->with([
+                'boxes.box.product',
+                'boxes.box.productionInputs', // Para calcular disponibilidad
+                'storedPallet.store',
+                'reception'
+            ]);
+
+        // Filtrar por ID si se proporciona (búsqueda por coincidencias)
+        if ($idFilter) {
+            $query->where('id', 'like', "%{$idFilter}%");
+        }
+
+        // Excluir palets vinculados a otros pedidos
+        // Si se proporciona orderId, incluir palets sin pedido O del mismo pedido (para permitir cambio)
+        if ($orderId) {
+            $query->where(function ($q) use ($orderId) {
+                $q->whereNull('order_id')
+                  ->orWhere('order_id', $orderId);
+            });
+        } else {
+            // Si no se proporciona orderId, solo palets sin pedido
+            $query->whereNull('order_id');
+        }
+
+        // Ordenar por ID descendente
+        $query->orderBy('id', 'desc');
+
+        // Paginación
+        $pallets = $query->paginate($perPage);
+
+        // Formatear respuesta con datos relevantes
+        $formattedPallets = $pallets->map(function ($pallet) {
+            return [
+                'id' => $pallet->id,
+                'state' => [
+                    'id' => $pallet->status,
+                    'name' => $pallet->stateArray['name'] ?? null,
+                ],
+                'productsNames' => $pallet->productsNames ?? [],
+                'numberOfBoxes' => $pallet->numberOfBoxes ?? 0,
+                'availableBoxesCount' => $pallet->availableBoxesCount ?? 0,
+                'netWeight' => $pallet->netWeight !== null ? round($pallet->netWeight, 3) : null,
+                'totalAvailableWeight' => $pallet->totalAvailableWeight !== null ? round($pallet->totalAvailableWeight, 3) : null,
+                'store' => $pallet->storedPallet && $pallet->storedPallet->store ? [
+                    'id' => $pallet->storedPallet->store->id,
+                    'name' => $pallet->storedPallet->store->name,
+                ] : null,
+                'position' => $pallet->storedPallet->position ?? null,
+                'orderId' => $pallet->order_id,
+                'receptionId' => $pallet->reception_id,
+                'observations' => $pallet->observations,
+            ];
+        });
+
+        return response()->json([
+            'data' => $formattedPallets,
+            'meta' => [
+                'current_page' => $pallets->currentPage(),
+                'last_page' => $pallets->lastPage(),
+                'per_page' => $pallets->perPage(),
+                'total' => $pallets->total(),
+            ],
+            'links' => [
+                'first' => $pallets->url(1),
+                'last' => $pallets->url($pallets->lastPage()),
+                'prev' => $pallets->previousPageUrl(),
+                'next' => $pallets->nextPageUrl(),
+            ],
         ], 200);
     }
 
