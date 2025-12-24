@@ -440,6 +440,30 @@ class OrderController extends Controller
         return response()->json($order);
     }
 
+    /**
+     * List active orders for Order Manager
+     * Returns orders with status 'pending' or load_date >= today
+     */
+    public function active()
+    {
+        $orders = Order::with([
+            'customer',
+            'salesperson',
+            'transport',
+            'incoterm',
+            'pallets.boxes.box.productionInputs', // Para calcular totalNetWeight y totalBoxes
+            'pallets.boxes.box.product', // Para los cálculos
+        ])
+        ->where(function ($query) {
+            $query->where('status', 'pending')
+                  ->orWhereDate('load_date', '>=', now());
+        })
+        ->orderBy('load_date', 'desc')
+        ->get();
+
+        return OrderResource::collection($orders);
+    }
+
     /* Active Orders Options */
     public function activeOrdersOptions()
     {

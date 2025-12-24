@@ -334,6 +334,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
 
 
+            /* Active Orders - For Order Manager */
+            Route::get('/orders/active', [V2OrderController::class, 'active']);
+            
             /* Active Order Options */
             Route::get('/active-orders/options', [V2OrderController::class, 'activeOrdersOptions']);
             Route::get('/fishing-gears/options', [FishingGearController::class, 'options']);
