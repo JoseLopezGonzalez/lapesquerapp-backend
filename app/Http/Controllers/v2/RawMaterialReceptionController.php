@@ -81,6 +81,8 @@ class RawMaterialReceptionController extends Controller
             'supplier.id' => 'required',
             'date' => 'required|date',
             'notes' => 'nullable|string',
+            'declaredTotalAmount' => 'nullable|numeric|min:0',
+            'declaredTotalNetWeight' => 'nullable|numeric|min:0',
             // Opción 1: Líneas con creación automática de palets
             'details' => 'required_without:pallets|array',
             'details.*.product.id' => 'required_with:details|exists:tenant.products,id',
@@ -115,6 +117,8 @@ class RawMaterialReceptionController extends Controller
             $reception->supplier_id = $request->supplier['id'];
             $reception->date = $request->date;
             $reception->notes = $request->notes ?? null;
+            $reception->declared_total_amount = $request->declaredTotalAmount ?? null;
+            $reception->declared_total_net_weight = $request->declaredTotalNetWeight ?? null;
             
             // Determinar y guardar el modo de creación
             if ($request->has('pallets') && !empty($request->pallets)) {
@@ -158,6 +162,8 @@ class RawMaterialReceptionController extends Controller
                 'supplier.id' => 'required',
                 'date' => 'required|date',
                 'notes' => 'nullable|string',
+                'declaredTotalAmount' => 'nullable|numeric|min:0',
+                'declaredTotalNetWeight' => 'nullable|numeric|min:0',
                 'details' => 'required|array',
                 'details.*.product.id' => 'required|exists:tenant.products,id',
                 'details.*.netWeight' => 'required|numeric',
@@ -170,6 +176,8 @@ class RawMaterialReceptionController extends Controller
                 'supplier.id' => 'required',
                 'date' => 'required|date',
                 'notes' => 'nullable|string',
+                'declaredTotalAmount' => 'nullable|numeric|min:0',
+                'declaredTotalNetWeight' => 'nullable|numeric|min:0',
                 'pallets' => 'required|array',
                 'pallets.*.id' => 'nullable|integer|exists:tenant.pallets,id',
                 'pallets.*.observations' => 'nullable|string',
@@ -193,6 +201,8 @@ class RawMaterialReceptionController extends Controller
                 'supplier.id' => 'required',
                 'date' => 'required|date',
                 'notes' => 'nullable|string',
+                'declaredTotalAmount' => 'nullable|numeric|min:0',
+                'declaredTotalNetWeight' => 'nullable|numeric|min:0',
                 'details' => 'required|array',
                 'details.*.product.id' => 'required|exists:tenant.products,id',
                 'details.*.netWeight' => 'required|numeric',
@@ -211,6 +221,8 @@ class RawMaterialReceptionController extends Controller
                 'supplier_id' => $validated['supplier']['id'],
                 'date' => $validated['date'],
                 'notes' => $validated['notes'] ?? null,
+                'declared_total_amount' => $validated['declaredTotalAmount'] ?? null,
+                'declared_total_net_weight' => $validated['declaredTotalNetWeight'] ?? null,
             ]);
 
             // Actualizar datos según el modo (editar en lugar de eliminar/recrear)

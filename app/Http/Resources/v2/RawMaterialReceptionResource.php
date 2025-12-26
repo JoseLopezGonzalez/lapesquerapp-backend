@@ -74,6 +74,8 @@ class RawMaterialReceptionResource extends JsonResource
             }),
             'date' => $this->date,
             'notes' => $this->notes,
+            'declaredTotalAmount' => $this->declared_total_amount ? round((float) $this->declared_total_amount, 2) : null,
+            'declaredTotalNetWeight' => $this->declared_total_net_weight ? round((float) $this->declared_total_net_weight, 2) : null,
             'creationMode' => $this->creation_mode, // 'lines' o 'pallets'
             'netWeight' => $this->netWeight,
             'species' => $this->species,
