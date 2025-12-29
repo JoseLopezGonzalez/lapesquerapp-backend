@@ -57,27 +57,41 @@ class ProductionOutputSource extends Model
             );
         }
 
-        // Si se especifica porcentaje, calcular el peso
+        // IMPORTANTE: Los sources reflejan el CONSUMO REAL, no el output final
+        // El porcentaje se calcula sobre el consumo total (total_input_weight del proceso)
+        // El peso contribuido es el peso REAL consumido de esta fuente
+        
+        // Si se especifica porcentaje, calcular el peso desde el consumo real
         if ($this->contribution_percentage !== null && $this->contributed_weight_kg === null) {
-            // Cargar output si no está cargado y existe
+            // Cargar output y record si no están cargados
             if (!$this->relationLoaded('productionOutput') && $this->production_output_id) {
-                $this->load('productionOutput');
+                $this->load('productionOutput.productionRecord');
             }
             $output = $this->productionOutput;
-            if ($output && $output->weight_kg > 0) {
-                $this->contributed_weight_kg = ($output->weight_kg * $this->contribution_percentage) / 100;
+            if ($output && $output->productionRecord) {
+                $record = $output->productionRecord;
+                $totalInputWeight = $record->total_input_weight;
+                if ($totalInputWeight > 0) {
+                    // El peso contribuido es el porcentaje del consumo real
+                    $this->contributed_weight_kg = ($totalInputWeight * $this->contribution_percentage) / 100;
+                }
             }
         }
 
-        // Si se especifica peso, calcular el porcentaje
+        // Si se especifica peso, calcular el porcentaje sobre el consumo real
         if ($this->contributed_weight_kg !== null && $this->contribution_percentage === null) {
-            // Cargar output si no está cargado y existe
+            // Cargar output y record si no están cargados
             if (!$this->relationLoaded('productionOutput') && $this->production_output_id) {
-                $this->load('productionOutput');
+                $this->load('productionOutput.productionRecord');
             }
             $output = $this->productionOutput;
-            if ($output && $output->weight_kg > 0) {
-                $this->contribution_percentage = ($this->contributed_weight_kg / $output->weight_kg) * 100;
+            if ($output && $output->productionRecord) {
+                $record = $output->productionRecord;
+                $totalInputWeight = $record->total_input_weight;
+                if ($totalInputWeight > 0) {
+                    // El porcentaje es sobre el consumo real, no sobre el output
+                    $this->contribution_percentage = ($this->contributed_weight_kg / $totalInputWeight) * 100;
+                }
             }
         }
 
@@ -173,6 +187,8 @@ class ProductionOutputSource extends Model
 
     /**
      * Obtener el coste total que aporta esta fuente
+     * 
+     * IMPORTANTE: El peso contribuido refleja el CONSUMO REAL, no el output final
      */
     public function getSourceTotalCostAttribute(): ?float
     {
@@ -182,15 +198,21 @@ class ProductionOutputSource extends Model
         }
         
         // Si no tenemos el peso contribuido, intentar calcularlo desde el porcentaje
+        // IMPORTANTE: El peso se calcula sobre el consumo real, no sobre el output
         $weight = $this->contributed_weight_kg;
         if ($weight === null || $weight <= 0) {
             if ($this->contribution_percentage !== null) {
                 if (!$this->relationLoaded('productionOutput') && $this->production_output_id) {
-                    $this->load('productionOutput');
+                    $this->load('productionOutput.productionRecord');
                 }
                 $output = $this->productionOutput;
-                if ($output && $output->weight_kg > 0) {
-                    $weight = ($output->weight_kg * $this->contribution_percentage) / 100;
+                if ($output && $output->productionRecord) {
+                    $record = $output->productionRecord;
+                    $totalInputWeight = $record->total_input_weight;
+                    if ($totalInputWeight > 0) {
+                        // El peso se calcula sobre el consumo real
+                        $weight = ($totalInputWeight * $this->contribution_percentage) / 100;
+                    }
                 }
             }
         }

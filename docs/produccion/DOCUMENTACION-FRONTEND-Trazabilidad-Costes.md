@@ -10,6 +10,10 @@
 
 1. [Resumen de Cambios](#resumen-de-cambios)
 2. [Nuevos Endpoints](#nuevos-endpoints)
+   - [Catálogo de Costes](#1-catálogo-de-costes-v2cost-catalog)
+   - [Costes de Producción](#2-costes-de-producción-v2production-costs)
+   - [Obtener Datos de Sources](#3-obtener-datos-de-sources-para-crear-outputs-v2production-recordsidsources-data)
+   - [Actualización de Endpoints Existentes](#4-actualización-de-endpoints-existentes)
 3. [Estructuras de Datos](#estructuras-de-datos)
 4. [Flujos de Trabajo](#flujos-de-trabajo)
 5. [Ejemplos de Uso](#ejemplos-de-uso)
@@ -276,7 +280,205 @@ Elimina un coste de producción.
 
 ---
 
-### 3. Actualización de Endpoints Existentes
+### 3. Obtener Datos de Sources para Crear Outputs (`/v2/production-records/{id}/sources-data`)
+
+#### `GET /v2/production-records/{id}/sources-data`
+
+**✨ NUEVO**: Endpoint específico para obtener toda la información necesaria para crear sources al crear un `ProductionOutput`.
+
+Este endpoint devuelve:
+- **Stock Boxes**: Todas las cajas de stock (materias primas) disponibles en el proceso con sus costes
+- **Parent Outputs**: Todos los consumos de outputs del proceso padre con sus costes
+- **Totales**: Resumen de pesos, costes y promedios
+
+**Use Case**: Cuando el frontend necesita crear un nuevo `ProductionOutput` y debe permitir al usuario seleccionar qué fuentes (stock boxes o parent outputs) contribuyen al output y en qué proporción.
+
+**Response**:
+```json
+{
+  "message": "Datos de sources obtenidos correctamente.",
+  "data": {
+    "productionRecord": {
+      "id": 5,
+      "processId": 3,
+      "processName": "Fileteado",
+      "productionId": 10,
+      "productionLot": "LOT-2025-001",
+      "totalInputWeight": 150.5,
+      "totalInputCost": 1279.25
+    },
+    "stockBoxes": [
+      {
+        "productionInputId": 1,
+        "boxId": 10,
+        "product": {
+          "id": 5,
+          "name": "Atún rojo"
+        },
+        "lot": "LOT-REC-001",
+        "netWeight": 25.5,
+        "grossWeight": 26.0,
+        "costPerKg": 8.50,
+        "totalCost": 216.75,
+        "gs1128": "1234567890123",
+        "palletId": 2
+      },
+      {
+        "productionInputId": 2,
+        "boxId": 11,
+        "product": {
+          "id": 5,
+          "name": "Atún rojo"
+        },
+        "lot": "LOT-REC-001",
+        "netWeight": 28.0,
+        "grossWeight": 28.5,
+        "costPerKg": 8.50,
+        "totalCost": 238.00,
+        "gs1128": "1234567890124",
+        "palletId": 2
+      }
+    ],
+    "parentOutputs": [
+      {
+        "productionOutputConsumptionId": 5,
+        "productionOutputId": 20,
+        "product": {
+          "id": 8,
+          "name": "Filetes de atún"
+        },
+        "lotId": "LOT-2025-001-FIL",
+        "consumedWeightKg": 40.0,
+        "consumedBoxes": 4,
+        "outputTotalWeight": 100.0,
+        "outputTotalBoxes": 10,
+        "outputAvailableWeight": 60.0,
+        "outputAvailableBoxes": 6,
+        "costPerKg": 12.30,
+        "totalCost": 492.00,
+        "parentProcess": {
+          "id": 4,
+          "name": "Limpieza",
+          "processId": 2
+        }
+      }
+    ],
+    "totals": {
+      "stock": {
+        "count": 2,
+        "totalWeight": 53.5,
+        "totalCost": 454.75,
+        "averageCostPerKg": 8.50
+      },
+      "parent": {
+        "count": 1,
+        "totalWeight": 40.0,
+        "totalCost": 492.00,
+        "averageCostPerKg": 12.30
+      },
+      "combined": {
+        "totalWeight": 93.5,
+        "totalCost": 946.75,
+        "averageCostPerKg": 10.12
+      }
+    }
+  }
+}
+```
+
+**Estructura de Datos**:
+
+- **`productionRecord`**: Información básica del proceso actual
+  - `id`: ID del registro de producción
+  - `processId`: ID del proceso
+  - `processName`: Nombre del proceso
+  - `productionId`: ID de la producción (lote)
+  - `productionLot`: Lote de la producción
+  - `totalInputWeight`: Peso total de todas las entradas
+  - `totalInputCost`: Coste total de todas las entradas
+
+- **`stockBoxes`**: Array de cajas de stock (materias primas)
+  - `productionInputId`: ID del `ProductionInput` (usar en `sources[].production_input_id`)
+  - `boxId`: ID de la caja
+  - `product`: Información del producto
+  - `lot`: Lote de la caja
+  - `netWeight`: Peso neto de la caja
+  - `grossWeight`: Peso bruto de la caja
+  - `costPerKg`: Coste por kg de la caja (desde recepción)
+  - `totalCost`: Coste total de la caja
+  - `gs1128`: Código GS1-128
+  - `palletId`: ID del pallet
+
+- **`parentOutputs`**: Array de consumos de outputs del proceso padre
+  - `productionOutputConsumptionId`: ID del `ProductionOutputConsumption` (usar en `sources[].production_output_consumption_id`)
+  - `productionOutputId`: ID del `ProductionOutput` consumido
+  - `product`: Información del producto del output
+  - `lotId`: Lote del output
+  - `consumedWeightKg`: Peso consumido de este output
+  - `consumedBoxes`: Cajas consumidas
+  - `outputTotalWeight`: Peso total del output original
+  - `outputTotalBoxes`: Cajas totales del output original
+  - `outputAvailableWeight`: Peso disponible restante del output
+  - `outputAvailableBoxes`: Cajas disponibles restantes
+  - `costPerKg`: Coste por kg del output (calculado recursivamente)
+  - `totalCost`: Coste total del output
+  - `parentProcess`: Información del proceso padre
+
+- **`totals`**: Resumen de totales
+  - `stock`: Totales de cajas de stock
+  - `parent`: Totales de outputs del padre
+  - `combined`: Totales combinados
+
+**Ejemplo de Uso en Frontend**:
+
+```javascript
+// 1. Obtener datos de sources antes de crear el output
+const response = await fetch(`/api/v2/production-records/${recordId}/sources-data`);
+const { data } = await response.json();
+
+// 2. Mostrar al usuario las fuentes disponibles
+// data.stockBoxes - cajas de stock
+// data.parentOutputs - outputs del padre
+
+// 3. Usuario selecciona fuentes y especifica contribución
+const sources = [
+  {
+    source_type: 'stock_box',
+    production_input_id: data.stockBoxes[0].productionInputId,
+    contributed_weight_kg: 25.5, // o contribution_percentage: 30
+    contributed_boxes: 1
+  },
+  {
+    source_type: 'parent_output',
+    production_output_consumption_id: data.parentOutputs[0].productionOutputConsumptionId,
+    contributed_weight_kg: 40.0, // o contribution_percentage: 47
+    contributed_boxes: 4
+  }
+];
+
+// 4. Crear output con sources
+const outputResponse = await fetch('/api/v2/production-outputs', {
+  method: 'POST',
+  body: JSON.stringify({
+    production_record_id: recordId,
+    product_id: 8,
+    lot_id: 'LOT-2025-001-FIL',
+    boxes: 10,
+    weight_kg: 85.5,
+    sources: sources
+  })
+});
+```
+
+**Notas Importantes**:
+- Si no se proporcionan `sources` al crear un `ProductionOutput`, se crearán automáticamente de forma proporcional
+- Cada source debe tener O bien `contributed_weight_kg` O bien `contribution_percentage`
+- La suma de `contribution_percentage` debe ser aproximadamente 100%
+- Los costes se calculan automáticamente desde las fuentes
+
+---
+
+### 4. Actualización de Endpoints Existentes
 
 #### `GET /v2/production-outputs/{id}`
 
@@ -452,8 +654,26 @@ Elimina un coste de producción.
 **⚠️ Reglas de Validación**:
 - Se debe especificar **O bien** `contributed_weight_kg` **O bien** `contribution_percentage` (no ambos, no ninguno)
 - Si se especifica uno, el otro se calcula automáticamente
-- La suma de `contribution_percentage` debe ser ≈ 100% (con tolerancia de 0.01%)
-- Si `sources` no se proporciona, se calcula automáticamente de forma proporcional
+- **IMPORTANTE**: Los sources reflejan el **CONSUMO REAL** (peso de inputs), no el output final
+- La suma de `contribution_percentage` debe ser ≈ 100% del **consumo real** (con tolerancia de 0.01%)
+- La suma de `contributed_weight_kg` debe ser aproximadamente igual al **consumo real** del proceso
+- Si `sources` no se proporciona, se calcula automáticamente de forma proporcional basándose en el consumo real
+
+**📊 Ejemplo con Merma**:
+```
+Consumo real (inputs): 100kg
+Output final: 90kg
+Merma: 10kg
+
+Sources (deben sumar 100kg, no 90kg):
+- Source 1: contributed_weight_kg = 50kg (50% del consumo)
+- Source 2: contributed_weight_kg = 50kg (50% del consumo)
+Total sources: 100kg ✅
+
+Output: weight_kg = 90kg
+
+Merma calculable: 100kg (sources) - 90kg (output) = 10kg ✅
+```
 
 #### `PUT /v2/production-outputs/{id}`
 
@@ -498,14 +718,37 @@ interface ProductionOutputSource {
   productionInput?: ProductionInput;
   productionOutputConsumptionId?: number;
   productionOutputConsumption?: ProductionOutputConsumption;
-  contributedWeightKg?: number;
+  contributedWeightKg?: number; // ⚠️ Peso REAL consumido (no el output final)
   contributedBoxes: number;
-  contributionPercentage?: number;
+  contributionPercentage?: number; // ⚠️ Porcentaje del CONSUMO REAL (no del output)
   sourceCostPerKg?: number;
   sourceTotalCost?: number;
   createdAt: string;
   updatedAt: string;
 }
+```
+
+**⚠️ IMPORTANTE - Sources y Merma**:
+- Los `contributedWeightKg` reflejan el **CONSUMO REAL** (peso de inputs), no el output final
+- La suma de todos los `contributedWeightKg` debe ser igual al consumo total del proceso
+- El `contributionPercentage` se calcula sobre el **consumo real**, no sobre el output
+- Esto permite calcular la merma como: `sum(sources) - output.weightKg`
+- El coste se calcula sobre el **consumo real**, incluyendo la merma
+
+**Ejemplo con Merma**:
+```
+Consumo real (inputs): 100kg
+Output final: 90kg
+Merma: 10kg
+
+Sources (deben sumar 100kg, no 90kg):
+- Source 1: contributedWeightKg = 50kg (50% del consumo)
+- Source 2: contributedWeightKg = 50kg (50% del consumo)
+Total sources: 100kg ✅
+
+Output: weightKg = 90kg
+
+Merma calculable: 100kg (sources) - 90kg (output) = 10kg ✅
 ```
 
 ### CostCatalog

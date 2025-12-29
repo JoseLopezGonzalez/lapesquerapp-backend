@@ -54,6 +54,9 @@ class ProductionOutputService
 
     /**
      * Crear sources automáticamente de forma proporcional
+     * 
+     * IMPORTANTE: Los sources reflejan el CONSUMO REAL (peso de inputs), no el output final.
+     * Esto permite calcular correctamente la merma como diferencia entre consumo y output.
      */
     protected function createSourcesAutomatically(ProductionOutput $output): void
     {
@@ -66,27 +69,23 @@ class ProductionOutputService
         $inputs = $record->inputs()->with('box')->get();
         $consumptions = $record->parentOutputConsumptions;
 
-        $totalInputWeight = 0;
-
-        // Calcular peso total de inputs
-        foreach ($inputs as $input) {
-            $totalInputWeight += $input->box->net_weight ?? 0;
-        }
-
-        foreach ($consumptions as $consumption) {
-            $totalInputWeight += $consumption->consumed_weight_kg ?? 0;
-        }
+        // Obtener el consumo real total (peso de inputs + consumos del padre)
+        // Esto es el peso REAL consumido, no el output final
+        $totalInputWeight = $record->total_input_weight;
 
         if ($totalInputWeight <= 0) {
             return; // No hay inputs, no se pueden crear sources
         }
 
-        // Distribuir proporcionalmente
+        // Distribuir proporcionalmente según el CONSUMO REAL
+        // Los sources deben sumar el consumo real, no el output final
         foreach ($inputs as $input) {
             $inputWeight = $input->box->net_weight ?? 0;
             if ($inputWeight > 0) {
+                // Porcentaje del consumo real que representa este input
                 $percentage = ($inputWeight / $totalInputWeight) * 100;
-                $contributedWeight = ($output->weight_kg * $percentage) / 100;
+                // El peso contribuido es el peso REAL consumido de este input
+                $contributedWeight = $inputWeight;
 
                 ProductionOutputSource::create([
                     'production_output_id' => $output->id,
@@ -103,8 +102,10 @@ class ProductionOutputService
         foreach ($consumptions as $consumption) {
             $consumptionWeight = $consumption->consumed_weight_kg ?? 0;
             if ($consumptionWeight > 0) {
+                // Porcentaje del consumo real que representa este consumo
                 $percentage = ($consumptionWeight / $totalInputWeight) * 100;
-                $contributedWeight = ($output->weight_kg * $percentage) / 100;
+                // El peso contribuido es el peso REAL consumido
+                $contributedWeight = $consumptionWeight;
 
                 ProductionOutputSource::create([
                     'production_output_id' => $output->id,

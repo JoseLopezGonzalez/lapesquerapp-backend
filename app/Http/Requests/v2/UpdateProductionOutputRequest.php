@@ -59,22 +59,63 @@ class UpdateProductionOutputRequest extends FormRequest
                     }
                 }
                 
-                // Verificar que la suma de porcentajes sea aproximadamente 100%
+                // Verificar que la suma de porcentajes sea aproximadamente 100% del CONSUMO REAL
+                // Los sources reflejan el consumo real (inputs), no el output final
                 $totalPercentage = 0;
+                $totalWeight = 0;
                 $hasPercentages = false;
+                $hasWeights = false;
                 
-                foreach ($sources as $index => $source) {
-                    if (!empty($source['contribution_percentage'])) {
-                        $hasPercentages = true;
-                        $totalPercentage += (float) $source['contribution_percentage'];
+                // Obtener el output y su record para validar
+                $outputId = $this->route('id') ?? $this->route('production_output');
+                if ($outputId) {
+                    $output = \App\Models\ProductionOutput::find($outputId);
+                    if ($output && $output->productionRecord) {
+                        $record = $output->productionRecord;
+                        $totalInputWeight = $record->total_input_weight;
+                        
+                        foreach ($sources as $index => $source) {
+                            if (!empty($source['contribution_percentage'])) {
+                                $hasPercentages = true;
+                                $totalPercentage += (float) $source['contribution_percentage'];
+                            }
+                            if (!empty($source['contributed_weight_kg'])) {
+                                $hasWeights = true;
+                                $totalWeight += (float) $source['contributed_weight_kg'];
+                            }
+                        }
+                        
+                        // Validar porcentajes: deben sumar ≈100% del consumo real
+                        if ($hasPercentages && abs($totalPercentage - 100) > 0.01) {
+                            $validator->errors()->add(
+                                'sources',
+                                "La suma de contribution_percentage debe ser aproximadamente 100% del consumo real. Suma actual: {$totalPercentage}%"
+                            );
+                        }
+                        
+                        // Validar pesos: deben sumar aproximadamente el consumo real
+                        if ($hasWeights && $totalInputWeight > 0 && abs($totalWeight - $totalInputWeight) > 0.01) {
+                            $validator->errors()->add(
+                                'sources',
+                                "La suma de contributed_weight_kg debe ser aproximadamente igual al consumo real ({$totalInputWeight}kg). Suma actual: {$totalWeight}kg"
+                            );
+                        }
                     }
-                }
-                
-                if ($hasPercentages && abs($totalPercentage - 100) > 0.01) {
-                    $validator->errors()->add(
-                        'sources',
-                        "La suma de contribution_percentage debe ser aproximadamente 100%. Suma actual: {$totalPercentage}%"
-                    );
+                } else {
+                    // Si no hay output_id, solo validar que los porcentajes sumen 100%
+                    foreach ($sources as $index => $source) {
+                        if (!empty($source['contribution_percentage'])) {
+                            $hasPercentages = true;
+                            $totalPercentage += (float) $source['contribution_percentage'];
+                        }
+                    }
+                    
+                    if ($hasPercentages && abs($totalPercentage - 100) > 0.01) {
+                        $validator->errors()->add(
+                            'sources',
+                            "La suma de contribution_percentage debe ser aproximadamente 100%. Suma actual: {$totalPercentage}%"
+                        );
+                    }
                 }
             }
         });
