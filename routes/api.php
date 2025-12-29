@@ -457,8 +457,16 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::delete('production-inputs/multiple', [ProductionInputController::class, 'destroyMultiple'])->name('production-inputs.destroyMultiple');
             Route::apiResource('production-inputs', ProductionInputController::class);
 
+            // Production Outputs - Costes y Trazabilidad
+            Route::get('production-outputs/{id}/cost-breakdown', [ProductionOutputController::class, 'getCostBreakdown'])->name('production-outputs.cost-breakdown');
             Route::apiResource('production-outputs', ProductionOutputController::class);
             Route::post('production-outputs/multiple', [ProductionOutputController::class, 'storeMultiple'])->name('production-outputs.storeMultiple');
+
+            // Cost Catalog
+            Route::apiResource('cost-catalog', \App\Http\Controllers\v2\CostCatalogController::class);
+
+            // Production Costs
+            Route::apiResource('production-costs', \App\Http\Controllers\v2\ProductionCostController::class);
 
             Route::apiResource('production-output-consumptions', ProductionOutputConsumptionController::class);
             Route::post('production-output-consumptions/multiple', [ProductionOutputConsumptionController::class, 'storeMultiple'])->name('production-output-consumptions.storeMultiple');

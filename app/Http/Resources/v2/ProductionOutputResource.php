@@ -28,6 +28,16 @@ class ProductionOutputResource extends JsonResource
             'boxes' => $this->boxes,
             'weightKg' => (float) $this->weight_kg,
             'averageWeightPerBox' => (float) $this->average_weight_per_box,
+            
+            // ✨ NUEVOS CAMPOS DE COSTE
+            'costPerKg' => $this->cost_per_kg,
+            'totalCost' => $this->total_cost,
+            'costBreakdown' => $this->when(
+                $request->has('include_cost_breakdown'),
+                fn() => $this->cost_breakdown
+            ),
+            'sources' => ProductionOutputSourceResource::collection($this->whenLoaded('sources')),
+            
             'createdAt' => $this->created_at?->toIso8601String(),
             'updatedAt' => $this->updated_at?->toIso8601String(),
         ];

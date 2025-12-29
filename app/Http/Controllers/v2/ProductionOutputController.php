@@ -24,7 +24,7 @@ class ProductionOutputController extends Controller
         $query = ProductionOutput::query();
 
         // Cargar relaciones
-        $query->with(['productionRecord', 'product']);
+        $query->with(['productionRecord', 'product', 'sources']);
 
         // Filtro por production_record_id
         if ($request->has('production_record_id')) {
@@ -70,12 +70,29 @@ class ProductionOutputController extends Controller
      */
     public function show(string $id)
     {
-        $output = ProductionOutput::with(['productionRecord', 'product'])
+        $output = ProductionOutput::with(['productionRecord', 'product', 'sources'])
             ->findOrFail($id);
 
         return response()->json([
             'message' => 'Salida de producción obtenida correctamente.',
             'data' => new ProductionOutputResource($output),
+        ]);
+    }
+
+    /**
+     * Obtener desglose de costes de un output
+     */
+    public function getCostBreakdown(string $id)
+    {
+        $output = ProductionOutput::with(['productionRecord', 'product', 'sources'])
+            ->findOrFail($id);
+
+        return response()->json([
+            'message' => 'Desglose de costes obtenido correctamente.',
+            'data' => [
+                'output' => new ProductionOutputResource($output),
+                'cost_breakdown' => $output->cost_breakdown,
+            ],
         ]);
     }
 
