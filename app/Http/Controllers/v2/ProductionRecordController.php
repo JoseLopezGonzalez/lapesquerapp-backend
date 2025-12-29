@@ -222,4 +222,135 @@ class ProductionRecordController extends Controller
             }),
         ]);
     }
+
+    /**
+     * Obtener toda la información necesaria para crear sources de outputs
+     * 
+     * Este endpoint devuelve:
+     * - Inputs de stock (cajas) disponibles con sus costes
+     * - Consumos de outputs del padre disponibles con sus costes
+     * - Información del proceso actual
+     * - Totales y pesos disponibles
+     * 
+     * @param string $id ID del ProductionRecord
+     */
+    public function getSourcesData(string $id): JsonResponse
+    {
+        $record = ProductionRecord::with([
+            'production',
+            'process',
+            'inputs.box.product',
+            'inputs.box.pallet.reception',
+            'parentOutputConsumptions.productionOutput.product',
+            'parentOutputConsumptions.productionOutput.productionRecord.process',
+        ])->findOrFail($id);
+
+        // Preparar datos de inputs de stock (cajas)
+        $stockBoxes = $record->inputs->map(function ($input) {
+            $box = $input->box;
+            if (!$box) {
+                return null;
+            }
+
+            return [
+                'productionInputId' => $input->id,
+                'boxId' => $box->id,
+                'product' => [
+                    'id' => $box->product->id ?? null,
+                    'name' => $box->product->name ?? null,
+                ],
+                'lot' => $box->lot,
+                'netWeight' => (float) ($box->net_weight ?? 0),
+                'grossWeight' => (float) ($box->gross_weight ?? 0),
+                'costPerKg' => $box->cost_per_kg !== null ? (float) $box->cost_per_kg : null,
+                'totalCost' => $box->total_cost !== null ? (float) $box->total_cost : null,
+                'gs1128' => $box->gs1_128,
+                'palletId' => $box->pallet_id,
+            ];
+        })->filter()->values();
+
+        // Preparar datos de consumos de outputs del padre
+        $parentOutputs = $record->parentOutputConsumptions->map(function ($consumption) {
+            $output = $consumption->productionOutput;
+            if (!$output) {
+                return null;
+            }
+
+            $parentRecord = $output->productionRecord;
+            $processName = $parentRecord && $parentRecord->process 
+                ? $parentRecord->process->name 
+                : 'Proceso padre';
+
+            return [
+                'productionOutputConsumptionId' => $consumption->id,
+                'productionOutputId' => $output->id,
+                'product' => [
+                    'id' => $output->product->id ?? null,
+                    'name' => $output->product->name ?? null,
+                ],
+                'lotId' => $output->lot_id,
+                'consumedWeightKg' => (float) ($consumption->consumed_weight_kg ?? 0),
+                'consumedBoxes' => (int) ($consumption->consumed_boxes ?? 0),
+                'outputTotalWeight' => (float) ($output->weight_kg ?? 0),
+                'outputTotalBoxes' => (int) ($output->boxes ?? 0),
+                'outputAvailableWeight' => (float) ($output->available_weight_kg ?? 0),
+                'outputAvailableBoxes' => (int) ($output->available_boxes ?? 0),
+                'costPerKg' => $output->cost_per_kg !== null ? (float) $output->cost_per_kg : null,
+                'totalCost' => $output->total_cost !== null ? (float) $output->total_cost : null,
+                'parentProcess' => [
+                    'id' => $parentRecord->id ?? null,
+                    'name' => $processName,
+                    'processId' => $parentRecord->process_id ?? null,
+                ],
+            ];
+        })->filter()->values();
+
+        // Calcular totales
+        $totalStockWeight = $stockBoxes->sum('netWeight');
+        $totalStockCost = $stockBoxes->sum(function ($box) {
+            return $box['totalCost'] ?? 0;
+        });
+        $totalParentWeight = $parentOutputs->sum('consumedWeightKg');
+        $totalParentCost = $parentOutputs->sum(function ($output) {
+            return ($output['costPerKg'] ?? 0) * ($output['consumedWeightKg'] ?? 0);
+        });
+        $totalInputWeight = $totalStockWeight + $totalParentWeight;
+        $totalInputCost = $totalStockCost + $totalParentCost;
+
+        return response()->json([
+            'message' => 'Datos de sources obtenidos correctamente.',
+            'data' => [
+                'productionRecord' => [
+                    'id' => $record->id,
+                    'processId' => $record->process_id,
+                    'processName' => $record->process ? $record->process->name : null,
+                    'productionId' => $record->production_id,
+                    'productionLot' => $record->production ? $record->production->lot : null,
+                    'totalInputWeight' => $totalInputWeight,
+                    'totalInputCost' => $totalInputCost,
+                ],
+                'stockBoxes' => $stockBoxes,
+                'parentOutputs' => $parentOutputs,
+                'totals' => [
+                    'stock' => [
+                        'count' => $stockBoxes->count(),
+                        'totalWeight' => $totalStockWeight,
+                        'totalCost' => $totalStockCost,
+                        'averageCostPerKg' => $totalStockWeight > 0 ? $totalStockCost / $totalStockWeight : null,
+                    ],
+                    'parent' => [
+                        'count' => $parentOutputs->count(),
+                        'totalWeight' => $totalParentWeight,
+                        'totalCost' => $totalParentCost,
+                        'averageCostPerKg' => $totalParentWeight > 0 ? $totalParentCost / $totalParentWeight : null,
+                    ],
+                    'combined' => [
+                        'totalWeight' => $totalInputWeight,
+                        'totalCost' => $totalInputCost,
+                        'averageCostPerKg' => $totalInputWeight > 0 ? $totalInputCost / $totalInputWeight : null,
+                    ],
+                ],
+            ],
+        ]);
+    }
 }

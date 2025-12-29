@@ -446,6 +446,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::get('productions/{id}/available-products-for-outputs', [V2ProductionController::class, 'getAvailableProductsForOutputs'])->name('productions.getAvailableProductsForOutputs');
 
             Route::get('production-records/options', [ProductionRecordController::class, 'options'])->name('production-records.options');
+            Route::get('production-records/{id}/sources-data', [ProductionRecordController::class, 'getSourcesData'])->name('production-records.sources-data');
             Route::apiResource('production-records', ProductionRecordController::class);
             Route::get('production-records/{id}/tree', [ProductionRecordController::class, 'tree'])->name('production-records.tree');
             Route::post('production-records/{id}/finish', [ProductionRecordController::class, 'finish'])->name('production-records.finish');
