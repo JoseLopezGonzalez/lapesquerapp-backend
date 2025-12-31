@@ -215,18 +215,32 @@ Cada elemento del array `dispatches` contiene salidas de cebo que **NO tienen re
 **Query Parameters**:
 - `dates[start]` (required): Fecha de inicio en formato `YYYY-MM-DD`
 - `dates[end]` (required): Fecha de fin en formato `YYYY-MM-DD`
+- `receptions[]` (optional): Array de IDs de recepciones a incluir en el PDF. Si no se especifica, se incluyen todas.
+- `dispatches[]` (optional): Array de IDs de salidas de cebo a incluir en el PDF. Si no se especifica, se incluyen todas.
 
-**Ejemplo de Request**:
+**Ejemplo de Request - Sin filtros (todas las recepciones y salidas)**:
 ```
 GET /v2/supplier-liquidations/1/pdf?dates[start]=2024-01-01&dates[end]=2024-01-31
 ```
+
+**Ejemplo de Request - Con selección específica**:
+```
+GET /v2/supplier-liquidations/1/pdf?dates[start]=2024-01-01&dates[end]=2024-01-31&receptions[]=101&receptions[]=102&dispatches[]=201&dispatches[]=202
+```
+
+**Comportamiento**:
+- Si no se especifican `receptions[]`, se incluyen todas las recepciones del rango de fechas
+- Si no se especifican `dispatches[]`, se incluyen todas las salidas de cebo del rango de fechas
+- Si se especifican `receptions[]`, solo se incluyen las recepciones con esos IDs
+- Si se especifican `dispatches[]`, solo se incluyen las salidas con esos IDs (tanto independientes como relacionadas dentro de recepciones)
+- El resumen se recalcula automáticamente con los datos filtrados
 
 **Respuesta**: 
 - Content-Type: `application/pdf`
 - Headers: `Content-Disposition: attachment; filename="Liquidacion_Proveedor_Proveedor_ABC_2024-01-01_2024-01-31.pdf"`
 - Body: Archivo PDF binario
 
-**Uso**: Descargar el PDF de la liquidación. El navegador debería abrir el diálogo de descarga automáticamente.
+**Uso**: Descargar el PDF de la liquidación con las recepciones y salidas seleccionadas. El navegador debería abrir el diálogo de descarga automáticamente.
 
 ---
 
@@ -288,8 +302,19 @@ GET /v2/supplier-liquidations/1/pdf?dates[start]=2024-01-01&dates[end]=2024-01-3
    - **Importe Neto**: (Recepciones - Salidas) - Este es el valor más importante
 
 **Interacciones**:
-- Botón "Generar PDF": Descargar el PDF usando el endpoint correspondiente
+- Checkboxes o toggles para seleccionar/deseleccionar recepciones individuales
+- Checkboxes o toggles para seleccionar/deseleccionar salidas de cebo individuales
+- Botones "Seleccionar todo" / "Deseleccionar todo" para facilitar la selección
+- Botón "Generar PDF": Descargar el PDF con las recepciones y salidas seleccionadas
 - Botón "Volver": Regresar al listado de proveedores
+
+**Selección de Items para PDF**:
+- Cada recepción debe tener un checkbox/toggle para incluirla o no en el PDF
+- Cada salida de cebo debe tener un checkbox/toggle para incluirla o no en el PDF
+- Al generar el PDF, enviar los IDs seleccionados como arrays en los query parameters:
+  - `receptions[]=101&receptions[]=102` para recepciones
+  - `dispatches[]=201&dispatches[]=202` para salidas
+- Si no se selecciona ninguna recepción o salida, se incluyen todas por defecto
 
 ---
 

@@ -315,13 +315,17 @@ class SupplierLiquidationController extends Controller
     /**
      * Generar PDF de liquidación
      * 
-     * GET /v2/supplier-liquidations/{supplierId}/pdf?dates[start]=2024-01-01&dates[end]=2024-01-31
+     * GET /v2/supplier-liquidations/{supplierId}/pdf?dates[start]=2024-01-01&dates[end]=2024-01-31&receptions[]=1&receptions[]=2&dispatches[]=3
      */
     public function generatePdf(Request $request, $supplierId)
     {
         $request->validate([
             'dates.start' => 'required|date',
             'dates.end' => 'required|date|after_or_equal:dates.start',
+            'receptions' => 'nullable|array',
+            'receptions.*' => 'integer|exists:tenant.raw_material_receptions,id',
+            'dispatches' => 'nullable|array',
+            'dispatches.*' => 'integer|exists:tenant.cebo_dispatches,id',
         ]);
 
         // Obtener los datos de la liquidación (reutiliza la lógica de getDetails)
@@ -338,6 +342,43 @@ class SupplierLiquidationController extends Controller
             return response()->json(['error' => 'Error al procesar los datos de liquidación'], 500);
         }
 
+        // Filtrar recepciones y salidas según selección del usuario
+        $selectedReceptionIds = $request->input('receptions', []);
+        $selectedDispatchIds = $request->input('dispatches', []);
+        
+        $filteredReceptions = $details['receptions'];
+        $filteredDispatches = $details['dispatches'];
+        
+        // Si se especificaron recepciones, filtrar solo las seleccionadas
+        if (!empty($selectedReceptionIds)) {
+            $filteredReceptions = array_filter($details['receptions'], function($reception) use ($selectedReceptionIds) {
+                return in_array($reception['id'], $selectedReceptionIds);
+            });
+            $filteredReceptions = array_values($filteredReceptions); // Reindexar array
+        }
+        
+        // Si se especificaron salidas, filtrar solo las seleccionadas
+        if (!empty($selectedDispatchIds)) {
+            $filteredDispatches = array_filter($details['dispatches'], function($dispatch) use ($selectedDispatchIds) {
+                return in_array($dispatch['id'], $selectedDispatchIds);
+            });
+            $filteredDispatches = array_values($filteredDispatches); // Reindexar array
+            
+            // También filtrar las salidas relacionadas dentro de las recepciones
+            foreach ($filteredReceptions as &$reception) {
+                if (!empty($reception['related_dispatches'])) {
+                    $reception['related_dispatches'] = array_filter($reception['related_dispatches'], function($dispatch) use ($selectedDispatchIds) {
+                        return in_array($dispatch['id'], $selectedDispatchIds);
+                    });
+                    $reception['related_dispatches'] = array_values($reception['related_dispatches']);
+                }
+            }
+            unset($reception);
+        }
+        
+        // Recalcular resumen con los datos filtrados
+        $summary = $this->calculateSummary($filteredReceptions, $filteredDispatches);
+
         $dates = $request->input('dates', []);
         $startDate = $dates['start'] ?? null;
         $endDate = $dates['end'] ?? null;
@@ -350,9 +391,9 @@ class SupplierLiquidationController extends Controller
         $html = view('pdf.v2.supplier_liquidations.liquidation', [
             'supplier' => $details['supplier'],
             'date_range' => $details['date_range'],
-            'receptions' => $details['receptions'],
-            'dispatches' => $details['dispatches'],
-            'summary' => $details['summary'],
+            'receptions' => $filteredReceptions,
+            'dispatches' => $filteredDispatches,
+            'summary' => $summary,
         ])->render();
         
         $snappdf->setChromiumPath('/usr/bin/google-chrome');
@@ -394,6 +435,73 @@ class SupplierLiquidationController extends Controller
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf;
         }, "{$fileName}.pdf", ['Content-Type' => 'application/pdf']);
+    }
+
+    /**
+     * Calcular resumen de liquidación con recepciones y salidas filtradas
+     */
+    private function calculateSummary(array $receptions, array $dispatches)
+    {
+        $totalReceptions = count($receptions);
+        
+        // Contar todas las salidas: las independientes + las relacionadas dentro de recepciones
+        $allDispatchIds = [];
+        foreach ($dispatches as $dispatch) {
+            $allDispatchIds[] = $dispatch['id'];
+        }
+        foreach ($receptions as $reception) {
+            if (!empty($reception['related_dispatches'])) {
+                foreach ($reception['related_dispatches'] as $dispatch) {
+                    if (!in_array($dispatch['id'], $allDispatchIds)) {
+                        $allDispatchIds[] = $dispatch['id'];
+                    }
+                }
+            }
+        }
+        $totalDispatches = count($allDispatchIds);
+        
+        // Totales calculados (reales) de recepciones filtradas
+        $totalCalculatedWeight = array_sum(array_column($receptions, 'calculated_total_net_weight'));
+        $totalCalculatedAmount = array_sum(array_column($receptions, 'calculated_total_amount'));
+        
+        // Totales de salidas de cebo: independientes + relacionadas
+        $totalDispatchesWeight = array_sum(array_column($dispatches, 'total_net_weight'));
+        $totalDispatchesAmount = array_sum(array_column($dispatches, 'total_amount'));
+        
+        // Sumar salidas relacionadas dentro de las recepciones
+        foreach ($receptions as $reception) {
+            if (!empty($reception['related_dispatches'])) {
+                foreach ($reception['related_dispatches'] as $dispatch) {
+                    $totalDispatchesWeight += $dispatch['total_net_weight'];
+                    $totalDispatchesAmount += $dispatch['total_amount'];
+                }
+            }
+        }
+        
+        // Totales declarados de recepciones filtradas
+        $totalDeclaredWeight = array_sum(array_column($receptions, 'declared_total_net_weight'));
+        $totalDeclaredAmount = array_sum(array_column($receptions, 'declared_total_amount'));
+        
+        // Diferencias (calculado - declarado)
+        $weightDifference = $totalCalculatedWeight - $totalDeclaredWeight;
+        $amountDifference = $totalCalculatedAmount - $totalDeclaredAmount;
+        
+        // Importe neto total (diferencia entre calculado y declarado)
+        $netAmount = $amountDifference;
+        
+        return [
+            'total_receptions' => $totalReceptions,
+            'total_dispatches' => $totalDispatches,
+            'total_receptions_weight' => round($totalCalculatedWeight, 2),
+            'total_dispatches_weight' => round($totalDispatchesWeight, 2),
+            'total_receptions_amount' => round($totalCalculatedAmount, 2),
+            'total_dispatches_amount' => round($totalDispatchesAmount, 2),
+            'total_declared_weight' => round($totalDeclaredWeight, 2),
+            'total_declared_amount' => round($totalDeclaredAmount, 2),
+            'weight_difference' => round($weightDifference, 2),
+            'amount_difference' => round($amountDifference, 2),
+            'net_amount' => round($netAmount, 2),
+        ];
     }
 }
 
