@@ -57,25 +57,8 @@
             </div>
         </div>
 
-        <!-- DATOS DEL PROVEEDOR -->
-        <div class="border rounded-lg overflow-hidden bg-gray-50 mb-6">
-            <div class="font-bold p-2 bg-gray-800 w-full border-b text-white">DATOS DEL PROVEEDOR</div>
-            <div class="p-4">
-                <p><strong>Nombre:</strong> {{ $supplier['name'] }}</p>
-                @if($supplier['contact_person'])
-                    <p><strong>Persona de contacto:</strong> {{ $supplier['contact_person'] }}</p>
-                @endif
-                @if($supplier['phone'])
-                    <p><strong>Teléfono:</strong> {{ $supplier['phone'] }}</p>
-                @endif
-                @if($supplier['address'])
-                    <p><strong>Dirección:</strong> {{ $supplier['address'] }}</p>
-                @endif
-            </div>
-        </div>
-
         <!-- TABLA DE RECEPCIONES -->
-        <h3 class="font-bold mb-2">DETALLE DE RECEPCIONES</h3>
+        <h3 class="font-bold mb-2">RECEPCIONES</h3>
         <div class="border rounded-lg overflow-hidden mb-6">
             <table class="w-full text-xs">
                 <thead class="border-b bg-gray-100">
@@ -177,7 +160,7 @@
         @endphp
         
         @if(count($allDispatches) > 0)
-        <h3 class="font-bold mb-2">DETALLE DE SALIDAS DE CEBO</h3>
+        <h3 class="font-bold mb-2">SALIDAS DE CEBO</h3>
         <div class="border rounded-lg overflow-hidden mb-6">
             <table class="w-full text-xs">
                 <thead class="border-b bg-gray-100">
