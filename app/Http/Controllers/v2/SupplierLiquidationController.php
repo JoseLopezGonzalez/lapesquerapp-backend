@@ -649,6 +649,12 @@ class SupplierLiquidationController extends Controller
         
         $hasIvaInDispatches = $summary['has_iva_in_dispatches'] ?? false;
         
+        // Variables base
+        $totalReception = $summary['total_receptions_amount'] ?? 0; // Sin IVA
+        $totalDeclared = $summary['total_declared_amount'] ?? 0; // Sin IVA
+        $totalDeclaredWithIva = $summary['total_declared_with_iva'] ?? 0; // Con IVA (declarado * 1.10)
+        $totalDispatchesAmount = $summary['total_dispatches_amount'] ?? 0; // Con IVA
+        
         $result = [
             'has_iva_in_dispatches' => $hasIvaInDispatches,
             'payment_method' => $paymentMethod,
@@ -659,31 +665,24 @@ class SupplierLiquidationController extends Controller
             'total_transfer_final' => null,
         ];
         
-        // Solo calcular si hay IVA en dispatches
-        if (!$hasIvaInDispatches) {
-            return $result;
-        }
-        
-        // Variables base
-        $totalReception = $summary['total_receptions_amount'] ?? 0; // Sin IVA
-        $totalDeclared = $summary['total_declared_amount'] ?? 0; // Sin IVA
-        $totalDeclaredWithIva = $summary['total_declared_with_iva'] ?? 0; // Con IVA (declarado * 1.10)
-        $totalDispatchesAmount = $summary['total_dispatches_amount'] ?? 0; // Con IVA
-        
         // Calcular Total Efectivo
-        if ($paymentMethod === 'cash') {
-            // Si se descuenta de efectivo: Total Efectivo = Total Recepción (sin IVA) - Total Declarado (sin IVA) - Total Salida Cebo (con IVA)
+        if ($paymentMethod === 'cash' && $hasIvaInDispatches) {
+            // Si hay IVA en cebo y se descuenta de efectivo: Total Efectivo = Total Recepción (sin IVA) - Total Declarado (sin IVA) - Total Salida Cebo (con IVA)
             $result['total_cash'] = round($totalReception - $totalDeclared - $totalDispatchesAmount, 2);
             // Total Transferencia sin descontar cebo: Total Declarado (con IVA)
             $result['total_transfer'] = round($totalDeclaredWithIva, 2);
-        } else {
-            // Si se descuenta de transferencia: Total Efectivo sin descontar cebo
+        } elseif ($paymentMethod === 'transfer' && $hasIvaInDispatches) {
+            // Si hay IVA en cebo y se descuenta de transferencia: Total Efectivo sin descontar cebo
             $result['total_cash'] = round($totalReception - $totalDeclared, 2);
             // Total Transferencia = Total Declarado (con IVA) - Total Salida Cebo (con IVA)
             $result['total_transfer'] = round($totalDeclaredWithIva - $totalDispatchesAmount, 2);
+        } else {
+            // Si no hay IVA en cebo o no se especifica método, calcular sin descontar cebo
+            $result['total_cash'] = round($totalReception - $totalDeclared, 2);
+            $result['total_transfer'] = round($totalDeclaredWithIva, 2);
         }
         
-        // Calcular Gasto de Gestión (si aplica)
+        // Calcular Gasto de Gestión (si aplica) - siempre disponible
         if ($hasManagementFee) {
             // Gasto de Gestión = Total Declarado (sin IVA) * 0.025 (2.5%)
             $result['management_fee'] = round($totalDeclared * 0.025, 2);
