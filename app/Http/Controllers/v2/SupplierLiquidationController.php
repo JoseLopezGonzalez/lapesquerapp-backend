@@ -346,35 +346,76 @@ class SupplierLiquidationController extends Controller
         $selectedReceptionIds = $request->input('receptions', []);
         $selectedDispatchIds = $request->input('dispatches', []);
         
-        $filteredReceptions = $details['receptions'];
-        $filteredDispatches = $details['dispatches'];
+        // Normalizar arrays: si viene como string vacío o null, convertir a array vacío
+        if (!is_array($selectedReceptionIds)) {
+            $selectedReceptionIds = [];
+        }
+        if (!is_array($selectedDispatchIds)) {
+            $selectedDispatchIds = [];
+        }
         
-        // Si se especificaron recepciones, filtrar solo las seleccionadas
-        if (!empty($selectedReceptionIds)) {
-            $filteredReceptions = array_filter($details['receptions'], function($reception) use ($selectedReceptionIds) {
-                return in_array($reception['id'], $selectedReceptionIds);
+        // Convertir IDs a enteros para comparación correcta
+        $selectedReceptionIds = array_map('intval', $selectedReceptionIds);
+        $selectedDispatchIds = array_map('intval', $selectedDispatchIds);
+        
+        // Inicializar con todos los datos
+        $filteredReceptions = $details['receptions'] ?? [];
+        $filteredDispatches = $details['dispatches'] ?? [];
+        
+        // Si se especificaron recepciones (y el array no está vacío), filtrar solo las seleccionadas
+        if (!empty($selectedReceptionIds) && count($selectedReceptionIds) > 0) {
+            $filteredReceptions = array_filter($details['receptions'] ?? [], function($reception) use ($selectedReceptionIds) {
+                return in_array((int)$reception['id'], $selectedReceptionIds, true);
             });
             $filteredReceptions = array_values($filteredReceptions); // Reindexar array
         }
         
-        // Si se especificaron salidas, filtrar solo las seleccionadas
-        if (!empty($selectedDispatchIds)) {
-            $filteredDispatches = array_filter($details['dispatches'], function($dispatch) use ($selectedDispatchIds) {
-                return in_array($dispatch['id'], $selectedDispatchIds);
+        // IMPORTANTE: Si NO se especifican salidas (dispatches[]), se incluyen TODAS las salidas independientes
+        // Solo filtrar si el usuario especificó explícitamente qué salidas quiere
+        if (!empty($selectedDispatchIds) && count($selectedDispatchIds) > 0) {
+            // Filtrar salidas independientes según selección
+            $filteredDispatches = array_filter($details['dispatches'] ?? [], function($dispatch) use ($selectedDispatchIds) {
+                return in_array((int)$dispatch['id'], $selectedDispatchIds, true);
             });
             $filteredDispatches = array_values($filteredDispatches); // Reindexar array
             
             // También filtrar las salidas relacionadas dentro de las recepciones
+            // Si una recepción tiene dispatches relacionados seleccionados, mantenerlos
             foreach ($filteredReceptions as &$reception) {
                 if (!empty($reception['related_dispatches'])) {
                     $reception['related_dispatches'] = array_filter($reception['related_dispatches'], function($dispatch) use ($selectedDispatchIds) {
-                        return in_array($dispatch['id'], $selectedDispatchIds);
+                        return in_array((int)$dispatch['id'], $selectedDispatchIds, true);
                     });
                     $reception['related_dispatches'] = array_values($reception['related_dispatches']);
                 }
             }
             unset($reception);
+            
+            // IMPORTANTE: Si hay dispatches seleccionados que están en recepciones NO seleccionadas,
+            // debemos agregarlos al array de dispatches independientes para que aparezcan en el PDF
+            // Recopilar todos los dispatches seleccionados que no están en recepciones seleccionadas
+            $selectedDispatchesFromUnselectedReceptions = [];
+            foreach ($details['receptions'] ?? [] as $reception) {
+                // Solo procesar recepciones que NO están seleccionadas
+                if (!in_array((int)$reception['id'], $selectedReceptionIds, true)) {
+                    if (!empty($reception['related_dispatches'])) {
+                        foreach ($reception['related_dispatches'] as $dispatch) {
+                            // Si este dispatch está seleccionado, agregarlo
+                            if (in_array((int)$dispatch['id'], $selectedDispatchIds, true)) {
+                                $selectedDispatchesFromUnselectedReceptions[] = $dispatch;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Agregar estos dispatches al array de dispatches filtrados
+            if (!empty($selectedDispatchesFromUnselectedReceptions)) {
+                $filteredDispatches = array_merge($filteredDispatches, $selectedDispatchesFromUnselectedReceptions);
+            }
         }
+        // Si NO se especificaron salidas, $filteredDispatches mantiene TODAS las salidas independientes
+        // que vienen de $details['dispatches'] (no necesita filtrado adicional)
         
         // Recalcular resumen con los datos filtrados
         $summary = $this->calculateSummary($filteredReceptions, $filteredDispatches);

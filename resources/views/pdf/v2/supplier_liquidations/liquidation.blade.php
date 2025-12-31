@@ -21,6 +21,11 @@
         .break-before-page {
             page-break-before: always;
         }
+
+        .no-break {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
     </style>
 </head>
 
@@ -147,6 +152,10 @@
             // Recopilar todas las salidas de cebo: relacionadas y no relacionadas
             $allDispatches = [];
             
+            // Asegurar que $receptions y $dispatches sean arrays
+            $receptions = $receptions ?? [];
+            $dispatches = $dispatches ?? [];
+            
             // Agregar salidas relacionadas de las recepciones
             foreach ($receptions as $reception) {
                 if (!empty($reception['related_dispatches'])) {
@@ -241,7 +250,7 @@
             $weightDifference = $totalCalculatedWeight - $summary['total_declared_weight'];
             $amountDifference = $totalCalculatedAmount - $summary['total_declared_amount'];
         @endphp
-        <div class="mt-6 border rounded-lg overflow-hidden bg-gray-50">
+        <div class="mt-6 border rounded-lg overflow-hidden bg-gray-50 no-break">
             <div class="font-bold p-2 bg-gray-800 w-full border-b text-white">RESUMEN GLOBAL</div>
             <div class="p-4">
                 <div class="grid grid-cols-2 gap-4">
