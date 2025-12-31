@@ -627,7 +627,6 @@ class SupplierLiquidationController extends Controller
      */
     private function calculatePaymentTotals(array $summary, Request $request)
     {
-        $paymentMethod = $request->input('payment_method'); // 'cash' o 'transfer'
         // Convertir has_management_fee a booleano (acepta '1', 'true', '0', 'false', true, false)
         $hasManagementFee = filter_var($request->input('has_management_fee'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
         
@@ -635,7 +634,6 @@ class SupplierLiquidationController extends Controller
         
         $result = [
             'has_iva_in_dispatches' => $hasIvaInDispatches,
-            'payment_method' => $paymentMethod,
             'has_management_fee' => $hasManagementFee,
             'total_cash' => null,
             'total_transfer' => null,
@@ -654,27 +652,23 @@ class SupplierLiquidationController extends Controller
         $totalDeclaredWithIva = $summary['total_declared_with_iva'] ?? 0; // Con IVA (declarado * 1.10)
         $totalDispatchesAmount = $summary['total_dispatches_amount'] ?? 0; // Con IVA
         
-        // Calcular Total Efectivo (si payment_method = 'cash')
-        if ($paymentMethod === 'cash') {
-            // Total Efectivo = Total Recepción (sin IVA) - Total Declarado (sin IVA) - Total Salida Cebo (con IVA)
-            $result['total_cash'] = round($totalReception - $totalDeclared - $totalDispatchesAmount, 2);
-        }
+        // Calcular Total Efectivo (siempre se calcula si hay IVA)
+        // Total Efectivo = Total Recepción (sin IVA) - Total Declarado (sin IVA) - Total Salida Cebo (con IVA)
+        $result['total_cash'] = round($totalReception - $totalDeclared - $totalDispatchesAmount, 2);
         
-        // Calcular Total Transferencia (si payment_method = 'transfer')
-        if ($paymentMethod === 'transfer') {
-            // Total Transferencia = Total Declarado (con IVA) - Total Salida Cebo (con IVA)
-            $result['total_transfer'] = round($totalDeclaredWithIva - $totalDispatchesAmount, 2);
+        // Calcular Total Transferencia (siempre se calcula si hay IVA)
+        // Total Transferencia = Total Declarado (con IVA) - Total Salida Cebo (con IVA)
+        $result['total_transfer'] = round($totalDeclaredWithIva - $totalDispatchesAmount, 2);
+        
+        // Calcular Gasto de Gestión (si aplica)
+        if ($hasManagementFee) {
+            // Gasto de Gestión = Total Declarado (sin IVA) * 0.025 (2.5%)
+            $result['management_fee'] = round($totalDeclared * 0.025, 2);
             
-            // Calcular Gasto de Gestión (si aplica)
-            if ($hasManagementFee) {
-                // Gasto de Gestión = Total Declarado (sin IVA) * 0.025 (2.5%)
-                $result['management_fee'] = round($totalDeclared * 0.025, 2);
-                
-                // Total Transferencia Final = Total Transferencia - Gasto de Gestión
-                $result['total_transfer_final'] = round($result['total_transfer'] - $result['management_fee'], 2);
-            } else {
-                $result['total_transfer_final'] = $result['total_transfer'];
-            }
+            // Total Transferencia Final = Total Transferencia - Gasto de Gestión
+            $result['total_transfer_final'] = round($result['total_transfer'] - $result['management_fee'], 2);
+        } else {
+            $result['total_transfer_final'] = $result['total_transfer'];
         }
         
         return $result;
