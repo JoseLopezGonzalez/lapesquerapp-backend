@@ -384,7 +384,7 @@ class SupplierLiquidationController extends Controller
             'dispatches' => 'nullable|array',
             'dispatches.*' => 'integer|exists:tenant.cebo_dispatches,id',
             'payment_method' => 'nullable|in:cash,transfer',
-            'has_management_fee' => 'nullable|boolean',
+            'has_management_fee' => 'nullable|in:0,1,true,false',
         ]);
 
         // Obtener los datos de la liquidación (reutiliza la lógica de getDetails)
@@ -628,7 +628,8 @@ class SupplierLiquidationController extends Controller
     private function calculatePaymentTotals(array $summary, Request $request)
     {
         $paymentMethod = $request->input('payment_method'); // 'cash' o 'transfer'
-        $hasManagementFee = $request->boolean('has_management_fee', false);
+        // Convertir has_management_fee a booleano (acepta '1', 'true', '0', 'false', true, false)
+        $hasManagementFee = filter_var($request->input('has_management_fee'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
         
         $hasIvaInDispatches = $summary['has_iva_in_dispatches'] ?? false;
         
