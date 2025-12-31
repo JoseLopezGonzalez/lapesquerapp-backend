@@ -110,7 +110,7 @@
                                 $rowIndex++;
                             @endphp
                             <tr class="{{ $rowClass }}">
-                                <td class="p-2 py-1">{{ $product['product']['name'] ?? 'N/A' }}</td>
+                                <td class="p-2 py-1 pl-6">{{ $product['product']['name'] ?? 'N/A' }}</td>
                                 <td class="p-2 py-1 text-center">{{ number_format($product['net_weight'], 2, ',', '.') }} kg</td>
                                 <td class="p-2 py-1 text-center">{{ number_format($product['price'], 2, ',', '.') }} €/kg</td>
                                 <td class="p-2 py-1 text-center">{{ number_format($product['amount'], 2, ',', '.') }} €</td>
@@ -125,7 +125,7 @@
                         <tr class="{{ $rowClass }} font-semibold">
                             <td class="p-2 py-1">Total</td>
                             <td class="p-2 py-1 text-center">{{ number_format($reception['calculated_total_net_weight'], 2, ',', '.') }} kg</td>
-                            <td class="p-2 py-1 text-center">{{ number_format($reception['average_price'], 2, ',', '.') }} €/kg</td>
+                            <td class="p-2 py-1 text-center">-</td>
                             <td class="p-2 py-1 text-center">{{ number_format($reception['calculated_total_amount'], 2, ',', '.') }} €</td>
                         </tr>
 
@@ -185,7 +185,8 @@
                         <th class="p-2 text-left">Producto</th>
                         <th class="p-2 text-center">Peso Neto</th>
                         <th class="p-2 text-center">Precio</th>
-                        <th class="p-2 text-center">Importe</th>
+                        <th class="p-2 text-center">Base</th>
+                        <th class="p-2 text-center">Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -198,10 +199,17 @@
                         @php
                             $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                             $rowIndex++;
+                            $exportTypeLabel = strtoupper($dispatch['export_type'] ?? 'facilcom');
+                            $exportTypeBg = ($exportTypeLabel === 'A3ERP') ? 'bg-blue-600' : 'bg-green-600';
                         @endphp
                         <tr class="{{ $rowClass }} font-semibold bg-orange-100">
-                            <td class="p-2 py-1" colspan="4">
-                                Salida #{{ $dispatch['id'] }} - {{ date('d/m/Y', strtotime($dispatch['date'])) }}
+                            <td class="p-2 py-1" colspan="5">
+                                <div class="flex items-center gap-2">
+                                    <span>Salida #{{ $dispatch['id'] }} - {{ date('d/m/Y', strtotime($dispatch['date'])) }}</span>
+                                    <span class="px-2 py-0.5 text-xs font-bold text-white rounded {{ $exportTypeBg }}">
+                                        {{ $exportTypeLabel }}
+                                    </span>
+                                </div>
                             </td>
                         </tr>
 
@@ -210,12 +218,17 @@
                             @php
                                 $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                                 $rowIndex++;
+                                $productBaseAmount = $product['amount'] ?? 0;
+                                $productIvaRate = $dispatch['iva_rate'] ?? 0;
+                                $productIvaAmount = round($productBaseAmount * ($productIvaRate / 100), 2);
+                                $productTotalAmount = round($productBaseAmount + $productIvaAmount, 2);
                             @endphp
                             <tr class="{{ $rowClass }}">
-                                <td class="p-2 py-1">{{ $product['product']['name'] ?? 'N/A' }}</td>
+                                <td class="p-2 py-1 pl-6">{{ $product['product']['name'] ?? 'N/A' }}</td>
                                 <td class="p-2 py-1 text-center">{{ number_format($product['net_weight'], 2, ',', '.') }} kg</td>
                                 <td class="p-2 py-1 text-center">{{ number_format($product['price'], 2, ',', '.') }} €/kg</td>
-                                <td class="p-2 py-1 text-center">{{ number_format($product['amount'], 2, ',', '.') }} €</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($productBaseAmount, 2, ',', '.') }} €</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($productTotalAmount, 2, ',', '.') }} €</td>
                             </tr>
                         @endforeach
 
@@ -225,31 +238,10 @@
                             $rowIndex++;
                         @endphp
                         <tr class="{{ $rowClass }} font-semibold">
-                            <td class="p-2 py-1">Total Base</td>
+                            <td class="p-2 py-1">Total</td>
                             <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_net_weight'], 2, ',', '.') }} kg</td>
                             <td class="p-2 py-1 text-center">-</td>
                             <td class="p-2 py-1 text-center">{{ number_format($dispatch['base_amount'] ?? $dispatch['total_amount'], 2, ',', '.') }} €</td>
-                        </tr>
-                        @if(($dispatch['iva_amount'] ?? 0) > 0)
-                        @php
-                            $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                            $rowIndex++;
-                        @endphp
-                        <tr class="{{ $rowClass }} font-semibold">
-                            <td class="p-2 py-1">IVA ({{ number_format($dispatch['iva_rate'] ?? 0, 0) }}%)</td>
-                            <td class="p-2 py-1 text-center">-</td>
-                            <td class="p-2 py-1 text-center">-</td>
-                            <td class="p-2 py-1 text-center">{{ number_format($dispatch['iva_amount'] ?? 0, 2, ',', '.') }} €</td>
-                        </tr>
-                        @endif
-                        @php
-                            $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                            $rowIndex++;
-                        @endphp
-                        <tr class="{{ $rowClass }} font-semibold bg-orange-100">
-                            <td class="p-2 py-1">Total con IVA</td>
-                            <td class="p-2 py-1 text-center">-</td>
-                            <td class="p-2 py-1 text-center">-</td>
                             <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_amount'], 2, ',', '.') }} €</td>
                         </tr>
                     @endforeach
@@ -275,36 +267,24 @@
         <div class="mt-6 border rounded-lg overflow-hidden bg-gray-50 no-break">
             <div class="font-bold p-2 bg-gray-800 w-full border-b text-white">RESUMEN GLOBAL</div>
             <div class="p-4">
-                <!-- TOTALES DE RECEPCIONES -->
+                <!-- 1. TOTAL RECEPCION -->
                 <div class="mb-4 pb-4 border-b">
-                    <h4 class="font-bold mb-2 text-lg">TOTALES RECEPCIONES</h4>
+                    <h4 class="font-bold mb-2 text-lg">TOTAL RECEPCION</h4>
                     <p><strong>Cantidad:</strong> {{ $summary['total_receptions'] }}</p>
                     <p><strong>Peso Total:</strong> {{ number_format($summary['total_receptions_weight'], 2, ',', '.') }} kg</p>
                     <p><strong>Importe Total:</strong> {{ number_format($summary['total_receptions_amount'], 2, ',', '.') }} €</p>
                 </div>
                 
-                <!-- TOTALES DE SALIDAS DE CEBO -->
+                <!-- 2. TOTAL DECLARADO -->
                 <div class="mb-4 pb-4 border-b">
-                    <h4 class="font-bold mb-2 text-lg">TOTALES SALIDAS DE CEBO</h4>
-                    <p><strong>Cantidad:</strong> {{ $summary['total_dispatches'] }}</p>
-                    <p><strong>Peso Total:</strong> {{ number_format($summary['total_dispatches_weight'], 2, ',', '.') }} kg</p>
-                    <p><strong>Importe Base:</strong> {{ number_format($summary['total_dispatches_base_amount'] ?? 0, 2, ',', '.') }} €</p>
-                    @if(($summary['total_dispatches_iva_amount'] ?? 0) > 0)
-                    <p><strong>IVA:</strong> {{ number_format($summary['total_dispatches_iva_amount'] ?? 0, 2, ',', '.') }} €</p>
-                    @endif
-                    <p><strong>Importe Total (con IVA):</strong> {{ number_format($summary['total_dispatches_amount'], 2, ',', '.') }} €</p>
-                </div>
-                
-                <!-- TOTALES DECLARADOS -->
-                <div class="mb-4 pb-4 border-b">
-                    <h4 class="font-bold mb-2">TOTALES DECLARADOS</h4>
+                    <h4 class="font-bold mb-2 text-lg">TOTAL DECLARADO</h4>
                     <p><strong>Peso Total Declarado:</strong> {{ number_format($summary['total_declared_weight'], 2, ',', '.') }} kg</p>
                     <p><strong>Importe Total Declarado:</strong> {{ number_format($summary['total_declared_amount'], 2, ',', '.') }} €</p>
                 </div>
                 
-                <!-- DIFERENCIAS -->
+                <!-- 3. TOTAL DIFERENCIA -->
                 <div class="mb-4 pb-4 border-b">
-                    <h4 class="font-bold mb-2">DIFERENCIAS (Calculado - Declarado)</h4>
+                    <h4 class="font-bold mb-2 text-lg">TOTAL DIFERENCIA</h4>
                     <p><strong>Diferencia de Peso:</strong> 
                         <span class="{{ $weightDifference >= 0 ? 'text-green-600' : 'text-red-600' }}">
                             {{ number_format($weightDifference, 2, ',', '.') }} kg
@@ -317,6 +297,18 @@
                     </p>
                 </div>
                 
+                <!-- 4. TOTAL CEBO -->
+                <div class="mb-4 pb-4 border-b">
+                    <h4 class="font-bold mb-2 text-lg">TOTAL CEBO</h4>
+                    <p><strong>Cantidad:</strong> {{ $summary['total_dispatches'] }}</p>
+                    <p><strong>Peso Total:</strong> {{ number_format($summary['total_dispatches_weight'], 2, ',', '.') }} kg</p>
+                    <p><strong>Importe Base:</strong> {{ number_format($summary['total_dispatches_base_amount'] ?? 0, 2, ',', '.') }} €</p>
+                    @if(($summary['total_dispatches_iva_amount'] ?? 0) > 0)
+                    <p><strong>IVA:</strong> {{ number_format($summary['total_dispatches_iva_amount'] ?? 0, 2, ',', '.') }} €</p>
+                    @endif
+                    <p><strong>Importe Total (con IVA):</strong> {{ number_format($summary['total_dispatches_amount'], 2, ',', '.') }} €</p>
+                </div>
+                
                 <!-- IMPORTE NETO TOTAL -->
                 <div class="mt-4 pt-4 border-t">
                     <h4 class="font-bold text-lg">IMPORTE NETO TOTAL: 
@@ -325,6 +317,50 @@
                         </span>
                     </h4>
                 </div>
+                
+                <!-- TOTALES DE PAGO (solo si hay IVA en cebo) -->
+                @php
+                    $paymentTotals = $payment_totals ?? null;
+                @endphp
+                @if($paymentTotals && $paymentTotals['has_iva_in_dispatches'])
+                <div class="mt-4 pt-4 border-t">
+                    <h4 class="font-bold mb-2 text-lg">TOTALES DE PAGO</h4>
+                    
+                    @if($paymentTotals['payment_method'] === 'cash')
+                        <div class="mb-2">
+                            <p><strong>Método de Pago:</strong> Efectivo</p>
+                            <p class="text-lg font-bold">
+                                <strong>Total Efectivo:</strong> 
+                                <span class="{{ $paymentTotals['total_cash'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                    {{ number_format($paymentTotals['total_cash'], 2, ',', '.') }} €
+                                </span>
+                            </p>
+                        </div>
+                    @elseif($paymentTotals['payment_method'] === 'transfer')
+                        <div class="mb-2">
+                            <p><strong>Método de Pago:</strong> Transferencia</p>
+                            <p><strong>Total Declarado (con IVA):</strong> {{ number_format($summary['total_declared_with_iva'], 2, ',', '.') }} €</p>
+                            <p><strong>Total Salida Cebo (con IVA):</strong> {{ number_format($summary['total_dispatches_amount'], 2, ',', '.') }} €</p>
+                            <p class="text-lg font-bold">
+                                <strong>Total Transferencia:</strong> 
+                                <span class="{{ $paymentTotals['total_transfer'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                    {{ number_format($paymentTotals['total_transfer'], 2, ',', '.') }} €
+                                </span>
+                            </p>
+                            
+                            @if($paymentTotals['has_management_fee'] && $paymentTotals['management_fee'] > 0)
+                                <p class="mt-2"><strong>Gasto de Gestión (2.5%):</strong> {{ number_format($paymentTotals['management_fee'], 2, ',', '.') }} €</p>
+                                <p class="text-lg font-bold mt-2">
+                                    <strong>Total Transferencia Final:</strong> 
+                                    <span class="{{ $paymentTotals['total_transfer_final'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                        {{ number_format($paymentTotals['total_transfer_final'], 2, ',', '.') }} €
+                                    </span>
+                                </p>
+                            @endif
+                        </div>
+                    @endif
+                </div>
+                @endif
             </div>
         </div>
 

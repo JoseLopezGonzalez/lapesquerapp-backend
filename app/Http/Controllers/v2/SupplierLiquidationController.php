@@ -305,6 +305,35 @@ class SupplierLiquidationController extends Controller
         
         // Importe neto total (diferencia entre calculado y declarado)
         $netAmount = $amountDifference;
+        
+        // Calcular totales de cebo con IVA
+        $totalDispatchesBaseAmount = 0;
+        $totalDispatchesIvaAmount = 0;
+        $totalDispatchesAmount = 0;
+        
+        // Sumar salidas independientes
+        foreach ($dispatchesData as $dispatch) {
+            $totalDispatchesBaseAmount += $dispatch['base_amount'] ?? 0;
+            $totalDispatchesIvaAmount += $dispatch['iva_amount'] ?? 0;
+            $totalDispatchesAmount += $dispatch['total_amount'] ?? 0;
+        }
+        
+        // Sumar salidas relacionadas
+        foreach ($receptionsData as $reception) {
+            if (!empty($reception['related_dispatches'])) {
+                foreach ($reception['related_dispatches'] as $dispatch) {
+                    $totalDispatchesBaseAmount += $dispatch['base_amount'] ?? 0;
+                    $totalDispatchesIvaAmount += $dispatch['iva_amount'] ?? 0;
+                    $totalDispatchesAmount += $dispatch['total_amount'] ?? 0;
+                }
+            }
+        }
+        
+        // Verificar si hay IVA en las salidas de cebo
+        $hasIvaInDispatches = $totalDispatchesIvaAmount > 0;
+        
+        // Calcular Total Declarado con IVA (asumiendo 10% de IVA sobre el declarado)
+        $totalDeclaredWithIva = round($totalDeclaredAmount * 1.10, 2);
 
         return response()->json([
             'supplier' => [
@@ -324,14 +353,18 @@ class SupplierLiquidationController extends Controller
                 'total_receptions' => $totalReceptions,
                 'total_dispatches' => $totalDispatches,
                 'total_receptions_weight' => round($totalCalculatedWeight, 2),
-                'total_dispatches_weight' => round($totalDispatchesWeight, 2),
                 'total_receptions_amount' => round($totalCalculatedAmount, 2),
+                'total_dispatches_weight' => round($totalDispatchesWeight, 2),
+                'total_dispatches_base_amount' => round($totalDispatchesBaseAmount, 2),
+                'total_dispatches_iva_amount' => round($totalDispatchesIvaAmount, 2),
                 'total_dispatches_amount' => round($totalDispatchesAmount, 2),
                 'total_declared_weight' => round($totalDeclaredWeight, 2),
                 'total_declared_amount' => round($totalDeclaredAmount, 2),
+                'total_declared_with_iva' => $totalDeclaredWithIva,
                 'weight_difference' => round($weightDifference, 2),
                 'amount_difference' => round($amountDifference, 2),
                 'net_amount' => round($netAmount, 2),
+                'has_iva_in_dispatches' => $hasIvaInDispatches,
             ],
         ]);
     }
@@ -350,6 +383,8 @@ class SupplierLiquidationController extends Controller
             'receptions.*' => 'integer|exists:tenant.raw_material_receptions,id',
             'dispatches' => 'nullable|array',
             'dispatches.*' => 'integer|exists:tenant.cebo_dispatches,id',
+            'payment_method' => 'nullable|in:cash,transfer',
+            'has_management_fee' => 'nullable|boolean',
         ]);
 
         // Obtener los datos de la liquidación (reutiliza la lógica de getDetails)
@@ -443,7 +478,10 @@ class SupplierLiquidationController extends Controller
         
         // Recalcular resumen con los datos filtrados
         $summary = $this->calculateSummary($filteredReceptions, $filteredDispatches);
-
+        
+        // Calcular totales de pago según la lógica compleja
+        $paymentTotals = $this->calculatePaymentTotals($summary, $request);
+        
         $dates = $request->input('dates', []);
         $startDate = $dates['start'] ?? null;
         $endDate = $dates['end'] ?? null;
@@ -459,6 +497,7 @@ class SupplierLiquidationController extends Controller
             'receptions' => $filteredReceptions,
             'dispatches' => $filteredDispatches,
             'summary' => $summary,
+            'payment_totals' => $paymentTotals,
         ])->render();
         
         $snappdf->setChromiumPath('/usr/bin/google-chrome');
@@ -558,6 +597,12 @@ class SupplierLiquidationController extends Controller
         // Importe neto total (diferencia entre calculado y declarado)
         $netAmount = $amountDifference;
         
+        // Verificar si hay IVA en las salidas de cebo
+        $hasIvaInDispatches = $totalDispatchesIvaAmount > 0;
+        
+        // Calcular Total Declarado con IVA (asumiendo 10% de IVA sobre el declarado)
+        $totalDeclaredWithIva = round($totalDeclaredAmount * 1.10, 2);
+        
         return [
             'total_receptions' => $totalReceptions,
             'total_dispatches' => $totalDispatches,
@@ -569,10 +614,69 @@ class SupplierLiquidationController extends Controller
             'total_dispatches_amount' => round($totalDispatchesAmount, 2),
             'total_declared_weight' => round($totalDeclaredWeight, 2),
             'total_declared_amount' => round($totalDeclaredAmount, 2),
+            'total_declared_with_iva' => $totalDeclaredWithIva,
             'weight_difference' => round($weightDifference, 2),
             'amount_difference' => round($amountDifference, 2),
             'net_amount' => round($netAmount, 2),
+            'has_iva_in_dispatches' => $hasIvaInDispatches,
         ];
+    }
+
+    /**
+     * Calcular totales de pago según la lógica compleja de efectivo/transferencia y gasto de gestión
+     */
+    private function calculatePaymentTotals(array $summary, Request $request)
+    {
+        $paymentMethod = $request->input('payment_method'); // 'cash' o 'transfer'
+        $hasManagementFee = $request->boolean('has_management_fee', false);
+        
+        $hasIvaInDispatches = $summary['has_iva_in_dispatches'] ?? false;
+        
+        $result = [
+            'has_iva_in_dispatches' => $hasIvaInDispatches,
+            'payment_method' => $paymentMethod,
+            'has_management_fee' => $hasManagementFee,
+            'total_cash' => null,
+            'total_transfer' => null,
+            'management_fee' => null,
+            'total_transfer_final' => null,
+        ];
+        
+        // Solo calcular si hay IVA en dispatches
+        if (!$hasIvaInDispatches) {
+            return $result;
+        }
+        
+        // Variables base
+        $totalReception = $summary['total_receptions_amount'] ?? 0; // Sin IVA
+        $totalDeclared = $summary['total_declared_amount'] ?? 0; // Sin IVA
+        $totalDeclaredWithIva = $summary['total_declared_with_iva'] ?? 0; // Con IVA (declarado * 1.10)
+        $totalDispatchesAmount = $summary['total_dispatches_amount'] ?? 0; // Con IVA
+        
+        // Calcular Total Efectivo (si payment_method = 'cash')
+        if ($paymentMethod === 'cash') {
+            // Total Efectivo = Total Recepción (sin IVA) - Total Declarado (sin IVA) - Total Salida Cebo (con IVA)
+            $result['total_cash'] = round($totalReception - $totalDeclared - $totalDispatchesAmount, 2);
+        }
+        
+        // Calcular Total Transferencia (si payment_method = 'transfer')
+        if ($paymentMethod === 'transfer') {
+            // Total Transferencia = Total Declarado (con IVA) - Total Salida Cebo (con IVA)
+            $result['total_transfer'] = round($totalDeclaredWithIva - $totalDispatchesAmount, 2);
+            
+            // Calcular Gasto de Gestión (si aplica)
+            if ($hasManagementFee) {
+                // Gasto de Gestión = Total Declarado (sin IVA) * 0.025 (2.5%)
+                $result['management_fee'] = round($totalDeclared * 0.025, 2);
+                
+                // Total Transferencia Final = Total Transferencia - Gasto de Gestión
+                $result['total_transfer_final'] = round($result['total_transfer'] - $result['management_fee'], 2);
+            } else {
+                $result['total_transfer_final'] = $result['total_transfer'];
+            }
+        }
+        
+        return $result;
     }
 }
 
