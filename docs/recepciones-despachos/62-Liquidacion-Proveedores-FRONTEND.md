@@ -155,7 +155,9 @@ GET /v2/supplier-liquidations/1/details?dates[start]=2024-01-01&dates[end]=2024-
     "total_dispatches_amount": 4500.00,
     "total_declared_weight": 1250.00,
     "total_declared_amount": 12475.00,
-    "net_amount": 8000.00
+    "weight_difference": 0.50,
+    "amount_difference": 25.00,
+    "net_amount": 25.00
   }
 }
 ```
@@ -192,13 +194,15 @@ Cada elemento del array `dispatches` contiene salidas de cebo que **NO tienen re
 **Resumen (Summary)**:
 - `total_receptions`: Número total de recepciones
 - `total_dispatches`: Número total de salidas de cebo
-- `total_receptions_weight`: Peso total de recepciones (kg)
+- `total_receptions_weight`: Peso total calculado de recepciones (kg) - suma de productos
 - `total_dispatches_weight`: Peso total de salidas de cebo (kg)
-- `total_receptions_amount`: Importe total de recepciones (€)
+- `total_receptions_amount`: Importe total calculado de recepciones (€) - suma de productos
 - `total_dispatches_amount`: Importe total de salidas de cebo (€)
 - `total_declared_weight`: Peso total declarado en recepciones (kg)
 - `total_declared_amount`: Importe total declarado en recepciones (€)
-- `net_amount`: Importe neto (total_receptions_amount - total_dispatches_amount)
+- `weight_difference`: Diferencia de peso (calculado - declarado) (kg)
+- `amount_difference`: Diferencia de importe (calculado - declarado) (€)
+- `net_amount`: Importe neto total (diferencia entre calculado y declarado) = `amount_difference` (€)
 
 **Uso**: Mostrar el detalle completo de la liquidación. Las recepciones y salidas están ordenadas por fecha ascendente. Las salidas de cebo relacionadas con recepciones aparecen en el campo `related_dispatches` de cada recepción. Las salidas sin recepción relacionada aparecen en el array `dispatches` separado.
 

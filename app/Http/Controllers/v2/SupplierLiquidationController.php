@@ -246,19 +246,23 @@ class SupplierLiquidationController extends Controller
         // Calcular resumen
         $totalReceptions = $receptions->count();
         $totalDispatches = $dispatches->count();
-            $totalReceptionsWeight = $receptions->sum(function($reception) {
-                return $reception->products->sum(function($product) {
-                    return $product->net_weight ?? 0;
-                });
+        
+        // Totales calculados (reales) de recepciones
+        $totalCalculatedWeight = $receptions->sum(function($reception) {
+            return $reception->products->sum(function($product) {
+                return $product->net_weight ?? 0;
             });
-            $totalDispatchesWeight = $dispatches->sum(function($dispatch) {
-                return $dispatch->products->sum(function($product) {
-                    return $product->net_weight ?? 0;
-                });
-            });
-        $totalReceptionsAmount = $receptions->sum(function($reception) {
+        });
+        $totalCalculatedAmount = $receptions->sum(function($reception) {
             return $reception->products->sum(function($product) {
                 return ($product->net_weight ?? 0) * ($product->price ?? 0);
+            });
+        });
+        
+        // Totales de salidas de cebo
+        $totalDispatchesWeight = $dispatches->sum(function($dispatch) {
+            return $dispatch->products->sum(function($product) {
+                return $product->net_weight ?? 0;
             });
         });
         $totalDispatchesAmount = $dispatches->sum(function($dispatch) {
@@ -266,9 +270,17 @@ class SupplierLiquidationController extends Controller
                 return ($product->net_weight ?? 0) * ($product->price ?? 0);
             });
         });
+        
+        // Totales declarados
         $totalDeclaredWeight = $receptions->sum('declared_total_net_weight');
         $totalDeclaredAmount = $receptions->sum('declared_total_amount');
-        $netAmount = $totalReceptionsAmount - $totalDispatchesAmount;
+        
+        // Diferencias (calculado - declarado)
+        $weightDifference = $totalCalculatedWeight - $totalDeclaredWeight;
+        $amountDifference = $totalCalculatedAmount - $totalDeclaredAmount;
+        
+        // Importe neto total (diferencia entre calculado y declarado)
+        $netAmount = $amountDifference;
 
         return response()->json([
             'supplier' => [
@@ -287,12 +299,14 @@ class SupplierLiquidationController extends Controller
             'summary' => [
                 'total_receptions' => $totalReceptions,
                 'total_dispatches' => $totalDispatches,
-                'total_receptions_weight' => round($totalReceptionsWeight, 2),
+                'total_receptions_weight' => round($totalCalculatedWeight, 2),
                 'total_dispatches_weight' => round($totalDispatchesWeight, 2),
-                'total_receptions_amount' => round($totalReceptionsAmount, 2),
+                'total_receptions_amount' => round($totalCalculatedAmount, 2),
                 'total_dispatches_amount' => round($totalDispatchesAmount, 2),
                 'total_declared_weight' => round($totalDeclaredWeight, 2),
                 'total_declared_amount' => round($totalDeclaredAmount, 2),
+                'weight_difference' => round($weightDifference, 2),
+                'amount_difference' => round($amountDifference, 2),
                 'net_amount' => round($netAmount, 2),
             ],
         ]);

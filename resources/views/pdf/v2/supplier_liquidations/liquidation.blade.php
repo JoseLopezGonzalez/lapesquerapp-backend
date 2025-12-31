@@ -75,12 +75,10 @@
             <table class="w-full text-xs">
                 <thead class="border-b bg-gray-100">
                     <tr>
-                        <th class="p-2 text-left">Fecha</th>
                         <th class="p-2 text-left">Producto</th>
-                        <th class="p-2 text-center">Lote</th>
-                        <th class="p-2 text-center">Peso Neto (kg)</th>
-                        <th class="p-2 text-center">Precio (€/kg)</th>
-                        <th class="p-2 text-center">Importe (€)</th>
+                        <th class="p-2 text-center">Peso Neto</th>
+                        <th class="p-2 text-center">Precio</th>
+                        <th class="p-2 text-center">Importe</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -89,46 +87,54 @@
                     @endphp
 
                     @foreach ($receptions as $reception)
-                        <!-- Recepción -->
+                        <!-- Encabezado de la recepción -->
+                        @php
+                            $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                            $rowIndex++;
+                        @endphp
+                        <tr class="{{ $rowClass }} font-semibold bg-blue-100">
+                            <td class="p-2 py-1" colspan="4">
+                                Recepción #{{ $reception['id'] }} - {{ date('d/m/Y', strtotime($reception['date'])) }}
+                            </td>
+                        </tr>
+
+                        <!-- Productos de la recepción -->
                         @foreach ($reception['products'] as $product)
                             @php
                                 $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                                 $rowIndex++;
                             @endphp
                             <tr class="{{ $rowClass }}">
-                                <td class="p-2 py-1">{{ date('d/m/Y', strtotime($reception['date'])) }}</td>
                                 <td class="p-2 py-1">{{ $product['product']['name'] ?? 'N/A' }}</td>
-                                <td class="p-2 py-1 text-center">{{ $product['lot'] ?? '-' }}</td>
-                                <td class="p-2 py-1 text-center">{{ number_format($product['net_weight'], 2, ',', '.') }}</td>
-                                <td class="p-2 py-1 text-center">{{ number_format($product['price'], 2, ',', '.') }}</td>
-                                <td class="p-2 py-1 text-center">{{ number_format($product['amount'], 2, ',', '.') }}</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($product['net_weight'], 2, ',', '.') }} kg</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($product['price'], 2, ',', '.') }} €/kg</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($product['amount'], 2, ',', '.') }} €</td>
                             </tr>
                         @endforeach
 
-                        <!-- Totales de la recepción -->
+                        <!-- Total Calculado de la recepción -->
                         @php
                             $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                             $rowIndex++;
                         @endphp
-                        <tr class="{{ $rowClass }} font-semibold bg-blue-50">
-                            <td class="p-2 py-1" colspan="2">Total Recepción #{{ $reception['id'] }} (Calculado)</td>
-                            <td class="p-2 py-1 text-center">-</td>
-                            <td class="p-2 py-1 text-center">{{ number_format($reception['calculated_total_net_weight'], 2, ',', '.') }}</td>
-                            <td class="p-2 py-1 text-center">{{ number_format($reception['average_price'], 2, ',', '.') }}</td>
-                            <td class="p-2 py-1 text-center">{{ number_format($reception['calculated_total_amount'], 2, ',', '.') }}</td>
+                        <tr class="{{ $rowClass }} font-semibold">
+                            <td class="p-2 py-1">Total</td>
+                            <td class="p-2 py-1 text-center">{{ number_format($reception['calculated_total_net_weight'], 2, ',', '.') }} kg</td>
+                            <td class="p-2 py-1 text-center">{{ number_format($reception['average_price'], 2, ',', '.') }} €/kg</td>
+                            <td class="p-2 py-1 text-center">{{ number_format($reception['calculated_total_amount'], 2, ',', '.') }} €</td>
                         </tr>
 
+                        <!-- Total Declarado de la recepción (si existe) -->
                         @if($reception['declared_total_net_weight'] > 0 || $reception['declared_total_amount'] > 0)
                             @php
                                 $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                                 $rowIndex++;
                             @endphp
                             <tr class="{{ $rowClass }} font-semibold bg-yellow-50">
-                                <td class="p-2 py-1" colspan="2">Total Recepción #{{ $reception['id'] }} (Declarado)</td>
+                                <td class="p-2 py-1">Total Declarado</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($reception['declared_total_net_weight'], 2, ',', '.') }} kg</td>
                                 <td class="p-2 py-1 text-center">-</td>
-                                <td class="p-2 py-1 text-center">{{ number_format($reception['declared_total_net_weight'], 2, ',', '.') }}</td>
-                                <td class="p-2 py-1 text-center">-</td>
-                                <td class="p-2 py-1 text-center">{{ number_format($reception['declared_total_amount'], 2, ',', '.') }}</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($reception['declared_total_amount'], 2, ',', '.') }} €</td>
                             </tr>
                         @endif
                     @endforeach
@@ -167,11 +173,10 @@
             <table class="w-full text-xs">
                 <thead class="border-b bg-gray-100">
                     <tr>
-                        <th class="p-2 text-left">Fecha</th>
                         <th class="p-2 text-left">Producto</th>
-                        <th class="p-2 text-center">Peso Neto (kg)</th>
-                        <th class="p-2 text-center">Precio (€/kg)</th>
-                        <th class="p-2 text-center">Importe (€)</th>
+                        <th class="p-2 text-center">Peso Neto</th>
+                        <th class="p-2 text-center">Precio</th>
+                        <th class="p-2 text-center">Importe</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -180,28 +185,41 @@
                     @endphp
 
                     @foreach ($allDispatches as $dispatch)
+                        <!-- Encabezado de la salida -->
+                        @php
+                            $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                            $rowIndex++;
+                        @endphp
+                        <tr class="{{ $rowClass }} font-semibold bg-orange-100">
+                            <td class="p-2 py-1" colspan="4">
+                                Salida #{{ $dispatch['id'] }} - {{ date('d/m/Y', strtotime($dispatch['date'])) }}
+                            </td>
+                        </tr>
+
+                        <!-- Productos de la salida -->
                         @foreach ($dispatch['products'] as $product)
                             @php
                                 $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                                 $rowIndex++;
                             @endphp
                             <tr class="{{ $rowClass }}">
-                                <td class="p-2 py-1">{{ date('d/m/Y', strtotime($dispatch['date'])) }}</td>
                                 <td class="p-2 py-1">{{ $product['product']['name'] ?? 'N/A' }}</td>
-                                <td class="p-2 py-1 text-center">{{ number_format($product['net_weight'], 2, ',', '.') }}</td>
-                                <td class="p-2 py-1 text-center">{{ number_format($product['price'], 2, ',', '.') }}</td>
-                                <td class="p-2 py-1 text-center">{{ number_format($product['amount'], 2, ',', '.') }}</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($product['net_weight'], 2, ',', '.') }} kg</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($product['price'], 2, ',', '.') }} €/kg</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($product['amount'], 2, ',', '.') }} €</td>
                             </tr>
                         @endforeach
+
+                        <!-- Total de la salida -->
                         @php
                             $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                             $rowIndex++;
                         @endphp
-                        <tr class="{{ $rowClass }} font-semibold bg-orange-100">
-                            <td class="p-2 py-1" colspan="2">Total Salida #{{ $dispatch['id'] }}</td>
-                            <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_net_weight'], 2, ',', '.') }}</td>
+                        <tr class="{{ $rowClass }} font-semibold">
+                            <td class="p-2 py-1">Total</td>
+                            <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_net_weight'], 2, ',', '.') }} kg</td>
                             <td class="p-2 py-1 text-center">-</td>
-                            <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_amount'], 2, ',', '.') }}</td>
+                            <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_amount'], 2, ',', '.') }} €</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -230,8 +248,8 @@
                     <div>
                         <h4 class="font-bold mb-2">RECEPCIONES</h4>
                         <p><strong>Cantidad:</strong> {{ $summary['total_receptions'] }}</p>
-                        <p><strong>Peso Total (Calculado):</strong> {{ number_format($totalCalculatedWeight, 2, ',', '.') }} kg</p>
-                        <p><strong>Importe Total (Calculado):</strong> {{ number_format($totalCalculatedAmount, 2, ',', '.') }} €</p>
+                        <p><strong>Peso Total:</strong> {{ number_format($totalCalculatedWeight, 2, ',', '.') }} kg</p>
+                        <p><strong>Importe Total:</strong> {{ number_format($totalCalculatedAmount, 2, ',', '.') }} €</p>
                     </div>
                     <div>
                         <h4 class="font-bold mb-2">SALIDAS DE CEBO</h4>
@@ -264,7 +282,6 @@
                             {{ number_format($amountDifference, 2, ',', '.') }} €
                         </span>
                     </h4>
-                    <p class="text-xs text-gray-600">(Total Calculado - Total Declarado)</p>
                 </div>
             </div>
         </div>
