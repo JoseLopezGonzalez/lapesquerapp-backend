@@ -308,39 +308,41 @@
                     <!-- Total Transferencia (solo si show_transfer_payment está activado) -->
                     @if($showTransferPayment)
                     <div class="mb-2">
-                        <div class="mb-3">
-                            <p class="font-semibold mb-1">Desglose:</p>
-                            <p class="ml-4"><strong>Total Declarado (con IVA):</strong> {{ number_format($summary['total_declared_with_iva'] ?? 0, 2, ',', '.') }} €</p>
+                        <p class="text-lg font-bold">
+                            <strong>Total Transferencia:</strong> 
+                            <span class="{{ ($paymentTotals['total_transfer_final'] ?? $paymentTotals['total_transfer'] ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                {{ number_format($paymentTotals['total_transfer_final'] ?? $paymentTotals['total_transfer'] ?? 0, 2, ',', '.') }} €
+                            </span>
+                        </p>
+                        <p class="text-xs text-gray-600 mt-1">
                             @if(($paymentTotals['payment_method'] ?? null) === 'transfer' && ($paymentTotals['has_iva_in_dispatches'] ?? false))
-                            <p class="ml-4"><strong>(-) Total Salida Cebo (con IVA):</strong> {{ number_format($summary['total_dispatches_amount'] ?? 0, 2, ',', '.') }} €</p>
+                                (Total Declarado con IVA - Total Salida Cebo con IVA)
+                            @elseif(($paymentTotals['has_management_fee'] ?? false) && ($paymentTotals['management_fee'] ?? 0) > 0)
+                                (Total Declarado con IVA - Gasto de Gestión)
+                            @else
+                                (Total Declarado con IVA)
                             @endif
-                        </div>
+                        </p>
                         
-                        <div class="mb-3 pt-2 border-t">
-                            <p class="text-lg font-bold">
-                                <strong>Total Transferencia:</strong> 
-                                <span class="{{ ($paymentTotals['total_transfer'] ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ number_format($paymentTotals['total_transfer'] ?? 0, 2, ',', '.') }} €
-                                </span>
-                            </p>
+                        <!-- Desglose en lista -->
+                        <div class="mt-3 ml-4">
+                            <ul class="list-disc list-inside space-y-1 text-sm">
+                                <li><strong>Total Declarado (con IVA):</strong> {{ number_format($summary['total_declared_with_iva'] ?? 0, 2, ',', '.') }} €</li>
+                                <li class="ml-4 text-xs text-gray-600">
+                                    - Total Declarado (sin IVA): {{ number_format($summary['total_declared_amount'] ?? 0, 2, ',', '.') }} €
+                                </li>
+                                <li class="ml-4 text-xs text-gray-600">
+                                    - IVA (10%): {{ number_format(($summary['total_declared_with_iva'] ?? 0) - ($summary['total_declared_amount'] ?? 0), 2, ',', '.') }} €
+                                </li>
+                                @if(($paymentTotals['payment_method'] ?? null) === 'transfer' && ($paymentTotals['has_iva_in_dispatches'] ?? false))
+                                <li><strong>(-) Total Salida Cebo (con IVA):</strong> {{ number_format($summary['total_dispatches_amount'] ?? 0, 2, ',', '.') }} €</li>
+                                @endif
+                                @if(($paymentTotals['has_management_fee'] ?? false) && ($paymentTotals['management_fee'] ?? 0) > 0)
+                                <li><strong>(-) Gasto de Gestión (2.5%):</strong> {{ number_format($paymentTotals['management_fee'], 2, ',', '.') }} €</li>
+                                <li class="ml-4 text-xs text-gray-600">(Sobre Total Declarado sin IVA: {{ number_format($summary['total_declared_amount'] ?? 0, 2, ',', '.') }} €)</li>
+                                @endif
+                            </ul>
                         </div>
-                        
-                        @if(($paymentTotals['has_management_fee'] ?? false) && ($paymentTotals['management_fee'] ?? 0) > 0)
-                        <div class="mb-3 pt-2 border-t">
-                            <p class="font-semibold mb-1">Gasto de Gestión:</p>
-                            <p class="ml-4"><strong>Gasto de Gestión (2.5%):</strong> {{ number_format($paymentTotals['management_fee'], 2, ',', '.') }} €</p>
-                            <p class="ml-4 text-xs text-gray-600">(Sobre Total Declarado sin IVA: {{ number_format($summary['total_declared_amount'] ?? 0, 2, ',', '.') }} €)</p>
-                        </div>
-                        
-                        <div class="pt-2 border-t">
-                            <p class="text-lg font-bold">
-                                <strong>Total Transferencia Final:</strong> 
-                                <span class="{{ ($paymentTotals['total_transfer_final'] ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ number_format($paymentTotals['total_transfer_final'] ?? 0, 2, ',', '.') }} €
-                                </span>
-                            </p>
-                        </div>
-                        @endif
                     </div>
                     @endif
                 </div>
