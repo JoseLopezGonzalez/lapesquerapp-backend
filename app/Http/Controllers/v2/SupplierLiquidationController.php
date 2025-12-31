@@ -175,10 +175,22 @@ class SupplierLiquidationController extends Controller
                 'calculated_total_amount' => round($calculatedTotalAmount, 2),
                 'average_price' => round($averagePrice, 2),
                 'related_dispatches' => $relatedDispatches->map(function($dispatch) {
+                    $exportType = $dispatch->export_type ?? 'facilcom';
+                    $ivaRate = ($exportType === 'a3erp') ? 0.10 : 0.00; // 10% para a3erp, 0% para facilcom
+                    
+                    $baseAmount = round($dispatch->products->sum(function($product) {
+                        return ($product->net_weight ?? 0) * ($product->price ?? 0);
+                    }), 2);
+                    
+                    $ivaAmount = round($baseAmount * $ivaRate, 2);
+                    $totalAmount = round($baseAmount + $ivaAmount, 2);
+                    
                     return [
                         'id' => $dispatch->id,
                         'date' => $dispatch->date,
                         'notes' => $dispatch->notes,
+                        'export_type' => $exportType,
+                        'iva_rate' => $ivaRate * 100, // Porcentaje para mostrar
                         'products' => $dispatch->products->map(function($product) {
                             $productModel = $product->product;
                             return [
@@ -196,9 +208,9 @@ class SupplierLiquidationController extends Controller
                         'total_net_weight' => round($dispatch->products->sum(function($product) {
                             return $product->net_weight ?? 0;
                         }), 2),
-                        'total_amount' => round($dispatch->products->sum(function($product) {
-                            return ($product->net_weight ?? 0) * ($product->price ?? 0);
-                        }), 2),
+                        'base_amount' => $baseAmount,
+                        'iva_amount' => $ivaAmount,
+                        'total_amount' => $totalAmount,
                     ];
                 })->values(),
             ];
@@ -207,10 +219,22 @@ class SupplierLiquidationController extends Controller
         // Agregar salidas sin recepción relacionada
         foreach ($dispatches as $dispatch) {
             if (!in_array($dispatch->id, $processedDispatchIds)) {
+                $exportType = $dispatch->export_type ?? 'facilcom';
+                $ivaRate = ($exportType === 'a3erp') ? 0.10 : 0.00; // 10% para a3erp, 0% para facilcom
+                
+                $baseAmount = round($dispatch->products->sum(function($product) {
+                    return ($product->net_weight ?? 0) * ($product->price ?? 0);
+                }), 2);
+                
+                $ivaAmount = round($baseAmount * $ivaRate, 2);
+                $totalAmount = round($baseAmount + $ivaAmount, 2);
+                
                 $dispatchesData[] = [
                     'id' => $dispatch->id,
                     'date' => $dispatch->date,
                     'notes' => $dispatch->notes,
+                    'export_type' => $exportType,
+                    'iva_rate' => $ivaRate * 100, // Porcentaje para mostrar
                     'products' => $dispatch->products->map(function($product) {
                         $productModel = $product->product;
                         return [
@@ -228,9 +252,9 @@ class SupplierLiquidationController extends Controller
                     'total_net_weight' => round($dispatch->products->sum(function($product) {
                         return $product->net_weight ?? 0;
                     }), 2),
-                    'total_amount' => round($dispatch->products->sum(function($product) {
-                        return ($product->net_weight ?? 0) * ($product->price ?? 0);
-                    }), 2),
+                    'base_amount' => $baseAmount,
+                    'iva_amount' => $ivaAmount,
+                    'total_amount' => $totalAmount,
                 ];
             }
         }
@@ -505,16 +529,20 @@ class SupplierLiquidationController extends Controller
         $totalCalculatedWeight = array_sum(array_column($receptions, 'calculated_total_net_weight'));
         $totalCalculatedAmount = array_sum(array_column($receptions, 'calculated_total_amount'));
         
-        // Totales de salidas de cebo: independientes + relacionadas
+        // Totales de salidas de cebo: independientes + relacionadas (con IVA)
         $totalDispatchesWeight = array_sum(array_column($dispatches, 'total_net_weight'));
+        $totalDispatchesBaseAmount = array_sum(array_column($dispatches, 'base_amount'));
+        $totalDispatchesIvaAmount = array_sum(array_column($dispatches, 'iva_amount'));
         $totalDispatchesAmount = array_sum(array_column($dispatches, 'total_amount'));
         
         // Sumar salidas relacionadas dentro de las recepciones
         foreach ($receptions as $reception) {
             if (!empty($reception['related_dispatches'])) {
                 foreach ($reception['related_dispatches'] as $dispatch) {
-                    $totalDispatchesWeight += $dispatch['total_net_weight'];
-                    $totalDispatchesAmount += $dispatch['total_amount'];
+                    $totalDispatchesWeight += $dispatch['total_net_weight'] ?? 0;
+                    $totalDispatchesBaseAmount += $dispatch['base_amount'] ?? 0;
+                    $totalDispatchesIvaAmount += $dispatch['iva_amount'] ?? 0;
+                    $totalDispatchesAmount += $dispatch['total_amount'] ?? 0;
                 }
             }
         }
@@ -534,8 +562,10 @@ class SupplierLiquidationController extends Controller
             'total_receptions' => $totalReceptions,
             'total_dispatches' => $totalDispatches,
             'total_receptions_weight' => round($totalCalculatedWeight, 2),
-            'total_dispatches_weight' => round($totalDispatchesWeight, 2),
             'total_receptions_amount' => round($totalCalculatedAmount, 2),
+            'total_dispatches_weight' => round($totalDispatchesWeight, 2),
+            'total_dispatches_base_amount' => round($totalDispatchesBaseAmount, 2),
+            'total_dispatches_iva_amount' => round($totalDispatchesIvaAmount, 2),
             'total_dispatches_amount' => round($totalDispatchesAmount, 2),
             'total_declared_weight' => round($totalDeclaredWeight, 2),
             'total_declared_amount' => round($totalDeclaredAmount, 2),

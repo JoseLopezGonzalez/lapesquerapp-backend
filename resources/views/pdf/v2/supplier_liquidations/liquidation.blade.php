@@ -225,8 +225,30 @@
                             $rowIndex++;
                         @endphp
                         <tr class="{{ $rowClass }} font-semibold">
-                            <td class="p-2 py-1">Total</td>
+                            <td class="p-2 py-1">Total Base</td>
                             <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_net_weight'], 2, ',', '.') }} kg</td>
+                            <td class="p-2 py-1 text-center">-</td>
+                            <td class="p-2 py-1 text-center">{{ number_format($dispatch['base_amount'] ?? $dispatch['total_amount'], 2, ',', '.') }} €</td>
+                        </tr>
+                        @if(($dispatch['iva_amount'] ?? 0) > 0)
+                        @php
+                            $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                            $rowIndex++;
+                        @endphp
+                        <tr class="{{ $rowClass }} font-semibold">
+                            <td class="p-2 py-1">IVA ({{ number_format($dispatch['iva_rate'] ?? 0, 0) }}%)</td>
+                            <td class="p-2 py-1 text-center">-</td>
+                            <td class="p-2 py-1 text-center">-</td>
+                            <td class="p-2 py-1 text-center">{{ number_format($dispatch['iva_amount'] ?? 0, 2, ',', '.') }} €</td>
+                        </tr>
+                        @endif
+                        @php
+                            $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                            $rowIndex++;
+                        @endphp
+                        <tr class="{{ $rowClass }} font-semibold bg-orange-100">
+                            <td class="p-2 py-1">Total con IVA</td>
+                            <td class="p-2 py-1 text-center">-</td>
                             <td class="p-2 py-1 text-center">-</td>
                             <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_amount'], 2, ',', '.') }} €</td>
                         </tr>
@@ -253,26 +275,35 @@
         <div class="mt-6 border rounded-lg overflow-hidden bg-gray-50 no-break">
             <div class="font-bold p-2 bg-gray-800 w-full border-b text-white">RESUMEN GLOBAL</div>
             <div class="p-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <h4 class="font-bold mb-2">RECEPCIONES</h4>
-                        <p><strong>Cantidad:</strong> {{ $summary['total_receptions'] }}</p>
-                        <p><strong>Peso Total:</strong> {{ number_format($totalCalculatedWeight, 2, ',', '.') }} kg</p>
-                        <p><strong>Importe Total:</strong> {{ number_format($totalCalculatedAmount, 2, ',', '.') }} €</p>
-                    </div>
-                    <div>
-                        <h4 class="font-bold mb-2">SALIDAS DE CEBO</h4>
-                        <p><strong>Cantidad:</strong> {{ $summary['total_dispatches'] }}</p>
-                        <p><strong>Peso Total:</strong> {{ number_format($summary['total_dispatches_weight'], 2, ',', '.') }} kg</p>
-                        <p><strong>Importe Total:</strong> {{ number_format($summary['total_dispatches_amount'], 2, ',', '.') }} €</p>
-                    </div>
+                <!-- TOTALES DE RECEPCIONES -->
+                <div class="mb-4 pb-4 border-b">
+                    <h4 class="font-bold mb-2 text-lg">TOTALES RECEPCIONES</h4>
+                    <p><strong>Cantidad:</strong> {{ $summary['total_receptions'] }}</p>
+                    <p><strong>Peso Total:</strong> {{ number_format($summary['total_receptions_weight'], 2, ',', '.') }} kg</p>
+                    <p><strong>Importe Total:</strong> {{ number_format($summary['total_receptions_amount'], 2, ',', '.') }} €</p>
                 </div>
-                <div class="mt-4 pt-4 border-t">
+                
+                <!-- TOTALES DE SALIDAS DE CEBO -->
+                <div class="mb-4 pb-4 border-b">
+                    <h4 class="font-bold mb-2 text-lg">TOTALES SALIDAS DE CEBO</h4>
+                    <p><strong>Cantidad:</strong> {{ $summary['total_dispatches'] }}</p>
+                    <p><strong>Peso Total:</strong> {{ number_format($summary['total_dispatches_weight'], 2, ',', '.') }} kg</p>
+                    <p><strong>Importe Base:</strong> {{ number_format($summary['total_dispatches_base_amount'] ?? 0, 2, ',', '.') }} €</p>
+                    @if(($summary['total_dispatches_iva_amount'] ?? 0) > 0)
+                    <p><strong>IVA:</strong> {{ number_format($summary['total_dispatches_iva_amount'] ?? 0, 2, ',', '.') }} €</p>
+                    @endif
+                    <p><strong>Importe Total (con IVA):</strong> {{ number_format($summary['total_dispatches_amount'], 2, ',', '.') }} €</p>
+                </div>
+                
+                <!-- TOTALES DECLARADOS -->
+                <div class="mb-4 pb-4 border-b">
                     <h4 class="font-bold mb-2">TOTALES DECLARADOS</h4>
                     <p><strong>Peso Total Declarado:</strong> {{ number_format($summary['total_declared_weight'], 2, ',', '.') }} kg</p>
                     <p><strong>Importe Total Declarado:</strong> {{ number_format($summary['total_declared_amount'], 2, ',', '.') }} €</p>
                 </div>
-                <div class="mt-4 pt-4 border-t">
+                
+                <!-- DIFERENCIAS -->
+                <div class="mb-4 pb-4 border-b">
                     <h4 class="font-bold mb-2">DIFERENCIAS (Calculado - Declarado)</h4>
                     <p><strong>Diferencia de Peso:</strong> 
                         <span class="{{ $weightDifference >= 0 ? 'text-green-600' : 'text-red-600' }}">
@@ -285,6 +316,8 @@
                         </span>
                     </p>
                 </div>
+                
+                <!-- IMPORTE NETO TOTAL -->
                 <div class="mt-4 pt-4 border-t">
                     <h4 class="font-bold text-lg">IMPORTE NETO TOTAL: 
                         <span class="{{ $amountDifference >= 0 ? 'text-green-600' : 'text-red-600' }}">
