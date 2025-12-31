@@ -123,7 +123,8 @@ class SupplierLiquidationController extends Controller
             ->orderBy('date', 'asc')
             ->get();
 
-        $items = [];
+        $receptionsData = [];
+        $dispatchesData = [];
         $processedDispatchIds = [];
 
         // Procesar recepciones y agrupar salidas relacionadas
@@ -148,40 +149,36 @@ class SupplierLiquidationController extends Controller
             });
             $averagePrice = $calculatedTotalWeight > 0 ? $calculatedTotalAmount / $calculatedTotalWeight : 0;
 
-            $items[] = [
-                'type' => 'reception',
+            $receptionsData[] = [
                 'id' => $reception->id,
                 'date' => $reception->date,
-                'reception' => [
-                    'id' => $reception->id,
-                    'date' => $reception->date,
-                    'notes' => $reception->notes,
-                    'products' => $reception->products->map(function($product) {
-                        $productModel = $product->product;
-                        return [
-                            'id' => $product->id,
-                            'product' => [
-                                'id' => $productModel->id ?? null,
-                                'name' => $productModel->name ?? ($productModel->article->name ?? null),
-                                'code' => $productModel->a3erp_code ?? $productModel->facil_com_code ?? null,
-                            ],
-                            'lot' => $product->lot ?? null,
-                            'net_weight' => round($product->net_weight ?? 0, 2),
-                            'price' => round($product->price ?? 0, 2),
-                            'amount' => round(($product->net_weight ?? 0) * ($product->price ?? 0), 2),
-                            'boxes' => $product->boxes ?? 0,
-                        ];
-                    })->values(),
-                    'declared_total_net_weight' => round($reception->declared_total_net_weight ?? 0, 2),
-                    'declared_total_amount' => round($reception->declared_total_amount ?? 0, 2),
-                    'calculated_total_net_weight' => round($calculatedTotalWeight, 2),
-                    'calculated_total_amount' => round($calculatedTotalAmount, 2),
-                    'average_price' => round($averagePrice, 2),
-                ],
+                'notes' => $reception->notes,
+                'products' => $reception->products->map(function($product) {
+                    $productModel = $product->product;
+                    return [
+                        'id' => $product->id,
+                        'product' => [
+                            'id' => $productModel->id ?? null,
+                            'name' => $productModel->name ?? ($productModel->article->name ?? null),
+                            'code' => $productModel->a3erp_code ?? $productModel->facil_com_code ?? null,
+                        ],
+                        'lot' => $product->lot ?? null,
+                        'net_weight' => round($product->net_weight ?? 0, 2),
+                        'price' => round($product->price ?? 0, 2),
+                        'amount' => round(($product->net_weight ?? 0) * ($product->price ?? 0), 2),
+                        'boxes' => $product->boxes ?? 0,
+                    ];
+                })->values(),
+                'declared_total_net_weight' => round($reception->declared_total_net_weight ?? 0, 2),
+                'declared_total_amount' => round($reception->declared_total_amount ?? 0, 2),
+                'calculated_total_net_weight' => round($calculatedTotalWeight, 2),
+                'calculated_total_amount' => round($calculatedTotalAmount, 2),
+                'average_price' => round($averagePrice, 2),
                 'related_dispatches' => $relatedDispatches->map(function($dispatch) {
                     return [
                         'id' => $dispatch->id,
                         'date' => $dispatch->date,
+                        'notes' => $dispatch->notes,
                         'products' => $dispatch->products->map(function($product) {
                             $productModel = $product->product;
                             return [
@@ -210,42 +207,39 @@ class SupplierLiquidationController extends Controller
         // Agregar salidas sin recepción relacionada
         foreach ($dispatches as $dispatch) {
             if (!in_array($dispatch->id, $processedDispatchIds)) {
-                $items[] = [
-                    'type' => 'dispatch',
+                $dispatchesData[] = [
                     'id' => $dispatch->id,
                     'date' => $dispatch->date,
-                    'dispatch' => [
-                        'id' => $dispatch->id,
-                        'date' => $dispatch->date,
-                        'notes' => $dispatch->notes,
-                        'products' => $dispatch->products->map(function($product) {
-                            $productModel = $product->product;
-                            return [
-                                'id' => $product->id,
-                                'product' => [
-                                    'id' => $productModel->id ?? null,
-                                    'name' => $productModel->name ?? ($productModel->article->name ?? null),
-                                    'code' => $productModel->a3erp_code ?? $productModel->facil_com_code ?? null,
-                                ],
-                                'net_weight' => round($product->net_weight ?? 0, 2),
-                                'price' => round($product->price ?? 0, 2),
-                                'amount' => round(($product->net_weight ?? 0) * ($product->price ?? 0), 2),
-                            ];
-                        })->values(),
-                        'total_net_weight' => round($dispatch->products->sum(function($product) {
-                            return $product->net_weight ?? 0;
-                        }), 2),
-                        'total_amount' => round($dispatch->products->sum(function($product) {
-                            return ($product->net_weight ?? 0) * ($product->price ?? 0);
-                        }), 2),
-                    ],
-                    'related_reception' => null,
+                    'notes' => $dispatch->notes,
+                    'products' => $dispatch->products->map(function($product) {
+                        $productModel = $product->product;
+                        return [
+                            'id' => $product->id,
+                            'product' => [
+                                'id' => $productModel->id ?? null,
+                                'name' => $productModel->name ?? ($productModel->article->name ?? null),
+                                'code' => $productModel->a3erp_code ?? $productModel->facil_com_code ?? null,
+                            ],
+                            'net_weight' => round($product->net_weight ?? 0, 2),
+                            'price' => round($product->price ?? 0, 2),
+                            'amount' => round(($product->net_weight ?? 0) * ($product->price ?? 0), 2),
+                        ];
+                    })->values(),
+                    'total_net_weight' => round($dispatch->products->sum(function($product) {
+                        return $product->net_weight ?? 0;
+                    }), 2),
+                    'total_amount' => round($dispatch->products->sum(function($product) {
+                        return ($product->net_weight ?? 0) * ($product->price ?? 0);
+                    }), 2),
                 ];
             }
         }
 
-        // Ordenar items por fecha
-        usort($items, function($a, $b) {
+        // Ordenar por fecha
+        usort($receptionsData, function($a, $b) {
+            return strtotime($a['date']) - strtotime($b['date']);
+        });
+        usort($dispatchesData, function($a, $b) {
             return strtotime($a['date']) - strtotime($b['date']);
         });
 
@@ -288,7 +282,8 @@ class SupplierLiquidationController extends Controller
                 'start' => $dates['start'] ?? null,
                 'end' => $dates['end'] ?? null,
             ],
-            'items' => $items,
+            'receptions' => $receptionsData,
+            'dispatches' => $dispatchesData,
             'summary' => [
                 'total_receptions' => $totalReceptions,
                 'total_dispatches' => $totalDispatches,
@@ -341,7 +336,8 @@ class SupplierLiquidationController extends Controller
         $html = view('pdf.v2.supplier_liquidations.liquidation', [
             'supplier' => $details['supplier'],
             'date_range' => $details['date_range'],
-            'items' => $details['items'],
+            'receptions' => $details['receptions'],
+            'dispatches' => $details['dispatches'],
             'summary' => $details['summary'],
         ])->render();
         

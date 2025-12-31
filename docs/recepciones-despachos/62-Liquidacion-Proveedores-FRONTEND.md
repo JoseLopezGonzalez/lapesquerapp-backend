@@ -87,59 +87,63 @@ GET /v2/supplier-liquidations/1/details?dates[start]=2024-01-01&dates[end]=2024-
     "start": "2024-01-01",
     "end": "2024-01-31"
   },
-  "items": [
+  "receptions": [
     {
-      "type": "reception",
       "id": 101,
       "date": "2024-01-15",
-      "reception": {
-        "id": 101,
-        "date": "2024-01-15",
-        "notes": "Recepción normal",
-        "products": [
-          {
-            "id": 1,
-            "product": {
-              "id": 10,
-              "name": "Atún Rojo",
-              "code": "ATR001"
-            },
-            "lot": "150124FAO01REC",
-            "net_weight": 250.50,
-            "price": 10.50,
-            "amount": 2630.25,
-            "boxes": 5
-          }
-        ],
-        "declared_total_net_weight": 250.00,
-        "declared_total_amount": 2625.00,
-        "calculated_total_net_weight": 250.50,
-        "calculated_total_amount": 2630.25,
-        "average_price": 10.50
-      },
+      "notes": "Recepción normal",
+      "products": [
+        {
+          "id": 1,
+          "product": {
+            "id": 10,
+            "name": "Atún Rojo",
+            "code": "ATR001"
+          },
+          "lot": "150124FAO01REC",
+          "net_weight": 250.50,
+          "price": 10.50,
+          "amount": 2630.25,
+          "boxes": 5
+        }
+      ],
+      "declared_total_net_weight": 250.00,
+      "declared_total_amount": 2625.00,
+      "calculated_total_net_weight": 250.50,
+      "calculated_total_amount": 2630.25,
+      "average_price": 10.50,
       "related_dispatches": [
         {
           "id": 201,
           "date": "2024-01-16",
+          "notes": "Salida relacionada",
           "products": [...],
           "total_net_weight": 50.00,
           "total_amount": 525.00
         }
       ]
-    },
+    }
+  ],
+  "dispatches": [
     {
-      "type": "dispatch",
       "id": 202,
       "date": "2024-01-20",
-      "dispatch": {
-        "id": 202,
-        "date": "2024-01-20",
-        "notes": "Salida de cebo sin recepción asociada",
-        "products": [...],
-        "total_net_weight": 100.00,
-        "total_amount": 800.00
-      },
-      "related_reception": null
+      "notes": "Salida de cebo sin recepción asociada",
+      "products": [
+        {
+          "id": 2,
+          "product": {
+            "id": 11,
+            "name": "Sardina",
+            "code": "SAR001"
+          },
+          "net_weight": 100.00,
+          "price": 8.00,
+          "amount": 800.00
+        }
+      ],
+      "total_net_weight": 100.00,
+      "total_amount": 800.00
     }
   ],
   "summary": {
@@ -156,32 +160,34 @@ GET /v2/supplier-liquidations/1/details?dates[start]=2024-01-01&dates[end]=2024-
 }
 ```
 
-**Estructura de Items**:
+**Estructura de Datos**:
 
-Cada item en el array `items` puede ser de dos tipos:
+La respuesta ahora separa las recepciones y las salidas de cebo en dos arrays independientes:
 
-#### Tipo "reception"
-- `type`: "reception"
+#### Array `receptions`
+Cada elemento del array `receptions` contiene:
 - `id`: ID de la recepción
 - `date`: Fecha de la recepción
-- `reception`: Objeto con datos completos de la recepción
-  - `products`: Array de productos de la recepción
-  - `declared_total_net_weight`: Peso total declarado (kg)
-  - `declared_total_amount`: Importe total declarado (€)
-  - `calculated_total_net_weight`: Peso total calculado (suma de productos)
-  - `calculated_total_amount`: Importe total calculado (suma de productos)
-  - `average_price`: Precio medio (calculated_total_amount / calculated_total_net_weight)
+- `notes`: Notas de la recepción
+- `products`: Array de productos de la recepción
+  - Cada producto incluye: `id`, `product` (con `id`, `name`, `code`), `lot`, `net_weight`, `price`, `amount`, `boxes`
+- `declared_total_net_weight`: Peso total declarado (kg)
+- `declared_total_amount`: Importe total declarado (€)
+- `calculated_total_net_weight`: Peso total calculado (suma de productos)
+- `calculated_total_amount`: Importe total calculado (suma de productos)
+- `average_price`: Precio medio (calculated_total_amount / calculated_total_net_weight)
 - `related_dispatches`: Array de salidas de cebo relacionadas (mismo proveedor, fecha dentro de ±7 días)
+  - Cada salida relacionada incluye: `id`, `date`, `notes`, `products`, `total_net_weight`, `total_amount`
 
-#### Tipo "dispatch"
-- `type`: "dispatch"
+#### Array `dispatches`
+Cada elemento del array `dispatches` contiene salidas de cebo que **NO tienen recepción relacionada** (más de 7 días de diferencia):
 - `id`: ID de la salida de cebo
 - `date`: Fecha de la salida
-- `dispatch`: Objeto con datos completos de la salida
-  - `products`: Array de productos de la salida
-  - `total_net_weight`: Peso total (suma de productos)
-  - `total_amount`: Importe total (suma de productos)
-- `related_reception`: null (no hay recepción relacionada)
+- `notes`: Notas de la salida
+- `products`: Array de productos de la salida
+  - Cada producto incluye: `id`, `product` (con `id`, `name`, `code`), `net_weight`, `price`, `amount`
+- `total_net_weight`: Peso total (suma de productos)
+- `total_amount`: Importe total (suma de productos)
 
 **Resumen (Summary)**:
 - `total_receptions`: Número total de recepciones
@@ -194,7 +200,7 @@ Cada item en el array `items` puede ser de dos tipos:
 - `total_declared_amount`: Importe total declarado en recepciones (€)
 - `net_amount`: Importe neto (total_receptions_amount - total_dispatches_amount)
 
-**Uso**: Mostrar el detalle completo de la liquidación. Los items están ordenados por fecha ascendente. Las salidas de cebo relacionadas con recepciones aparecen agrupadas bajo la recepción correspondiente.
+**Uso**: Mostrar el detalle completo de la liquidación. Las recepciones y salidas están ordenadas por fecha ascendente. Las salidas de cebo relacionadas con recepciones aparecen en el campo `related_dispatches` de cada recepción. Las salidas sin recepción relacionada aparecen en el array `dispatches` separado.
 
 ---
 
@@ -245,7 +251,8 @@ GET /v2/supplier-liquidations/1/pdf?dates[start]=2024-01-01&dates[end]=2024-01-3
 
 **Componentes sugeridos**:
 - Encabezado con datos del proveedor y rango de fechas
-- Tabla o lista de items (recepciones y salidas)
+- **Tabla de Recepciones** (separada)
+- **Tabla de Salidas de Cebo** (separada)
 - Resumen global con totales
 - Botón para generar PDF
 
@@ -256,15 +263,21 @@ GET /v2/supplier-liquidations/1/pdf?dates[start]=2024-01-01&dates[end]=2024-01-3
    - Información de contacto (opcional)
    - Rango de fechas seleccionado
 
-2. **Tabla de Items**:
-   - Columnas sugeridas: Fecha | Tipo | Producto | Lote | Peso Neto (kg) | Precio (€/kg) | Importe (€)
-   - Agrupación visual: Las recepciones deben mostrarse con sus salidas relacionadas agrupadas debajo
-   - Diferenciación visual: Usar colores o estilos diferentes para recepciones y salidas de cebo
-   - Totales por recepción: Después de cada recepción, mostrar una fila con:
+2. **Tabla de Recepciones**:
+   - Columnas sugeridas: Fecha | Producto | Lote | Peso Neto (kg) | Precio (€/kg) | Importe (€)
+   - Mostrar todas las recepciones ordenadas por fecha
+   - Para cada recepción, mostrar sus productos
+   - Después de cada recepción, mostrar una fila con:
      - Total Calculado: Peso | Importe | Precio Medio
      - Total Declarado: Peso | Importe (si existe)
+   - Si la recepción tiene salidas relacionadas (`related_dispatches`), mostrarlas agrupadas debajo de la recepción con un estilo visual diferente (por ejemplo, con fondo de color diferente o indentadas)
 
-3. **Resumen Global**:
+3. **Tabla de Salidas de Cebo** (sin recepción relacionada):
+   - Columnas sugeridas: Fecha | Producto | Peso Neto (kg) | Precio (€/kg) | Importe (€)
+   - Mostrar todas las salidas que no tienen recepción relacionada
+   - Después de cada salida, mostrar el total
+
+4. **Resumen Global**:
    - Total Recepciones: Cantidad | Peso (kg) | Importe (€)
    - Total Salidas de Cebo: Cantidad | Peso (kg) | Importe (€)
    - Total Declarado: Peso (kg) | Importe (€)
@@ -278,15 +291,18 @@ GET /v2/supplier-liquidations/1/pdf?dates[start]=2024-01-01&dates[end]=2024-01-3
 
 ## 📊 Estructura de Datos - Detalles Importantes
 
-### Items Ordenados
-Los items en el array `items` están ordenados por fecha ascendente. Esto facilita la visualización cronológica.
+### Recepciones y Salidas Ordenadas
+- Las recepciones en el array `receptions` están ordenadas por fecha ascendente
+- Las salidas de cebo en el array `dispatches` están ordenadas por fecha ascendente
+- Esto facilita la visualización cronológica en tablas separadas
 
 ### Agrupación de Salidas con Recepciones
 Las salidas de cebo se consideran "relacionadas" con una recepción si:
 - Pertenecen al mismo proveedor
 - La fecha de la salida está dentro de ±7 días de la fecha de la recepción
 
-Si una salida de cebo no tiene recepción relacionada, aparece como item independiente tipo "dispatch".
+Si una salida de cebo tiene recepción relacionada, aparece en el campo `related_dispatches` de esa recepción.
+Si una salida de cebo no tiene recepción relacionada (más de 7 días de diferencia), aparece en el array `dispatches` separado.
 
 ### Totales Calculados vs Declarados
 - **Totales Calculados**: Se obtienen sumando los productos de la recepción
@@ -311,7 +327,7 @@ Si un proveedor no tiene recepciones ni salidas en el rango de fechas, no aparec
 Aunque no debería pasar, si una recepción no tiene productos, los totales serán 0.
 
 ### Salida sin Recepción Relacionada
-Las salidas de cebo que no tienen recepción relacionada (más de 7 días de diferencia) aparecen como items independientes tipo "dispatch".
+Las salidas de cebo que no tienen recepción relacionada (más de 7 días de diferencia) aparecen en el array `dispatches` separado.
 
 ### Múltiples Salidas Relacionadas
 Una recepción puede tener múltiples salidas de cebo relacionadas. Todas aparecen en el array `related_dispatches`.
@@ -400,8 +416,10 @@ SupplierLiquidationModule
 - [ ] Implementar selector de rango de fechas
 - [ ] Implementar listado de proveedores con estadísticas
 - [ ] Implementar navegación a detalle
-- [ ] Implementar vista de detalle con items
-- [ ] Implementar agrupación visual de salidas con recepciones
+- [ ] Implementar vista de detalle con dos tablas separadas (recepciones y salidas)
+- [ ] Implementar tabla de recepciones con sus productos y totales
+- [ ] Implementar visualización de salidas relacionadas dentro de cada recepción
+- [ ] Implementar tabla de salidas de cebo sin recepción relacionada
 - [ ] Implementar visualización de totales (calculados y declarados)
 - [ ] Implementar resumen global
 - [ ] Implementar descarga de PDF

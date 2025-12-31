@@ -69,14 +69,13 @@
             </div>
         </div>
 
-        <!-- TABLA DE RECEPCIONES Y SALIDAS -->
-        <h3 class="font-bold mb-2">DETALLE DE RECEPCIONES Y SALIDAS DE CEBO</h3>
-        <div class="border rounded-lg overflow-hidden">
+        <!-- TABLA DE RECEPCIONES -->
+        <h3 class="font-bold mb-2">DETALLE DE RECEPCIONES</h3>
+        <div class="border rounded-lg overflow-hidden mb-6">
             <table class="w-full text-xs">
                 <thead class="border-b bg-gray-100">
                     <tr>
                         <th class="p-2 text-left">Fecha</th>
-                        <th class="p-2 text-left">Tipo</th>
                         <th class="p-2 text-left">Producto</th>
                         <th class="p-2 text-center">Lote</th>
                         <th class="p-2 text-center">Peso Neto (kg)</th>
@@ -89,22 +88,19 @@
                         $rowIndex = 0;
                     @endphp
 
-                    @foreach ($items as $item)
-                        @if($item['type'] === 'reception')
-                            @php
-                                $reception = $item['reception'];
-                                $hasRelatedDispatches = !empty($item['related_dispatches']);
-                            @endphp
+                    @foreach ($receptions as $reception)
+                        @php
+                            $hasRelatedDispatches = !empty($reception['related_dispatches']);
+                        @endphp
 
-                            <!-- Recepción -->
-                            @foreach ($reception['products'] as $product)
+                        <!-- Recepción -->
+                        @foreach ($reception['products'] as $product)
                                 @php
                                     $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                                     $rowIndex++;
                                 @endphp
                                 <tr class="{{ $rowClass }}">
                                     <td class="p-2 py-1">{{ date('d/m/Y', strtotime($reception['date'])) }}</td>
-                                    <td class="p-2 py-1 font-semibold">RECEPCIÓN</td>
                                     <td class="p-2 py-1">{{ $product['product']['name'] ?? 'N/A' }}</td>
                                     <td class="p-2 py-1 text-center">{{ $product['lot'] ?? '-' }}</td>
                                     <td class="p-2 py-1 text-center">{{ number_format($product['net_weight'], 2, ',', '.') }}</td>
@@ -119,7 +115,7 @@
                                 $rowIndex++;
                             @endphp
                             <tr class="{{ $rowClass }} font-semibold bg-blue-50">
-                                <td class="p-2 py-1" colspan="3">Total Recepción #{{ $reception['id'] }} (Calculado)</td>
+                                <td class="p-2 py-1" colspan="2">Total Recepción #{{ $reception['id'] }} (Calculado)</td>
                                 <td class="p-2 py-1 text-center">-</td>
                                 <td class="p-2 py-1 text-center">{{ number_format($reception['calculated_total_net_weight'], 2, ',', '.') }}</td>
                                 <td class="p-2 py-1 text-center">{{ number_format($reception['average_price'], 2, ',', '.') }}</td>
@@ -132,7 +128,7 @@
                                     $rowIndex++;
                                 @endphp
                                 <tr class="{{ $rowClass }} font-semibold bg-yellow-50">
-                                    <td class="p-2 py-1" colspan="3">Total Recepción #{{ $reception['id'] }} (Declarado)</td>
+                                    <td class="p-2 py-1" colspan="2">Total Recepción #{{ $reception['id'] }} (Declarado)</td>
                                     <td class="p-2 py-1 text-center">-</td>
                                     <td class="p-2 py-1 text-center">{{ number_format($reception['declared_total_net_weight'], 2, ',', '.') }}</td>
                                     <td class="p-2 py-1 text-center">-</td>
@@ -142,14 +138,14 @@
 
                             <!-- Salidas de cebo relacionadas -->
                             @if($hasRelatedDispatches)
-                                @foreach ($item['related_dispatches'] as $dispatch)
+                                @foreach ($reception['related_dispatches'] as $dispatch)
                                     @php
                                         $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                                         $rowIndex++;
                                     @endphp
                                     <tr class="{{ $rowClass }} bg-red-50">
-                                        <td class="p-2 py-1" colspan="7" class="font-semibold">
-                                            ↪ Salida de Cebo #{{ $dispatch['id'] }} - {{ date('d/m/Y', strtotime($dispatch['date'])) }}
+                                        <td class="p-2 py-1" colspan="6" class="font-semibold">
+                                            ↪ Salida de Cebo Relacionada #{{ $dispatch['id'] }} - {{ date('d/m/Y', strtotime($dispatch['date'])) }}
                                         </td>
                                     </tr>
                                     @foreach ($dispatch['products'] as $product)
@@ -159,7 +155,6 @@
                                         @endphp
                                         <tr class="{{ $rowClass }} bg-red-50">
                                             <td class="p-2 py-1">{{ date('d/m/Y', strtotime($dispatch['date'])) }}</td>
-                                            <td class="p-2 py-1 font-semibold">SALIDA CEBO</td>
                                             <td class="p-2 py-1">{{ $product['product']['name'] ?? 'N/A' }}</td>
                                             <td class="p-2 py-1 text-center">-</td>
                                             <td class="p-2 py-1 text-center">{{ number_format($product['net_weight'], 2, ',', '.') }}</td>
@@ -172,59 +167,66 @@
                                         $rowIndex++;
                                     @endphp
                                     <tr class="{{ $rowClass }} font-semibold bg-red-100">
-                                        <td class="p-2 py-1" colspan="4">Total Salida #{{ $dispatch['id'] }}</td>
+                                        <td class="p-2 py-1" colspan="3">Total Salida #{{ $dispatch['id'] }}</td>
                                         <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_net_weight'], 2, ',', '.') }}</td>
                                         <td class="p-2 py-1 text-center">-</td>
                                         <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_amount'], 2, ',', '.') }}</td>
                                     </tr>
                                 @endforeach
                             @endif
+                        @endforeach
+                </tbody>
+            </table>
+        </div>
 
-                        @elseif($item['type'] === 'dispatch')
-                            @php
-                                $dispatch = $item['dispatch'];
-                            @endphp
+        <!-- TABLA DE SALIDAS DE CEBO SIN RECEPCIÓN RELACIONADA -->
+        @if(count($dispatches) > 0)
+        <h3 class="font-bold mb-2">SALIDAS DE CEBO SIN RECEPCIÓN RELACIONADA</h3>
+        <div class="border rounded-lg overflow-hidden mb-6">
+            <table class="w-full text-xs">
+                <thead class="border-b bg-gray-100">
+                    <tr>
+                        <th class="p-2 text-left">Fecha</th>
+                        <th class="p-2 text-left">Producto</th>
+                        <th class="p-2 text-center">Peso Neto (kg)</th>
+                        <th class="p-2 text-center">Precio (€/kg)</th>
+                        <th class="p-2 text-center">Importe (€)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @php
+                        $rowIndex = 0;
+                    @endphp
 
-                            <!-- Salida de cebo sin recepción relacionada -->
+                    @foreach ($dispatches as $dispatch)
+                        @foreach ($dispatch['products'] as $product)
                             @php
                                 $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                                 $rowIndex++;
                             @endphp
-                            <tr class="{{ $rowClass }} bg-orange-50">
-                                <td class="p-2 py-1" colspan="7" class="font-semibold">
-                                    Salida de Cebo #{{ $dispatch['id'] }} - {{ date('d/m/Y', strtotime($dispatch['date'])) }} (Sin recepción relacionada)
-                                </td>
+                            <tr class="{{ $rowClass }}">
+                                <td class="p-2 py-1">{{ date('d/m/Y', strtotime($dispatch['date'])) }}</td>
+                                <td class="p-2 py-1">{{ $product['product']['name'] ?? 'N/A' }}</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($product['net_weight'], 2, ',', '.') }}</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($product['price'], 2, ',', '.') }}</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($product['amount'], 2, ',', '.') }}</td>
                             </tr>
-                            @foreach ($dispatch['products'] as $product)
-                                @php
-                                    $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                                    $rowIndex++;
-                                @endphp
-                                <tr class="{{ $rowClass }} bg-orange-50">
-                                    <td class="p-2 py-1">{{ date('d/m/Y', strtotime($dispatch['date'])) }}</td>
-                                    <td class="p-2 py-1 font-semibold">SALIDA CEBO</td>
-                                    <td class="p-2 py-1">{{ $product['product']['name'] ?? 'N/A' }}</td>
-                                    <td class="p-2 py-1 text-center">-</td>
-                                    <td class="p-2 py-1 text-center">{{ number_format($product['net_weight'], 2, ',', '.') }}</td>
-                                    <td class="p-2 py-1 text-center">{{ number_format($product['price'], 2, ',', '.') }}</td>
-                                    <td class="p-2 py-1 text-center">{{ number_format($product['amount'], 2, ',', '.') }}</td>
-                                </tr>
-                            @endforeach
-                            @php
-                                $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                                $rowIndex++;
-                            @endphp
-                            <tr class="{{ $rowClass }} font-semibold bg-orange-100">
-                                <td class="p-2 py-1" colspan="4">Total Salida #{{ $dispatch['id'] }}</td>
-                                <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_net_weight'], 2, ',', '.') }}</td>
-                                <td class="p-2 py-1 text-center">-</td>
-                                <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_amount'], 2, ',', '.') }}</td>
-                            </tr>
-                        @endif
+                        @endforeach
+                        @php
+                            $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                            $rowIndex++;
+                        @endphp
+                        <tr class="{{ $rowClass }} font-semibold bg-orange-100">
+                            <td class="p-2 py-1" colspan="2">Total Salida #{{ $dispatch['id'] }}</td>
+                            <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_net_weight'], 2, ',', '.') }}</td>
+                            <td class="p-2 py-1 text-center">-</td>
+                            <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_amount'], 2, ',', '.') }}</td>
+                        </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
+        @endif
 
         <!-- RESUMEN FINAL -->
         <div class="mt-6 border rounded-lg overflow-hidden bg-gray-50">
