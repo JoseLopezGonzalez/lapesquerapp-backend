@@ -89,99 +89,80 @@
                     @endphp
 
                     @foreach ($receptions as $reception)
-                        @php
-                            $hasRelatedDispatches = !empty($reception['related_dispatches']);
-                        @endphp
-
                         <!-- Recepción -->
                         @foreach ($reception['products'] as $product)
-                                @php
-                                    $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                                    $rowIndex++;
-                                @endphp
-                                <tr class="{{ $rowClass }}">
-                                    <td class="p-2 py-1">{{ date('d/m/Y', strtotime($reception['date'])) }}</td>
-                                    <td class="p-2 py-1">{{ $product['product']['name'] ?? 'N/A' }}</td>
-                                    <td class="p-2 py-1 text-center">{{ $product['lot'] ?? '-' }}</td>
-                                    <td class="p-2 py-1 text-center">{{ number_format($product['net_weight'], 2, ',', '.') }}</td>
-                                    <td class="p-2 py-1 text-center">{{ number_format($product['price'], 2, ',', '.') }}</td>
-                                    <td class="p-2 py-1 text-center">{{ number_format($product['amount'], 2, ',', '.') }}</td>
-                                </tr>
-                            @endforeach
-
-                            <!-- Totales de la recepción -->
                             @php
                                 $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                                 $rowIndex++;
                             @endphp
-                            <tr class="{{ $rowClass }} font-semibold bg-blue-50">
-                                <td class="p-2 py-1" colspan="2">Total Recepción #{{ $reception['id'] }} (Calculado)</td>
-                                <td class="p-2 py-1 text-center">-</td>
-                                <td class="p-2 py-1 text-center">{{ number_format($reception['calculated_total_net_weight'], 2, ',', '.') }}</td>
-                                <td class="p-2 py-1 text-center">{{ number_format($reception['average_price'], 2, ',', '.') }}</td>
-                                <td class="p-2 py-1 text-center">{{ number_format($reception['calculated_total_amount'], 2, ',', '.') }}</td>
+                            <tr class="{{ $rowClass }}">
+                                <td class="p-2 py-1">{{ date('d/m/Y', strtotime($reception['date'])) }}</td>
+                                <td class="p-2 py-1">{{ $product['product']['name'] ?? 'N/A' }}</td>
+                                <td class="p-2 py-1 text-center">{{ $product['lot'] ?? '-' }}</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($product['net_weight'], 2, ',', '.') }}</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($product['price'], 2, ',', '.') }}</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($product['amount'], 2, ',', '.') }}</td>
                             </tr>
-
-                            @if($reception['declared_total_net_weight'] > 0 || $reception['declared_total_amount'] > 0)
-                                @php
-                                    $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                                    $rowIndex++;
-                                @endphp
-                                <tr class="{{ $rowClass }} font-semibold bg-yellow-50">
-                                    <td class="p-2 py-1" colspan="2">Total Recepción #{{ $reception['id'] }} (Declarado)</td>
-                                    <td class="p-2 py-1 text-center">-</td>
-                                    <td class="p-2 py-1 text-center">{{ number_format($reception['declared_total_net_weight'], 2, ',', '.') }}</td>
-                                    <td class="p-2 py-1 text-center">-</td>
-                                    <td class="p-2 py-1 text-center">{{ number_format($reception['declared_total_amount'], 2, ',', '.') }}</td>
-                                </tr>
-                            @endif
-
-                            <!-- Salidas de cebo relacionadas -->
-                            @if($hasRelatedDispatches)
-                                @foreach ($reception['related_dispatches'] as $dispatch)
-                                    @php
-                                        $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                                        $rowIndex++;
-                                    @endphp
-                                    <tr class="{{ $rowClass }} bg-red-50">
-                                        <td class="p-2 py-1" colspan="6" class="font-semibold">
-                                            ↪ Salida de Cebo Relacionada #{{ $dispatch['id'] }} - {{ date('d/m/Y', strtotime($dispatch['date'])) }}
-                                        </td>
-                                    </tr>
-                                    @foreach ($dispatch['products'] as $product)
-                                        @php
-                                            $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                                            $rowIndex++;
-                                        @endphp
-                                        <tr class="{{ $rowClass }} bg-red-50">
-                                            <td class="p-2 py-1">{{ date('d/m/Y', strtotime($dispatch['date'])) }}</td>
-                                            <td class="p-2 py-1">{{ $product['product']['name'] ?? 'N/A' }}</td>
-                                            <td class="p-2 py-1 text-center">-</td>
-                                            <td class="p-2 py-1 text-center">{{ number_format($product['net_weight'], 2, ',', '.') }}</td>
-                                            <td class="p-2 py-1 text-center">{{ number_format($product['price'], 2, ',', '.') }}</td>
-                                            <td class="p-2 py-1 text-center">{{ number_format($product['amount'], 2, ',', '.') }}</td>
-                                        </tr>
-                                    @endforeach
-                                    @php
-                                        $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                                        $rowIndex++;
-                                    @endphp
-                                    <tr class="{{ $rowClass }} font-semibold bg-red-100">
-                                        <td class="p-2 py-1" colspan="3">Total Salida #{{ $dispatch['id'] }}</td>
-                                        <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_net_weight'], 2, ',', '.') }}</td>
-                                        <td class="p-2 py-1 text-center">-</td>
-                                        <td class="p-2 py-1 text-center">{{ number_format($dispatch['total_amount'], 2, ',', '.') }}</td>
-                                    </tr>
-                                @endforeach
-                            @endif
                         @endforeach
+
+                        <!-- Totales de la recepción -->
+                        @php
+                            $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                            $rowIndex++;
+                        @endphp
+                        <tr class="{{ $rowClass }} font-semibold bg-blue-50">
+                            <td class="p-2 py-1" colspan="2">Total Recepción #{{ $reception['id'] }} (Calculado)</td>
+                            <td class="p-2 py-1 text-center">-</td>
+                            <td class="p-2 py-1 text-center">{{ number_format($reception['calculated_total_net_weight'], 2, ',', '.') }}</td>
+                            <td class="p-2 py-1 text-center">{{ number_format($reception['average_price'], 2, ',', '.') }}</td>
+                            <td class="p-2 py-1 text-center">{{ number_format($reception['calculated_total_amount'], 2, ',', '.') }}</td>
+                        </tr>
+
+                        @if($reception['declared_total_net_weight'] > 0 || $reception['declared_total_amount'] > 0)
+                            @php
+                                $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                                $rowIndex++;
+                            @endphp
+                            <tr class="{{ $rowClass }} font-semibold bg-yellow-50">
+                                <td class="p-2 py-1" colspan="2">Total Recepción #{{ $reception['id'] }} (Declarado)</td>
+                                <td class="p-2 py-1 text-center">-</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($reception['declared_total_net_weight'], 2, ',', '.') }}</td>
+                                <td class="p-2 py-1 text-center">-</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($reception['declared_total_amount'], 2, ',', '.') }}</td>
+                            </tr>
+                        @endif
+                    @endforeach
                 </tbody>
             </table>
         </div>
 
-        <!-- TABLA DE SALIDAS DE CEBO SIN RECEPCIÓN RELACIONADA -->
-        @if(count($dispatches) > 0)
-        <h3 class="font-bold mb-2">SALIDAS DE CEBO SIN RECEPCIÓN RELACIONADA</h3>
+        <!-- TABLA DE SALIDAS DE CEBO -->
+        @php
+            // Recopilar todas las salidas de cebo: relacionadas y no relacionadas
+            $allDispatches = [];
+            
+            // Agregar salidas relacionadas de las recepciones
+            foreach ($receptions as $reception) {
+                if (!empty($reception['related_dispatches'])) {
+                    foreach ($reception['related_dispatches'] as $dispatch) {
+                        $allDispatches[] = $dispatch;
+                    }
+                }
+            }
+            
+            // Agregar salidas sin recepción relacionada
+            foreach ($dispatches as $dispatch) {
+                $allDispatches[] = $dispatch;
+            }
+            
+            // Ordenar por fecha
+            usort($allDispatches, function($a, $b) {
+                return strtotime($a['date']) - strtotime($b['date']);
+            });
+        @endphp
+        
+        @if(count($allDispatches) > 0)
+        <h3 class="font-bold mb-2">DETALLE DE SALIDAS DE CEBO</h3>
         <div class="border rounded-lg overflow-hidden mb-6">
             <table class="w-full text-xs">
                 <thead class="border-b bg-gray-100">
@@ -198,7 +179,7 @@
                         $rowIndex = 0;
                     @endphp
 
-                    @foreach ($dispatches as $dispatch)
+                    @foreach ($allDispatches as $dispatch)
                         @foreach ($dispatch['products'] as $product)
                             @php
                                 $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
@@ -229,6 +210,19 @@
         @endif
 
         <!-- RESUMEN FINAL -->
+        @php
+            // Calcular totales calculados (reales) de recepciones
+            $totalCalculatedWeight = 0;
+            $totalCalculatedAmount = 0;
+            foreach ($receptions as $reception) {
+                $totalCalculatedWeight += $reception['calculated_total_net_weight'];
+                $totalCalculatedAmount += $reception['calculated_total_amount'];
+            }
+            
+            // Calcular diferencias (calculado - declarado)
+            $weightDifference = $totalCalculatedWeight - $summary['total_declared_weight'];
+            $amountDifference = $totalCalculatedAmount - $summary['total_declared_amount'];
+        @endphp
         <div class="mt-6 border rounded-lg overflow-hidden bg-gray-50">
             <div class="font-bold p-2 bg-gray-800 w-full border-b text-white">RESUMEN GLOBAL</div>
             <div class="p-4">
@@ -236,8 +230,8 @@
                     <div>
                         <h4 class="font-bold mb-2">RECEPCIONES</h4>
                         <p><strong>Cantidad:</strong> {{ $summary['total_receptions'] }}</p>
-                        <p><strong>Peso Total:</strong> {{ number_format($summary['total_receptions_weight'], 2, ',', '.') }} kg</p>
-                        <p><strong>Importe Total:</strong> {{ number_format($summary['total_receptions_amount'], 2, ',', '.') }} €</p>
+                        <p><strong>Peso Total (Calculado):</strong> {{ number_format($totalCalculatedWeight, 2, ',', '.') }} kg</p>
+                        <p><strong>Importe Total (Calculado):</strong> {{ number_format($totalCalculatedAmount, 2, ',', '.') }} €</p>
                     </div>
                     <div>
                         <h4 class="font-bold mb-2">SALIDAS DE CEBO</h4>
@@ -252,8 +246,25 @@
                     <p><strong>Importe Total Declarado:</strong> {{ number_format($summary['total_declared_amount'], 2, ',', '.') }} €</p>
                 </div>
                 <div class="mt-4 pt-4 border-t">
-                    <h4 class="font-bold text-lg">IMPORTE NETO: {{ number_format($summary['net_amount'], 2, ',', '.') }} €</h4>
-                    <p class="text-xs text-gray-600">(Recepciones - Salidas de Cebo)</p>
+                    <h4 class="font-bold mb-2">DIFERENCIAS (Calculado - Declarado)</h4>
+                    <p><strong>Diferencia de Peso:</strong> 
+                        <span class="{{ $weightDifference >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                            {{ number_format($weightDifference, 2, ',', '.') }} kg
+                        </span>
+                    </p>
+                    <p><strong>Diferencia de Importe:</strong> 
+                        <span class="{{ $amountDifference >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                            {{ number_format($amountDifference, 2, ',', '.') }} €
+                        </span>
+                    </p>
+                </div>
+                <div class="mt-4 pt-4 border-t">
+                    <h4 class="font-bold text-lg">IMPORTE NETO TOTAL: 
+                        <span class="{{ $amountDifference >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                            {{ number_format($amountDifference, 2, ',', '.') }} €
+                        </span>
+                    </h4>
+                    <p class="text-xs text-gray-600">(Total Calculado - Total Declarado)</p>
                 </div>
             </div>
         </div>
