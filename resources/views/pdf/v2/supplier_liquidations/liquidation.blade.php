@@ -32,28 +32,15 @@
 <body class="bg-white text-black text-xs">
     <div class="max-w-[210mm] mx-auto p-6 bg-white rounded min-h-screen">
         <!-- ENCABEZADO -->
-        <div class="flex justify-between items-end mb-6">
-            <div class="flex items-center gap-2">
-                <div>
-                    <h1 class="text-md font-bold">{{ tenantSetting('company.name') }}</h1>
-                    <p>{{ tenantSetting('company.address.street') }} - {{ tenantSetting('company.address.postal_code') }}
-                        {{ tenantSetting('company.address.city') }}
-                    </p>
-                    <p>Tel: {{ tenantSetting('company.contact.phone_admin') }}</p>
-                    <p>{{ tenantSetting('company.contact.email_admin') }}</p>
-                    <p>{{ tenantSetting('company.sanitary_number') }}</p>
-                </div>
-            </div>
-            <div class="flex items-start gap-4">
-                <div class="rounded text-end">
-                    <h2 class="text-lg font-bold">LIQUIDACIÓN DE PROVEEDOR</h2>
-                    <p class="font-medium">Proveedor: <span class="">{{ $supplier['name'] }}</span></p>
-                    <p class="font-medium">Período: 
-                        <span class="">{{ date('d/m/Y', strtotime($date_range['start'])) }}</span> - 
-                        <span class="">{{ date('d/m/Y', strtotime($date_range['end'])) }}</span>
-                    </p>
-                    <p class="font-medium">Fecha de generación: <span class="">{{ date('d/m/Y H:i') }}</span></p>
-                </div>
+        <div class="mb-6">
+            <div class="rounded">
+                <h2 class="text-lg font-bold">LIQUIDACIÓN DE PROVEEDOR</h2>
+                <p class="font-medium">Proveedor: <span class="">{{ $supplier['name'] }}</span></p>
+                <p class="font-medium">Período: 
+                    <span class="">{{ date('d/m/Y', strtotime($date_range['start'])) }}</span> - 
+                    <span class="">{{ date('d/m/Y', strtotime($date_range['end'])) }}</span>
+                </p>
+                <p class="font-medium">Fecha de generación: <span class="">{{ date('d/m/Y H:i') }}</span></p>
             </div>
         </div>
 
@@ -309,6 +296,8 @@
                         <p class="text-xs text-gray-600 mt-1">
                             @if(($paymentTotals['payment_method'] ?? null) === 'cash' && ($paymentTotals['has_iva_in_dispatches'] ?? false))
                                 (Total Recepción - Total Declarado - Total Salida Cebo con IVA)
+                            @elseif(($summary['total_dispatches_base_amount'] ?? 0) > 0 && !($paymentTotals['has_iva_in_dispatches'] ?? false))
+                                (Total Recepción - Total Declarado - Total Salida Cebo sin IVA)
                             @else
                                 (Total Recepción - Total Declarado)
                             @endif
