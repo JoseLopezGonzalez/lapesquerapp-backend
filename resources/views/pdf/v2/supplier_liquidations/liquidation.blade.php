@@ -304,7 +304,11 @@
                         </p>
                     </div>
                     
-                    <!-- Total Transferencia -->
+                    <!-- Total Transferencia (solo si show_transfer_payment está activado) -->
+                    @php
+                        $showTransferPayment = $show_transfer_payment ?? true;
+                    @endphp
+                    @if($showTransferPayment)
                     <div class="mb-2">
                         <p><strong>Total Declarado (con IVA):</strong> {{ number_format($summary['total_declared_with_iva'] ?? 0, 2, ',', '.') }} €</p>
                         @if(($paymentTotals['payment_method'] ?? null) === 'transfer' && ($paymentTotals['has_iva_in_dispatches'] ?? false))
@@ -334,6 +338,7 @@
                             </p>
                         @endif
                     </div>
+                    @endif
                 </div>
                 @endif
             </div>

@@ -393,6 +393,7 @@ class SupplierLiquidationController extends Controller
             'dispatches.*' => 'integer|exists:tenant.cebo_dispatches,id',
             'payment_method' => 'nullable|in:cash,transfer',
             'has_management_fee' => 'nullable|in:0,1,true,false',
+            'show_transfer_payment' => 'nullable|in:0,1,true,false',
         ]);
 
         // Obtener los datos de la liquidación (reutiliza la lógica de getDetails)
@@ -490,6 +491,12 @@ class SupplierLiquidationController extends Controller
         // Calcular totales de pago según la lógica compleja
         $paymentTotals = $this->calculatePaymentTotals($summary, $request);
         
+        // Convertir show_transfer_payment a booleano (por defecto true si no se especifica)
+        $showTransferPayment = filter_var($request->input('show_transfer_payment'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        if ($showTransferPayment === null) {
+            $showTransferPayment = true; // Por defecto se muestra
+        }
+        
         $dates = $request->input('dates', []);
         $startDate = $dates['start'] ?? null;
         $endDate = $dates['end'] ?? null;
@@ -506,6 +513,7 @@ class SupplierLiquidationController extends Controller
             'dispatches' => $filteredDispatches,
             'summary' => $summary,
             'payment_totals' => $paymentTotals,
+            'show_transfer_payment' => $showTransferPayment,
         ])->render();
         
         $snappdf->setChromiumPath('/usr/bin/google-chrome');
