@@ -74,4 +74,20 @@ class Supplier extends Model
         return $result;
     }
 
+    /**
+     * Relación con recepciones de materia prima
+     */
+    public function rawMaterialReceptions()
+    {
+        return $this->hasMany(RawMaterialReception::class);
+    }
+
+    /**
+     * Relación con despachos de cebo
+     */
+    public function ceboDispatches()
+    {
+        return $this->hasMany(CeboDispatch::class);
+    }
+
 }

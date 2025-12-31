@@ -75,6 +75,7 @@ use App\Http\Controllers\v2\SpeciesController as V2SpeciesController;
 use App\Http\Controllers\v2\StockStatisticsController;
 use App\Http\Controllers\v2\StoreController as V2StoreController;
 use App\Http\Controllers\v2\SupplierController as V2SupplierController;
+use App\Http\Controllers\v2\SupplierLiquidationController;
 use App\Http\Controllers\v2\TransportController as V2TransportController;
 use App\Http\Controllers\v2\UserController;
 use App\Http\Controllers\v2\ProcessController as V2ProcessController;
@@ -409,6 +410,11 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
             Route::apiResource('suppliers', V2SupplierController::class);
             Route::delete('suppliers', [V2SupplierController::class, 'destroyMultiple']);
+
+            /* Supplier Liquidations */
+            Route::get('supplier-liquidations/suppliers', [SupplierLiquidationController::class, 'getSuppliers'])->name('supplier-liquidations.suppliers');
+            Route::get('supplier-liquidations/{supplierId}/details', [SupplierLiquidationController::class, 'getDetails'])->name('supplier-liquidations.details');
+            Route::get('supplier-liquidations/{supplierId}/pdf', [SupplierLiquidationController::class, 'generatePdf'])->name('supplier-liquidations.pdf');
 
             Route::apiResource('capture-zones', V2CaptureZoneController::class);
             Route::delete('capture-zones', [V2CaptureZoneController::class, 'destroyMultiple']);
