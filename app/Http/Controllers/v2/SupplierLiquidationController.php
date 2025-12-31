@@ -306,6 +306,13 @@ class SupplierLiquidationController extends Controller
         // Importe neto total (diferencia entre calculado y declarado)
         $netAmount = $amountDifference;
         
+        // Calcular porcentaje de recepción no declarada
+        // Porcentaje = (Diferencia de Importe / Total Recepción) * 100
+        $percentageNotDeclared = 0;
+        if ($totalCalculatedAmount > 0) {
+            $percentageNotDeclared = round(($amountDifference / $totalCalculatedAmount) * 100, 2);
+        }
+        
         // Calcular totales de cebo con IVA
         $totalDispatchesBaseAmount = 0;
         $totalDispatchesIvaAmount = 0;
@@ -363,6 +370,7 @@ class SupplierLiquidationController extends Controller
                 'total_declared_with_iva' => $totalDeclaredWithIva,
                 'weight_difference' => round($weightDifference, 2),
                 'amount_difference' => round($amountDifference, 2),
+                'percentage_not_declared' => $percentageNotDeclared,
                 'net_amount' => round($netAmount, 2),
                 'has_iva_in_dispatches' => $hasIvaInDispatches,
             ],
@@ -597,6 +605,13 @@ class SupplierLiquidationController extends Controller
         // Importe neto total (diferencia entre calculado y declarado)
         $netAmount = $amountDifference;
         
+        // Calcular porcentaje de recepción no declarada
+        // Porcentaje = (Diferencia de Importe / Total Recepción) * 100
+        $percentageNotDeclared = 0;
+        if ($totalCalculatedAmount > 0) {
+            $percentageNotDeclared = round(($amountDifference / $totalCalculatedAmount) * 100, 2);
+        }
+        
         // Verificar si hay IVA en las salidas de cebo
         $hasIvaInDispatches = $totalDispatchesIvaAmount > 0;
         
@@ -617,6 +632,7 @@ class SupplierLiquidationController extends Controller
             'total_declared_with_iva' => $totalDeclaredWithIva,
             'weight_difference' => round($weightDifference, 2),
             'amount_difference' => round($amountDifference, 2),
+            'percentage_not_declared' => $percentageNotDeclared,
             'net_amount' => round($netAmount, 2),
             'has_iva_in_dispatches' => $hasIvaInDispatches,
         ];

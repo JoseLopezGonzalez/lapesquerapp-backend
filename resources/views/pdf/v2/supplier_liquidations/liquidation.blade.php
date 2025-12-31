@@ -199,17 +199,10 @@
                         @php
                             $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                             $rowIndex++;
-                            $exportTypeLabel = strtoupper($dispatch['export_type'] ?? 'facilcom');
-                            $exportTypeBg = ($exportTypeLabel === 'A3ERP') ? 'bg-blue-600' : 'bg-green-600';
                         @endphp
                         <tr class="{{ $rowClass }} font-semibold bg-orange-100">
                             <td class="p-2 py-1" colspan="5">
-                                <div class="flex items-center gap-2">
-                                    <span>Salida #{{ $dispatch['id'] }} - {{ date('d/m/Y', strtotime($dispatch['date'])) }}</span>
-                                    <span class="px-2 py-0.5 text-xs font-bold text-white rounded {{ $exportTypeBg }}">
-                                        {{ $exportTypeLabel }}
-                                    </span>
-                                </div>
+                                Salida #{{ $dispatch['id'] }} - {{ date('d/m/Y', strtotime($dispatch['date'])) }}
                             </td>
                         </tr>
 
@@ -267,9 +260,9 @@
         <div class="mt-6 border rounded-lg overflow-hidden bg-gray-50 no-break">
             <div class="font-bold p-2 bg-gray-800 w-full border-b text-white">RESUMEN GLOBAL</div>
             <div class="p-4">
-                <!-- 1. TOTAL RECEPCION -->
+                <!-- 1. TOTAL RECEPCIONES -->
                 <div class="mb-4 pb-4 border-b">
-                    <h4 class="font-bold mb-2 text-lg">TOTAL RECEPCION</h4>
+                    <h4 class="font-bold mb-2 text-lg">TOTAL RECEPCIONES</h4>
                     <p><strong>Cantidad:</strong> {{ $summary['total_receptions'] }}</p>
                     <p><strong>Peso Total:</strong> {{ number_format($summary['total_receptions_weight'], 2, ',', '.') }} kg</p>
                     <p><strong>Importe Total:</strong> {{ number_format($summary['total_receptions_amount'], 2, ',', '.') }} €</p>
@@ -293,6 +286,11 @@
                     <p><strong>Diferencia de Importe:</strong> 
                         <span class="{{ $amountDifference >= 0 ? 'text-green-600' : 'text-red-600' }}">
                             {{ number_format($amountDifference, 2, ',', '.') }} €
+                        </span>
+                    </p>
+                    <p><strong>Porcentaje No Declarado:</strong> 
+                        <span class="{{ $summary['percentage_not_declared'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                            {{ number_format($summary['percentage_not_declared'] ?? 0, 2, ',', '.') }} %
                         </span>
                     </p>
                 </div>
