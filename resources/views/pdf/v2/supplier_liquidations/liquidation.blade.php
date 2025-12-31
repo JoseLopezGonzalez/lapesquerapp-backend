@@ -326,19 +326,32 @@
                             </span>
                         </p>
                         <p class="text-xs text-gray-600 mt-1">
-                            (Total Recepción - Total Declarado - Total Salida Cebo con IVA)
+                            @if($paymentTotals['payment_method'] === 'cash')
+                                (Total Recepción - Total Declarado - Total Salida Cebo con IVA)
+                            @else
+                                (Total Recepción - Total Declarado)
+                            @endif
                         </p>
                     </div>
                     
                     <!-- Total Transferencia -->
                     <div class="mb-2">
                         <p><strong>Total Declarado (con IVA):</strong> {{ number_format($summary['total_declared_with_iva'], 2, ',', '.') }} €</p>
+                        @if($paymentTotals['payment_method'] === 'transfer')
                         <p><strong>Total Salida Cebo (con IVA):</strong> {{ number_format($summary['total_dispatches_amount'], 2, ',', '.') }} €</p>
+                        @endif
                         <p class="text-lg font-bold mt-2">
                             <strong>Total Transferencia:</strong> 
                             <span class="{{ $paymentTotals['total_transfer'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                 {{ number_format($paymentTotals['total_transfer'], 2, ',', '.') }} €
                             </span>
+                        </p>
+                        <p class="text-xs text-gray-600 mt-1">
+                            @if($paymentTotals['payment_method'] === 'transfer')
+                                (Total Declarado con IVA - Total Salida Cebo con IVA)
+                            @else
+                                (Total Declarado con IVA)
+                            @endif
                         </p>
                         
                         @if($paymentTotals['has_management_fee'] && $paymentTotals['management_fee'] > 0)
