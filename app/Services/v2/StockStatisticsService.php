@@ -11,17 +11,21 @@ class StockStatisticsService
     public static function getTotalStockStats(): array
     {
         // Filtrar solo cajas disponibles (que no han sido usadas en producción)
-        // Incluye palets registrados (status = 1) y almacenados (status = 2)
+        // IMPORTANTE: Incluye palets registrados (status = 1) Y almacenados (status = 2)
+        // Esto incluye palets registrados que aún no tienen almacén asignado
         $totalWeight = Pallet::query()
-            ->inStock()  // Incluye registered y stored
+            ->inStock()  // Incluye registered (status=1) y stored (status=2)
             ->joinBoxes()
             ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
             ->whereNull('production_inputs.id') // Solo cajas sin production_inputs
             ->sum('boxes.net_weight');
 
+        // Contar todos los palets en stock (registrados y almacenados)
+        // Incluye palets registrados sin almacén asignado
         $totalPallets = Pallet::inStock()->count();
 
-        // Contar solo cajas disponibles
+        // Contar solo cajas disponibles de palets en stock
+        // Incluye cajas de palets registrados sin almacén
         $totalBoxes = Pallet::inStock()
             ->join('pallet_boxes', 'pallet_boxes.pallet_id', '=', 'pallets.id')
             ->join('boxes', 'boxes.id', '=', 'pallet_boxes.box_id')
@@ -30,6 +34,7 @@ class StockStatisticsService
             ->count('pallet_boxes.id');
 
         // Contar especies distintas solo de cajas disponibles
+        // Incluye especies de palets registrados sin almacén
         $totalSpecies = Pallet::inStock()
             ->joinProducts()
             ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
@@ -37,7 +42,8 @@ class StockStatisticsService
             ->distinct('products.species_id')
             ->count('products.species_id');
 
-
+        // Solo contar almacenes de palets almacenados (status = 2)
+        // Los palets registrados (status = 1) no tienen almacén asignado
         $totalStores = StoredPallet::stored()
             ->distinct('stored_pallets.store_id')
             ->count('stored_pallets.store_id');
@@ -54,8 +60,9 @@ class StockStatisticsService
     public static function getSpeciesTotalsRaw(): \Illuminate\Support\Collection
     {
         // Filtrar solo cajas disponibles (que no han sido usadas en producción)
-        // Incluye palets registrados (status = 1) y almacenados (status = 2)
-        return Pallet::inStock()  // Incluye registered y stored
+        // IMPORTANTE: Incluye palets registrados (status = 1) Y almacenados (status = 2)
+        // Esto incluye palets registrados que aún no tienen almacén asignado
+        return Pallet::inStock()  // Incluye registered (status=1) y stored (status=2)
             ->joinProducts()
             ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
             ->whereNull('production_inputs.id') // Solo cajas sin production_inputs

@@ -29,7 +29,8 @@ class OrderStatisticsService
         $query = Order::query()
             ->joinBoxesAndArticles()
             ->whereBoxArticleSpecies($speciesId)
-            ->betweenLoadDates($from, $to);
+            ->betweenLoadDates($from, $to)
+            ->where('orders.status', Order::STATUS_FINISHED); // Solo pedidos terminados
 
         return Order::executeNetWeightSum($query);
     }
@@ -94,7 +95,8 @@ class OrderStatisticsService
             ->join('order_planned_product_details', 'orders.id', '=', 'order_planned_product_details.order_id')
             ->join('products', 'order_planned_product_details.product_id', '=', 'products.id')
             ->leftJoin('taxes', 'order_planned_product_details.tax_id', '=', 'taxes.id')
-            ->whereBetween('orders.load_date', [$from, $to]);
+            ->whereBetween('orders.load_date', [$from, $to])
+            ->where('orders.status', Order::STATUS_FINISHED); // Solo pedidos terminados
 
         if ($speciesId) {
             $query->where('products.species_id', $speciesId);
@@ -153,7 +155,8 @@ class OrderStatisticsService
             ->join('customers', 'orders.customer_id', '=', 'customers.id')
             ->leftJoin('countries', 'customers.country_id', '=', 'countries.id')
             ->leftJoin('taxes', 'order_planned_product_details.tax_id', '=', 'taxes.id')
-            ->whereBetween('orders.load_date', [$dateFrom, $dateTo]);
+            ->whereBetween('orders.load_date', [$dateFrom, $dateTo])
+            ->where('orders.status', Order::STATUS_FINISHED); // Solo pedidos terminados
 
         // Join articles table when grouping by product (products.id = articles.id, 1:1 relationship)
         if ($groupBy === 'product') {
@@ -226,7 +229,8 @@ class OrderStatisticsService
                 ->join('products', 'products.id', '=', 'articles.id') // products.id = articles.id (relación 1:1)
                 ->leftJoin('product_families', 'products.family_id', '=', 'product_families.id')
                 ->leftJoin('product_categories', 'product_families.category_id', '=', 'product_categories.id')
-                ->whereBetween('orders.load_date', [$dateFrom, $dateTo]);
+                ->whereBetween('orders.load_date', [$dateFrom, $dateTo])
+                ->where('orders.status', Order::STATUS_FINISHED); // Solo pedidos terminados
 
             // Aplicar filtros (usar products.species_id ya que articles no tiene species_id directamente)
             // Esto es consistente porque products.id = articles.id (relación 1:1)
@@ -249,7 +253,8 @@ class OrderStatisticsService
                 ->join('products', 'order_planned_product_details.product_id', '=', 'products.id')
                 ->leftJoin('product_families', 'products.family_id', '=', 'product_families.id')
                 ->leftJoin('product_categories', 'product_families.category_id', '=', 'product_categories.id')
-                ->whereBetween('orders.load_date', [$dateFrom, $dateTo]);
+                ->whereBetween('orders.load_date', [$dateFrom, $dateTo])
+                ->where('orders.status', Order::STATUS_FINISHED); // Solo pedidos terminados
 
             // Aplicar filtros
             if ($speciesId) {
