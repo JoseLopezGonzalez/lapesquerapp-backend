@@ -26,7 +26,7 @@ class A3ERPOrderSalesDeliveryNoteExport implements FromCollection, WithHeadings,
 
         foreach ($this->order->productDetails as $productDetail) {
             $rows[] = [
-                'CABSERIE' => 'P25',
+                'CABSERIE' => 'P',
                 'CABNUMDOC' => $this->order->id,
                 'CABFECHA' => date('d/m/Y', strtotime($this->order->load_date)),
                 'CABCODCLI' => $this->order->customer->a3erp_code,

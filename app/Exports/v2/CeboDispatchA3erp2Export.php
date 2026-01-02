@@ -144,7 +144,7 @@ class CeboDispatchA3erp2Export implements FromCollection, WithHeadings, WithMapp
                 $article = $productModel ? $productModel->article : null;
                 
                 $rows[] = [
-                    'C25', // cabSerie
+                    'C', // cabSerie
                     $ceboDispatch->id ?: '-', // id
                     $ceboDispatch->date ? date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
                     // Usar códigos de Facilcom en lugar de A3ERP

@@ -29,7 +29,7 @@ class A3ERP2OrdersSalesDeliveryNotesExport implements FromCollection, WithHeadin
             if ($order->customer && $order->customer->facilcom_code) {
                 foreach ($order->productDetails as $productDetail) {
                     $rows[] = [
-                        'CABSERIE' => 'P25',
+                        'CABSERIE' => 'P',
                         'CABNUMDOC' => $order->id,
                         'CABFECHA' => date('d/m/Y', strtotime($order->load_date)),
                         // Usar código Facilcom en lugar de A3ERP

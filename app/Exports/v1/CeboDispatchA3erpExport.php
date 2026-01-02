@@ -69,7 +69,7 @@ class CeboDispatchA3erpExport implements FromQuery, WithHeadings, WithMapping, W
         if ($ceboDispatch->export_type === 'a3erp') {
             foreach ($ceboDispatch->products as $product) {
                 $mappedProducts[] = [
-                    'cabSerie' => 'C25',
+                    'cabSerie' => 'C',
                     'id' => $ceboDispatch->id,
                     'date' => date('d/m/Y', strtotime($ceboDispatch->date)),
                     'supplierId' => $ceboDispatch->supplier->a3erp_cebo_code,

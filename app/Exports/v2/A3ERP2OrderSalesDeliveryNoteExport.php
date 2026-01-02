@@ -28,7 +28,7 @@ class A3ERP2OrderSalesDeliveryNoteExport implements FromCollection, WithHeadings
         if ($this->order->customer && $this->order->customer->facilcom_code) {
             foreach ($this->order->productDetails as $productDetail) {
                 $rows[] = [
-                    'CABSERIE' => 'P25',
+                    'CABSERIE' => 'P',
                     'CABNUMDOC' => $this->order->id,
                     'CABFECHA' => date('d/m/Y', strtotime($this->order->load_date)),
                     // Usar código Facilcom en lugar de A3ERP
