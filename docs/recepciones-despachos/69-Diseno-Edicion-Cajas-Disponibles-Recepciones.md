@@ -62,7 +62,7 @@ private function validateCanEdit(RawMaterialReception $reception): void
 - ✅ **Solo modo PALLETS**: Esta funcionalidad aplica únicamente a recepciones creadas en modo `CREATION_MODE_PALLETS`
 - ✅ **Solo mismo palet**: No se pueden mover cajas entre palets diferentes
 - ✅ **Solo cajas disponibles**: No se pueden modificar cajas que tienen `productionInputs`
-- ✅ **Solo `net_weight`**: No se pueden modificar otros campos (producto, lote, precio, etc.)
+- ✅ **Solo `net_weight` y `gs1_128`**: No se pueden modificar otros campos (producto, lote, precio, etc.). El GS1-128 puede cambiar al modificar el peso neto.
 - ✅ **Solo modificar existentes**: No se pueden crear ni eliminar cajas, solo modificar las existentes
 
 ---
@@ -150,9 +150,8 @@ if ($boxId && $existingBoxes->has($boxId)) {
     if (isset($boxData['lot']) && $boxData['lot'] != $originalBox->lot) {
         throw new \Exception("No se puede modificar el lote de la caja #{$boxId}");
     }
-    if (isset($boxData['gs1128']) && $boxData['gs1128'] != $originalBox->gs1_128) {
-        throw new \Exception("No se puede modificar el GS1-128 de la caja #{$boxId}");
-    }
+                    // ✅ NUEVO: Permitir modificar GS1-128 (puede cambiar al modificar el peso neto)
+                    // No validamos gs1128 porque puede cambiar al modificar el peso
     if (isset($boxData['grossWeight']) && $boxData['grossWeight'] != $originalBox->gross_weight) {
         throw new \Exception("No se puede modificar el peso bruto de la caja #{$boxId}");
     }
@@ -637,7 +636,7 @@ Guardar cambios
 | Crear nueva caja | Hay cajas usadas en el palet | ❌ Error |
 | Eliminar caja usada | Caja no está en request y tiene `productionInputs` | ❌ Error |
 | Eliminar palet | Palet tiene cajas usadas | ❌ Error |
-| Modificar campo distinto a `net_weight` | Cualquier campo diferente | ❌ Error |
+| Modificar campo distinto a `net_weight` y `gs1_128` | Cualquier campo diferente (excepto gs1_128) | ❌ Error |
 | Modificar precio | Precio en request diferente al original | ❌ Error |
 | Total no coincide | Diferencia > 0.01 kg | ❌ Error |
 | Total con diferencia pequeña | Diferencia ≤ 0.01 kg | ✅ Ajustar automáticamente |

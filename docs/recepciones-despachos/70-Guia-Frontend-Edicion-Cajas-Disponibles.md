@@ -93,9 +93,9 @@ Cada caja en la respuesta del API incluye información sobre su disponibilidad:
 
 ## ✅ Qué se permite hacer
 
-### 1. Modificar peso neto de cajas disponibles
+### 1. Modificar peso neto y GS1-128 de cajas disponibles
 
-**Permitido**: Cambiar el `netWeight` de cajas que tienen `isAvailable: true`
+**Permitido**: Cambiar el `netWeight` y `gs1128` de cajas que tienen `isAvailable: true`
 
 ```json
 {
@@ -103,13 +103,23 @@ Cada caja en la respuesta del API incluye información sobre su disponibilidad:
     {
       "id": 15,
       "boxes": [
-        { "id": 1, "netWeight": 30.0 },  // ← Caja disponible, se puede modificar
-        { "id": 2, "netWeight": 25.0 }   // ← Caja disponible, se puede modificar
+        { 
+          "id": 1, 
+          "netWeight": 30.0,           // ← Caja disponible, se puede modificar
+          "gs1128": "GS1-NEW-CODE-001" // ← GS1-128 también se puede modificar
+        },
+        { 
+          "id": 2, 
+          "netWeight": 25.0,           // ← Caja disponible, se puede modificar
+          "gs1128": "GS1-NEW-CODE-002" // ← GS1-128 también se puede modificar
+        }
       ]
     }
   ]
 }
 ```
+
+**Nota**: El GS1-128 puede cambiar al modificar el peso neto, por lo que se permite su modificación.
 
 ### 2. Reorganizar pesos entre cajas disponibles
 
@@ -156,14 +166,15 @@ Cada caja en la respuesta del API incluye información sobre su disponibilidad:
 }
 ```
 
-### 2. Modificar campos distintos a `netWeight`
+### 2. Modificar campos distintos a `netWeight` y `gs1128`
 
-**No permitido**: Cambiar `product`, `lot`, `gs1128`, `grossWeight` de cajas disponibles
+**No permitido**: Cambiar `product`, `lot`, `grossWeight` de cajas disponibles
+
+**Permitido**: Modificar `gs1128` (puede cambiar al modificar el peso neto)
 
 **Errores esperados**:
 - `"No se puede modificar el producto de la caja #42"`
 - `"No se puede modificar el lote de la caja #42"`
-- `"No se puede modificar el GS1-128 de la caja #42"`
 - `"No se puede modificar el peso bruto de la caja #42"`
 
 ### 3. Crear nuevas cajas cuando hay cajas usadas
@@ -250,10 +261,10 @@ El backend verifica que:
 
 ### 2. Validación de campos modificables
 
-El backend verifica que solo se modifique `netWeight`:
+El backend verifica que solo se modifiquen `netWeight` y `gs1128`:
 - `product.id` debe ser igual al original
 - `lot` debe ser igual al original
-- `gs1128` debe ser igual al original
+- `gs1128` puede modificarse (puede cambiar al modificar el peso neto)
 - `grossWeight` debe ser igual al original (tolerancia 0.01 kg)
 
 ### 3. Validación de totales
@@ -303,6 +314,13 @@ Total: 250.0 kg
 - `product`: Read-only
 - `lot`: Read-only
 - `gs1128`: Read-only
+- `grossWeight`: Read-only
+
+**Para cajas disponibles**:
+- `netWeight`: Editable ✅
+- `gs1128`: Editable ✅ (puede cambiar al modificar el peso)
+- `product`: Read-only
+- `lot`: Read-only
 - `grossWeight`: Read-only
 
 ### 3. Validación en tiempo real
@@ -607,7 +625,7 @@ if (response.status === 422 || response.status === 400) {
 | `"No se pueden crear nuevas cajas cuando hay cajas siendo usadas en producción"` | Intentaste crear una caja nueva (sin `id`) | Solo modificar cajas existentes disponibles |
 | `"No se puede eliminar la caja #X: está siendo usada en producción"` | Omitiste una caja usada del request | Incluir todas las cajas usadas en el request |
 | `"El total del producto X con lote Y ha cambiado. Diferencia: Z kg"` | Los totales no coinciden | Ajustar pesos para mantener totales iguales |
-| `"No se puede modificar el producto de la caja #X"` | Intentaste cambiar el producto | Solo modificar `netWeight` |
+| `"No se puede modificar el producto de la caja #X"` | Intentaste cambiar el producto | Solo modificar `netWeight` y `gs1128` |
 | `"No se puede eliminar el palet #X: tiene cajas siendo usadas en producción"` | Intentaste eliminar un palet con cajas usadas | Incluir el palet en el request |
 
 ---

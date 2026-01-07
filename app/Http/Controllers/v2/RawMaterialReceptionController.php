@@ -427,7 +427,7 @@ class RawMaterialReceptionController extends Controller
                         continue;
                     }
                     
-                    // ✅ NUEVO: Validar que solo se modifique net_weight
+                    // ✅ NUEVO: Validar que solo se modifiquen net_weight y gs1_128
                     // Cargar caja original para comparar
                     $originalBox = Box::find($boxId);
                     
@@ -437,15 +437,15 @@ class RawMaterialReceptionController extends Controller
                     if (isset($boxData['lot']) && $boxData['lot'] != $originalBox->lot) {
                         throw new \Exception("No se puede modificar el lote de la caja #{$boxId}");
                     }
-                    if (isset($boxData['gs1128']) && $boxData['gs1128'] != $originalBox->gs1_128) {
-                        throw new \Exception("No se puede modificar el GS1-128 de la caja #{$boxId}");
-                    }
                     if (isset($boxData['grossWeight']) && abs($boxData['grossWeight'] - $originalBox->gross_weight) > 0.01) {
                         throw new \Exception("No se puede modificar el peso bruto de la caja #{$boxId}");
                     }
                     
-                    // ✅ Solo permitir modificar net_weight
+                    // ✅ Permitir modificar net_weight y gs1_128 (el GS1-128 puede cambiar al modificar el peso)
                     $box->net_weight = $boxData['netWeight'];
+                    if (isset($boxData['gs1128'])) {
+                        $box->gs1_128 = $boxData['gs1128'];
+                    }
                     $box->save();
                     $processedBoxIds[] = $boxId;
                     
