@@ -668,18 +668,48 @@ class RawMaterialReceptionController extends Controller
         }
 
         // 6. Eliminar líneas antiguas y crear nuevas (manteniendo precios originales si hay cajas usadas)
+        // ✅ CORREGIDO: Usar $newTotals que incluye todas las cajas (disponibles + usadas)
         $reception->products()->delete();
-        foreach ($groupedByProduct as $key => $group) {
-            // ✅ NUEVO: Si hay cajas usadas, mantener el precio original
-            $price = $group['price'];
+        
+        // Recargar palets para obtener los datos actualizados después de los ajustes
+        $reception->load('pallets.boxes.box.productionInputs');
+        
+        // Recalcular totales finales desde todas las cajas (después de ajustes)
+        $finalTotals = [];
+        foreach ($reception->pallets as $pallet) {
+            foreach ($pallet->boxes as $palletBox) {
+                $box = $palletBox->box;
+                if (!$box) {
+                    continue;
+                }
+                
+                $key = "{$box->article_id}_{$box->lot}";
+                if (!isset($finalTotals[$key])) {
+                    $finalTotals[$key] = [
+                        'product_id' => $box->article_id,
+                        'lot' => $box->lot,
+                        'net_weight' => 0,
+                    ];
+                }
+                $finalTotals[$key]['net_weight'] += $box->net_weight;
+            }
+        }
+        
+        // Crear líneas de recepción con los totales finales
+        foreach ($finalTotals as $key => $total) {
+            // Obtener precio: mantener original si hay cajas usadas, sino usar del request
+            $price = null;
             if ($hasUsedBoxes && isset($originalTotals[$key])) {
                 $price = $originalTotals[$key]['price'];
+            } else {
+                // Buscar precio en el mapa de precios o del histórico
+                $price = $pricesMap[$key] ?? $this->getDefaultPrice($total['product_id'], $reception->supplier_id);
             }
             
             $reception->products()->create([
-                'product_id' => $group['product_id'],
-                'lot' => $group['lot'],
-                'net_weight' => $group['net_weight'],
+                'product_id' => $total['product_id'],
+                'lot' => $total['lot'],
+                'net_weight' => $total['net_weight'],
                 'price' => $price,
             ]);
         }
@@ -763,13 +793,41 @@ class RawMaterialReceptionController extends Controller
             }
         }
   
-        // Crear líneas de recepción agrupadas por producto y lote
-        foreach ($groupedByProduct as $group) {
+        // ✅ CORREGIDO: Recalcular totales desde todas las cajas en la BD para asegurar precisión
+        // Recargar palets para obtener todas las cajas creadas
+        $reception->load('pallets.boxes.box');
+        
+        // Recalcular totales finales desde todas las cajas
+        $finalTotals = [];
+        foreach ($reception->pallets as $pallet) {
+            foreach ($pallet->boxes as $palletBox) {
+                $box = $palletBox->box;
+                if (!$box) {
+                    continue;
+                }
+                
+                $key = "{$box->article_id}_{$box->lot}";
+                if (!isset($finalTotals[$key])) {
+                    $finalTotals[$key] = [
+                        'product_id' => $box->article_id,
+                        'lot' => $box->lot,
+                        'net_weight' => 0,
+                    ];
+                }
+                $finalTotals[$key]['net_weight'] += $box->net_weight;
+            }
+        }
+        
+        // Crear líneas de recepción con los totales finales calculados desde la BD
+        foreach ($finalTotals as $key => $total) {
+            // Obtener precio del mapa de precios o del histórico
+            $price = $pricesMap[$key] ?? $this->getDefaultPrice($total['product_id'], $reception->supplier_id);
+            
             $reception->products()->create([
-                'product_id' => $group['product_id'],
-                'lot' => $group['lot'],
-                'net_weight' => $group['net_weight'],
-                'price' => $group['price'],
+                'product_id' => $total['product_id'],
+                'lot' => $total['lot'],
+                'net_weight' => $total['net_weight'],
+                'price' => $price,
             ]);
         }
     }
