@@ -100,8 +100,10 @@ class RawMaterialReception extends Model
     /**
      * Verificar si la recepción se puede editar
      * No se puede editar si:
-     * - Alguna caja está siendo usada en producción
      * - Algún palet está vinculado a un pedido
+     * 
+     * NOTA: Ya no bloquea si hay cajas en producción.
+     * Se permite edición parcial de cajas disponibles cuando hay cajas usadas.
      */
     public function getCanEditAttribute(): bool
     {
@@ -116,12 +118,8 @@ class RawMaterialReception extends Model
                 return false;
             }
 
-            // Verificar si alguna caja está en producción
-            foreach ($pallet->boxes as $palletBox) {
-                if ($palletBox->box && $palletBox->box->productionInputs()->exists()) {
-                    return false;
-                }
-            }
+            // ✅ NUEVO: Ya no bloqueamos si hay cajas en producción
+            // La edición parcial se permitirá, pero con validaciones estrictas
         }
 
         return true;
@@ -145,13 +143,6 @@ class RawMaterialReception extends Model
             // Verificar si el palet está vinculado a un pedido
             if ($pallet->order_id !== null) {
                 return "El palet #{$pallet->id} está vinculado a un pedido";
-            }
-
-            // Verificar si alguna caja está en producción
-            foreach ($pallet->boxes as $palletBox) {
-                if ($palletBox->box && $palletBox->box->productionInputs()->exists()) {
-                    return "La caja #{$palletBox->box->id} está siendo usada en producción";
-                }
             }
         }
 

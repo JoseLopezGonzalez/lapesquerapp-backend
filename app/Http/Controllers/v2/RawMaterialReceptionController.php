@@ -263,14 +263,29 @@ class RawMaterialReceptionController extends Controller
 
     /**
      * Actualizar palets desde request (modo manual - edición)
+     * 
+     * Permite editar solo cajas disponibles cuando hay cajas usadas en producción,
+     * manteniendo los totales por producto y generales exactamente iguales.
      */
     private function updatePalletsFromRequest(RawMaterialReception $reception, array $palletsData, array $prices = []): void
     {
-        // Cargar palets existentes con sus cajas
-        $reception->load('pallets.boxes.box');
+        // Cargar palets existentes con sus cajas y productionInputs
+        $reception->load('pallets.boxes.box.productionInputs', 'products');
         $existingPallets = $reception->pallets->keyBy('id');
         $processedPalletIds = [];
         $groupedByProduct = [];
+
+        // 1. Obtener totales originales por producto+lote
+        $originalTotals = [];
+        foreach ($reception->products as $receptionProduct) {
+            $key = "{$receptionProduct->product_id}_{$receptionProduct->lot}";
+            $originalTotals[$key] = [
+                'product_id' => $receptionProduct->product_id,
+                'lot' => $receptionProduct->lot,
+                'net_weight' => $receptionProduct->net_weight,
+                'price' => $receptionProduct->price,
+            ];
+        }
 
         // Crear mapa de precios por producto+lote (compartido por todos los palets)
         $pricesMap = [];
@@ -279,6 +294,17 @@ class RawMaterialReceptionController extends Controller
             $lot = $priceData['lot'];
             $key = "{$productId}_{$lot}";
             $pricesMap[$key] = $priceData['price'];
+        }
+
+        // 2. Verificar si hay cajas usadas en algún palet
+        $hasUsedBoxes = false;
+        foreach ($reception->pallets as $pallet) {
+            foreach ($pallet->boxes as $palletBox) {
+                if ($palletBox->box && $palletBox->box->productionInputs()->exists()) {
+                    $hasUsedBoxes = true;
+                    break 2;
+                }
+            }
         }
 
         foreach ($palletsData as $palletData) {
@@ -327,9 +353,14 @@ class RawMaterialReceptionController extends Controller
                 }
                 
                 $processedPalletIds[] = $palletId;
-                // Recargar cajas del palet
-                $pallet->load('boxes.box');
+                // Recargar cajas del palet con productionInputs
+                $pallet->load('boxes.box.productionInputs');
             } else {
+                // ✅ NUEVO: Si hay cajas usadas, no permitir crear nuevos palets
+                if ($hasUsedBoxes) {
+                    throw new \Exception("No se pueden crear nuevos palets cuando hay cajas siendo usadas en producción");
+                }
+                
                 // Crear nuevo palet
                 $pallet = new Pallet();
                 $pallet->reception_id = $reception->id;
@@ -368,16 +399,76 @@ class RawMaterialReceptionController extends Controller
                 $boxLot = $boxData['lot'] ?? $this->generateLotFromReception($reception, $productId);
                 
                 if ($boxId && $existingBoxes->has($boxId)) {
-                    // Actualizar caja existente
+                    // ✅ NUEVO: Validar que la caja existe y está disponible
                     $box = $existingBoxes->get($boxId)->box;
-                    $box->article_id = $productId;
-                    $box->lot = $boxLot;
-                    $box->gs1_128 = $boxData['gs1128'];
-                    $box->gross_weight = $boxData['grossWeight'];
+                    
+                    if (!$box) {
+                        throw new \Exception("La caja #{$boxId} no existe");
+                    }
+                    
+                    // Verificar que la caja pertenece al palet
+                    $palletBox = PalletBox::where('pallet_id', $pallet->id)
+                        ->where('box_id', $boxId)
+                        ->first();
+                    if (!$palletBox) {
+                        throw new \Exception("La caja #{$boxId} no pertenece al palet #{$pallet->id}");
+                    }
+                    
+                    // ✅ NUEVO: Validar que la caja está disponible (no usada en producción)
+                    if ($box->productionInputs()->exists()) {
+                        // Si la caja está usada, verificar que no se intente modificar
+                        $originalBox = Box::find($boxId);
+                        if (abs($boxData['netWeight'] - $originalBox->net_weight) > 0.01) {
+                            throw new \Exception("No se puede modificar la caja #{$boxId}: está siendo usada en producción");
+                        }
+                        // Si el peso es el mismo, permitir que esté en el request (solo para cálculo de totales)
+                        // No la procesamos, pero la incluiremos en los totales
+                        $processedBoxIds[] = $boxId;
+                        continue;
+                    }
+                    
+                    // ✅ NUEVO: Validar que solo se modifique net_weight
+                    // Cargar caja original para comparar
+                    $originalBox = Box::find($boxId);
+                    
+                    if (isset($boxData['product']['id']) && $boxData['product']['id'] != $originalBox->article_id) {
+                        throw new \Exception("No se puede modificar el producto de la caja #{$boxId}");
+                    }
+                    if (isset($boxData['lot']) && $boxData['lot'] != $originalBox->lot) {
+                        throw new \Exception("No se puede modificar el lote de la caja #{$boxId}");
+                    }
+                    if (isset($boxData['gs1128']) && $boxData['gs1128'] != $originalBox->gs1_128) {
+                        throw new \Exception("No se puede modificar el GS1-128 de la caja #{$boxId}");
+                    }
+                    if (isset($boxData['grossWeight']) && abs($boxData['grossWeight'] - $originalBox->gross_weight) > 0.01) {
+                        throw new \Exception("No se puede modificar el peso bruto de la caja #{$boxId}");
+                    }
+                    
+                    // ✅ Solo permitir modificar net_weight
                     $box->net_weight = $boxData['netWeight'];
                     $box->save();
                     $processedBoxIds[] = $boxId;
+                    
+                    // Agrupar por producto y lote (caja disponible modificada)
+                    $key = "{$productId}_{$boxLot}";
+                    if (!isset($groupedByProduct[$key])) {
+                        // Buscar precio en el mapa de precios, si no existe buscar del histórico
+                        $price = $pricesMap[$key] ?? $this->getDefaultPrice($productId, $reception->supplier_id);
+                        
+                        $groupedByProduct[$key] = [
+                            'product_id' => $productId,
+                            'lot' => $boxLot,
+                            'net_weight' => 0,
+                            'price' => $price,
+                        ];
+                    }
+                    $groupedByProduct[$key]['net_weight'] += $box->net_weight;
                 } else {
+                    // ✅ NUEVO: Si hay cajas usadas, no permitir crear nuevas cajas
+                    if ($hasUsedBoxes) {
+                        throw new \Exception("No se pueden crear nuevas cajas cuando hay cajas siendo usadas en producción");
+                    }
+                    
                     // Crear nueva caja
                     $box = new Box();
                     $box->article_id = $productId;
@@ -392,46 +483,66 @@ class RawMaterialReceptionController extends Controller
                         'pallet_id' => $pallet->id,
                         'box_id' => $box->id,
                     ]);
-                }
-                
-                // Agrupar por producto y lote (el constraint único es reception_id + product_id + lot)
-                $key = "{$productId}_{$boxLot}";
-                if (!isset($groupedByProduct[$key])) {
-                    // Buscar precio en el mapa de precios, si no existe buscar del histórico
-                    $price = $pricesMap[$key] ?? $this->getDefaultPrice($productId, $reception->supplier_id);
                     
-                    $groupedByProduct[$key] = [
-                        'product_id' => $productId,
-                        'lot' => $boxLot,
-                        'net_weight' => 0,
-                        'price' => $price,
-                    ];
+                    // Agrupar por producto y lote (nueva caja, siempre disponible)
+                    $key = "{$productId}_{$boxLot}";
+                    if (!isset($groupedByProduct[$key])) {
+                        // Buscar precio en el mapa de precios, si no existe buscar del histórico
+                        $price = $pricesMap[$key] ?? $this->getDefaultPrice($productId, $reception->supplier_id);
+                        
+                        $groupedByProduct[$key] = [
+                            'product_id' => $productId,
+                            'lot' => $boxLot,
+                            'net_weight' => 0,
+                            'price' => $price,
+                        ];
+                    }
+                    $groupedByProduct[$key]['net_weight'] += $box->net_weight;
                 }
-                $groupedByProduct[$key]['net_weight'] += $box->net_weight;
             }
 
-            // Eliminar cajas que ya no están en el request
+            // ✅ NUEVO: Eliminar cajas que ya no están en el request (solo si están disponibles)
             $boxesToDelete = $pallet->boxes->filter(function ($palletBox) use ($processedBoxIds) {
                 return !in_array($palletBox->box_id, $processedBoxIds);
             });
             
             foreach ($boxesToDelete as $palletBox) {
-                // Eliminar caja (ya validamos que no está en producción en validateCanEdit)
+                $box = $palletBox->box;
+                
+                // ✅ NUEVO: No eliminar si está en producción
+                if ($box && $box->productionInputs()->exists()) {
+                    throw new \Exception("No se puede eliminar la caja #{$box->id}: está siendo usada en producción");
+                }
+                
+                // Eliminar caja disponible
                 $palletBox->box->delete();
                 $palletBox->delete();
             }
             
             // Recargar relación después de eliminar
             if ($boxesToDelete->isNotEmpty()) {
-                $pallet->load('boxes.box');
+                $pallet->load('boxes.box.productionInputs');
             }
         }
 
-        // Eliminar palets que ya no están en el request
+        // ✅ NUEVO: Eliminar palets que ya no están en el request (solo si no tienen cajas usadas)
         foreach ($reception->pallets as $pallet) {
             if (!in_array($pallet->id, $processedPalletIds)) {
-                // Cargar cajas del palet
-                $pallet->load('boxes.box');
+                // Cargar cajas del palet con productionInputs
+                $pallet->load('boxes.box.productionInputs');
+                
+                // ✅ NUEVO: Verificar si tiene cajas en producción
+                $hasUsedBoxesInPallet = false;
+                foreach ($pallet->boxes as $palletBox) {
+                    if ($palletBox->box && $palletBox->box->productionInputs()->exists()) {
+                        $hasUsedBoxesInPallet = true;
+                        break;
+                    }
+                }
+                
+                if ($hasUsedBoxesInPallet) {
+                    throw new \Exception("No se puede eliminar el palet #{$pallet->id}: tiene cajas siendo usadas en producción");
+                }
                 
                 // Eliminar relaciones palet-caja y cajas (usando eliminación directa de BD)
                 foreach ($pallet->boxes as $palletBox) {
@@ -443,14 +554,133 @@ class RawMaterialReceptionController extends Controller
             }
         }
 
-        // Eliminar líneas antiguas y crear nuevas
+        // 3. Calcular totales nuevos (incluyendo cajas usadas que no están en el request)
+        $newTotals = [];
+        
+        // Obtener IDs de todas las cajas procesadas (disponibles y usadas que están en el request)
+        $allProcessedBoxIds = [];
+        foreach ($palletsData as $palletData) {
+            foreach ($palletData['boxes'] as $boxData) {
+                if (isset($boxData['id'])) {
+                    $allProcessedBoxIds[] = $boxData['id'];
+                }
+            }
+        }
+        
+        // Primero sumar todas las cajas del request (solo disponibles, las usadas se incluyen después)
+        foreach ($groupedByProduct as $key => $group) {
+            $newTotals[$key] = [
+                'product_id' => $group['product_id'],
+                'lot' => $group['lot'],
+                'net_weight' => $group['net_weight'],
+            ];
+        }
+        
+        // Luego incluir cajas usadas (que no están en el request o que están pero no se modificaron)
+        foreach ($reception->pallets as $pallet) {
+            foreach ($pallet->boxes as $palletBox) {
+                $box = $palletBox->box;
+                if ($box && $box->productionInputs()->exists()) {
+                    // Incluir todas las cajas usadas (estén o no en el request, tienen el mismo peso)
+                    $key = "{$box->article_id}_{$box->lot}";
+                    if (!isset($newTotals[$key])) {
+                        $newTotals[$key] = [
+                            'product_id' => $box->article_id,
+                            'lot' => $box->lot,
+                            'net_weight' => 0,
+                        ];
+                    }
+                    $newTotals[$key]['net_weight'] += $box->net_weight;
+                }
+            }
+        }
+
+        // 4. Validar que los totales coincidan (con tolerancia de redondeos)
+        $tolerance = 0.01; // 0.01 kg de tolerancia
+        $adjustments = []; // Guardar ajustes necesarios por producto
+        
+        foreach ($originalTotals as $key => $original) {
+            if (!isset($newTotals[$key])) {
+                throw new \Exception(
+                    "El producto {$original['product_id']} con lote {$original['lot']} ya no tiene cajas. " .
+                    "No se pueden eliminar todos los productos cuando hay cajas usadas."
+                );
+            }
+            
+            $difference = $original['net_weight'] - $newTotals[$key]['net_weight'];
+            
+            if (abs($difference) > $tolerance) {
+                throw new \Exception(
+                    "El total del producto {$original['product_id']} con lote {$original['lot']} ha cambiado. " .
+                    "Original: {$original['net_weight']} kg, Nuevo: {$newTotals[$key]['net_weight']} kg, " .
+                    "Diferencia: " . abs($difference) . " kg"
+                );
+            }
+            
+            // Guardar ajuste si hay diferencia pequeña por redondeos
+            if (abs($difference) > 0 && abs($difference) <= $tolerance) {
+                $adjustments[$key] = [
+                    'product_id' => $original['product_id'],
+                    'lot' => $original['lot'],
+                    'difference' => $difference,
+                ];
+            }
+        }
+        
+        // Verificar que no haya productos nuevos que no existían antes
+        foreach ($newTotals as $key => $new) {
+            if (!isset($originalTotals[$key])) {
+                throw new \Exception(
+                    "Se ha agregado un nuevo producto {$new['product_id']} con lote {$new['lot']}. " .
+                    "No se pueden agregar nuevos productos cuando hay cajas usadas."
+                );
+            }
+        }
+
+        // 5. Ajustar automáticamente diferencias pequeñas por redondeos
+        foreach ($adjustments as $key => $adjustment) {
+            $productId = $adjustment['product_id'];
+            $lot = $adjustment['lot'];
+            $difference = $adjustment['difference'];
+            
+            // Buscar la última caja disponible del producto en el palet que se procesó
+            $lastBox = null;
+            foreach ($reception->pallets as $pallet) {
+                foreach ($pallet->boxes as $palletBox) {
+                    $box = $palletBox->box;
+                    if ($box && 
+                        $box->article_id == $productId && 
+                        $box->lot == $lot && 
+                        !$box->productionInputs()->exists()) {
+                        $lastBox = $box;
+                    }
+                }
+            }
+            
+            if ($lastBox) {
+                // Ajustar el peso de la última caja para cuadrar
+                $lastBox->net_weight += $difference;
+                $lastBox->save();
+                
+                // Actualizar el total en groupedByProduct
+                $groupedByProduct[$key]['net_weight'] += $difference;
+            }
+        }
+
+        // 6. Eliminar líneas antiguas y crear nuevas (manteniendo precios originales si hay cajas usadas)
         $reception->products()->delete();
-        foreach ($groupedByProduct as $group) {
+        foreach ($groupedByProduct as $key => $group) {
+            // ✅ NUEVO: Si hay cajas usadas, mantener el precio original
+            $price = $group['price'];
+            if ($hasUsedBoxes && isset($originalTotals[$key])) {
+                $price = $originalTotals[$key]['price'];
+            }
+            
             $reception->products()->create([
                 'product_id' => $group['product_id'],
                 'lot' => $group['lot'],
                 'net_weight' => $group['net_weight'],
-                'price' => $group['price'],
+                'price' => $price,
             ]);
         }
     }
@@ -773,6 +1003,9 @@ class RawMaterialReceptionController extends Controller
     /**
      * Validar que la recepción se puede editar
      * Lanza excepción si no se puede editar
+     * 
+     * NOTA: Ya no bloquea si hay cajas en producción.
+     * La validación de que no se modifiquen cajas usadas se hace en updatePalletsFromRequest()
      */
     private function validateCanEdit(RawMaterialReception $reception): void
     {
@@ -787,12 +1020,8 @@ class RawMaterialReceptionController extends Controller
                 throw new \Exception("No se puede modificar la recepción: el palet #{$pallet->id} está vinculado a un pedido");
             }
 
-            // Validar que las cajas no estén en producción
-            foreach ($pallet->boxes as $palletBox) {
-                if ($palletBox->box && $palletBox->box->productionInputs()->exists()) {
-                    throw new \Exception("No se puede modificar la recepción: la caja #{$palletBox->box->id} está siendo usada en producción");
-                }
-            }
+            // ✅ NUEVO: Ya no bloqueamos si hay cajas en producción
+            // La validación de que no se modifiquen cajas usadas se hará en updatePalletsFromRequest()
         }
     }
 }
