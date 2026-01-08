@@ -278,10 +278,12 @@ class PalletController extends Controller
         $updatedPallet = Pallet::find($id);
 
         //Updating Order
+        $wasUnlinked = false;
         if ($request->has('orderId')) {
 
-            if ($pallet['orderId'] == null) {
+            if ($pallet['orderId'] == null && $updatedPallet->order_id !== null) {
                 $updatedPallet->order_id = null;
+                $wasUnlinked = true;
             } else {
                 if (Order::find($pallet['orderId']) == null) {
                     return response()->json(['errors' => ['orderId' => ['El pedido no existe']]], 422);
@@ -294,6 +296,7 @@ class PalletController extends Controller
 
 
         //Updating State
+        $stateWasManuallyChanged = false;
         if ($request->has('state')) {
             //echo '$updatedPallet->status = '.$updatedPallet->status . '!= $pallet[state][id] = '.$pallet["state"]["id"];
             if ($updatedPallet->status != $pallet['state']['id']) {
@@ -304,7 +307,13 @@ class PalletController extends Controller
                     //return response()->json(['errors' => ['state' => ['El palet se encuentra en un almacen, no se puede cambiar el estado']]], 422);
                 }
                 $updatedPallet->status = $pallet['state']['id'];
+                $stateWasManuallyChanged = true;
             }
+        }
+
+        // Si se desvinculó de un pedido y no se cambió el estado manualmente, cambiar automáticamente a registrado
+        if ($wasUnlinked && !$stateWasManuallyChanged) {
+            $updatedPallet->changeToRegistered();
         }
 
         //Updating Observations

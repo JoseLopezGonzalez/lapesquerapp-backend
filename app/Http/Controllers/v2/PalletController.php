@@ -348,9 +348,11 @@ class PalletController extends Controller
             $updatedPallet = $pallet;
 
             //Updating Order
+            $wasUnlinked = false;
             if ($request->has('orderId')) {
-                if ($palletData['orderId'] == null) {
+                if ($palletData['orderId'] == null && $updatedPallet->order_id !== null) {
                     $updatedPallet->order_id = null;
+                    $wasUnlinked = true;
                 } else {
                     if (Order::find($palletData['orderId']) == null) {
                         return response()->json(['errors' => ['orderId' => ['El pedido no existe']]], 422);
@@ -361,6 +363,7 @@ class PalletController extends Controller
             }
 
             //Updating State
+            $stateWasManuallyChanged = false;
             if ($request->has('state')) {
                 if ($updatedPallet->status != $palletData['state']['id']) {
                     // UnStoring pallet if it is in a store
@@ -368,7 +371,13 @@ class PalletController extends Controller
                         $updatedPallet->unStore();
                     }
                     $updatedPallet->status = $palletData['state']['id'];
+                    $stateWasManuallyChanged = true;
                 }
+            }
+
+            // Si se desvinculó de un pedido y no se cambió el estado manualmente, cambiar automáticamente a registrado
+            if ($wasUnlinked && !$stateWasManuallyChanged) {
+                $updatedPallet->changeToRegistered();
             }
 
             //Updating Observations
@@ -859,6 +868,9 @@ class PalletController extends Controller
         // Unlink the pallet from the order
         $pallet->order_id = null;
         $pallet->save();
+
+        // Cambiar automáticamente a estado registrado cuando se desvincula de un pedido
+        $pallet->changeToRegistered();
 
         $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->first();
         return response()->json([

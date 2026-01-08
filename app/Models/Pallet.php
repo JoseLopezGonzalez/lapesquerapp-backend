@@ -126,8 +126,10 @@ class Pallet extends Model
         }
 
         // No permitir cambiar de status = 3 (enviado) a status = 1 o 2
+        // EXCEPCIÓN: Permitir cambiar a REGISTERED cuando se desvincula de un pedido (order_id pasa a null)
         if ($originalState === self::STATE_SHIPPED && $this->isDirty('status')) {
-            if (in_array($newState, [self::STATE_REGISTERED, self::STATE_STORED])) {
+            $isUnlinking = $this->isDirty('order_id') && $this->order_id === null;
+            if (in_array($newState, [self::STATE_REGISTERED, self::STATE_STORED]) && !$isUnlinking) {
                 throw new \InvalidArgumentException(
                     'No se puede cambiar un palet enviado de vuelta a registrado o almacenado. Un palet enviado no puede volver a almacén.'
                 );
