@@ -260,7 +260,7 @@ class PalletController extends Controller
             'boxes.*.gs1128' => 'required_with:boxes|string',
             'boxes.*.grossWeight' => 'required_with:boxes|numeric',
             'boxes.*.netWeight' => 'required_with:boxes|numeric',
-            'orderId' => 'sometimes|nullable|integer',
+            'orderId' => 'sometimes|nullable|integer|exists:tenant.orders,id',
         ]);
 
         //Cuidado con cambiar validación en la opcion de cambiar a enviado un palet
@@ -285,11 +285,8 @@ class PalletController extends Controller
                 $updatedPallet->order_id = null;
                 $wasUnlinked = true;
             } else {
-                if (Order::find($pallet['orderId']) == null) {
-                    return response()->json(['errors' => ['orderId' => ['El pedido no existe']]], 422);
-                } else {
-                    $updatedPallet->order_id = $pallet['orderId'];
-                }
+                // La validación ya verifica que el orderId existe si no es null
+                $updatedPallet->order_id = $pallet['orderId'];
             }
         }
 
