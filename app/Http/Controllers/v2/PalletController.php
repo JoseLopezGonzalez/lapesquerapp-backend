@@ -377,7 +377,11 @@ class PalletController extends Controller
 
             // Si se desvinculó de un pedido y no se cambió el estado manualmente, cambiar automáticamente a registrado
             if ($wasUnlinked && !$stateWasManuallyChanged) {
-                $updatedPallet->changeToRegistered();
+                if ($updatedPallet->status !== Pallet::STATE_REGISTERED) {
+                    $updatedPallet->status = Pallet::STATE_REGISTERED;
+                }
+                // Quitar almacenamiento si existe
+                $updatedPallet->unStore();
             }
 
             //Updating Observations
@@ -865,12 +869,15 @@ class PalletController extends Controller
         // Store the order ID before unlinking for the response
         $orderId = $pallet->order_id;
 
-        // Unlink the pallet from the order
+        // Unlink the pallet from the order and change to registered state in the same operation
         $pallet->order_id = null;
-        $pallet->save();
-
         // Cambiar automáticamente a estado registrado cuando se desvincula de un pedido
-        $pallet->changeToRegistered();
+        if ($pallet->status !== Pallet::STATE_REGISTERED) {
+            $pallet->status = Pallet::STATE_REGISTERED;
+        }
+        // Quitar almacenamiento si existe
+        $pallet->unStore();
+        $pallet->save();
 
         $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->first();
         return response()->json([

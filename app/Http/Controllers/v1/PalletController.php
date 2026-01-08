@@ -313,7 +313,11 @@ class PalletController extends Controller
 
         // Si se desvinculó de un pedido y no se cambió el estado manualmente, cambiar automáticamente a registrado
         if ($wasUnlinked && !$stateWasManuallyChanged) {
-            $updatedPallet->changeToRegistered();
+            if ($updatedPallet->status !== Pallet::STATE_REGISTERED) {
+                $updatedPallet->status = Pallet::STATE_REGISTERED;
+            }
+            // Quitar almacenamiento si existe
+            $updatedPallet->unStore();
         }
 
         //Updating Observations
