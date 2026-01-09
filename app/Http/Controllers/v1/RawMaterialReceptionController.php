@@ -9,6 +9,7 @@ use App\Models\RawMaterialReception;
 use App\Models\RawMaterialReceptionProduct;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class RawMaterialReceptionController extends Controller
 {
@@ -216,7 +217,33 @@ class RawMaterialReceptionController extends Controller
             ->first();
 
         if (!$reception) {
-            return response()->json(['error' => 'Reception not found'], 404);
+            // Verificar si existe alguna recepción para este proveedor
+            $receptionCount = RawMaterialReception::where('supplier_id', $validated['supplier_id'])->count();
+            
+            // Buscar la recepción más reciente para este proveedor
+            $latestReception = RawMaterialReception::where('supplier_id', $validated['supplier_id'])
+                ->orderBy('date', 'desc')
+                ->first();
+
+            $errorDetails = [
+                'error' => 'Reception not found',
+                'message' => 'No se encontró una recepción para el proveedor y fecha especificados.',
+                'search_criteria' => [
+                    'supplier_id' => $validated['supplier_id'],
+                    'date' => $validated['date'],
+                ],
+            ];
+
+            if ($receptionCount > 0) {
+                $errorDetails['hint'] = "Existen {$receptionCount} recepción(es) para este proveedor, pero ninguna en la fecha especificada.";
+                if ($latestReception) {
+                    $errorDetails['latest_reception_date'] = Carbon::parse($latestReception->date)->format('Y-m-d');
+                }
+            } else {
+                $errorDetails['hint'] = 'No existen recepciones para este proveedor.';
+            }
+
+            return response()->json($errorDetails, 404);
         }
 
         // Actualizar los valores
