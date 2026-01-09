@@ -360,4 +360,142 @@ class RawMaterialReceptionController extends Controller
         return response()->json($response, $statusCode);
     }
 
+    /**
+     * Validar y previsualizar actualización de datos declarados de múltiples recepciones
+     * Este endpoint solo valida sin hacer cambios, permitiendo al frontend mostrar preview
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function validateBulkUpdateDeclaredData(Request $request)
+    {
+        $validated = $request->validate([
+            'receptions' => 'required|array|min:1',
+            'receptions.*.supplier_id' => 'required|integer|exists:tenant.suppliers,id',
+            'receptions.*.date' => 'required|date',
+            'receptions.*.declared_total_amount' => 'nullable|numeric|min:0',
+            'receptions.*.declared_total_net_weight' => 'nullable|numeric|min:0',
+        ]);
+
+        $results = [];
+        $errors = [];
+
+        foreach ($validated['receptions'] as $receptionData) {
+            $supplierId = $receptionData['supplier_id'];
+            $date = $receptionData['date'];
+            $newDeclaredAmount = $receptionData['declared_total_amount'] ?? null;
+            $newDeclaredWeight = $receptionData['declared_total_net_weight'] ?? null;
+
+            try {
+                // Buscar la recepción
+                $reception = RawMaterialReception::where('supplier_id', $supplierId)
+                    ->whereDate('date', $date)
+                    ->with('supplier')
+                    ->first();
+
+                if (!$reception) {
+                    // Verificar si existe alguna recepción para este proveedor
+                    $receptionCount = RawMaterialReception::where('supplier_id', $supplierId)->count();
+                    
+                    // Buscar la recepción más reciente para este proveedor
+                    $latestReception = RawMaterialReception::where('supplier_id', $supplierId)
+                        ->orderBy('date', 'desc')
+                        ->first();
+
+                    $errorDetails = [
+                        'supplier_id' => $supplierId,
+                        'date' => $date,
+                        'valid' => false,
+                        'error' => 'Reception not found',
+                        'message' => 'No se encontró una recepción para el proveedor y fecha especificados.',
+                        'search_criteria' => [
+                            'supplier_id' => $supplierId,
+                            'date' => $date,
+                        ],
+                    ];
+
+                    if ($receptionCount > 0) {
+                        $errorDetails['hint'] = "Existen {$receptionCount} recepción(es) para este proveedor, pero ninguna en la fecha especificada.";
+                        if ($latestReception) {
+                            $errorDetails['latest_reception_date'] = Carbon::parse($latestReception->date)->format('Y-m-d');
+                        }
+                    } else {
+                        $errorDetails['hint'] = 'No existen recepciones para este proveedor.';
+                    }
+
+                    $errors[] = $errorDetails;
+                    continue;
+                }
+
+                // Calcular valores que tendría después de la actualización
+                $currentDeclaredAmount = $reception->declared_total_amount;
+                $currentDeclaredWeight = $reception->declared_total_net_weight;
+                
+                $finalDeclaredAmount = $newDeclaredAmount !== null ? $newDeclaredAmount : $currentDeclaredAmount;
+                $finalDeclaredWeight = $newDeclaredWeight !== null ? $newDeclaredWeight : $currentDeclaredWeight;
+
+                // Verificar si habría cambios
+                $hasChanges = ($newDeclaredAmount !== null && $currentDeclaredAmount != $newDeclaredAmount) ||
+                             ($newDeclaredWeight !== null && $currentDeclaredWeight != $newDeclaredWeight);
+
+                $results[] = [
+                    'supplier_id' => $supplierId,
+                    'date' => $date,
+                    'reception_id' => $reception->id,
+                    'valid' => true,
+                    'can_update' => true,
+                    'has_changes' => $hasChanges,
+                    'supplier_name' => $reception->supplier->name ?? null,
+                    'current_data' => [
+                        'declared_total_amount' => $currentDeclaredAmount,
+                        'declared_total_net_weight' => $currentDeclaredWeight,
+                    ],
+                    'new_data' => [
+                        'declared_total_amount' => $newDeclaredAmount,
+                        'declared_total_net_weight' => $newDeclaredWeight,
+                    ],
+                    'preview_data' => [
+                        'declared_total_amount' => $finalDeclaredAmount,
+                        'declared_total_net_weight' => $finalDeclaredWeight,
+                    ],
+                    'changes_summary' => [
+                        'amount_changed' => $newDeclaredAmount !== null && $currentDeclaredAmount != $newDeclaredAmount,
+                        'weight_changed' => $newDeclaredWeight !== null && $currentDeclaredWeight != $newDeclaredWeight,
+                        'amount_difference' => $newDeclaredAmount !== null ? ($newDeclaredAmount - ($currentDeclaredAmount ?? 0)) : 0,
+                        'weight_difference' => $newDeclaredWeight !== null ? ($newDeclaredWeight - ($currentDeclaredWeight ?? 0)) : 0,
+                    ],
+                    'message' => $hasChanges 
+                        ? 'La recepción será actualizada correctamente' 
+                        : 'La recepción ya tiene estos valores (sin cambios)',
+                ];
+            } catch (\Exception $e) {
+                $errors[] = [
+                    'supplier_id' => $supplierId,
+                    'date' => $date,
+                    'valid' => false,
+                    'error' => $e->getMessage(),
+                    'message' => 'Error al validar la recepción',
+                ];
+            }
+        }
+
+        $response = [
+            'message' => 'Validación completada',
+            'total' => count($validated['receptions']),
+            'valid' => count($results),
+            'invalid' => count($errors),
+            'ready_to_update' => count(array_filter($results, fn($r) => $r['valid'] && $r['has_changes'])),
+            'no_changes' => count(array_filter($results, fn($r) => $r['valid'] && !$r['has_changes'])),
+            'results' => $results,
+        ];
+
+        if (!empty($errors)) {
+            $response['errors_details'] = $errors;
+        }
+
+        // Si hay errores, devolver 207 Multi-Status, si todo está bien 200
+        $statusCode = empty($errors) ? 200 : 207;
+        return response()->json($response, $statusCode);
+    }
+
 }
