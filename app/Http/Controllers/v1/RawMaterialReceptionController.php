@@ -217,13 +217,8 @@ class RawMaterialReceptionController extends Controller
             ->first();
 
         if (!$reception) {
-            // Verificar si existe alguna recepción para este proveedor
-            $receptionCount = RawMaterialReception::where('supplier_id', $validated['supplier_id'])->count();
-            
-            // Buscar la recepción más reciente para este proveedor
-            $latestReception = RawMaterialReception::where('supplier_id', $validated['supplier_id'])
-                ->orderBy('date', 'desc')
-                ->first();
+            // Buscar recepciones más cercanas
+            $closestReceptions = $this->findClosestReceptions($validated['supplier_id'], $validated['date']);
 
             $errorDetails = [
                 'error' => 'Reception not found',
@@ -232,13 +227,14 @@ class RawMaterialReceptionController extends Controller
                     'supplier_id' => $validated['supplier_id'],
                     'date' => $validated['date'],
                 ],
+                'closest_receptions' => $closestReceptions,
             ];
 
-            if ($receptionCount > 0) {
-                $errorDetails['hint'] = "Existen {$receptionCount} recepción(es) para este proveedor, pero ninguna en la fecha especificada.";
-                if ($latestReception) {
-                    $errorDetails['latest_reception_date'] = Carbon::parse($latestReception->date)->format('Y-m-d');
-                }
+            // Construir mensaje de ayuda con la recepción más cercana
+            if ($closestReceptions['closest']) {
+                $closest = $closestReceptions['closest'];
+                $direction = $closest['type'] === 'previous' ? 'anterior' : 'posterior';
+                $errorDetails['hint'] = "Recepción más cercana ({$direction}): {$closest['date']} (ID: {$closest['id']}, diferencia: {$closest['days_diff']} día(s))";
             } else {
                 $errorDetails['hint'] = 'No existen recepciones para este proveedor.';
             }
@@ -285,13 +281,8 @@ class RawMaterialReceptionController extends Controller
                     ->first();
 
                 if (!$reception) {
-                    // Verificar si existe alguna recepción para este proveedor
-                    $receptionCount = RawMaterialReception::where('supplier_id', $supplierId)->count();
-                    
-                    // Buscar la recepción más reciente para este proveedor
-                    $latestReception = RawMaterialReception::where('supplier_id', $supplierId)
-                        ->orderBy('date', 'desc')
-                        ->first();
+                    // Buscar recepciones más cercanas
+                    $closestReceptions = $this->findClosestReceptions($supplierId, $date);
 
                     $errorDetails = [
                         'supplier_id' => $supplierId,
@@ -302,13 +293,14 @@ class RawMaterialReceptionController extends Controller
                             'supplier_id' => $supplierId,
                             'date' => $date,
                         ],
+                        'closest_receptions' => $closestReceptions,
                     ];
 
-                    if ($receptionCount > 0) {
-                        $errorDetails['hint'] = "Existen {$receptionCount} recepción(es) para este proveedor, pero ninguna en la fecha especificada.";
-                        if ($latestReception) {
-                            $errorDetails['latest_reception_date'] = Carbon::parse($latestReception->date)->format('Y-m-d');
-                        }
+                    // Construir mensaje de ayuda con la recepción más cercana
+                    if ($closestReceptions['closest']) {
+                        $closest = $closestReceptions['closest'];
+                        $direction = $closest['type'] === 'previous' ? 'anterior' : 'posterior';
+                        $errorDetails['hint'] = "Recepción más cercana ({$direction}): {$closest['date']} (ID: {$closest['id']}, diferencia: {$closest['days_diff']} día(s))";
                     } else {
                         $errorDetails['hint'] = 'No existen recepciones para este proveedor.';
                     }
@@ -394,13 +386,8 @@ class RawMaterialReceptionController extends Controller
                     ->first();
 
                 if (!$reception) {
-                    // Verificar si existe alguna recepción para este proveedor
-                    $receptionCount = RawMaterialReception::where('supplier_id', $supplierId)->count();
-                    
-                    // Buscar la recepción más reciente para este proveedor
-                    $latestReception = RawMaterialReception::where('supplier_id', $supplierId)
-                        ->orderBy('date', 'desc')
-                        ->first();
+                    // Buscar recepciones más cercanas
+                    $closestReceptions = $this->findClosestReceptions($supplierId, $date);
 
                     $errorDetails = [
                         'supplier_id' => $supplierId,
@@ -412,13 +399,14 @@ class RawMaterialReceptionController extends Controller
                             'supplier_id' => $supplierId,
                             'date' => $date,
                         ],
+                        'closest_receptions' => $closestReceptions,
                     ];
 
-                    if ($receptionCount > 0) {
-                        $errorDetails['hint'] = "Existen {$receptionCount} recepción(es) para este proveedor, pero ninguna en la fecha especificada.";
-                        if ($latestReception) {
-                            $errorDetails['latest_reception_date'] = Carbon::parse($latestReception->date)->format('Y-m-d');
-                        }
+                    // Construir mensaje de ayuda con la recepción más cercana
+                    if ($closestReceptions['closest']) {
+                        $closest = $closestReceptions['closest'];
+                        $direction = $closest['type'] === 'previous' ? 'anterior' : 'posterior';
+                        $errorDetails['hint'] = "Recepción más cercana ({$direction}): {$closest['date']} (ID: {$closest['id']}, diferencia: {$closest['days_diff']} día(s))";
                     } else {
                         $errorDetails['hint'] = 'No existen recepciones para este proveedor.';
                     }
@@ -496,6 +484,72 @@ class RawMaterialReceptionController extends Controller
         // Si hay errores, devolver 207 Multi-Status, si todo está bien 200
         $statusCode = empty($errors) ? 200 : 207;
         return response()->json($response, $statusCode);
+    }
+
+    /**
+     * Buscar las recepciones más cercanas (anterior y posterior) a una fecha para un proveedor
+     *
+     * @param int $supplierId
+     * @param string $date
+     * @return array
+     */
+    private function findClosestReceptions(int $supplierId, string $date): array
+    {
+        $searchDate = Carbon::parse($date);
+        
+        // Buscar recepción anterior más cercana (fecha <= fecha buscada)
+        $previousReception = RawMaterialReception::where('supplier_id', $supplierId)
+            ->whereDate('date', '<=', $searchDate)
+            ->orderBy('date', 'desc')
+            ->first();
+        
+        // Buscar recepción posterior más cercana (fecha >= fecha buscada)
+        $nextReception = RawMaterialReception::where('supplier_id', $supplierId)
+            ->whereDate('date', '>=', $searchDate)
+            ->orderBy('date', 'asc')
+            ->first();
+        
+        $closestReception = null;
+        $closestType = null;
+        
+        // Determinar cuál es la más cercana
+        if ($previousReception && $nextReception) {
+            $prevDiff = $searchDate->diffInDays(Carbon::parse($previousReception->date));
+            $nextDiff = $searchDate->diffInDays(Carbon::parse($nextReception->date));
+            
+            if ($prevDiff <= $nextDiff) {
+                $closestReception = $previousReception;
+                $closestType = 'previous';
+            } else {
+                $closestReception = $nextReception;
+                $closestType = 'next';
+            }
+        } elseif ($previousReception) {
+            $closestReception = $previousReception;
+            $closestType = 'previous';
+        } elseif ($nextReception) {
+            $closestReception = $nextReception;
+            $closestType = 'next';
+        }
+        
+        return [
+            'previous' => $previousReception ? [
+                'id' => $previousReception->id,
+                'date' => Carbon::parse($previousReception->date)->format('Y-m-d'),
+                'days_diff' => $previousReception ? $searchDate->diffInDays(Carbon::parse($previousReception->date)) : null,
+            ] : null,
+            'next' => $nextReception ? [
+                'id' => $nextReception->id,
+                'date' => Carbon::parse($nextReception->date)->format('Y-m-d'),
+                'days_diff' => $nextReception ? $searchDate->diffInDays(Carbon::parse($nextReception->date)) : null,
+            ] : null,
+            'closest' => $closestReception ? [
+                'id' => $closestReception->id,
+                'date' => Carbon::parse($closestReception->date)->format('Y-m-d'),
+                'type' => $closestType,
+                'days_diff' => $searchDate->diffInDays(Carbon::parse($closestReception->date)),
+            ] : null,
+        ];
     }
 
 }
