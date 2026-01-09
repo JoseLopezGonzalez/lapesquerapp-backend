@@ -137,6 +137,8 @@ Route::apiResource('v1/suppliers', SupplierController::class);
 Route::apiResource('v1/raw-material-receptions', RawMaterialReceptionController::class);
 /* updateDeclaredData */
 Route::post('/v1/raw-material-receptions/update-declared-data', [RawMaterialReceptionController::class, 'updateDeclaredData']);
+/* bulkUpdateDeclaredData */
+Route::post('/v1/raw-material-receptions/bulk-update-declared-data', [RawMaterialReceptionController::class, 'bulkUpdateDeclaredData']);
 
 Route::apiResource('v1/cebo-dispatches', CeboDispatchController::class);
 Route::apiResource('v1/species', SpeciesController::class);

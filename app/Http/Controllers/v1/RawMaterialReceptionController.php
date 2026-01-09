@@ -255,4 +255,109 @@ class RawMaterialReceptionController extends Controller
         return new RawMaterialReceptionResource($reception);
     }
 
+    /**
+     * Actualizar datos declarados de múltiples recepciones de forma masiva
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function bulkUpdateDeclaredData(Request $request)
+    {
+        $validated = $request->validate([
+            'receptions' => 'required|array|min:1',
+            'receptions.*.supplier_id' => 'required|integer|exists:tenant.suppliers,id',
+            'receptions.*.date' => 'required|date',
+            'receptions.*.declared_total_amount' => 'nullable|numeric|min:0',
+            'receptions.*.declared_total_net_weight' => 'nullable|numeric|min:0',
+        ]);
+
+        $results = [];
+        $errors = [];
+
+        foreach ($validated['receptions'] as $receptionData) {
+            $supplierId = $receptionData['supplier_id'];
+            $date = $receptionData['date'];
+
+            try {
+                // Buscar la recepción
+                $reception = RawMaterialReception::where('supplier_id', $supplierId)
+                    ->whereDate('date', $date)
+                    ->first();
+
+                if (!$reception) {
+                    // Verificar si existe alguna recepción para este proveedor
+                    $receptionCount = RawMaterialReception::where('supplier_id', $supplierId)->count();
+                    
+                    // Buscar la recepción más reciente para este proveedor
+                    $latestReception = RawMaterialReception::where('supplier_id', $supplierId)
+                        ->orderBy('date', 'desc')
+                        ->first();
+
+                    $errorDetails = [
+                        'supplier_id' => $supplierId,
+                        'date' => $date,
+                        'error' => 'Reception not found',
+                        'message' => 'No se encontró una recepción para el proveedor y fecha especificados.',
+                        'search_criteria' => [
+                            'supplier_id' => $supplierId,
+                            'date' => $date,
+                        ],
+                    ];
+
+                    if ($receptionCount > 0) {
+                        $errorDetails['hint'] = "Existen {$receptionCount} recepción(es) para este proveedor, pero ninguna en la fecha especificada.";
+                        if ($latestReception) {
+                            $errorDetails['latest_reception_date'] = Carbon::parse($latestReception->date)->format('Y-m-d');
+                        }
+                    } else {
+                        $errorDetails['hint'] = 'No existen recepciones para este proveedor.';
+                    }
+
+                    $errors[] = $errorDetails;
+                    continue;
+                }
+
+                // Actualizar los valores
+                $reception->update([
+                    'declared_total_amount' => $receptionData['declared_total_amount'] ?? $reception->declared_total_amount,
+                    'declared_total_net_weight' => $receptionData['declared_total_net_weight'] ?? $reception->declared_total_net_weight,
+                ]);
+
+                $results[] = [
+                    'supplier_id' => $supplierId,
+                    'date' => $date,
+                    'reception_id' => $reception->id,
+                    'status' => 'updated',
+                    'message' => 'Recepción actualizada correctamente',
+                    'updated_data' => [
+                        'declared_total_amount' => $reception->declared_total_amount,
+                        'declared_total_net_weight' => $reception->declared_total_net_weight,
+                    ],
+                ];
+            } catch (\Exception $e) {
+                $errors[] = [
+                    'supplier_id' => $supplierId,
+                    'date' => $date,
+                    'error' => $e->getMessage(),
+                    'message' => 'Error al actualizar la recepción',
+                ];
+            }
+        }
+
+        $response = [
+            'message' => 'Proceso de actualización masiva completado',
+            'total' => count($validated['receptions']),
+            'updated' => count($results),
+            'errors' => count($errors),
+            'results' => $results,
+        ];
+
+        if (!empty($errors)) {
+            $response['errors_details'] = $errors;
+        }
+
+        $statusCode = empty($errors) ? 200 : 207; // 207 Multi-Status si hay algunos errores
+        return response()->json($response, $statusCode);
+    }
+
 }
