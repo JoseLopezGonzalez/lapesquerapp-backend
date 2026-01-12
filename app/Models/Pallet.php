@@ -6,7 +6,6 @@ use App\Traits\UsesTenantConnection;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 
 
 class Pallet extends Model
@@ -664,84 +663,29 @@ class Pallet extends Model
 
     public function toArrayAssocV2()
     {
-        try {
-            Log::info('🟠 [PALLET MODEL] toArrayAssocV2 iniciado', [
-                'pallet_id' => $this->id ?? 'N/A'
-            ]);
-
-            $id = $this->id;
-            $observations = $this->observations;
-            
-            Log::info('🟠 [PALLET MODEL] toArrayAssocV2: Obteniendo stateArray');
-            $state = $this->stateArray;
-            Log::info('🟠 [PALLET MODEL] toArrayAssocV2: stateArray obtenido');
-
-            Log::info('🟠 [PALLET MODEL] toArrayAssocV2: Procesando boxesV2', [
-                'boxesV2_exists' => isset($this->boxesV2),
-                'boxesV2_count' => $this->boxesV2 ? $this->boxesV2->count() : 0
-            ]);
-
-            $boxes = [];
-            if ($this->boxesV2) {
-                $boxes = $this->boxesV2->map(function ($box) {
-                    try {
-                        if ($box) {
-                            return $box->toArrayAssocV2();
-                        }
-                        return null;
-                    } catch (\Exception $e) {
-                        Log::error('🔴 [PALLET MODEL] Error procesando box en toArrayAssocV2', [
-                            'box_id' => $box->id ?? 'N/A',
-                            'message' => $e->getMessage()
-                        ]);
-                        return null;
-                    }
-                })->filter();
-            }
-
-            Log::info('🟠 [PALLET MODEL] toArrayAssocV2: Obteniendo accessors');
-            $netWeight = $this->netWeight;
-            $productsNames = $this->productsNames;
-            $lots = $this->lots;
-            $numberOfBoxes = $this->numberOfBoxes;
-            $position = $this->positionV2;
-            $availableBoxesCount = $this->availableBoxesCount;
-            $usedBoxesCount = $this->usedBoxesCount;
-            $totalAvailableWeight = $this->totalAvailableWeight !== null ? round($this->totalAvailableWeight, 3) : null;
-            $totalUsedWeight = $this->totalUsedWeight !== null ? round($this->totalUsedWeight, 3) : null;
-
-            $result = [
-                'id' => $id,
-                'observations' => $observations,
-                'state' => $state,
-                'boxes' => $boxes,
-                'netWeight' => $netWeight,
-                'productsNames' => $productsNames,
-                'lots' => $lots,
-                'numberOfBoxes' => $numberOfBoxes,
-                'position' => $position,
-                'orderId' => $this->order_id,
-                'availableBoxesCount' => $availableBoxesCount,
-                'usedBoxesCount' => $usedBoxesCount,
-                'totalAvailableWeight' => $totalAvailableWeight,
-                'totalUsedWeight' => $totalUsedWeight,
-                'receptionId' => $this->reception_id,
-                'costPerKg' => $this->cost_per_kg !== null ? round($this->cost_per_kg, 4) : null,
-                'totalCost' => $this->total_cost !== null ? round($this->total_cost, 2) : null,
-            ];
-
-            Log::info('🟠 [PALLET MODEL] toArrayAssocV2 completado exitosamente', ['pallet_id' => $this->id ?? 'N/A']);
-            return $result;
-        } catch (\Exception $e) {
-            Log::error('🔴 [PALLET MODEL] Error en toArrayAssocV2', [
-                'pallet_id' => $this->id ?? 'N/A',
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            throw $e;
-        }
+        return [
+            'id' => $this->id,
+            'observations' => $this->observations,
+            'state' => $this->stateArray,
+            'boxes' => $this->boxesV2 ? $this->boxesV2->map(function ($box) {
+                return $box ? $box->toArrayAssocV2() : null;
+            })->filter() : [],
+            'netWeight' => $this->netWeight,
+            'productsNames' => $this->productsNames,
+            'lots' => $this->lots,
+            'numberOfBoxes' => $this->numberOfBoxes,
+            'position' => $this->positionV2,
+            'orderId' => $this->order_id,
+            // Campos calculados para cajas disponibles y usadas
+            'availableBoxesCount' => $this->availableBoxesCount,
+            'usedBoxesCount' => $this->usedBoxesCount,
+            'totalAvailableWeight' => $this->totalAvailableWeight !== null ? round($this->totalAvailableWeight, 3) : null,
+            'totalUsedWeight' => $this->totalUsedWeight !== null ? round($this->totalUsedWeight, 3) : null,
+            // Nuevos campos de recepción y coste
+            'receptionId' => $this->reception_id,
+            'costPerKg' => $this->cost_per_kg !== null ? round($this->cost_per_kg, 4) : null,
+            'totalCost' => $this->total_cost !== null ? round($this->total_cost, 2) : null,
+        ];
     }
 
 
