@@ -82,11 +82,7 @@ class Store extends Model
             'netWeightPallets' => $this->netWeightPallets,
             'totalNetWeight' => $this->totalNetWeight,
             'content' => [
-                'pallets' => $this->relationLoaded('palletsV2') && $this->palletsV2 
-                    ? $this->palletsV2->map(function ($pallet) {
-                        return $pallet->toArrayAssocV2();
-                    })
-                    : [],
+                'pallets' => [], // No incluir contenido completo en listado (solo en show/detalle)
                 'boxes' => [],
                 'bigBoxes' => [],
             ],

@@ -77,7 +77,7 @@ class StoreController extends Controller
         // Cargar la relación palletsV2 para evitar errores en toArrayAssoc()
         $query->with('palletsV2');
 
-        $perPage = $request->input('perPage', 1); // 12 Default a 10 si no se proporciona
+        $perPage = $request->input('perPage', 12); //  Default a 10 si no se proporciona
         return V2StoreResource::collection($query->paginate($perPage));
     }
 
