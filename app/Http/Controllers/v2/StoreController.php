@@ -11,6 +11,7 @@ use App\Http\Resources\v1\StoreResource;
 use App\Http\Resources\v2\StoreDetailsResource as V2StoreDetailsResource;
 use App\Http\Resources\v2\StoreResource as V2StoreResource;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class StoreController extends Controller
 {
@@ -54,33 +55,65 @@ class StoreController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Store::query();
+        try {
+            Log::info('🔵 [STORES INDEX] Inicio del método index', [
+                'request_params' => $request->all(),
+                'perPage' => $request->input('perPage', 12)
+            ]);
 
-        /* filter by id */
-        if ($request->has('id')) {
-            $query->where('id', $request->id);
+            $query = Store::query();
+            Log::info('🔵 [STORES INDEX] Query base creado');
+
+            /* filter by id */
+            if ($request->has('id')) {
+                $query->where('id', $request->id);
+                Log::info('🔵 [STORES INDEX] Filtro por id aplicado', ['id' => $request->id]);
+            }
+
+            /* filter by ids */
+            if ($request->has('ids')) {
+                $query->whereIn('id', $request->ids);
+                Log::info('🔵 [STORES INDEX] Filtro por ids aplicado', ['ids' => $request->ids]);
+            }
+
+            /* filter by name */
+            if ($request->has('name')) {
+                $query->where('name', 'like', '%' . $request->name . '%');
+                Log::info('🔵 [STORES INDEX] Filtro por name aplicado', ['name' => $request->name]);
+            }
+
+            /* ORDER */
+            $query->orderBy('name', 'asc');
+            Log::info('🔵 [STORES INDEX] Orden aplicado');
+
+            // Cargar la relación palletsV2 para evitar errores en toArrayAssoc()
+            $query->with('palletsV2');
+            Log::info('🔵 [STORES INDEX] Relación palletsV2 cargada con with()');
+
+            $perPage = $request->input('perPage', 12); // Default a 10 si no se proporciona
+            Log::info('🔵 [STORES INDEX] Antes de paginate', ['perPage' => $perPage]);
+            
+            $paginated = $query->paginate($perPage);
+            Log::info('🔵 [STORES INDEX] Paginate completado', [
+                'total' => $paginated->total(),
+                'count' => $paginated->count(),
+                'current_page' => $paginated->currentPage()
+            ]);
+
+            Log::info('🔵 [STORES INDEX] Antes de crear V2StoreResource::collection');
+            $resource = V2StoreResource::collection($paginated);
+            Log::info('🔵 [STORES INDEX] V2StoreResource::collection creado exitosamente');
+            
+            return $resource;
+        } catch (\Exception $e) {
+            Log::error('🔴 [STORES INDEX] Error en index', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
         }
-
-        /* filter by ids */
-        if ($request->has('ids')) {
-            $query->whereIn('id', $request->ids);
-        }
-
-        /* filter by name */
-        if ($request->has('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
-        }
-
-        /* ORDER */
-        $query->orderBy('name', 'asc');
-
-        // Cargar la relación palletsV2 para evitar errores en toArrayAssoc()
-        $query->with('palletsV2');
-
-        $perPage = $request->input('perPage', 12); // Default a 10 si no se proporciona
-        return V2StoreResource::collection($query->paginate($perPage));
-
-
     }
 
     /**
