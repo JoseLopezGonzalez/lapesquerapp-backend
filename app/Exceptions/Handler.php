@@ -40,9 +40,13 @@ class Handler extends ExceptionHandler
 
             // Manejar errores de validación
             if ($exception instanceof ValidationException) {
+                $errors = $exception->errors();
+                $userMessage = $this->formatValidationErrorsForUser($errors);
+                
                 return response()->json([
                     'message' => 'Error de validación.',
-                    'errors' => $exception->errors(),
+                    'userMessage' => $userMessage,
+                    'errors' => $errors, // Detalles técnicos para programadores
                 ], 422); // 422 Unprocessable Entity
             }
 
@@ -71,6 +75,256 @@ class Handler extends ExceptionHandler
         return parent::render($request, $exception);
     }
 
+
+    /**
+     * Formatea los errores de validación en un mensaje legible para el usuario
+     * 
+     * @param array $errors Array de errores de validación
+     * @return string Mensaje en lenguaje natural
+     */
+    private function formatValidationErrorsForUser(array $errors): string
+    {
+        // Agrupar errores por categoría
+        $groupedErrors = [];
+        
+        foreach ($errors as $field => $fieldErrors) {
+            $category = $this->getFieldCategory($field);
+            $errorType = $this->getErrorType($fieldErrors[0]);
+            
+            if (!isset($groupedErrors[$category])) {
+                $groupedErrors[$category] = [];
+            }
+            
+            if (!isset($groupedErrors[$category][$errorType])) {
+                $groupedErrors[$category][$errorType] = 0;
+            }
+            
+            $groupedErrors[$category][$errorType]++;
+        }
+        
+        // Generar mensajes genéricos por categoría
+        $messages = [];
+        
+        foreach ($groupedErrors as $category => $errorTypes) {
+            foreach ($errorTypes as $errorType => $count) {
+                $message = $this->getGenericErrorMessage($category, $errorType);
+                if ($message && !in_array($message, $messages)) {
+                    $messages[] = $message;
+                }
+            }
+        }
+        
+        // Si hay un solo error, devolverlo directamente
+        if (count($messages) === 1) {
+            return $messages[0];
+        }
+        
+        // Si hay múltiples errores, combinarlos
+        if (count($messages) > 1) {
+            $lastMessage = array_pop($messages);
+            return implode('. ', $messages) . ' y ' . $lastMessage;
+        }
+        
+        return 'Hay errores en los datos enviados.';
+    }
+    
+    /**
+     * Obtiene la categoría del campo (prices, details, pallets, etc.)
+     * 
+     * @param string $field Nombre del campo
+     * @return string Categoría del campo
+     */
+    private function getFieldCategory(string $field): string
+    {
+        // Campos de precios
+        if (preg_match('/^prices\./', $field)) {
+            return 'prices';
+        }
+        
+        // Campos de detalles
+        if (preg_match('/^details\./', $field)) {
+            return 'details';
+        }
+        
+        // Campos de palets
+        if (preg_match('/^pallets\./', $field)) {
+            return 'pallets';
+        }
+        
+        // Campo supplier.id
+        if (preg_match('/^supplier\.id$/', $field)) {
+            return 'supplier.id';
+        }
+        
+        // Campos simples
+        if (preg_match('/^(date|notes|declaredTotalAmount|declaredTotalNetWeight)$/', $field)) {
+            return $field;
+        }
+        
+        return 'other';
+    }
+    
+    /**
+     * Obtiene el tipo de error (required, invalid, etc.)
+     * 
+     * @param string $error Mensaje de error
+     * @return string Tipo de error
+     */
+    private function getErrorType(string $error): string
+    {
+        if (preg_match('/field is required\.?$/i', $error) || stripos($error, 'required') !== false) {
+            return 'required';
+        }
+        
+        if (preg_match('/must be (?:a|an) number\.?$/i', $error)) {
+            return 'number';
+        }
+        
+        if (preg_match('/must be (?:a|an) integer\.?$/i', $error)) {
+            return 'integer';
+        }
+        
+        if (preg_match('/must be (?:a|an) valid date\.?$/i', $error)) {
+            return 'date';
+        }
+        
+        if (preg_match('/is invalid\.?$/i', $error) || preg_match('/does not exist\.?$/i', $error)) {
+            return 'invalid';
+        }
+        
+        return 'other';
+    }
+    
+    /**
+     * Genera un mensaje genérico basado en la categoría y tipo de error
+     * 
+     * @param string $category Categoría del campo
+     * @param string $errorType Tipo de error
+     * @return string|null Mensaje genérico o null si no hay mensaje
+     */
+    private function getGenericErrorMessage(string $category, string $errorType): ?string
+    {
+        $messages = [
+            'prices' => [
+                'required' => 'Falta algún precio',
+                'number' => 'Algún precio no es válido',
+                'invalid' => 'Algún precio no es válido',
+            ],
+            'details' => [
+                'required' => 'Faltan datos en los detalles',
+                'number' => 'Algún dato en los detalles no es válido',
+                'invalid' => 'Algún dato en los detalles no es válido',
+            ],
+            'pallets' => [
+                'required' => 'Faltan datos en los palets',
+                'number' => 'Algún dato en los palets no es válido',
+                'invalid' => 'Algún dato en los palets no es válido',
+            ],
+            'supplier.id' => [
+                'required' => 'Falta el proveedor',
+                'invalid' => 'El proveedor no es válido',
+            ],
+            'date' => [
+                'required' => 'Falta la fecha',
+                'date' => 'La fecha no es válida',
+            ],
+            'notes' => [
+                'required' => 'Faltan las notas',
+            ],
+            'declaredTotalAmount' => [
+                'required' => 'Falta el importe total declarado',
+                'number' => 'El importe total declarado no es válido',
+            ],
+            'declaredTotalNetWeight' => [
+                'required' => 'Falta el peso neto total declarado',
+                'number' => 'El peso neto total declarado no es válido',
+            ],
+            'other' => [
+                'required' => 'Faltan datos obligatorios',
+                'number' => 'Algún dato no es válido',
+                'invalid' => 'Algún dato no es válido',
+                'date' => 'Alguna fecha no es válida',
+                'integer' => 'Algún dato numérico no es válido',
+            ],
+        ];
+        
+        return $messages[$category][$errorType] ?? $messages['other'][$errorType] ?? 'Hay errores en los datos enviados';
+    }
+    
+    
+    /**
+     * Traduce el mensaje de error a lenguaje natural
+     * 
+     * @param string $error Mensaje de error técnico
+     * @param string $field Nombre del campo
+     * @return string Mensaje de error en lenguaje natural
+     */
+    private function translateErrorMessage(string $error, string $field): string
+    {
+        // Patrones de mensajes de Laravel (con :attribute reemplazado)
+        // "The prices.1.price field is required." -> "Este campo es obligatorio"
+        if (preg_match('/field is required\.?$/i', $error)) {
+            return 'Este campo es obligatorio';
+        }
+        
+        // "The prices.1.price must be a number." -> "Debe ser un número"
+        if (preg_match('/must be (?:a|an) number\.?$/i', $error)) {
+            return 'Debe ser un número';
+        }
+        
+        // "The prices.1.price must be an integer." -> "Debe ser un número entero"
+        if (preg_match('/must be (?:a|an) integer\.?$/i', $error)) {
+            return 'Debe ser un número entero';
+        }
+        
+        // "The prices.1.price must be a valid date." -> "Debe ser una fecha válida"
+        if (preg_match('/must be (?:a|an) valid date\.?$/i', $error)) {
+            return 'Debe ser una fecha válida';
+        }
+        
+        // "The prices.1.price must be a string." -> "Debe ser texto"
+        if (preg_match('/must be (?:a|an) string\.?$/i', $error)) {
+            return 'Debe ser texto';
+        }
+        
+        // "The prices.1.price must be an array." -> "Debe ser una lista"
+        if (preg_match('/must be (?:a|an) array\.?$/i', $error)) {
+            return 'Debe ser una lista';
+        }
+        
+        // "The selected prices.1.price is invalid." -> "El valor seleccionado no es válido"
+        if (preg_match('/selected .+ is invalid\.?$/i', $error)) {
+            return 'El valor seleccionado no es válido';
+        }
+        
+        // "The prices.1.price does not exist." -> "No existe"
+        if (preg_match('/does not exist\.?$/i', $error)) {
+            return 'No existe';
+        }
+        
+        // "The prices.1.price must be at least :min." -> "Debe ser al menos X"
+        if (preg_match('/must be at least (.+?)\.?$/i', $error, $matches)) {
+            return 'Debe ser al menos ' . $matches[1];
+        }
+        
+        // "The prices.1.price must be greater than :min." -> "Debe ser mayor que X"
+        if (preg_match('/must be greater than (.+?)\.?$/i', $error, $matches)) {
+            return 'Debe ser mayor que ' . $matches[1];
+        }
+        
+        // "The prices.1.price must be less than :max." -> "Debe ser menor que X"
+        if (preg_match('/must be less than (.+?)\.?$/i', $error, $matches)) {
+            return 'Debe ser menor que ' . $matches[1];
+        }
+        
+        // Si el mensaje contiene "required", traducirlo
+        if (stripos($error, 'required') !== false) {
+            return 'Este campo es obligatorio';
+        }
+        
+        // Si no se puede traducir, devolver el mensaje original
+        return $error;
+    }
 
     /* public function render($request, Throwable $exception)
     {
