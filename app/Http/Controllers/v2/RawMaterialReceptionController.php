@@ -596,20 +596,27 @@ class RawMaterialReceptionController extends Controller
         }
 
         // 4. Validar que los totales coincidan (con tolerancia de redondeos)
+        // Solo validar restricciones estrictas si hay cajas usadas
         $tolerance = 0.01; // 0.01 kg de tolerancia
         $adjustments = []; // Guardar ajustes necesarios por producto
         
         foreach ($originalTotals as $key => $original) {
             if (!isset($newTotals[$key])) {
-                throw new \Exception(
-                    "El producto {$original['product_id']} con lote {$original['lot']} ya no tiene cajas. " .
-                    "No se pueden eliminar todos los productos cuando hay cajas usadas."
-                );
+                // Solo bloquear eliminación de productos si hay cajas usadas
+                if ($hasUsedBoxes) {
+                    throw new \Exception(
+                        "El producto {$original['product_id']} con lote {$original['lot']} ya no tiene cajas. " .
+                        "No se pueden eliminar todos los productos cuando hay cajas usadas."
+                    );
+                }
+                // Si no hay cajas usadas, permitir eliminar productos
+                continue;
             }
             
             $difference = $original['net_weight'] - $newTotals[$key]['net_weight'];
             
-            if (abs($difference) > $tolerance) {
+            // Solo validar que los totales coincidan exactamente si hay cajas usadas
+            if ($hasUsedBoxes && abs($difference) > $tolerance) {
                 throw new \Exception(
                     "El total del producto {$original['product_id']} con lote {$original['lot']} ha cambiado. " .
                     "Original: {$original['net_weight']} kg, Nuevo: {$newTotals[$key]['net_weight']} kg, " .
@@ -628,12 +635,15 @@ class RawMaterialReceptionController extends Controller
         }
         
         // Verificar que no haya productos nuevos que no existían antes
-        foreach ($newTotals as $key => $new) {
-            if (!isset($originalTotals[$key])) {
-                throw new \Exception(
-                    "Se ha agregado un nuevo producto {$new['product_id']} con lote {$new['lot']}. " .
-                    "No se pueden agregar nuevos productos cuando hay cajas usadas."
-                );
+        // Solo bloquear si hay cajas usadas
+        if ($hasUsedBoxes) {
+            foreach ($newTotals as $key => $new) {
+                if (!isset($originalTotals[$key])) {
+                    throw new \Exception(
+                        "Se ha agregado un nuevo producto {$new['product_id']} con lote {$new['lot']}. " .
+                        "No se pueden agregar nuevos productos cuando hay cajas usadas."
+                    );
+                }
             }
         }
 

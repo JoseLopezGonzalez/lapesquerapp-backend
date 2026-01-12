@@ -65,9 +65,13 @@ class Handler extends ExceptionHandler
             }
 
             // Manejar cualquier otra excepción como error interno del servidor
+            $errorMessage = $exception->getMessage();
+            $userMessage = $this->formatExceptionMessageForUser($errorMessage);
+            
             return response()->json([
                 'message' => 'Ocurrió un error inesperado.',
-                'error' => $exception->getMessage(),
+                'userMessage' => $userMessage,
+                'error' => $errorMessage, // Detalles técnicos para programadores
             ], 500); // 500 Internal Server Error
         }
 
@@ -324,6 +328,44 @@ class Handler extends ExceptionHandler
         
         // Si no se puede traducir, devolver el mensaje original
         return $error;
+    }
+
+    /**
+     * Formatea el mensaje de excepción genérica para el usuario
+     * 
+     * @param string $errorMessage Mensaje de error técnico
+     * @return string Mensaje en lenguaje natural
+     */
+    private function formatExceptionMessageForUser(string $errorMessage): string
+    {
+        // Mensajes comunes de excepciones del sistema
+        if (stripos($errorMessage, 'cajas usadas') !== false || stripos($errorMessage, 'cajas siendo usadas') !== false) {
+            if (stripos($errorMessage, 'agregado un nuevo producto') !== false) {
+                return 'No se pueden agregar nuevos productos cuando hay cajas usadas en producción';
+            }
+            if (stripos($errorMessage, 'eliminar todos los productos') !== false) {
+                return 'No se pueden eliminar productos cuando hay cajas usadas en producción';
+            }
+            if (stripos($errorMessage, 'crear nuevos palets') !== false) {
+                return 'No se pueden crear nuevos palets cuando hay cajas usadas en producción';
+            }
+            if (stripos($errorMessage, 'crear nuevas cajas') !== false) {
+                return 'No se pueden crear nuevas cajas cuando hay cajas usadas en producción';
+            }
+            if (stripos($errorMessage, 'eliminar el palet') !== false) {
+                return 'No se puede eliminar el palet porque tiene cajas usadas en producción';
+            }
+            if (stripos($errorMessage, 'eliminar la caja') !== false) {
+                return 'No se puede eliminar la caja porque está siendo usada en producción';
+            }
+            if (stripos($errorMessage, 'modificar la caja') !== false) {
+                return 'No se puede modificar la caja porque está siendo usada en producción';
+            }
+            return 'No se puede realizar esta operación porque hay cajas usadas en producción';
+        }
+        
+        // Si no se puede traducir, devolver el mensaje original
+        return $errorMessage;
     }
 
     /* public function render($request, Throwable $exception)
