@@ -52,7 +52,7 @@ private function validateCanEdit(RawMaterialReception $reception): void
 
 ### Principios
 
-1. **Solo editar cajas disponibles**: Permitir modificar únicamente el `net_weight` de cajas que no tienen `productionInputs`
+1. **Solo editar cajas disponibles**: Permitir modificar todos los campos de cajas que no tienen `productionInputs`
 2. **Mantener totales**: Los totales por producto y generales deben mantenerse exactamente iguales
 3. **Mismo palet**: Solo se pueden reorganizar cajas dentro del mismo palet
 4. **Ajuste automático de redondeos**: Si hay diferencias por redondeos, ajustarlas automáticamente
@@ -61,8 +61,9 @@ private function validateCanEdit(RawMaterialReception $reception): void
 
 - ✅ **Solo modo PALLETS**: Esta funcionalidad aplica únicamente a recepciones creadas en modo `CREATION_MODE_PALLETS`
 - ✅ **Solo mismo palet**: No se pueden mover cajas entre palets diferentes
-- ✅ **Solo cajas disponibles**: No se pueden modificar cajas que tienen `productionInputs`
-- ✅ **Solo `net_weight` y `gs1_128`**: No se pueden modificar otros campos (producto, lote, precio, etc.). El GS1-128 puede cambiar al modificar el peso neto.
+- ✅ **Solo cajas disponibles**: No se pueden modificar cajas que tienen `productionInputs` (están siendo usadas en producción)
+- ✅ **Todos los campos modificables en cajas disponibles**: Se pueden modificar `product_id`, `lot`, `net_weight`, `gross_weight`, `gs1_128` de cajas disponibles
+- ✅ **Ningún campo modificable en cajas usadas**: Si una caja tiene `productionInputs`, no se puede modificar ningún campo
 - ✅ **Solo modificar existentes**: No se pueden crear ni eliminar cajas, solo modificar las existentes
 
 ---
@@ -132,32 +133,51 @@ foreach ($palletData['boxes'] as $boxData) {
 }
 ```
 
-#### 2.2. Validar que no se modifiquen otros campos
+#### 2.2. Validar y actualizar campos según disponibilidad
 
-Validar que solo se modifique `net_weight`, no otros campos:
+Si la caja está disponible, permitir modificar todos los campos. Si está usada, no permitir modificar nada:
 
 ```php
 if ($boxId && $existingBoxes->has($boxId)) {
     $box = $existingBoxes->get($boxId)->box;
-    
-    // ✅ Validar que solo se modifique net_weight
     $originalBox = Box::find($boxId);
     
-    // Verificar que no se cambien otros campos
-    if (isset($boxData['product']['id']) && $boxData['product']['id'] != $originalBox->article_id) {
-        throw new \Exception("No se puede modificar el producto de la caja #{$boxId}");
-    }
-    if (isset($boxData['lot']) && $boxData['lot'] != $originalBox->lot) {
-        throw new \Exception("No se puede modificar el lote de la caja #{$boxId}");
-    }
-                    // ✅ NUEVO: Permitir modificar GS1-128 (puede cambiar al modificar el peso neto)
-                    // No validamos gs1128 porque puede cambiar al modificar el peso
-    if (isset($boxData['grossWeight']) && $boxData['grossWeight'] != $originalBox->gross_weight) {
-        throw new \Exception("No se puede modificar el peso bruto de la caja #{$boxId}");
+    // ✅ Si la caja está usada en producción, validar que no se modifique nada
+    if ($box->productionInputs()->exists()) {
+        // Validar que todos los campos sean iguales
+        if (isset($boxData['product']['id']) && $boxData['product']['id'] != $originalBox->article_id) {
+            throw new \Exception("No se puede modificar el producto de la caja #{$boxId}: está siendo usada en producción");
+        }
+        if (isset($boxData['lot']) && $boxData['lot'] != $originalBox->lot) {
+            throw new \Exception("No se puede modificar el lote de la caja #{$boxId}: está siendo usada en producción");
+        }
+        if (abs($boxData['netWeight'] - $originalBox->net_weight) > 0.01) {
+            throw new \Exception("No se puede modificar el peso neto de la caja #{$boxId}: está siendo usada en producción");
+        }
+        if (isset($boxData['grossWeight']) && abs($boxData['grossWeight'] - $originalBox->gross_weight) > 0.01) {
+            throw new \Exception("No se puede modificar el peso bruto de la caja #{$boxId}: está siendo usada en producción");
+        }
+        if (isset($boxData['gs1128']) && $boxData['gs1128'] != $originalBox->gs1_128) {
+            throw new \Exception("No se puede modificar el GS1-128 de la caja #{$boxId}: está siendo usada en producción");
+        }
+        // Si no hay cambios, continuar sin procesar
+        continue;
     }
     
-    // ✅ Solo permitir modificar net_weight
+    // ✅ Si la caja está disponible, permitir modificar todos los campos
+    if (isset($boxData['product']['id'])) {
+        $box->article_id = $boxData['product']['id'];
+    }
+    if (isset($boxData['lot'])) {
+        $box->lot = $boxData['lot'];
+    }
     $box->net_weight = $boxData['netWeight'];
+    if (isset($boxData['grossWeight'])) {
+        $box->gross_weight = $boxData['grossWeight'];
+    }
+    if (isset($boxData['gs1128'])) {
+        $box->gs1_128 = $boxData['gs1128'];
+    }
     $box->save();
 }
 ```
@@ -632,11 +652,11 @@ Guardar cambios
 
 | Validación | Condición | Acción |
 |------------|-----------|--------|
-| Modificar caja usada | `box.productionInputs()->exists()` | ❌ Error |
+| Modificar caja usada | `box.productionInputs()->exists()` y se intenta modificar cualquier campo | ❌ Error |
 | Crear nueva caja | Hay cajas usadas en el palet | ❌ Error |
 | Eliminar caja usada | Caja no está en request y tiene `productionInputs` | ❌ Error |
 | Eliminar palet | Palet tiene cajas usadas | ❌ Error |
-| Modificar campo distinto a `net_weight` y `gs1_128` | Cualquier campo diferente (excepto gs1_128) | ❌ Error |
+| Modificar cualquier campo de caja disponible | Caja no tiene `productionInputs()` | ✅ Permitido (producto, lote, peso neto, peso bruto, GS1-128) |
 | Modificar precio | Precio en request diferente al original | ❌ Error |
 | Total no coincide | Diferencia > 0.01 kg | ❌ Error |
 | Total con diferencia pequeña | Diferencia ≤ 0.01 kg | ✅ Ajustar automáticamente |
