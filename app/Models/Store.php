@@ -45,7 +45,7 @@ class Store extends Model
     //Accessor 
     public function getNetWeightPalletsAttribute()
     {
-        if (!$this->palletsV2) {
+        if (!$this->relationLoaded('palletsV2') || !$this->palletsV2) {
             return 0;
         }
         return $this->palletsV2->sum(function ($pallet) {
@@ -82,9 +82,11 @@ class Store extends Model
             'netWeightPallets' => $this->netWeightPallets,
             'totalNetWeight' => $this->totalNetWeight,
             'content' => [
-                'pallets' => $this->palletsV2->map(function ($pallet) {
-                    return $pallet->toArrayAssocV2();
-                }),
+                'pallets' => $this->relationLoaded('palletsV2') && $this->palletsV2 
+                    ? $this->palletsV2->map(function ($pallet) {
+                        return $pallet->toArrayAssocV2();
+                    })
+                    : [],
                 'boxes' => [],
                 'bigBoxes' => [],
             ],

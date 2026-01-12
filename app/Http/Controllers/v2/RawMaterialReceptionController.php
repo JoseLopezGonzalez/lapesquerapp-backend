@@ -415,37 +415,60 @@ class RawMaterialReceptionController extends Controller
                     }
                     
                     // ✅ NUEVO: Validar que la caja está disponible (no usada en producción)
+                    // Cargar caja original para comparar
+                    $originalBox = Box::find($boxId);
+                    
                     if ($box->productionInputs()->exists()) {
-                        // Si la caja está usada, verificar que no se intente modificar
-                        $originalBox = Box::find($boxId);
-                        if (abs($boxData['netWeight'] - $originalBox->net_weight) > 0.01) {
-                            throw new \Exception("No se puede modificar la caja #{$boxId}: está siendo usada en producción");
+                        // Si la caja está usada en producción, no se puede modificar NADA
+                        $hasChanges = false;
+                        $errorMessage = "No se puede modificar la caja #{$boxId}: está siendo usada en producción";
+                        
+                        if (isset($boxData['product']['id']) && $boxData['product']['id'] != $originalBox->article_id) {
+                            throw new \Exception("No se puede modificar el producto de la caja #{$boxId}: está siendo usada en producción");
                         }
-                        // Si el peso es el mismo, permitir que esté en el request (solo para cálculo de totales)
+                        if (isset($boxData['lot']) && $boxData['lot'] != $originalBox->lot) {
+                            throw new \Exception("No se puede modificar el lote de la caja #{$boxId}: está siendo usada en producción");
+                        }
+                        if (abs($boxData['netWeight'] - $originalBox->net_weight) > 0.01) {
+                            throw new \Exception("No se puede modificar el peso neto de la caja #{$boxId}: está siendo usada en producción");
+                        }
+                        if (isset($boxData['grossWeight']) && abs($boxData['grossWeight'] - $originalBox->gross_weight) > 0.01) {
+                            throw new \Exception("No se puede modificar el peso bruto de la caja #{$boxId}: está siendo usada en producción");
+                        }
+                        if (isset($boxData['gs1128']) && $boxData['gs1128'] != $originalBox->gs1_128) {
+                            throw new \Exception("No se puede modificar el GS1-128 de la caja #{$boxId}: está siendo usada en producción");
+                        }
+                        
+                        // Si no hay cambios, permitir que esté en el request (solo para cálculo de totales)
                         // No la procesamos, pero la incluiremos en los totales
                         $processedBoxIds[] = $boxId;
                         continue;
                     }
                     
-                    // ✅ NUEVO: Validar que solo se modifiquen net_weight y gs1_128
-                    // Cargar caja original para comparar
-                    $originalBox = Box::find($boxId);
-                    
-                    if (isset($boxData['product']['id']) && $boxData['product']['id'] != $originalBox->article_id) {
-                        throw new \Exception("No se puede modificar el producto de la caja #{$boxId}");
-                    }
-                    if (isset($boxData['lot']) && $boxData['lot'] != $originalBox->lot) {
-                        throw new \Exception("No se puede modificar el lote de la caja #{$boxId}");
-                    }
-                    if (isset($boxData['grossWeight']) && abs($boxData['grossWeight'] - $originalBox->gross_weight) > 0.01) {
-                        throw new \Exception("No se puede modificar el peso bruto de la caja #{$boxId}");
+                    // ✅ Si la caja NO está en producción, permitir modificar todos los campos
+                    // Actualizar producto si se proporciona
+                    if (isset($boxData['product']['id'])) {
+                        $box->article_id = $boxData['product']['id'];
                     }
                     
-                    // ✅ Permitir modificar net_weight y gs1_128 (el GS1-128 puede cambiar al modificar el peso)
+                    // Actualizar lote si se proporciona
+                    if (isset($boxData['lot'])) {
+                        $box->lot = $boxData['lot'];
+                    }
+                    
+                    // Actualizar peso neto
                     $box->net_weight = $boxData['netWeight'];
+                    
+                    // Actualizar peso bruto si se proporciona
+                    if (isset($boxData['grossWeight'])) {
+                        $box->gross_weight = $boxData['grossWeight'];
+                    }
+                    
+                    // Actualizar GS1-128 si se proporciona
                     if (isset($boxData['gs1128'])) {
                         $box->gs1_128 = $boxData['gs1128'];
                     }
+                    
                     $box->save();
                     $processedBoxIds[] = $boxId;
                     

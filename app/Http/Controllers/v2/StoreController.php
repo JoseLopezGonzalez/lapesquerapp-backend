@@ -74,6 +74,9 @@ class StoreController extends Controller
         /* ORDER */
         $query->orderBy('name', 'asc');
 
+        // Cargar la relación palletsV2 para evitar errores en toArrayAssoc()
+        $query->with('palletsV2');
+
         $perPage = $request->input('perPage', 12); // Default a 10 si no se proporciona
         return V2StoreResource::collection($query->paginate($perPage));
 
