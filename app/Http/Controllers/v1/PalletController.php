@@ -418,6 +418,14 @@ class PalletController extends Controller
     public function destroy(string $id)
     {
         $pallet = Pallet::findOrFail($id);
+        
+        // Validar que no se pueda eliminar un palet de recepción
+        if ($pallet->reception_id !== null) {
+            return response()->json([
+                'error' => 'No se puede eliminar un palet que proviene de una recepción. Elimine la recepción o modifique desde la recepción.'
+            ], 403);
+        }
+        
         $pallet->delete();
 
         return response()->json(['message' => 'Palet eliminado correctamente'], 200);

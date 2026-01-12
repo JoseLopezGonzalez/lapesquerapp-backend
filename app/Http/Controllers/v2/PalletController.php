@@ -522,9 +522,21 @@ class PalletController extends Controller
             'ids.*' => 'integer|exists:tenant.pallets,id',
         ]);
 
-        DB::transaction(function () use ($validated) {
-            $palletIds = $validated['ids'];
-            
+        $palletIds = $validated['ids'];
+        
+        // Validar que ninguno de los palets pertenezca a una recepción
+        $palletsWithReception = Pallet::whereIn('id', $palletIds)
+            ->whereNotNull('reception_id')
+            ->get();
+        
+        if ($palletsWithReception->isNotEmpty()) {
+            $palletIdsList = $palletsWithReception->pluck('id')->implode(', ');
+            return response()->json([
+                'error' => "No se pueden eliminar palets que provienen de una recepción. Los siguientes palets pertenecen a una recepción: {$palletIdsList}. Elimine la recepción o modifique desde la recepción."
+            ], 403);
+        }
+
+        DB::transaction(function () use ($palletIds) {
             // Eliminar registros relacionados primero
             StoredPallet::whereIn('pallet_id', $palletIds)->delete();
             
