@@ -660,6 +660,70 @@ class PalletController extends Controller
         ], 200);
     }
 
+    public function moveMultipleToStore(Request $request)
+    {
+        $validated = Validator::make($request->all(), [
+            'pallet_ids' => 'required|array|min:1',
+            'pallet_ids.*' => 'integer|exists:tenant.pallets,id',
+            'store_id' => 'required|integer|exists:tenant.stores,id',
+        ]);
+
+        if ($validated->fails()) {
+            return response()->json(['errors' => $validated->errors()], 422);
+        }
+
+        $palletIds = $request->input('pallet_ids');
+        $storeId = $request->input('store_id');
+
+        $movedCount = 0;
+        $errors = [];
+
+        foreach ($palletIds as $palletId) {
+            try {
+                $pallet = Pallet::findOrFail($palletId);
+
+                // Permitir mover desde almacén ghost (estado registrado) o desde almacén almacenado
+                // Si está en estado registrado, cambiar automáticamente a almacenado
+                if ($pallet->status === Pallet::STATE_REGISTERED) {
+                    // Cambiar automáticamente el estado a almacenado cuando se mueve desde el almacén ghost
+                    $pallet->status = Pallet::STATE_STORED;
+                    $pallet->save();
+                } elseif ($pallet->status !== Pallet::STATE_STORED) {
+                    // No permitir mover palets en otros estados (shipped, processed)
+                    $errors[] = [
+                        'pallet_id' => $palletId,
+                        'error' => 'El palet no está en estado almacenado o registrado'
+                    ];
+                    continue;
+                }
+
+                $storedPallet = StoredPallet::firstOrNew(['pallet_id' => $palletId]);
+                $storedPallet->store_id = $storeId;
+                $storedPallet->position = null; // ← resetea la posición al mover de almacén
+                $storedPallet->save();
+
+                $movedCount++;
+            } catch (\Exception $e) {
+                $errors[] = [
+                    'pallet_id' => $palletId,
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        $response = [
+            'message' => "Se movieron {$movedCount} palet(s) correctamente al nuevo almacén",
+            'moved_count' => $movedCount,
+            'total_count' => count($palletIds),
+        ];
+
+        if (!empty($errors)) {
+            $response['errors'] = $errors;
+        }
+
+        return response()->json($response, 200);
+    }
+
     public function unassignPosition($id)
     {
         $stored = StoredPallet::where('pallet_id', $id)->first();
