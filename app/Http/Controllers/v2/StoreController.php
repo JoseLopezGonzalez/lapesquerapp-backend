@@ -168,11 +168,11 @@ class StoreController extends Controller
     /* Options */
     public function options()
     {
-        $store = Store::select('id', 'name')
-            ->orderBy('id')
+        $stores = Store::select('id', 'name')
+            ->orderBy('name', 'asc')
             ->get();
 
-        return response()->json($store);
+        return response()->json($stores);
     }
 
 

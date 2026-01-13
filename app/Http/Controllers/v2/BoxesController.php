@@ -154,8 +154,9 @@ class BoxesController extends Controller
 
         /* stores - Filtro por almacén donde está el pallet */
         if ($request->has('stores')) {
-            $query->whereHas('palletBox.pallet.storedPallet', function ($query) use ($request) {
-                $query->whereIn('store_id', $request->stores);
+            $stores = is_array($request->stores) ? $request->stores : explode(',', $request->stores);
+            $query->whereHas('palletBox.pallet.storedPallet', function ($query) use ($stores) {
+                $query->whereIn('store_id', $stores);
             });
         }
 
@@ -257,6 +258,14 @@ class BoxesController extends Controller
         if ($request->has('onlyStored') && $request->onlyStored === 'true') {
             $query->whereHas('palletBox.pallet', function ($q) {
                 $q->where('status', \App\Models\Pallet::STATE_STORED);
+            });
+        }
+
+        /* stores - Filtro por almacén donde está el pallet */
+        if ($request->has('stores')) {
+            $stores = is_array($request->stores) ? $request->stores : explode(',', $request->stores);
+            $query->whereHas('palletBox.pallet.storedPallet', function ($q) use ($stores) {
+                $q->whereIn('store_id', $stores);
             });
         }
 
