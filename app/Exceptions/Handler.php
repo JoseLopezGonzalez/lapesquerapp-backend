@@ -66,7 +66,7 @@ class Handler extends ExceptionHandler
 
             // Manejar cualquier otra excepción como error interno del servidor
             $errorMessage = $exception->getMessage();
-            $userMessage = $this->formatExceptionMessageForUser($errorMessage);
+            $userMessage = $this->formatExceptionMessageForUser($errorMessage, $request);
             
             return response()->json([
                 'message' => 'Ocurrió un error inesperado.',
@@ -334,10 +334,75 @@ class Handler extends ExceptionHandler
      * Formatea el mensaje de excepción genérica para el usuario
      * 
      * @param string $errorMessage Mensaje de error técnico
+     * @param \Illuminate\Http\Request|null $request Request para obtener contexto
      * @return string Mensaje en lenguaje natural
      */
-    private function formatExceptionMessageForUser(string $errorMessage): string
+    private function formatExceptionMessageForUser(string $errorMessage, $request = null): string
     {
+        // Detectar si es una recepción de tipo líneas (modo automático)
+        if (stripos($errorMessage, 'RECEPTION_LINES_MODE:') !== false) {
+            if (stripos($errorMessage, 'modificar la recepción') !== false) {
+                return 'No se puede modificar la recepción porque hay materia prima siendo usada en producción';
+            }
+            // Extraer el mensaje después del prefijo
+            $message = trim(str_ireplace('RECEPTION_LINES_MODE:', '', $errorMessage));
+            return $message ?: 'No se puede modificar la recepción porque hay materia prima siendo usada en producción';
+        }
+        
+        // Detectar violaciones de clave foránea relacionadas con cajas y producción
+        if (stripos($errorMessage, 'Integrity constraint violation') !== false || 
+            stripos($errorMessage, 'foreign key constraint fails') !== false) {
+            
+            // Detectar si es una violación relacionada con boxes y production_inputs
+            if (stripos($errorMessage, 'production_inputs') !== false && 
+                stripos($errorMessage, 'boxes') !== false) {
+                
+                // Verificar si el error viene de una recepción de materia prima
+                $isReceptionContext = $request && (
+                    $request->is('api/v2/raw-material-receptions/*') || 
+                    $request->is('api/v1/raw-material-receptions/*')
+                );
+                
+                if ($isReceptionContext) {
+                    // Intentar obtener el ID de la recepción de la ruta
+                    $receptionId = null;
+                    if ($request->route('raw_material_reception')) {
+                        $receptionId = $request->route('raw_material_reception');
+                    } elseif (preg_match('/raw-material-receptions\/(\d+)/', $request->path(), $matches)) {
+                        $receptionId = $matches[1];
+                    }
+                    
+                    // Si tenemos el ID, verificar el tipo de recepción
+                    if ($receptionId) {
+                        try {
+                            $reception = \App\Models\RawMaterialReception::find($receptionId);
+                            if ($reception && $reception->creation_mode === \App\Models\RawMaterialReception::CREATION_MODE_LINES) {
+                                return 'No se puede modificar la recepción porque hay materia prima siendo usada en producción';
+                            }
+                        } catch (\Exception $e) {
+                            // Si falla la consulta, continuar con el mensaje genérico
+                        }
+                    }
+                    
+                    // Si es contexto de recepción pero no sabemos el tipo, usar mensaje genérico
+                    return 'No se puede modificar la recepción porque hay materia prima siendo usada en producción';
+                }
+                
+                // Si no es contexto de recepción, usar mensaje específico de cajas
+                // Intentar extraer el ID de la caja si está en el mensaje
+                if (preg_match('/where `id` = (\d+)/i', $errorMessage, $matches)) {
+                    $boxId = $matches[1];
+                    return "No se puede eliminar la caja #{$boxId} porque está siendo usada en producción";
+                }
+                return 'No se puede eliminar la caja porque está siendo usada en producción';
+            }
+            
+            // Otras violaciones de clave foránea genéricas
+            if (stripos($errorMessage, 'Cannot delete or update a parent row') !== false) {
+                return 'No se puede realizar esta operación porque hay datos relacionados que dependen de este registro';
+            }
+        }
+        
         // Mensajes comunes de excepciones del sistema
         if (stripos($errorMessage, 'cajas usadas') !== false || stripos($errorMessage, 'cajas siendo usadas') !== false) {
             if (stripos($errorMessage, 'agregado un nuevo producto') !== false) {

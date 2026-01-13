@@ -888,6 +888,14 @@ class RawMaterialReceptionController extends Controller
             $pallet->observations = "Auto-generado desde recepción #{$reception->id}";
             $pallet->save();
             
+            // ✅ NUEVO: Verificar si hay cajas en producción antes de eliminar
+            $pallet->load('boxes.box.productionInputs');
+            foreach ($pallet->boxes as $palletBox) {
+                if ($palletBox->box && $palletBox->box->productionInputs()->exists()) {
+                    throw new \Exception("RECEPTION_LINES_MODE: No se puede modificar la recepción porque hay materia prima siendo usada en producción");
+                }
+            }
+            
             // Eliminar cajas existentes (se recrearán según los nuevos detalles)
             foreach ($pallet->boxes as $palletBox) {
                 // Usar eliminación directa de BD para evitar el evento deleting
