@@ -962,6 +962,79 @@ class PalletController extends Controller
     }
 
     /**
+     * Unlink multiple pallets from their associated orders
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function unlinkOrders(Request $request)
+    {
+        $validated = $request->validate([
+            'pallet_ids' => 'required|array|min:1',
+            'pallet_ids.*' => 'required|integer|exists:tenant.pallets,id',
+        ]);
+
+        $results = [];
+        $errors = [];
+
+        foreach ($validated['pallet_ids'] as $palletId) {
+            try {
+                $pallet = Pallet::findOrFail($palletId);
+
+                // Check if pallet is already unlinked from any order
+                if (!$pallet->order_id) {
+                    $results[] = [
+                        'pallet_id' => $palletId,
+                        'status' => 'already_unlinked',
+                        'message' => 'El palet ya no está asociado a ninguna orden'
+                    ];
+                    continue;
+                }
+
+                // Store the order ID before unlinking for the response
+                $orderId = $pallet->order_id;
+
+                // Unlink the pallet from the order and change to registered state in the same operation
+                $pallet->order_id = null;
+                // Cambiar automáticamente a estado registrado cuando se desvincula de un pedido
+                if ($pallet->status !== Pallet::STATE_REGISTERED) {
+                    $pallet->status = Pallet::STATE_REGISTERED;
+                }
+                // Quitar almacenamiento si existe
+                $pallet->unStore();
+                $pallet->save();
+
+                $results[] = [
+                    'pallet_id' => $palletId,
+                    'order_id' => $orderId,
+                    'status' => 'unlinked',
+                    'message' => 'Palet desvinculado correctamente'
+                ];
+            } catch (\Exception $e) {
+                $errors[] = [
+                    'pallet_id' => $palletId,
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        $response = [
+            'message' => 'Proceso de desvinculación completado',
+            'unlinked' => count(array_filter($results, fn($r) => $r['status'] === 'unlinked')),
+            'already_unlinked' => count(array_filter($results, fn($r) => $r['status'] === 'already_unlinked')),
+            'errors' => count($errors),
+            'results' => $results,
+        ];
+
+        if (!empty($errors)) {
+            $response['errors_details'] = $errors;
+        }
+
+        $statusCode = empty($errors) ? 200 : 207; // 207 Multi-Status si hay algunos errores
+        return response()->json($response, $statusCode);
+    }
+
+    /**
      * Obtener palets registrados como si fuera un almacén
      * Retorna un formato similar a StoreDetailsResource para mantener consistencia
      */

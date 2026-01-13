@@ -336,6 +336,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::post('/pallets/{id}/link-order', [V2PalletController::class, 'linkOrder']);
             Route::post('/pallets/link-orders', [V2PalletController::class, 'linkOrders']);
             Route::post('/pallets/{id}/unlink-order', [V2PalletController::class, 'unlinkOrder']);
+            Route::post('/pallets/unlink-orders', [V2PalletController::class, 'unlinkOrders']);
 
 
 
