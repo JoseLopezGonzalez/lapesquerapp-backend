@@ -131,13 +131,17 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
         
         $rows = [];
 
+        // Obtener año de 2 dígitos basado en la fecha de recepción
+        $year = $reception->date ? date('y', strtotime($reception->date)) : '25';
+        $serie = 'RE' . $year;
+
         // Agregar productos regulares
         foreach ($reception->products as $product) {
             $productModel = $product->product;
             $article = $productModel ? $productModel->article : null;
             
             $rows[] = [
-                'RE25', // cabSerie - usando C25 para recepciones de materia prima
+                $serie, // cabSerie - usando RE + año para recepciones de materia prima
                 $reception->id ?: '-', // id
                 $reception->date ? date('d/m/Y', strtotime($reception->date)) : '-',
                 $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
@@ -152,7 +156,7 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
         // Caso especial PULPO FRESCO LONJA (si existe)
         if ($reception->declared_total_amount > 0 && $reception->declared_total_net_weight > 0) {
             $rows[] = [
-                'RE25', // cabSerie
+                $serie, // cabSerie
                 $reception->id ?: '-', // id
                 $reception->date ? date('d/m/Y', strtotime($reception->date)) : '-',
                 $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',

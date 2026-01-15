@@ -24,9 +24,13 @@ class A3ERPOrderSalesDeliveryNoteExport implements FromCollection, WithHeadings,
     {
         $rows = [];
 
+        // Obtener año de 2 dígitos basado en la fecha del pedido
+        $year = date('y', strtotime($this->order->load_date));
+        $serie = 'P' . $year;
+
         foreach ($this->order->productDetails as $productDetail) {
             $rows[] = [
-                'CABSERIE' => 'P',
+                'CABSERIE' => $serie,
                 'CABNUMDOC' => $this->order->id,
                 'CABFECHA' => date('d/m/Y', strtotime($this->order->load_date)),
                 'CABCODCLI' => $this->order->customer->a3erp_code,

@@ -67,9 +67,13 @@ class CeboDispatchA3erpExport implements FromQuery, WithHeadings, WithMapping, W
         $mappedProducts = [];
 
         if ($ceboDispatch->export_type === 'a3erp') {
+            // Obtener año de 2 dígitos basado en la fecha del despacho
+            $year = $ceboDispatch->date ? date('y', strtotime($ceboDispatch->date)) : '25';
+            $serie = 'C' . $year;
+
             foreach ($ceboDispatch->products as $product) {
                 $mappedProducts[] = [
-                    'cabSerie' => 'C',
+                    'cabSerie' => $serie,
                     'id' => $ceboDispatch->id,
                     'date' => date('d/m/Y', strtotime($ceboDispatch->date)),
                     'supplierId' => $ceboDispatch->supplier->a3erp_cebo_code,

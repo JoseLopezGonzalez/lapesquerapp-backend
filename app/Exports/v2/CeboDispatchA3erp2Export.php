@@ -139,12 +139,16 @@ class CeboDispatchA3erp2Export implements FromCollection, WithHeadings, WithMapp
 
         // Solo procesar si el tipo de exportación es facilcom (doble verificación)
         if ($ceboDispatch->export_type == 'facilcom') {
+            // Obtener año de 2 dígitos basado en la fecha del despacho
+            $year = $ceboDispatch->date ? date('y', strtotime($ceboDispatch->date)) : '25';
+            $serie = 'C' . $year;
+
             foreach ($ceboDispatch->products as $product) {
                 $productModel = $product->product;
                 $article = $productModel ? $productModel->article : null;
                 
                 $rows[] = [
-                    'C', // cabSerie
+                    $serie, // cabSerie
                     $ceboDispatch->id ?: '-', // id
                     $ceboDispatch->date ? date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
                     // Usar códigos de Facilcom en lugar de A3ERP
