@@ -114,7 +114,6 @@ class PunchController extends Controller
             'uid' => 'nullable|string|required_without:employee_id',
             'employee_id' => 'nullable|integer|exists:tenant.employees,id|required_without:uid',
             'device_id' => 'required|string',
-            'timestamp' => 'nullable|date',
         ], [
             'uid.required_without' => 'Debe proporcionar uid o employee_id.',
             'employee_id.required_without' => 'Debe proporcionar uid o employee_id.',
@@ -136,10 +135,8 @@ class PunchController extends Controller
             ], 404);
         }
 
-        // Usar timestamp proporcionado o la hora actual del servidor
-        $timestamp = $validated['timestamp'] 
-            ? Carbon::parse($validated['timestamp'])
-            : now();
+        // Usar siempre la hora actual del servidor
+        $timestamp = now();
 
         // Determinar el tipo de evento basándose en el último evento
         $eventType = $this->determineEventType($employee, $timestamp);
