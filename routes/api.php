@@ -83,6 +83,8 @@ use App\Http\Controllers\v2\ProductionController as V2ProductionController;
 use App\Http\Controllers\v2\ProductionRecordController;
 use App\Http\Controllers\v2\ProductionInputController;
 use App\Http\Controllers\v2\ProductionOutputController;
+use App\Http\Controllers\v2\PunchController;
+use App\Http\Controllers\v2\EmployeeController;
 use App\Http\Controllers\v2\ProductionOutputConsumptionController;
 
 /*
@@ -272,6 +274,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
     Route::get('me', [V2AuthController::class, 'me'])->middleware('auth:sanctum')->name('v2.me');
     Route::get('/customers/op', [V2CustomerController::class, 'options']);
 
+    // Fichajes (público - para dispositivos NFC)
+    Route::post('punches', [PunchController::class, 'store'])->name('v2.punches.store');
 
     // Rutas protegidas por Sanctum
     Route::middleware(['auth:sanctum'])->group(function () {
@@ -311,6 +315,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
             Route::get('/customers/options', [V2CustomerController::class, 'options']);
             Route::get('/salespeople/options', [V2SalespersonController::class, 'options']);
+            Route::get('/employees/options', [EmployeeController::class, 'options']);
             Route::get('/transports/options', [V2TransportController::class, 'options']);
             Route::get('/incoterms/options', [V2IncotermController::class, 'options']);
             Route::get('/suppliers/options', [V2SupplierController::class, 'options']);
@@ -373,6 +378,10 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::post('pallets/update-state', [V2PalletController::class, 'bulkUpdateState'])->name('pallets.bulk_update_state')->middleware(['role:superuser,manager,admin']);
 
             /* Controladores Genericos */
+            Route::apiResource('employees', EmployeeController::class);
+            Route::delete('employees', [EmployeeController::class, 'destroyMultiple']);
+            Route::apiResource('punches', PunchController::class)->except(['store']);
+            Route::delete('punches', [PunchController::class, 'destroyMultiple']);
             Route::apiResource('orders', V2OrderController::class);
             Route::delete('orders', [V2OrderController::class, 'destroyMultiple']);
             Route::apiResource('order-planned-product-details', OrderPlannedProductDetailController::class);

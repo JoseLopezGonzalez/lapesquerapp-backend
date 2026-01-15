@@ -1,0 +1,38 @@
+<?php
+
+namespace App\Models;
+
+use App\Traits\UsesTenantConnection;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class PunchEvent extends Model
+{
+    use UsesTenantConnection;
+    use HasFactory;
+
+    const TYPE_IN = 'IN';
+    const TYPE_OUT = 'OUT';
+
+    protected $fillable = [
+        'employee_id',
+        'event_type',
+        'device_id',
+        'timestamp',
+    ];
+
+    protected $casts = [
+        'timestamp' => 'datetime',
+    ];
+
+    /**
+     * Relación con el empleado.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class);
+    }
+}
+
