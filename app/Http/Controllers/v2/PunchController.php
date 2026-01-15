@@ -112,7 +112,7 @@ class PunchController extends Controller
     {
         $validated = $request->validate([
             'uid' => 'nullable|string|required_without:employee_id',
-            'employee_id' => 'nullable|integer|exists:employees,id|required_without:uid',
+            'employee_id' => 'nullable|integer|exists:tenant.employees,id|required_without:uid',
             'device_id' => 'required|string',
             'timestamp' => 'nullable|date',
         ], [
@@ -223,7 +223,7 @@ class PunchController extends Controller
     {
         $validated = $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'integer|exists:punch_events,id',
+            'ids.*' => 'integer|exists:tenant.punch_events,id',
         ], [
             'ids.required' => 'Debe proporcionar un array de IDs.',
             'ids.array' => 'Los IDs deben ser un array.',

@@ -94,7 +94,7 @@ class EmployeeController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'nfc_uid' => 'required|string|unique:employees,nfc_uid',
+            'nfc_uid' => 'required|string|unique:tenant.employees,nfc_uid',
         ], [
             'name.required' => 'El nombre es obligatorio.',
             'nfc_uid.required' => 'El UID NFC es obligatorio.',
@@ -118,7 +118,7 @@ class EmployeeController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
-            'nfc_uid' => 'sometimes|required|string|unique:employees,nfc_uid,' . $id,
+            'nfc_uid' => 'sometimes|required|string|unique:tenant.employees,nfc_uid,' . $id,
         ], [
             'name.required' => 'El nombre es obligatorio.',
             'nfc_uid.required' => 'El UID NFC es obligatorio.',
@@ -153,7 +153,7 @@ class EmployeeController extends Controller
     {
         $validated = $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'integer|exists:employees,id',
+            'ids.*' => 'integer|exists:tenant.employees,id',
         ], [
             'ids.required' => 'Debe proporcionar un array de IDs.',
             'ids.array' => 'Los IDs deben ser un array.',
