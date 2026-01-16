@@ -54,6 +54,7 @@ class PunchController extends Controller
         }
 
         // Filtro por rango de fechas (date_start y date_end)
+        // Carbon::parse() usa automáticamente la zona horaria configurada en config/app.php
         if ($request->has('date_start')) {
             $dateStart = Carbon::parse($request->date_start)->startOfDay();
             $query->where('timestamp', '>=', $dateStart);
