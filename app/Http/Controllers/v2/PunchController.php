@@ -273,14 +273,14 @@ class PunchController extends Controller
         // Obtener todos los empleados
         $allEmployees = Employee::all();
 
-        // Obtener todos los eventos del día
+        // Obtener todos los eventos del día ordenados por timestamp ascendente (para cálculos)
         $todayEvents = PunchEvent::whereBetween('timestamp', [$date, $dateEnd])
             ->with('employee')
-            ->orderBy('timestamp', 'desc')
-            ->get();
+            ->orderBy('timestamp', 'asc')
+            ->get()
+            ->groupBy('employee_id');
 
         // Obtener último evento de cada empleado en una sola consulta optimizada
-        // Usar subconsulta para obtener el último timestamp de cada empleado
         $employeeIds = $allEmployees->pluck('id');
         
         if ($employeeIds->isEmpty()) {
@@ -308,24 +308,23 @@ class PunchController extends Controller
                 ->keyBy('employee_id');
         }
 
-        // Trabajadores activos (último evento es IN)
+        // Procesar todos los empleados
+        $allEmployeesData = [];
         $workingEmployees = [];
         $totalEntriesToday = 0;
         $totalExitsToday = 0;
         $entriesByDevice = [];
 
         foreach ($allEmployees as $employee) {
-            // Obtener último evento del empleado desde la colección optimizada
+            // Obtener último evento del empleado
             $lastEventData = $lastEventsByEmployee->get($employee->id);
-
-            // Si el último evento es IN, está trabajando
-            $isWorking = $lastEventData && $lastEventData->event_type === PunchEvent::TYPE_IN;
-
-            // Eventos del día del empleado
-            $employeeTodayEvents = $todayEvents->where('employee_id', $employee->id);
+            
+            // Eventos del día del empleado (ordenados por timestamp)
+            $employeeTodayEvents = $todayEvents->get($employee->id, collect())->sortBy('timestamp')->values();
+            
             $todayEntries = $employeeTodayEvents->where('event_type', PunchEvent::TYPE_IN);
             $todayExits = $employeeTodayEvents->where('event_type', PunchEvent::TYPE_OUT);
-
+            
             $todayEntriesCount = $todayEntries->count();
             $todayExitsCount = $todayExits->count();
             $totalEntriesToday += $todayEntriesCount;
@@ -337,68 +336,142 @@ class PunchController extends Controller
                 $entriesByDevice[$deviceId] = ($entriesByDevice[$deviceId] ?? 0) + 1;
             }
 
-            if ($isWorking) {
-                $entryTimestamp = $lastEventData->timestamp;
-                $workingMinutes = now()->diffInMinutes($entryTimestamp);
-                $workingHours = round($workingMinutes / 60, 2);
-                
-                // Calcular tiempo formateado
-                $hours = floor($workingMinutes / 60);
-                $minutes = $workingMinutes % 60;
-                $workingTimeFormatted = $hours > 0 
-                    ? "{$hours}h {$minutes}m" 
-                    : "{$minutes}m";
+            // Determinar estado
+            $status = 'no_ha_fichado';
+            if ($lastEventData) {
+                if ($lastEventData->event_type === PunchEvent::TYPE_IN) {
+                    // Verificar si el último IN es de hoy
+                    $status = $lastEventData->timestamp->isSameDay($date) ? 'trabajando' : 'ha_finalizado';
+                } else {
+                    $status = $lastEventData->timestamp->isSameDay($date) ? 'descansando' : 'ha_finalizado';
+                }
+            }
 
-                // Calcular total de horas trabajadas hoy (suma de sesiones completas)
-                $todayTotalHours = 0;
-                $todayTotalMinutes = 0;
-                
-                // Agrupar eventos en pares IN-OUT
-                $events = $employeeTodayEvents->sortBy('timestamp')->values();
-                for ($i = 0; $i < $events->count(); $i++) {
-                    if ($events[$i]->event_type === PunchEvent::TYPE_IN) {
-                        // Buscar el siguiente OUT
-                        $nextOut = $events->slice($i + 1)->firstWhere('event_type', PunchEvent::TYPE_OUT);
-                        
-                        if ($nextOut) {
-                            $sessionMinutes = $events[$i]->timestamp->diffInMinutes($nextOut->timestamp);
-                            $todayTotalMinutes += $sessionMinutes;
-                        } else {
-                            // Si no hay OUT, es la sesión actual
-                            $sessionMinutes = $events[$i]->timestamp->diffInMinutes(now());
-                            $todayTotalMinutes += $sessionMinutes;
-                        }
+            $isWorking = $status === 'trabajando';
+
+            // Primera entrada del día
+            $firstEntry = $todayEntries->first();
+            $firstEntryTimestamp = $firstEntry ? $firstEntry->timestamp : null;
+
+            // Última salida del día
+            $lastExit = $todayExits->last();
+            $lastExitTimestamp = $lastExit ? $lastExit->timestamp : null;
+
+            // Calcular tiempo total trabajado hoy (suma de todas las sesiones)
+            $todayTotalMinutes = 0;
+            $completeSessionsCount = 0;
+            $breakTimeMinutes = 0;
+
+            $events = $employeeTodayEvents;
+            for ($i = 0; $i < $events->count(); $i++) {
+                if ($events[$i]->event_type === PunchEvent::TYPE_IN) {
+                    $nextOut = $events->slice($i + 1)->firstWhere('event_type', PunchEvent::TYPE_OUT);
+                    
+                    if ($nextOut) {
+                        // Sesión completa
+                        $sessionMinutes = $events[$i]->timestamp->diffInMinutes($nextOut->timestamp);
+                        $todayTotalMinutes += $sessionMinutes;
+                        $completeSessionsCount++;
+                    } else {
+                        // Sesión actual (sin salida todavía)
+                        $sessionMinutes = $events[$i]->timestamp->diffInMinutes(now());
+                        $todayTotalMinutes += $sessionMinutes;
+                    }
+                } elseif ($events[$i]->event_type === PunchEvent::TYPE_OUT && $i > 0) {
+                    // Calcular tiempo de descanso: tiempo desde salida hasta siguiente entrada
+                    $nextIn = $events->slice($i + 1)->firstWhere('event_type', PunchEvent::TYPE_IN);
+                    if ($nextIn) {
+                        $breakMinutes = $events[$i]->timestamp->diffInMinutes($nextIn->timestamp);
+                        $breakTimeMinutes += $breakMinutes;
                     }
                 }
-                $todayTotalHours = round($todayTotalMinutes / 60, 2);
+            }
 
-                $workingEmployees[] = [
-                    'id' => $employee->id,
-                    'name' => $employee->name,
-                    'nfcUid' => $employee->nfc_uid,
-                    'isWorking' => true,
-                    'entryTimestamp' => $entryTimestamp->format('Y-m-d H:i:s'),
-                    'entryDeviceId' => $lastEventData->device_id,
-                    'workingHours' => $workingHours,
-                    'workingTimeFormatted' => $workingTimeFormatted,
-                    'workingMinutes' => $workingMinutes,
-                    'todayEntriesCount' => $todayEntriesCount,
-                    'todayExitsCount' => $todayExitsCount,
-                    'todayTotalHours' => $todayTotalHours,
-                ];
+            $todayTotalHours = round($todayTotalMinutes / 60, 2);
+            $breakTimeHours = round($breakTimeMinutes / 60, 2);
+
+            // Formatear tiempo total trabajado hoy
+            $todayTotalHoursFormatted = $this->formatTime($todayTotalMinutes);
+
+            // Tiempo desde última acción (si existe)
+            $minutesSinceLastAction = $lastEventData 
+                ? now()->diffInMinutes($lastEventData->timestamp) 
+                : null;
+
+            // Tiempo trabajando en sesión actual (solo si está trabajando)
+            $currentSessionMinutes = null;
+            $currentSessionFormatted = null;
+            $currentEntryTimestamp = null;
+            $currentEntryDeviceId = null;
+
+            if ($isWorking && $lastEventData) {
+                $currentSessionMinutes = now()->diffInMinutes($lastEventData->timestamp);
+                $currentSessionFormatted = $this->formatTime($currentSessionMinutes);
+                $currentEntryTimestamp = $lastEventData->timestamp->format('Y-m-d H:i:s');
+                $currentEntryDeviceId = $lastEventData->device_id;
+            }
+
+            // Construir datos del empleado
+            $employeeData = [
+                'id' => $employee->id,
+                'name' => $employee->name,
+                'nfcUid' => $employee->nfc_uid,
+                'status' => $status,
+                'isWorking' => $isWorking,
+                // Primera entrada del día
+                'firstEntryTimestamp' => $firstEntryTimestamp ? $firstEntryTimestamp->format('Y-m-d H:i:s') : null,
+                // Última salida del día
+                'lastExitTimestamp' => $lastExitTimestamp ? $lastExitTimestamp->format('Y-m-d H:i:s') : null,
+                // Tiempo total trabajado hoy
+                'todayTotalHours' => $todayTotalHours,
+                'todayTotalMinutes' => $todayTotalMinutes,
+                'todayTotalHoursFormatted' => $todayTotalHoursFormatted,
+                // Sesiones completas
+                'completeSessionsCount' => $completeSessionsCount,
+                // Tiempo de descanso/pausas
+                'breakTimeMinutes' => $breakTimeMinutes,
+                'breakTimeHours' => $breakTimeHours,
+                'breakTimeFormatted' => $this->formatTime($breakTimeMinutes),
+                // Contadores de entradas/salidas
+                'todayEntriesCount' => $todayEntriesCount,
+                'todayExitsCount' => $todayExitsCount,
+                // Tiempo desde última acción
+                'minutesSinceLastAction' => $minutesSinceLastAction,
+                'timeSinceLastActionFormatted' => $minutesSinceLastAction ? $this->formatTime($minutesSinceLastAction) : null,
+                // Sesión actual (solo si está trabajando)
+                'currentSessionMinutes' => $currentSessionMinutes,
+                'currentSessionHours' => $currentSessionMinutes ? round($currentSessionMinutes / 60, 2) : null,
+                'currentSessionFormatted' => $currentSessionFormatted,
+                'currentEntryTimestamp' => $currentEntryTimestamp,
+                'currentEntryDeviceId' => $currentEntryDeviceId,
+            ];
+
+            $allEmployeesData[] = $employeeData;
+
+            // Si está trabajando, añadir también a la lista de trabajadores activos
+            if ($isWorking) {
+                $workingEmployees[] = $employeeData;
             }
         }
 
-        // Ordenar trabajadores activos por tiempo trabajado (más tiempo primero)
+        // Ordenar trabajadores activos por tiempo trabajado en sesión actual (más tiempo primero)
         usort($workingEmployees, function ($a, $b) {
-            return $b['workingMinutes'] <=> $a['workingMinutes'];
+            return ($b['currentSessionMinutes'] ?? 0) <=> ($a['currentSessionMinutes'] ?? 0);
+        });
+
+        // Ordenar todos los empleados por tiempo total trabajado hoy (más tiempo primero)
+        usort($allEmployeesData, function ($a, $b) {
+            return $b['todayTotalMinutes'] <=> $a['todayTotalMinutes'];
         });
 
         // Últimos fichajes recientes (últimos 30 minutos)
         $recentTimeLimit = now()->subMinutes(30);
-        $recentPunches = $todayEvents
+        $recentPunches = PunchEvent::whereBetween('timestamp', [$date, $dateEnd])
             ->where('timestamp', '>=', $recentTimeLimit)
+            ->with('employee')
+            ->orderBy('timestamp', 'desc')
             ->take(20)
+            ->get()
             ->map(function ($event) {
                 return [
                     'id' => $event->id,
@@ -422,11 +495,33 @@ class PunchController extends Controller
         return response()->json([
             'message' => 'Datos del dashboard obtenidos correctamente.',
             'data' => [
+                'allEmployees' => $allEmployeesData,
                 'workingEmployees' => $workingEmployees,
                 'statistics' => $statistics,
                 'recentPunches' => $recentPunches,
             ],
         ]);
+    }
+
+    /**
+     * Formatear minutos en formato legible (ej: "4h 30m" o "45m").
+     */
+    private function formatTime(int $minutes): string
+    {
+        if ($minutes === 0) {
+            return '0m';
+        }
+        
+        $hours = floor($minutes / 60);
+        $mins = $minutes % 60;
+        
+        if ($hours > 0 && $mins > 0) {
+            return "{$hours}h {$mins}m";
+        } elseif ($hours > 0) {
+            return "{$hours}h";
+        } else {
+            return "{$mins}m";
+        }
     }
 
     /**
