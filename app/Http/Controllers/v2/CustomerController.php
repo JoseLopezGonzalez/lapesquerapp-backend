@@ -3,8 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\v1\CustomerResource;
-use App\Http\Resources\v2\CustomerResource as V2CustomerResource;
+use App\Http\Resources\v2\CustomerResource;
 use App\Models\Customer;
 use Illuminate\Http\Request;
 
@@ -57,7 +56,7 @@ class CustomerController extends Controller
         $query->orderBy('name', 'asc');
 
         $perPage = $request->input('perPage', 10); // Default a 10 si no se proporciona
-        return V2CustomerResource::collection($query->paginate($perPage));
+        return CustomerResource::collection($query->paginate($perPage));
     }
 
     /**
@@ -137,7 +136,7 @@ class CustomerController extends Controller
         $customer->alias = "Cliente Nº " . $customer->id;
         $customer->save();  // Guardamos el alias en la base de datos
 
-        return new V2CustomerResource($customer);
+        return new CustomerResource($customer);
     }
 
 
@@ -150,7 +149,7 @@ class CustomerController extends Controller
     {
         $customer = Customer::findOrFail($id);
 
-        return new V2CustomerResource($customer);
+        return new CustomerResource($customer);
     }
 
     /**
@@ -226,7 +225,7 @@ class CustomerController extends Controller
         $customer->alias = "Cliente Nº " . $customer->id;
         $customer->save();
 
-        return new V2CustomerResource($customer);
+        return new CustomerResource($customer);
     }
 
 

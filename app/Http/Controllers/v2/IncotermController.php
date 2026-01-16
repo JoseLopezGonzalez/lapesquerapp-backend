@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\v1\TransportResource;
 use App\Http\Resources\v2\IncotermResource;
 use App\Models\Incoterm;
 use App\Models\Transport;

@@ -359,8 +359,7 @@ class Handler extends ExceptionHandler
                 
                 // Verificar si el error viene de una recepción de materia prima
                 $isReceptionContext = $request && (
-                    $request->is('api/v2/raw-material-receptions/*') || 
-                    $request->is('api/v1/raw-material-receptions/*')
+                    $request->is('api/v2/raw-material-receptions/*')
                 );
                 
                 if ($isReceptionContext) {

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\v1\CeboDispatchResource;
+use App\Http\Resources\v2\CeboDispatchResource;
 use App\Models\CeboDispatch;
 use App\Models\CeboDispatchProduct;
 use Illuminate\Support\Facades\Validator;

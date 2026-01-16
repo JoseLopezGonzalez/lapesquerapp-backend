@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Resources\v1;
+namespace App\Http\Resources\v2;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class SpeciesResource extends JsonResource
+class CaptureZoneResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -17,10 +17,7 @@ class SpeciesResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'scientificName' => $this->scientific_name,
-            'fao' => $this->fao,
-            'image' => $this->image,
-            'fishingGear' => $this->fishingGear->toArrayAssoc(),
         ];
     }
 }
+

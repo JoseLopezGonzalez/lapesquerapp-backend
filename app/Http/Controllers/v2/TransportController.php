@@ -3,8 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\v1\TransportResource;
-use App\Http\Resources\v2\TransportResource as V2TransportResource;
+use App\Http\Resources\v2\TransportResource;
 use App\Models\Transport;
 use Illuminate\Http\Request;
 
@@ -39,7 +38,7 @@ class TransportController extends Controller
         $query->orderBy('name', 'asc');
 
         $perPage = $request->input('perPage', 12); // Default a 10 si no se proporciona
-        return V2TransportResource::collection($query->paginate($perPage));
+        return TransportResource::collection($query->paginate($perPage));
     }
 
     /**
@@ -87,7 +86,7 @@ class TransportController extends Controller
             'emails' => $emailsText,
         ]);
 
-        return new V2TransportResource($transport);
+        return new TransportResource($transport);
     }
 
 
@@ -102,7 +101,7 @@ class TransportController extends Controller
 
         return response()->json([
             'message' => 'Transportista obtenido con éxito',
-            'data' => new V2TransportResource($transport),
+            'data' => new TransportResource($transport),
         ]);
     }
 
@@ -155,7 +154,7 @@ class TransportController extends Controller
 
         return response()->json([
             'message' => 'Transportista actualizado con éxito',
-            'data' => new V2TransportResource($transport),
+            'data' => new TransportResource($transport),
         ]);
     }
 

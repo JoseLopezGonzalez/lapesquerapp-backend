@@ -3,8 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\v1\SpeciesResource;
-use App\Http\Resources\v2\SpeciesResource as V2SpeciesResource;
+use App\Http\Resources\v2\SpeciesResource;
 use App\Models\Species;
 use Illuminate\Http\Request;
 
@@ -52,7 +51,7 @@ class SpeciesController extends Controller
         $query->orderBy('name', 'asc');
 
         $perPage = request()->input('perPage', 10); // Default a 10 si no se proporciona
-        return V2SpeciesResource::collection($query->paginate($perPage));
+        return SpeciesResource::collection($query->paginate($perPage));
 
     }
 
@@ -75,7 +74,7 @@ class SpeciesController extends Controller
             'fishing_gear_id' => $validated['fishingGearId'],
         ]);
 
-        return new V2SpeciesResource($species);
+        return new SpeciesResource($species);
     }
 
     /**
@@ -83,7 +82,7 @@ class SpeciesController extends Controller
      */
     public function show(Species $species)
     {
-        return new V2SpeciesResource($species);
+        return new SpeciesResource($species);
     }
 
     /**
@@ -105,7 +104,7 @@ class SpeciesController extends Controller
             'fishing_gear_id' => $validated['fishingGearId'],
         ]);
 
-        return new V2SpeciesResource($species);
+        return new SpeciesResource($species);
     }
 
     /**

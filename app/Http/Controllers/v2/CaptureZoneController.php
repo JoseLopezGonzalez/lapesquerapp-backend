@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\v1\CaptureZoneResource;
+use App\Http\Resources\v2\CaptureZoneResource;
 use App\Models\CaptureZone;
 use Illuminate\Http\Request;
 

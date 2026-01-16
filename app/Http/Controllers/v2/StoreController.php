@@ -6,10 +6,8 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
 use App\Models\Store;
-use App\Http\Resources\v1\StoreDetailsResource;
-use App\Http\Resources\v1\StoreResource;
-use App\Http\Resources\v2\StoreDetailsResource as V2StoreDetailsResource;
-use App\Http\Resources\v2\StoreResource as V2StoreResource;
+use App\Http\Resources\v2\StoreDetailsResource;
+use App\Http\Resources\v2\StoreResource;
 use Illuminate\Support\Facades\DB;
 
 class StoreController extends Controller
@@ -78,7 +76,7 @@ class StoreController extends Controller
         $query->with('palletsV2');
 
         $perPage = $request->input('perPage', 12); //  Default a 10 si no se proporciona
-        return V2StoreResource::collection($query->paginate($perPage));
+        return StoreResource::collection($query->paginate($perPage));
     }
 
     /**
@@ -98,7 +96,7 @@ class StoreController extends Controller
 
         return response()->json([
             'message' => 'Almacén creado correctamente',
-            'data' => new V2StoreResource($store),
+            'data' => new StoreResource($store),
         ], 201);
     }
 
@@ -119,7 +117,7 @@ class StoreController extends Controller
             'palletsV2.storedPallet', // Cargar storedPallet para posición
         ])->findOrFail($id);
         
-        return new V2StoreDetailsResource($store);
+        return new StoreDetailsResource($store);
     }
 
     /**
@@ -139,7 +137,7 @@ class StoreController extends Controller
 
         return response()->json([
             'message' => 'Almacén actualizado correctamente',
-            'data' => new V2StoreResource($store),
+            'data' => new StoreResource($store),
         ]);
     }
 

@@ -3,8 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\v1\SupplierResource;
-use App\Http\Resources\v2\SupplierResource as V2SupplierResource;
+use App\Http\Resources\v2\SupplierResource;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 
@@ -31,7 +30,7 @@ class SupplierController extends Controller
         $query->orderBy('name', 'asc');
 
         $perPage = $request->input('perPage', 12); // Default a 10 si no se proporciona
-        return V2SupplierResource::collection($query->paginate($perPage));
+        return SupplierResource::collection($query->paginate($perPage));
     }
 
 
@@ -73,7 +72,7 @@ class SupplierController extends Controller
 
         $supplier = Supplier::create($validated);
 
-        return new V2SupplierResource($supplier);
+        return new SupplierResource($supplier);
     }
 
 
@@ -126,7 +125,7 @@ class SupplierController extends Controller
 
         $supplier->update($validated);
 
-        return new V2SupplierResource($supplier);
+        return new SupplierResource($supplier);
     }
 
 

@@ -3,9 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\v1\TransportResource;
 use App\Http\Resources\v2\BoxResource;
-use App\Http\Resources\v2\TransportResource as V2TransportResource;
 use App\Models\Box;
 use App\Models\Transport;
 use Illuminate\Http\Request;
