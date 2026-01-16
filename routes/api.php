@@ -380,8 +380,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             /* Controladores Genericos */
             Route::apiResource('employees', EmployeeController::class);
             Route::delete('employees', [EmployeeController::class, 'destroyMultiple']);
-            Route::apiResource('punches', PunchController::class)->except(['store']);
+            // Rutas específicas de punches deben ir ANTES del apiResource
             Route::get('punches/dashboard', [PunchController::class, 'dashboard'])->name('punches.dashboard');
+            Route::apiResource('punches', PunchController::class)->except(['store']);
             Route::delete('punches', [PunchController::class, 'destroyMultiple']);
             Route::apiResource('orders', V2OrderController::class);
             Route::delete('orders', [V2OrderController::class, 'destroyMultiple']);
