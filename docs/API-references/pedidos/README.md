@@ -13,6 +13,9 @@ Documentación de endpoints para gestión de pedidos.
 - [Actualizar Estado de Pedido](#actualizar-estado-de-pedido)
 - [Pedidos Activos](#pedidos-activos)
 - [Opciones de Pedidos](#opciones-de-pedidos)
+- [Opciones de Pedidos Activos](#opciones-de-pedidos-activos)
+- [Productos Planificados](#productos-planificados)
+- [Incidencias de Pedidos](#incidencias-de-pedidos)
 
 ---
 
@@ -616,5 +619,457 @@ Authorization: Bearer {access_token}
     "name": "ORD-002 - Cliente B"
   }
 ]
+```
+
+---
+
+## Opciones de Pedidos Activos
+
+Obtener lista de pedidos activos en formato opciones (para dropdowns).
+
+### Request
+
+```http
+GET /api/v2/active-orders/options
+```
+
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+```
+
+### Response Exitosa (200)
+
+```json
+[
+  {
+    "id": 1,
+    "name": 1,
+    "load_date": "2024-01-20"
+  },
+  {
+    "id": 2,
+    "name": 2,
+    "load_date": "2024-01-21"
+  }
+]
+```
+
+**Nota:** Los pedidos activos son aquellos con estado `pending` o con `load_date` mayor o igual a la fecha actual.
+
+---
+
+## Productos Planificados
+
+### Listar Productos Planificados
+
+```http
+GET /api/v2/order-planned-product-details
+```
+
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+```
+
+#### Query Parameters (Opcionales)
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| orderId | integer | Filtrar por ID de pedido |
+| productId | integer | Filtrar por ID de producto |
+| perPage | integer | Elementos por página (default: 15) |
+
+#### Response Exitosa (200)
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "order_id": 1,
+      "product": {
+        "id": 1,
+        "name": "Producto A"
+      },
+      "quantity": 100.50,
+      "boxes": 10,
+      "unit_price": 15.50,
+      "tax": {
+        "id": 1,
+        "name": "IVA 21%"
+      },
+      "line_base": 1557.75,
+      "line_total": 1557.75,
+      "created_at": "2024-01-15T10:00:00.000000Z"
+    }
+  ],
+  "current_page": 1,
+  "last_page": 1,
+  "per_page": 15,
+  "total": 1
+}
+```
+
+---
+
+### Crear Producto Planificado
+
+```http
+POST /api/v2/order-planned-product-details
+```
+
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+Content-Type: application/json
+```
+
+#### Request Body
+
+```json
+{
+  "orderId": 1,
+  "product": {
+    "id": 1
+  },
+  "quantity": 100.50,
+  "boxes": 10,
+  "unitPrice": 15.50,
+  "tax": {
+    "id": 1
+  }
+}
+```
+
+#### Campos Requeridos
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| orderId | integer | ID del pedido (debe existir) |
+| product.id | integer | ID del producto (debe existir) |
+| quantity | numeric | Cantidad del producto |
+| boxes | integer | Número de cajas |
+| unitPrice | numeric | Precio unitario |
+| tax.id | integer | ID del impuesto (debe existir) |
+
+#### Response Exitosa (201)
+
+```json
+{
+  "id": 1,
+  "order_id": 1,
+  "product": {
+    "id": 1,
+    "name": "Producto A"
+  },
+  "quantity": 100.50,
+  "boxes": 10,
+  "unit_price": 15.50,
+  "tax": {
+    "id": 1,
+    "name": "IVA 21%"
+  },
+  "line_base": 1557.75,
+  "line_total": 1557.75,
+  "created_at": "2024-01-15T10:00:00.000000Z"
+}
+```
+
+---
+
+### Mostrar Producto Planificado
+
+```http
+GET /api/v2/order-planned-product-details/{id}
+```
+
+#### Response Exitosa (200)
+
+Misma estructura que [Crear Producto Planificado](#crear-producto-planificado).
+
+---
+
+### Actualizar Producto Planificado
+
+```http
+PUT /api/v2/order-planned-product-details/{id}
+```
+
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+Content-Type: application/json
+```
+
+#### Request Body
+
+```json
+{
+  "product": {
+    "id": 1
+  },
+  "quantity": 120.00,
+  "boxes": 12,
+  "unitPrice": 16.00,
+  "tax": {
+    "id": 1
+  }
+}
+```
+
+**Nota:** El campo `orderId` no se puede actualizar.
+
+#### Response Exitosa (200)
+
+```json
+{
+  "id": 1,
+  "order_id": 1,
+  "product": {
+    "id": 1,
+    "name": "Producto A"
+  },
+  "quantity": 120.00,
+  "boxes": 12,
+  "unit_price": 16.00,
+  "line_base": 1920.00,
+  "line_total": 1920.00,
+  "updated_at": "2024-01-15T11:00:00.000000Z"
+}
+```
+
+---
+
+### Eliminar Producto Planificado
+
+```http
+DELETE /api/v2/order-planned-product-details/{id}
+```
+
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+```
+
+#### Response Exitosa (200)
+
+```json
+{
+  "message": "Linea eliminada correctamente"
+}
+```
+
+---
+
+## Incidencias de Pedidos
+
+### Mostrar Incidencia
+
+```http
+GET /api/v2/orders/{orderId}/incident
+```
+
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+```
+
+#### Path Parameters
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| orderId | integer | ID del pedido |
+
+#### Response Exitosa (200)
+
+```json
+{
+  "id": 1,
+  "order_id": 1,
+  "description": "Producto dañado durante el transporte",
+  "status": "open",
+  "resolution_type": null,
+  "resolution_notes": null,
+  "resolved_at": null,
+  "created_at": "2024-01-15T10:00:00.000000Z",
+  "updated_at": "2024-01-15T10:00:00.000000Z"
+}
+```
+
+#### Response Errónea (404)
+
+```json
+{
+  "message": "Incidencia no encontrada.",
+  "userMessage": "No se encontró incidencia para este pedido."
+}
+```
+
+---
+
+### Crear Incidencia
+
+```http
+POST /api/v2/orders/{orderId}/incident
+```
+
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+Content-Type: application/json
+```
+
+#### Path Parameters
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| orderId | integer | ID del pedido |
+
+#### Request Body
+
+```json
+{
+  "description": "Producto dañado durante el transporte"
+}
+```
+
+#### Campos Requeridos
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| description | string | Descripción de la incidencia |
+
+#### Response Exitosa (201)
+
+```json
+{
+  "id": 1,
+  "order_id": 1,
+  "description": "Producto dañado durante el transporte",
+  "status": "open",
+  "created_at": "2024-01-15T10:00:00.000000Z"
+}
+```
+
+#### Response Errónea (400) - Incidencia Ya Existe
+
+```json
+{
+  "message": "La incidencia ya existe.",
+  "userMessage": "Este pedido ya tiene una incidencia registrada."
+}
+```
+
+---
+
+### Actualizar Incidencia
+
+```http
+PUT /api/v2/orders/{orderId}/incident
+```
+
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+Content-Type: application/json
+```
+
+#### Path Parameters
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| orderId | integer | ID del pedido |
+
+#### Request Body
+
+```json
+{
+  "resolution_type": "returned",
+  "resolution_notes": "Producto devuelto al almacén"
+}
+```
+
+#### Campos Requeridos
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| resolution_type | string | Tipo de resolución: `returned`, `partially_returned`, `compensated` |
+
+#### Campos Opcionales
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| resolution_notes | string | Notas sobre la resolución |
+
+#### Response Exitosa (200)
+
+```json
+{
+  "id": 1,
+  "order_id": 1,
+  "description": "Producto dañado durante el transporte",
+  "status": "resolved",
+  "resolution_type": "returned",
+  "resolution_notes": "Producto devuelto al almacén",
+  "resolved_at": "2024-01-15T12:00:00.000000Z",
+  "updated_at": "2024-01-15T12:00:00.000000Z"
+}
+```
+
+#### Response Errónea (404)
+
+```json
+{
+  "message": "Incidencia no encontrada.",
+  "userMessage": "No se encontró incidencia para este pedido."
+}
+```
+
+---
+
+### Eliminar Incidencia
+
+```http
+DELETE /api/v2/orders/{orderId}/incident
+```
+
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+```
+
+#### Path Parameters
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| orderId | integer | ID del pedido |
+
+#### Response Exitosa (200)
+
+```json
+{
+  "message": "Incident deleted"
+}
+```
+
+**Nota:** Al eliminar una incidencia, el pedido se finaliza automáticamente y todos los palets asociados se marcan como enviados.
+
+#### Response Errónea (404)
+
+```json
+{
+  "message": "Incidencia no encontrada.",
+  "userMessage": "No se encontró incidencia para este pedido."
+}
 ```
 
