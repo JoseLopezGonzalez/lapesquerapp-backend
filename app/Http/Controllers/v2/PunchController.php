@@ -259,6 +259,177 @@ class PunchController extends Controller
     }
 
     /**
+     * Obtener datos del dashboard de trabajadores activos.
+     */
+    public function dashboard(Request $request)
+    {
+        // Filtro opcional por fecha (por defecto hoy)
+        $date = $request->has('date') 
+            ? Carbon::parse($request->date)->startOfDay()
+            : now()->startOfDay();
+        
+        $dateEnd = $date->copy()->endOfDay();
+
+        // Obtener todos los empleados
+        $allEmployees = Employee::all();
+
+        // Obtener todos los eventos del día
+        $todayEvents = PunchEvent::whereBetween('timestamp', [$date, $dateEnd])
+            ->with('employee')
+            ->orderBy('timestamp', 'desc')
+            ->get();
+
+        // Obtener último evento de cada empleado en una sola consulta optimizada
+        // Usar subconsulta para obtener el último timestamp de cada empleado
+        $employeeIds = $allEmployees->pluck('id');
+        
+        if ($employeeIds->isEmpty()) {
+            $lastEventsByEmployee = collect();
+        } else {
+            // Usar conexión tenant explícitamente
+            $lastEventsByEmployee = DB::connection('tenant')
+                ->table('punch_events as pe1')
+                ->select('pe1.employee_id', 'pe1.event_type', 'pe1.device_id', 'pe1.timestamp')
+                ->whereIn('pe1.employee_id', $employeeIds)
+                ->whereRaw('pe1.timestamp = (
+                    SELECT MAX(pe2.timestamp)
+                    FROM punch_events pe2
+                    WHERE pe2.employee_id = pe1.employee_id
+                )')
+                ->get()
+                ->map(function ($item) {
+                    return (object) [
+                        'employee_id' => $item->employee_id,
+                        'event_type' => $item->event_type,
+                        'device_id' => $item->device_id,
+                        'timestamp' => Carbon::parse($item->timestamp),
+                    ];
+                })
+                ->keyBy('employee_id');
+        }
+
+        // Trabajadores activos (último evento es IN)
+        $workingEmployees = [];
+        $totalEntriesToday = 0;
+        $totalExitsToday = 0;
+        $entriesByDevice = [];
+
+        foreach ($allEmployees as $employee) {
+            // Obtener último evento del empleado desde la colección optimizada
+            $lastEventData = $lastEventsByEmployee->get($employee->id);
+
+            // Si el último evento es IN, está trabajando
+            $isWorking = $lastEventData && $lastEventData->event_type === PunchEvent::TYPE_IN;
+
+            // Eventos del día del empleado
+            $employeeTodayEvents = $todayEvents->where('employee_id', $employee->id);
+            $todayEntries = $employeeTodayEvents->where('event_type', PunchEvent::TYPE_IN);
+            $todayExits = $employeeTodayEvents->where('event_type', PunchEvent::TYPE_OUT);
+
+            $todayEntriesCount = $todayEntries->count();
+            $todayExitsCount = $todayExits->count();
+            $totalEntriesToday += $todayEntriesCount;
+            $totalExitsToday += $todayExitsCount;
+
+            // Contar entradas por dispositivo
+            foreach ($todayEntries as $entry) {
+                $deviceId = $entry->device_id;
+                $entriesByDevice[$deviceId] = ($entriesByDevice[$deviceId] ?? 0) + 1;
+            }
+
+            if ($isWorking) {
+                $entryTimestamp = $lastEventData->timestamp;
+                $workingMinutes = now()->diffInMinutes($entryTimestamp);
+                $workingHours = round($workingMinutes / 60, 2);
+                
+                // Calcular tiempo formateado
+                $hours = floor($workingMinutes / 60);
+                $minutes = $workingMinutes % 60;
+                $workingTimeFormatted = $hours > 0 
+                    ? "{$hours}h {$minutes}m" 
+                    : "{$minutes}m";
+
+                // Calcular total de horas trabajadas hoy (suma de sesiones completas)
+                $todayTotalHours = 0;
+                $todayTotalMinutes = 0;
+                
+                // Agrupar eventos en pares IN-OUT
+                $events = $employeeTodayEvents->sortBy('timestamp')->values();
+                for ($i = 0; $i < $events->count(); $i++) {
+                    if ($events[$i]->event_type === PunchEvent::TYPE_IN) {
+                        // Buscar el siguiente OUT
+                        $nextOut = $events->slice($i + 1)->firstWhere('event_type', PunchEvent::TYPE_OUT);
+                        
+                        if ($nextOut) {
+                            $sessionMinutes = $events[$i]->timestamp->diffInMinutes($nextOut->timestamp);
+                            $todayTotalMinutes += $sessionMinutes;
+                        } else {
+                            // Si no hay OUT, es la sesión actual
+                            $sessionMinutes = $events[$i]->timestamp->diffInMinutes(now());
+                            $todayTotalMinutes += $sessionMinutes;
+                        }
+                    }
+                }
+                $todayTotalHours = round($todayTotalMinutes / 60, 2);
+
+                $workingEmployees[] = [
+                    'id' => $employee->id,
+                    'name' => $employee->name,
+                    'nfcUid' => $employee->nfc_uid,
+                    'isWorking' => true,
+                    'entryTimestamp' => $entryTimestamp->format('Y-m-d H:i:s'),
+                    'entryDeviceId' => $lastEventData->device_id,
+                    'workingHours' => $workingHours,
+                    'workingTimeFormatted' => $workingTimeFormatted,
+                    'workingMinutes' => $workingMinutes,
+                    'todayEntriesCount' => $todayEntriesCount,
+                    'todayExitsCount' => $todayExitsCount,
+                    'todayTotalHours' => $todayTotalHours,
+                ];
+            }
+        }
+
+        // Ordenar trabajadores activos por tiempo trabajado (más tiempo primero)
+        usort($workingEmployees, function ($a, $b) {
+            return $b['workingMinutes'] <=> $a['workingMinutes'];
+        });
+
+        // Últimos fichajes recientes (últimos 30 minutos)
+        $recentTimeLimit = now()->subMinutes(30);
+        $recentPunches = $todayEvents
+            ->where('timestamp', '>=', $recentTimeLimit)
+            ->take(20)
+            ->map(function ($event) {
+                return [
+                    'id' => $event->id,
+                    'employeeName' => $event->employee->name,
+                    'eventType' => $event->event_type,
+                    'timestamp' => $event->timestamp->format('Y-m-d H:i:s'),
+                    'deviceId' => $event->device_id,
+                ];
+            })
+            ->values();
+
+        // Estadísticas agregadas
+        $statistics = [
+            'totalWorking' => count($workingEmployees),
+            'totalEmployees' => $allEmployees->count(),
+            'totalEntriesToday' => $totalEntriesToday,
+            'totalExitsToday' => $totalExitsToday,
+            'entriesByDevice' => $entriesByDevice,
+        ];
+
+        return response()->json([
+            'message' => 'Datos del dashboard obtenidos correctamente.',
+            'data' => [
+                'workingEmployees' => $workingEmployees,
+                'statistics' => $statistics,
+                'recentPunches' => $recentPunches,
+            ],
+        ]);
+    }
+
+    /**
      * Remove the specified resource from storage.
      * 
      * Nota: Normalmente los eventos históricos no se deberían eliminar,
