@@ -27,7 +27,9 @@ return new class extends Migration
             $table->date('entry_date'); // Fecha de entrada
             $table->date('load_date'); // Fecha de carga
             $table->string('status'); // Estado del pedido
-            $table->foreignId('incoterm_id')->constrained('incoterms'); // Clave foránea a incoterms
+            $table->unsignedBigInteger('incoterm_id')->nullable(); // Clave foránea a incoterms (se agrega en migración posterior)
+            // La foreign key a incoterms se agrega en una migración posterior (2025_12_05_212339)
+            // porque incoterms se crea después de orders
             $table->timestamps();
         });
     }

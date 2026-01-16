@@ -18,7 +18,8 @@ return new class extends Migration
             $table->unsignedBigInteger('order_id')->nullable();
             //$table->unsignedBigInteger('store_id')->nullable();
             //$table->foreign('store_id')->references('id')->on('stores')->onDelete('set null');    
-            $table->foreign('order_id')->references('id')->on('orders')->onDelete('set null');
+            // La foreign key a orders se agrega en una migración posterior (2025_12_05_210346)
+            // porque orders se crea después de pallets
             $table->timestamps();
         });
     }

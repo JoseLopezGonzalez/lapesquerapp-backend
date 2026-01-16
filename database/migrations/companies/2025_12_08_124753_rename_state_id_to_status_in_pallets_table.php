@@ -18,9 +18,12 @@ return new class extends Migration
             return;
         }
 
-        Schema::table('pallets', function (Blueprint $table) {
-            $table->renameColumn('state_id', 'status');
-        });
+        // Solo renombrar si la columna state_id existe (puede que ya se llame status)
+        if (Schema::hasColumn('pallets', 'state_id') && !Schema::hasColumn('pallets', 'status')) {
+            Schema::table('pallets', function (Blueprint $table) {
+                $table->renameColumn('state_id', 'status');
+            });
+        }
     }
 
     /**

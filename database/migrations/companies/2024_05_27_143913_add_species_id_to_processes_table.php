@@ -11,11 +11,31 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('processes', function (Blueprint $table) {
-            $table->unsignedBigInteger('species_id');
+        // Verificar que la tabla processes existe antes de modificarla
+        if (Schema::hasTable('processes')) {
+            Schema::table('processes', function (Blueprint $table) {
+                // Verificar que la columna no existe ya
+                if (!Schema::hasColumn('processes', 'species_id')) {
+                    $table->unsignedBigInteger('species_id');
+                }
+            });
 
-            $table->foreign('species_id')->references('id')->on('species')->onDelete('cascade');
-        });
+            // Agregar foreign key solo si species existe
+            if (Schema::hasTable('species')) {
+                Schema::table('processes', function (Blueprint $table) {
+                    // Eliminar FK existente si existe
+                    try {
+                        $table->dropForeign(['species_id']);
+                    } catch (\Exception $e) {
+                        // FK no existe, continuar
+                    }
+                });
+
+                Schema::table('processes', function (Blueprint $table) {
+                    $table->foreign('species_id')->references('id')->on('species')->onDelete('cascade');
+                });
+            }
+        }
     }
 
     public function down()

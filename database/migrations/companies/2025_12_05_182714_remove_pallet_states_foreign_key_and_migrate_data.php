@@ -44,9 +44,12 @@ return new class extends Migration
             }
         } else {
             // MySQL u otros: usar Schema
+            // Verificar si la columna se llama state_id o status
+            $columnName = Schema::hasColumn('pallets', 'state_id') ? 'state_id' : 'status';
+            
             try {
-                Schema::table('pallets', function (Blueprint $table) {
-                    $table->dropForeign(['state_id']);
+                Schema::table('pallets', function (Blueprint $table) use ($columnName) {
+                    $table->dropForeign([$columnName]);
                 });
             } catch (\Exception $e) {
                 // La FK no existe, continuar
@@ -54,12 +57,15 @@ return new class extends Migration
         }
 
         // Paso 2: Migrar datos existentes (ahora que la FK está eliminada)
-        // Palets con state_id = 3 (enviado) que NO tienen order_id → cambian a 4 (procesado)
+        // Palets con state_id/status = 3 (enviado) que NO tienen order_id → cambian a 4 (procesado)
         if (Schema::hasTable('pallets')) {
+            // Verificar si la columna se llama state_id o status
+            $columnName = Schema::hasColumn('pallets', 'state_id') ? 'state_id' : 'status';
+            
             DB::table('pallets')
-                ->where('state_id', 3)
+                ->where($columnName, 3)
                 ->whereNull('order_id')
-                ->update(['state_id' => 4]);
+                ->update([$columnName => 4]);
         }
 
         // Paso 3: Eliminar la tabla pallet_states si existe
