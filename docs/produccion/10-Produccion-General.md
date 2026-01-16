@@ -1,8 +1,8 @@
 # Módulo de Producción - Visión General
 
 ## ⚠️ Estado de la API
-- **v1**: Obsoleta (no documentada) - Usaba JSON único (`diagram_data`) para almacenar toda la estructura
-- **v2**: Versión activa (este documento) - Usa entidades relacionales (`production_records`, `production_inputs`, `production_outputs`)
+- **v1**: Eliminada (2025-01-27) - Usaba JSON único (`diagram_data`) para almacenar toda la estructura. Ya no existe en el código base.
+- **v2**: Versión activa (este documento) - Usa entidades relacionales (`production_records`, `production_inputs`, `production_outputs`). Única versión disponible.
 
 ---
 
@@ -25,9 +25,9 @@ En la industria pesquera, cada lote de producción representa una captura o rece
 
 ### Evolución del Sistema
 
-El módulo está en un estado de **transición activa** entre dos arquitecturas:
+El módulo migró de una arquitectura basada en JSON a una arquitectura relacional completa:
 
-#### Sistema Antiguo (v1 - Obsoleto pero aún presente)
+#### Sistema Antiguo (v1 - Eliminado)
 - **Almacenamiento**: Todo el diagrama de producción se guardaba en un campo JSON único (`productions.diagram_data`)
 - **Ventajas**: Simplicidad de almacenamiento, fácil de visualizar
 - **Desventajas**: 
@@ -47,7 +47,7 @@ El módulo está en un estado de **transición activa** entre dos arquitecturas:
   - Consultas eficientes con SQL
   - Integridad referencial garantizada
   - Diagrama calculado dinámicamente desde datos relacionales
-- **Estado**: Implementación en progreso, manteniendo compatibilidad con v1 durante la transición
+- **Estado**: Implementación completa y activa. v1 fue eliminada completamente (2025-01-27)
 
 ---
 

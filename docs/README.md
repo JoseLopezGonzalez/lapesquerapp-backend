@@ -2,10 +2,10 @@
 
 ## ⚠️ ADVERTENCIA IMPORTANTE
 
-Esta documentación cubre **EXCLUSIVAMENTE la API v2**, que es la versión activa y en desarrollo del sistema.
+Esta documentación cubre **EXCLUSIVAMENTE la API v2**, que es la versión activa y actual del sistema.
 
-- **API v1**: Está **OBSOLETA** y se mantiene únicamente por razones de compatibilidad. No está documentada aquí.
-- **API v2**: Es la versión activa y actual. Toda la documentación hace referencia a esta versión salvo que se indique explícitamente lo contrario.
+- **API v1**: Ha sido **ELIMINADA** (2025-01-27). Ya no existe en el código base.
+- **API v2**: Es la única versión activa. Toda la documentación hace referencia a esta versión.
 
 ---
 
@@ -24,11 +24,11 @@ Documentación esencial para entender la arquitectura del sistema:
 
 ---
 
-### 📁 [Producción](./produccion/) ⚠️ EN TRANSICIÓN
-Módulo de gestión de producción pesquera (el más complejo e incompleto):
+### 📁 [Producción](./produccion/)
+Módulo de gestión de producción pesquera (el más complejo del sistema):
 
 **Documentación Principal:**
-- **[10-Produccion-General.md](./produccion/10-Produccion-General.md)**: Visión general del módulo, conceptos, estado de migración
+- **[10-Produccion-General.md](./produccion/10-Produccion-General.md)**: Visión general del módulo, conceptos y arquitectura
 - **[11-Produccion-Lotes.md](./produccion/11-Produccion-Lotes.md)**: Gestión de lotes de producción (Production)
 - **[12-Produccion-Procesos.md](./produccion/12-Produccion-Procesos.md)**: Procesos de producción (ProductionRecord)
 - **[13-Produccion-Entradas.md](./produccion/13-Produccion-Entradas.md)**: Entradas de producción (ProductionInput)
@@ -40,7 +40,7 @@ Módulo de gestión de producción pesquera (el más complejo e incompleto):
 - **[Análisis](./produccion/analisis/)** - Análisis, investigaciones y diseños del módulo
 - **[Cambios](./produccion/cambios/)** - Migraciones, cambios y fixes realizados
 
-> **⚠️ Nota**: Este módulo está en transición entre v1 (JSON único, obsoleta) y v2 (entidades relacionales, activa). Es el área más compleja del sistema.
+> **📝 Nota**: Este módulo usa una arquitectura relacional completa (v2) con trazabilidad total a nivel de caja. Es el área más compleja del sistema.
 
 ---
 

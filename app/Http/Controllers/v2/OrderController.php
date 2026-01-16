@@ -23,14 +23,26 @@ class OrderController extends Controller
         if ($request->has('active')) {
             if ($request->active == 'true') {
                 /* where status is pending or loaddate>= today at the end of the day */
-                return OrderResource::collection(Order::where('status', 'pending')->orWhereDate('load_date', '>=', now())->get());
+                return OrderResource::collection(
+                    Order::withTotals()
+                        ->with(['customer', 'salesperson', 'transport', 'incoterm'])
+                        ->where('status', 'pending')
+                        ->orWhereDate('load_date', '>=', now())
+                        ->get()
+                );
             } else {
                 /* where status is finished and loaddate< today at the end of the day */
-                return OrderResource::collection(Order::where('status', 'finished')->whereDate('load_date', '<', now())->get());
+                return OrderResource::collection(
+                    Order::withTotals()
+                        ->with(['customer', 'salesperson', 'transport', 'incoterm'])
+                        ->where('status', 'finished')
+                        ->whereDate('load_date', '<', now())
+                        ->get()
+                );
             }
         } else {
 
-            $query = Order::query();
+            $query = Order::withTotals()->with(['customer', 'salesperson', 'transport', 'incoterm']);
             if ($request->has('customers')) {
                 $query->whereIn('customer_id', $request->customers);
                 /* $query->where('customer_id', $request->customer); */

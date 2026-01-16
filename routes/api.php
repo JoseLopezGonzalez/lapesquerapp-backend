@@ -9,7 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\v2\ActivityLogController;
 use App\Http\Controllers\v2\AuthController as V2AuthController;
-use App\Http\Controllers\v2\AzureDocumentAIController;
 use App\Http\Controllers\v2\BoxesController;
 use App\Http\Controllers\v2\CaptureZoneController as V2CaptureZoneController;
 use App\Http\Controllers\v2\CeboDispatchController as V2CeboDispatchController;
@@ -17,7 +16,6 @@ use App\Http\Controllers\v2\CeboDispatchStatisticsController;
 use App\Http\Controllers\v2\CountryController;
 use App\Http\Controllers\v2\CustomerController as V2CustomerController;
 use App\Http\Controllers\v2\FishingGearController;
-use App\Http\Controllers\v2\GoogleDocumentAIController;
 use App\Http\Controllers\v2\IncidentController;
 use App\Http\Controllers\v2\IncotermController as V2IncotermController;
 use App\Http\Controllers\v2\LabelController;
@@ -106,7 +104,7 @@ Route::get('v2/public/tenant/{subdomain}', [TenantController::class, 'showBySubd
 /* Comprobar el tenant ya que esta aplicado de manera global */
 Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], function () {
     // Rutas públicas (sin autenticación)
-    Route::post('login', [V2AuthController::class, 'login'])->name('v2.login');
+    Route::post('login', [V2AuthController::class, 'login'])->middleware('throttle:5,1')->name('v2.login');
     Route::post('logout', [V2AuthController::class, 'logout'])->middleware('auth:sanctum')->name('v2.logout');
     Route::get('me', [V2AuthController::class, 'me'])->middleware('auth:sanctum')->name('v2.me');
     Route::get('/customers/op', [V2CustomerController::class, 'options']);
@@ -131,10 +129,6 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::apiResource('activity-logs', ActivityLogController::class);
             Route::apiResource('roles', RoleController::class);
 
-            /* Pdf extractor */
-            /* Route::post('pdf-extractor', [PdfExtractionController::class, 'extract'])->name('pdf.extract'); */
-            /* Route::post('document-ai/parse', [GoogleDocumentAIController::class, 'processPdf']); */
-            Route::post('document-ai/parse', [AzureDocumentAIController::class, 'processPdf']);
         });
 
         // Rutas para Gerencia

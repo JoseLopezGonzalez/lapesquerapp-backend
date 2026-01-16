@@ -242,10 +242,9 @@ class RawMaterialReceptionController extends Controller
 
     public function destroy($id)
     {
-
-        $order = RawMaterialReception::findOrFail($id);
-        $order->delete();
-        return response()->json(['message' => 'Palet eliminado correctamente'], 200);
+        $reception = RawMaterialReception::findOrFail($id);
+        $reception->delete();
+        return response()->json(['message' => 'Recepción eliminada correctamente'], 200);
     }
 
     public function destroyMultiple(Request $request)

@@ -48,7 +48,10 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
             $query->limit($this->limit);
         }
 
-        // Cargar relaciones de forma más eficiente
+        // NOTA: Esta exportación usa FromCollection porque map() retorna múltiples filas por registro
+        // (una fila por producto en cada despacho).
+        // FromQuery no soporta map() que retorna múltiples filas, por lo que usamos FromCollection.
+        // Para optimizar memoria, usamos eager loading con with() y limitamos con ->limit() si es necesario.
         return $query->with([
             'supplier',
             'products.product.article'

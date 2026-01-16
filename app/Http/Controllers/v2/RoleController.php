@@ -17,7 +17,7 @@ class RoleController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::query();
+        $query = Role::query();
 
         // Filtros por ID
         if ($request->has('id')) {
@@ -37,7 +37,7 @@ class RoleController extends Controller
         // Paginación
         $perPage = $request->input('perPage', 10);
 
-         return RoleResource::collection($query->paginate($perPage));
+        return RoleResource::collection($query->paginate($perPage));
     }
 
     /**

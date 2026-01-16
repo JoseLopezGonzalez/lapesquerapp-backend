@@ -65,7 +65,7 @@ class ProductController extends Controller
 
         /* boxGtin */
         if ($request->has('boxGtin')) {
-            $query->where('box_gtin', $request->articleGtin);
+            $query->where('box_gtin', $request->boxGtin);
         }
 
         /* palletGtin */
@@ -289,10 +289,27 @@ class ProductController extends Controller
      */
     public function destroy(string $id)
     {
-        DB::transaction(function () use ($id) {
-            $product = Product::findOrFail($id);
-            $product->delete();
+        $product = Product::findOrFail($id);
 
+        // Validar si el producto está en uso antes de eliminar
+        $usedInBoxes = \App\Models\Box::where('article_id', $id)->exists();
+        $usedInOrders = \App\Models\OrderPlannedProductDetail::where('product_id', $id)->exists();
+        $usedInProduction = \App\Models\ProductionOutput::where('product_id', $id)->exists();
+
+        if ($usedInBoxes || $usedInOrders || $usedInProduction) {
+            $reasons = [];
+            if ($usedInBoxes) $reasons[] = 'cajas';
+            if ($usedInOrders) $reasons[] = 'pedidos';
+            if ($usedInProduction) $reasons[] = 'producción';
+            
+            return response()->json([
+                'message' => 'No se puede eliminar el producto porque está en uso',
+                'details' => 'El producto está siendo utilizado en: ' . implode(', ', $reasons)
+            ], 400);
+        }
+
+        DB::transaction(function () use ($id) {
+            $product->delete();
             Article::where('id', $id)->delete();
         });
 

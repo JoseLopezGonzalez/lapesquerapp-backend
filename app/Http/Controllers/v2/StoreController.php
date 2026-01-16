@@ -108,8 +108,11 @@ class StoreController extends Controller
     public function show(string $id)
     {
         // Aumentar límites de memoria y tiempo para almacenes con muchos pallets
-        ini_set('memory_limit', '2048M'); // 2GB de memoria
-        set_time_limit(300); // 5 minutos de tiempo de ejecución
+        $limits = config('exports.operations.store');
+        if ($limits) {
+            ini_set('memory_limit', $limits['memory_limit']);
+            set_time_limit($limits['max_execution_time']);
+        }
 
         $store = Store::with([
             'palletsV2.boxes.box.productionInputs.productionRecord.production', // Cargar productionInputs para determinar disponibilidad

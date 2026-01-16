@@ -23,15 +23,6 @@ class SessionController extends Controller
         if ($request->has('user_id')) {
             $query->where('tokenable_id', $request->input('user_id'));
         }
-        if ($request->has('ip_address')) {
-            $query->where('ip_address', 'like', '%' . $request->input('ip_address') . '%');
-        }
-        if ($request->has('platform')) {
-            $query->where('platform', 'like', '%' . $request->input('platform') . '%');
-        }
-        if ($request->has('browser')) {
-            $query->where('browser', 'like', '%' . $request->input('browser') . '%');
-        }
     
         // Paginación
         $perPage = $request->input('per_page', 10);

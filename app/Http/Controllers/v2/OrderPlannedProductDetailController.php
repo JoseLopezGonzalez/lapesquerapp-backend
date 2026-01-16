@@ -14,6 +14,26 @@ class OrderPlannedProductDetailController extends Controller
      */
     public function index(Request $request)
     {
+        $query = OrderPlannedProductDetail::with(['product', 'tax', 'order']);
+
+        // Filtro por orderId
+        if ($request->has('orderId')) {
+            $query->where('order_id', $request->orderId);
+        }
+
+        // Filtro por productId
+        if ($request->has('productId')) {
+            $query->where('product_id', $request->productId);
+        }
+
+        // Ordenar por ID descendente
+        $query->orderBy('id', 'desc');
+
+        // Paginación
+        $perPage = $request->input('perPage', 15);
+        $details = $query->paginate($perPage);
+
+        return OrderPlannedProductDetailResource::collection($details);
     }
 
     /**
@@ -59,7 +79,8 @@ class OrderPlannedProductDetailController extends Controller
      */
     public function show(string $id)
     {
-
+        $detail = OrderPlannedProductDetail::with(['product', 'tax', 'order'])->findOrFail($id);
+        return new OrderPlannedProductDetailResource($detail);
     }
 
     /**

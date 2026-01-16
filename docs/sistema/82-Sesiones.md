@@ -43,7 +43,7 @@ El `SessionController` gestiona las **sesiones activas** de usuarios basadas en 
 - `id` (primary key)
 - `token` (unique)
 
-**⚠️ Nota**: Los campos `ip_address`, `platform`, y `browser` **NO existen** en esta tabla, aunque el controlador intenta filtrar por ellos.
+**Nota**: Los campos `ip_address`, `platform`, y `browser` **NO existen** en esta tabla. El controlador y el resource no referencian estos campos.
 
 ---
 
@@ -85,9 +85,6 @@ GET /v2/sessions
 
 **Filtros disponibles** (query parameters):
 - `user_id`: Filtrar por ID de usuario
-- `ip_address`: ⚠️ **NO FUNCIONA** - Campo no existe en tabla
-- `platform`: ⚠️ **NO FUNCIONA** - Campo no existe en tabla
-- `browser`: ⚠️ **NO FUNCIONA** - Campo no existe en tabla
 
 **Query parameters**: `per_page` (default: 10)
 
@@ -190,15 +187,11 @@ El campo `expires_at` en la tabla almacena la fecha de expiración calculada.
 
 ## Observaciones Críticas y Mejoras Recomendadas
 
-### ⚠️ Filtros por Campos que No Existen
+### ✅ Filtros Actualizados
 
-1. **Filtros ip_address, platform, browser No Funcionan** (`app/Http/Controllers/v2/SessionController.php:26-34`)
-   - Intenta filtrar por `ip_address`, `platform`, y `browser`
-   - **Líneas**: 26-34
-   - **Problema**: Estos campos no existen en la tabla `personal_access_tokens`
-   - **Recomendación**: 
-     - Eliminar filtros si no se necesitan
-     - O agregar migración para crear campos si se requiere tracking
+1. **Filtros limpios** (`app/Http/Controllers/v2/SessionController.php`)
+   - Solo se filtra por `user_id`
+   - Los filtros por `ip_address`, `platform`, y `browser` fueron eliminados (estos campos no existen en la tabla)
 
 ### ⚠️ Sin Método show()
 

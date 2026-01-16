@@ -89,9 +89,31 @@ class Order extends Model
 
     //Resumen productos pedido
 
-
+    /**
+     * Obtener resumen de productos del pedido
+     * Retorna un array con información resumida de los productos planificados
+     */
     public function getSummaryAttribute()
     {
+        $plannedProducts = $this->plannedProductDetails;
+
+        if (!$plannedProducts || $plannedProducts->isEmpty()) {
+            return [
+                'totalProducts' => 0,
+                'totalQuantity' => 0,
+                'totalBoxes' => 0,
+                'totalAmount' => 0,
+            ];
+        }
+
+        return [
+            'totalProducts' => $plannedProducts->count(),
+            'totalQuantity' => $plannedProducts->sum('quantity'),
+            'totalBoxes' => $plannedProducts->sum('boxes'),
+            'totalAmount' => $plannedProducts->sum(function ($detail) {
+                return ($detail->unit_price ?? 0) * ($detail->quantity ?? 0);
+            }),
+        ];
     }
 
     public function payment_term()
@@ -99,7 +121,6 @@ class Order extends Model
         return $this->belongsTo(PaymentTerm::class);
     }
 
-    /* Order is active when status is 'finished' and loadDate is < now */
     public function isActive()
     {
         return $this->status == 'pending' || $this->load_date >= now();
@@ -307,118 +328,6 @@ class Order extends Model
     }
 
 
-
-
-    /*return [
-        [
-            'species' => [
-                'name'            => 'Pulpo Común',
-                'scientificName'  => 'Octopus vulgaris',
-                'code'            => 'OCC',
-            ],
-            'captureZone'      => 'Fao 27 IX.a Atlantico Nordeste',
-            'fishingGear'      => 'Nasas y trampas',
-            'productionMethod' => 'Capturado',
-            'products'         => [
-                [
-                    'product' => [
-                        'name'      => 'Langostinos 20/30',
-                        'boxGtin'   => '1234567890123',
-                        'boxes'     => 56,
-                        'netWeight' => 27.50,
-                        ],
-                    'lots'      => [
-                        [
-                            'lot'       => '020325OCC01001',
-                            'boxes'     => 2,
-                            'netWeight' => 10.50,
-                        ],
-                        [
-                            'lot'       => '020325OCC01001',
-                            'boxes'     => 2,
-                            'netWeight' => 10.50,
-                        ],
-                        [
-                            'lot'       => '020325OCC01001',
-                            'boxes'     => 2,
-                            'netWeight' => 10.50,
-                        ],
-                    ],
-                ],
-            ],
-        ],
-    ];  */
-
-
-    /* public function getProductsWithLotsDetailsBySpeciesAndCaptureZoneAttribute()
-    {
-        $summary = [];
-
-        $this->pallets->map(function ($pallet) use (&$summary) {
-            $pallet->boxes->map(function ($box) use (&$summary) {
-                $product = $box->box->product;
-                $species = $product->species;
-                $captureZone = $product->captureZone;
-                $fishingGear = $species->fishingGear;
-                $lot = $box->box->lot; // Lote de la caja
-                $netWeight = $box->box->net_weight; // Peso neto de la caja
-
-                $key = $species->id . '-' . $captureZone->id;
-
-                if (!isset($summary[$key])) {
-                    $summary[$key] = [
-                        'species' => [
-                            'name' => $species->name,
-                            'scientificName' => $species->scientific_name,
-                            'fao' => $species->fao,
-                        ],
-                        'captureZone' => $captureZone->name,
-                        'fishingGear' => $fishingGear->name,
-                        'products' => []
-                    ];
-                }
-
-                $productKey = $product->id;
-                if (!isset($summary[$key]['products'][$productKey])) {
-                    $summary[$key]['products'][$productKey] = [
-                        'product' => [
-                            'article' => [
-                                'id' => $product->article->id,
-                                'name' => $product->article->name,
-                            ],
-                            'boxGtin' => $product->box_gtin,
-                            'boxes' => 0,
-                            'netWeight' => 0,
-                        ],
-                        'lots' => []
-                    ];
-                }
-
-                // Agrupar lotes únicos y sumar pesos y cajas
-                $lotIndex = array_search($lot, array_column($summary[$key]['products'][$productKey]['lots'], 'lot'));
-
-                if ($lotIndex === false) {
-                    // Si el lote no existe, lo añadimos
-                    $summary[$key]['products'][$productKey]['lots'][] = [
-                        'lot' => $lot,
-                        'boxes' => 1,
-                        'netWeight' => $netWeight,
-                    ];
-                } else {
-                    // Si ya existe, sumamos los valores
-                    $summary[$key]['products'][$productKey]['lots'][$lotIndex]['boxes']++;
-                    $summary[$key]['products'][$productKey]['lots'][$lotIndex]['netWeight'] += $netWeight;
-                }
-
-                // Sumar totales al producto
-                $summary[$key]['products'][$productKey]['product']['boxes']++;
-                $summary[$key]['products'][$productKey]['product']['netWeight'] += $netWeight;
-            });
-        });
-
-        return array_values($summary);
-    } */
-
     public function getProductsWithLotsDetailsAttribute()
     {
         $summary = [];
@@ -589,6 +498,38 @@ class Order extends Model
         return $this->hasOne(Incident::class);
     }
 
+    /**
+     * Marcar el pedido como incidente
+     * Se usa cuando se crea un incidente asociado al pedido
+     * 
+     * @return bool
+     */
+    public function markAsIncident(): bool
+    {
+        return $this->update(['status' => self::STATUS_INCIDENT]);
+    }
+
+    /**
+     * Finalizar el pedido después de resolver un incidente
+     * Cambia el estado a 'finished' y marca todos los palets como 'shipped'
+     * 
+     * @return bool
+     */
+    public function finalizeAfterIncident(): bool
+    {
+        $this->status = self::STATUS_FINISHED;
+        $saved = $this->save();
+
+        if ($saved) {
+            $this->load('pallets');
+            foreach ($this->pallets as $pallet) {
+                $pallet->changeToShipped();
+            }
+        }
+
+        return $saved;
+    }
+
 
     public function getSpeciesListAttribute()
     {
@@ -752,6 +693,21 @@ class Order extends Model
     public function scopeWithPlannedProductDetailsAndSpecies($query)
     {
         return $query->with(['plannedProductDetails.product.species']);
+    }
+
+    /**
+     * Scope para cargar relaciones necesarias para calcular totalNetWeight y totalBoxes
+     * Evita queries N+1 cuando se accede a estos attributes en colecciones
+     * 
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeWithTotals($query)
+    {
+        return $query->with([
+            'pallets.boxes.box.productionInputs', // Para determinar disponibilidad de cajas
+            'pallets.boxes.box.product', // Para cálculos si es necesario
+        ]);
     }
 
 

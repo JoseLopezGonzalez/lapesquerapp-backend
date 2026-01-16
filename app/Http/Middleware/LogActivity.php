@@ -40,7 +40,6 @@ class LogActivity
             if (auth()->check()) {
                 ActivityLog::create([
                     'user_id' => auth()->id(),
-                    'token_id' => auth()->user()->currentAccessToken()?->id, // Guarda el ID del token
                     'ip_address' => $ip,
                     'country' => $location?->countryName ?? 'Desconocido',
                     'city' => $location?->cityName ?? 'Desconocido',
@@ -50,9 +49,7 @@ class LogActivity
                     'device' => $agent->device() ?? 'Desconocido',
                     'path' => $request->path(),
                     'method' => $request->method(),
-                    /* 'action' => 'default_action', // Ejemplo */
-                    'location' => "{$location?->countryName}, {$location?->cityName}", // Ejemplo de formato de ubicación
-                    /* 'details' => $userAgentHeader ?? 'Desconocido', // Guardar el User-Agent completo */
+                    'location' => "{$location?->countryName}, {$location?->cityName}",
                 ]);
             } else {
                 Log::info("Usuario no autenticado, actividad no registrada.");

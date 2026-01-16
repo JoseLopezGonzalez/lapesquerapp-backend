@@ -38,7 +38,7 @@ class IncidentController extends Controller
             'status' => 'open',
         ]);
 
-        $order->update(['status' => 'incident']);
+        $order->markAsIncident();
 
         return response()->json($incident->toArrayAssoc(), 201);
     }
@@ -80,15 +80,8 @@ class IncidentController extends Controller
 
         $incident->delete();
 
-        /* cambiar order status a finished */
-        $order->status = 'finished';
-        $order->save();
-        
-        // Cambiar todos los palets del pedido a 'shipped'
-        $order->load('pallets');
-        foreach ($order->pallets as $pallet) {
-            $pallet->changeToShipped();
-        }
+        // Finalizar el pedido y marcar palets como enviados
+        $order->finalizeAfterIncident();
 
         /* return response()->noContent(); */
         /* return mensaje satisfactorio */

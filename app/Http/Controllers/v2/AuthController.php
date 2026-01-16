@@ -29,6 +29,13 @@ class AuthController extends Controller
                 'message' => 'Las credenciales proporcionadas son inválidas.',
             ], 401); // Respuesta con código de estado 401 (no autorizado)
         }
+
+        // Verificar si el usuario está activo
+        if (!$user->active) {
+            return response()->json([
+                'message' => 'Su cuenta ha sido desactivada. Contacte con el administrador.',
+            ], 403); // Respuesta con código de estado 403 (prohibido)
+        }
         
 
         // Crear un token personal para el usuario
@@ -53,7 +60,8 @@ class AuthController extends Controller
     // Logout
     public function logout(Request $request)
     {
-        $request->user()->tokens()->delete();
+        // Eliminar solo el token actual en lugar de todos los tokens
+        $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Sesión cerrada correctamente']);
     }

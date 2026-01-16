@@ -1,8 +1,8 @@
 # Referencia Técnica - Rutas Completas API v2
 
 ## ⚠️ Estado de la API
-- **v1**: Obsoleta (no documentada)
-- **v2**: Versión activa (este documento)
+- **v1**: Eliminada (2025-01-27) - Ya no existe en el código base
+- **v2**: Versión activa (este documento) - Única versión disponible
 
 ---
 

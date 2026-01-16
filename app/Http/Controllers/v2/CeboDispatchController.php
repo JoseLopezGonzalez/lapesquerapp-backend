@@ -7,6 +7,7 @@ use App\Http\Resources\v2\CeboDispatchResource;
 use App\Models\CeboDispatch;
 use App\Models\CeboDispatchProduct;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class CeboDispatchController extends Controller
@@ -127,26 +128,39 @@ class CeboDispatchController extends Controller
         ]);
 
         $dispatch = CeboDispatch::findOrFail($id);
-        $dispatch->update([
-            'supplier_id' => $validated['supplier']['id'],
-            'date' => $validated['date'],
-            'notes' => $validated['notes']
-        ]);
-
-        $dispatch->products()->delete();
-        foreach ($validated['details'] as $detail) {
-            $dispatch->products()->create([
-                'product_id' => $detail['product']['id'],
-                'net_weight' => $detail['netWeight']
+        
+        DB::transaction(function () use ($dispatch, $validated) {
+            $dispatch->update([
+                'supplier_id' => $validated['supplier']['id'],
+                'date' => $validated['date'],
+                'notes' => $validated['notes']
             ]);
-        }
 
+            $dispatch->products()->delete();
+            foreach ($validated['details'] as $detail) {
+                $dispatch->products()->create([
+                    'product_id' => $detail['product']['id'],
+                    'net_weight' => $detail['netWeight']
+                ]);
+            }
+        });
+
+        $dispatch->refresh();
         return new CeboDispatchResource($dispatch);
     }
 
     public function destroy($id)
     {
         $dispatch = CeboDispatch::findOrFail($id);
+
+        // Validar si el despacho tiene productos antes de eliminar
+        if ($dispatch->products()->exists()) {
+            return response()->json([
+                'message' => 'No se puede eliminar el despacho porque tiene productos asociados',
+                'details' => 'El despacho contiene productos que deben eliminarse primero'
+            ], 400);
+        }
+
         $dispatch->delete();
         return response()->json(['message' => 'Despacho de cebo eliminado correctamente'], 200);
     }
@@ -157,6 +171,19 @@ class CeboDispatchController extends Controller
 
         if (!is_array($ids) || empty($ids)) {
             return response()->json(['message' => 'No se proporcionaron IDs válidos'], 400);
+        }
+
+        // Validar que ningún despacho tenga productos
+        $dispatchesWithProducts = CeboDispatch::whereIn('id', $ids)
+            ->whereHas('products')
+            ->pluck('id')
+            ->toArray();
+
+        if (!empty($dispatchesWithProducts)) {
+            return response()->json([
+                'message' => 'No se pueden eliminar algunos despachos porque tienen productos asociados',
+                'details' => 'Los despachos con IDs: ' . implode(', ', $dispatchesWithProducts) . ' tienen productos asociados'
+            ], 400);
         }
 
         CeboDispatch::whereIn('id', $ids)->delete();

@@ -14,7 +14,6 @@ class ActivityLog extends Model
 
     protected $fillable = [
         'user_id',
-        'token_id',
         'ip_address',
         'country',
         'city',
@@ -24,7 +23,7 @@ class ActivityLog extends Model
         'device',
         'path',
         'method',
-        'location', // Nuevo campo
+        'location',
     ];
 
     public function user()

@@ -265,11 +265,11 @@ Esta documentación está organizada en secciones:
 
 ## ⚠️ Advertencias Importantes
 
-### API v1 Obsoleta
+### API v1 Eliminada
 
-- **NO usar** endpoints de v1 para nuevas funcionalidades
-- v1 se mantiene solo por compatibilidad
-- Toda nueva funcionalidad debe ir en v2
+- **API v1 ha sido completamente eliminada** (2025-01-27)
+- Ya no existe en el código base
+- Solo existe la API v2, que es la versión activa y única disponible
 
 ### Middleware Tenant Obligatorio
 

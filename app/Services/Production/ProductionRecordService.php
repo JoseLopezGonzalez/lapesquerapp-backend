@@ -75,6 +75,20 @@ class ProductionRecordService
      */
     public function delete(ProductionRecord $record): bool
     {
+        // Validar si el proceso tiene inputs o outputs antes de eliminar
+        if ($record->inputs()->exists()) {
+            throw new \Exception('No se puede eliminar el proceso porque tiene entradas (inputs) asociadas. Debe eliminar las entradas primero.');
+        }
+
+        if ($record->outputs()->exists()) {
+            throw new \Exception('No se puede eliminar el proceso porque tiene salidas (outputs) asociadas. Debe eliminar las salidas primero.');
+        }
+
+        // Validar si tiene procesos hijos
+        if ($record->children()->exists()) {
+            throw new \Exception('No se puede eliminar el proceso porque tiene procesos hijos asociados. Debe eliminar los procesos hijos primero.');
+        }
+
         return $record->delete();
     }
 

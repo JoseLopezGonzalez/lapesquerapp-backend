@@ -4,7 +4,8 @@ namespace App\Exports\v2;
 
 use App\Models\Box;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\FromQuery;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\Exportable;
@@ -13,7 +14,7 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
-class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, WithStyles
+class BoxesReportExport implements FromQuery, WithHeadings, WithMapping, WithStyles, WithChunkReading
 {
     use Exportable;
 
@@ -26,7 +27,7 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
         $this->limit = $limit;
     }
 
-    public function collection()
+    public function query()
     {
         $query = Box::query();
 
@@ -46,13 +47,18 @@ class BoxesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
             $query->limit($this->limit);
         }
 
-        // Cargar relaciones de forma más eficiente
+        // Cargar relaciones de forma más eficiente para chunking
         return $query->with([
             'product.article',
             'product.species',
             'palletBox.pallet.order.customer',
             'palletBox.pallet.storedPallet.store'
-        ])->get();
+        ]);
+    }
+
+    public function chunkSize(): int
+    {
+        return 500; // Procesar en lotes de 500 para optimizar memoria
     }
 
     private function applyFiltersToQuery($query, $filters)

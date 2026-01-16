@@ -32,8 +32,11 @@ class OrdersReportController extends Controller
     {
         try {
             // Aumentar el límite de memoria y tiempo de ejecución solo para esta operación
-            ini_set('memory_limit', '1024M');
-            ini_set('max_execution_time', 300);
+            $limits = config('exports.operations.reports');
+            if ($limits) {
+                ini_set('memory_limit', $limits['memory_limit']);
+                ini_set('max_execution_time', (string) $limits['max_execution_time']);
+            }
 
             // Exportar en formato .xls (Excel 97-2003)
             return Excel::download(new OrderExport($request), 'orders_report.xls', \Maatwebsite\Excel\Excel::XLS);
@@ -49,8 +52,11 @@ class OrdersReportController extends Controller
      {
          try {
              // Aumentar el límite de memoria y tiempo de ejecución solo para esta operación
-             ini_set('memory_limit', '1024M');
-             ini_set('max_execution_time', 300);
+             $limits = config('exports.operations.reports');
+             if ($limits) {
+                 ini_set('memory_limit', $limits['memory_limit']);
+                 ini_set('max_execution_time', (string) $limits['max_execution_time']);
+             }
 
              // Exportar en formato .xls (Excel 97-2003)
              return Excel::download(new OrderExport($request), 'orders_report_a3erp.xls', \Maatwebsite\Excel\Excel::XLS);

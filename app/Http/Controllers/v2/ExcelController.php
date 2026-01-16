@@ -27,6 +27,24 @@ use App\Models\Order;
 class ExcelController extends Controller
 {
     /**
+     * Aplicar límites de memoria y tiempo para exportaciones
+     * 
+     * @param string $exportType Tipo de exportación (para configuraciones específicas)
+     * @return void
+     */
+    private function applyExportLimits(string $exportType = 'standard'): void
+    {
+        // Obtener configuración de límites
+        $config = config("exports.types.{$exportType}", 'standard');
+        $limits = config("exports.limits.{$config}");
+
+        if ($limits) {
+            ini_set('memory_limit', $limits['memory_limit']);
+            ini_set('max_execution_time', (string) $limits['max_execution_time']);
+        }
+    }
+
+    /**
      * Generar exportación en función del tipo de archivo y entidad
      */
     private function generateExport($exportClass, $fileName)
@@ -34,23 +52,42 @@ class ExcelController extends Controller
         return Excel::download(new $exportClass, "{$fileName}.xlsx");
     }
 
+    /**
+     * Valida y sanitiza un array de enteros para usar en whereIn()
+     * Previene SQL injection asegurando que solo se usen arrays de enteros válidos
+     * 
+     * @param mixed $value Valor del request
+     * @return array Array de enteros válidos, o array vacío si no es válido
+     */
+    private function sanitizeIntegerArray($value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        return array_filter(
+            array_map('intval', $value),
+            fn($item) => $item > 0
+        );
+    }
+
     public function exportOrders(Request $request)
     {
-        ini_set('memory_limit', '1024M');
+        $this->applyExportLimits('standard');
         return $this->generateExport(OrdersExport::class, 'orders_report');
     }
 
 
     public function exportProductLotDetails($orderId)
     {
-        ini_set('memory_limit', '1024M');
+        $this->applyExportLimits('standard');
         $order = Order::findOrFail($orderId);
         return Excel::download(new ProductLotDetailsExport($order), "product_lot_details_{$order->formattedId}.xlsx");
     }
 
     public function exportBoxList($orderId)
     {
-        ini_set('memory_limit', '1024M');
+        $this->applyExportLimits('standard');
         $order = Order::findOrFail($orderId);
         return Excel::download(new OrderBoxListExport($order), "box_list_{$order->formattedId}.xlsx");
     }
@@ -58,15 +95,14 @@ class ExcelController extends Controller
 
     public function exportA3ERPOrderSalesDeliveryNote($orderId)
     {
-        ini_set('memory_limit', '1024M');
+        $this->applyExportLimits('standard');
         $order = Order::findOrFail($orderId);
         return Excel::download(new A3ERPOrderSalesDeliveryNoteExport($order), "albaran_venta_{$order->formattedId}.xls");
     }
 
     public function exportA3ERPOrderSalesDeliveryNoteWithFilters(Request $request)
     {
-        ini_set('memory_limit', '1024M');
-        ini_set('max_execution_time', 300);
+        $this->applyExportLimits('standard');
 
         $query = Order::query();
 
@@ -83,7 +119,10 @@ class ExcelController extends Controller
         }
 
         if ($request->has('customers')) {
-            $query->whereIn('customer_id', $request->customers);
+            $customers = $this->sanitizeIntegerArray($request->customers);
+            if (!empty($customers)) {
+                $query->whereIn('customer_id', $customers);
+            }
         }
 
         if ($request->has('id')) {
@@ -91,7 +130,10 @@ class ExcelController extends Controller
         }
 
         if ($request->has('ids')) {
-            $query->whereIn('id', $request->ids);
+            $ids = $this->sanitizeIntegerArray($request->ids);
+            if (!empty($ids)) {
+                $query->whereIn('id', $ids);
+            }
         }
 
         if ($request->has('buyerReference')) {
@@ -123,11 +165,17 @@ class ExcelController extends Controller
         }
 
         if ($request->has('transports')) {
-            $query->whereIn('transport_id', $request->transports);
+            $transports = $this->sanitizeIntegerArray($request->transports);
+            if (!empty($transports)) {
+                $query->whereIn('transport_id', $transports);
+            }
         }
 
         if ($request->has('salespeople')) {
-            $query->whereIn('salesperson_id', $request->salespeople);
+            $salespeople = $this->sanitizeIntegerArray($request->salespeople);
+            if (!empty($salespeople)) {
+                $query->whereIn('salesperson_id', $salespeople);
+            }
         }
 
         if ($request->has('palletsState')) {
@@ -159,8 +207,7 @@ class ExcelController extends Controller
 
     public function exportFacilcomOrderSalesDeliveryNoteWithFilters(Request $request)
     {
-        ini_set('memory_limit', '1024M');
-        ini_set('max_execution_time', 300);
+        $this->applyExportLimits('standard');
 
         $query = Order::query();
 
@@ -175,7 +222,10 @@ class ExcelController extends Controller
         }
 
         if ($request->has('customers')) {
-            $query->whereIn('customer_id', $request->customers);
+            $customers = $this->sanitizeIntegerArray($request->customers);
+            if (!empty($customers)) {
+                $query->whereIn('customer_id', $customers);
+            }
         }
 
         if ($request->has('id')) {
@@ -183,7 +233,10 @@ class ExcelController extends Controller
         }
 
         if ($request->has('ids')) {
-            $query->whereIn('id', $request->ids);
+            $ids = $this->sanitizeIntegerArray($request->ids);
+            if (!empty($ids)) {
+                $query->whereIn('id', $ids);
+            }
         }
 
         if ($request->has('buyerReference')) {
@@ -215,11 +268,17 @@ class ExcelController extends Controller
         }
 
         if ($request->has('transports')) {
-            $query->whereIn('transport_id', $request->transports);
+            $transports = $this->sanitizeIntegerArray($request->transports);
+            if (!empty($transports)) {
+                $query->whereIn('transport_id', $transports);
+            }
         }
 
         if ($request->has('salespeople')) {
-            $query->whereIn('salesperson_id', $request->salespeople);
+            $salespeople = $this->sanitizeIntegerArray($request->salespeople);
+            if (!empty($salespeople)) {
+                $query->whereIn('salesperson_id', $salespeople);
+            }
         }
 
         if ($request->has('palletsState')) {
@@ -250,7 +309,7 @@ class ExcelController extends Controller
 
     public function exportFacilcomSingleOrder($orderId)
     {
-        ini_set('memory_limit', '1024M');
+        $this->applyExportLimits('standard');
         $order = Order::findOrFail($orderId);
 
         return Excel::download(
@@ -263,7 +322,7 @@ class ExcelController extends Controller
     /* A3ERP2 Order Sales Delivery Note Export - Formato A3 con códigos Facilcom, solo clientes con facilcom_code */
     public function exportA3ERP2OrderSalesDeliveryNote($orderId)
     {
-        ini_set('memory_limit', '1024M');
+        $this->applyExportLimits('standard');
         $order = Order::findOrFail($orderId);
         
         return Excel::download(
@@ -276,8 +335,7 @@ class ExcelController extends Controller
     /* A3ERP2 Orders Sales Delivery Notes Export - Formato A3 con códigos Facilcom, solo clientes con facilcom_code */
     public function exportA3ERP2OrderSalesDeliveryNoteWithFilters(Request $request)
     {
-        ini_set('memory_limit', '1024M');
-        ini_set('max_execution_time', 300);
+        $this->applyExportLimits('standard');
 
         $query = Order::query();
 
@@ -300,7 +358,10 @@ class ExcelController extends Controller
         }
 
         if ($request->has('customers')) {
-            $query->whereIn('customer_id', $request->customers);
+            $customers = $this->sanitizeIntegerArray($request->customers);
+            if (!empty($customers)) {
+                $query->whereIn('customer_id', $customers);
+            }
         }
 
         if ($request->has('id')) {
@@ -308,7 +369,10 @@ class ExcelController extends Controller
         }
 
         if ($request->has('ids')) {
-            $query->whereIn('id', $request->ids);
+            $ids = $this->sanitizeIntegerArray($request->ids);
+            if (!empty($ids)) {
+                $query->whereIn('id', $ids);
+            }
         }
 
         if ($request->has('buyerReference')) {
@@ -340,11 +404,17 @@ class ExcelController extends Controller
         }
 
         if ($request->has('transports')) {
-            $query->whereIn('transport_id', $request->transports);
+            $transports = $this->sanitizeIntegerArray($request->transports);
+            if (!empty($transports)) {
+                $query->whereIn('transport_id', $transports);
+            }
         }
 
         if ($request->has('salespeople')) {
-            $query->whereIn('salesperson_id', $request->salespeople);
+            $salespeople = $this->sanitizeIntegerArray($request->salespeople);
+            if (!empty($salespeople)) {
+                $query->whereIn('salesperson_id', $salespeople);
+            }
         }
 
         if ($request->has('palletsState')) {
@@ -376,8 +446,7 @@ class ExcelController extends Controller
 
     public function exportActiveOrderPlannedProducts()
     {
-        ini_set('memory_limit', '1024M');
-        ini_set('max_execution_time', 300);
+        $this->applyExportLimits('standard');
 
         return Excel::download(
             new ActiveOrderPlannedProductsExport(),
@@ -388,8 +457,7 @@ class ExcelController extends Controller
     /* Boxes report v2 */
     public function exportBoxesReport(Request $request)
     {
-        ini_set('memory_limit', '2048M');
-        ini_set('max_execution_time', 600);
+        $this->applyExportLimits('boxes_report');
 
         // Verificar si se solicita un límite para testing
         $limit = $request->input('limit');
@@ -405,8 +473,7 @@ class ExcelController extends Controller
     public function exportRawMaterialReceptionFacilcom(Request $request)
     {
         try {
-            ini_set('memory_limit', '2048M');
-            ini_set('max_execution_time', 600);
+            $this->applyExportLimits('raw_material_reception_facilcom');
 
             // Verificar si se solicita un límite para testing
             $limit = $request->input('limit');
@@ -434,8 +501,7 @@ class ExcelController extends Controller
     public function exportCeboDispatchFacilcom(Request $request)
     {
         try {
-            ini_set('memory_limit', '2048M');
-            ini_set('max_execution_time', 600);
+            $this->applyExportLimits('cebo_dispatch_facilcom');
 
             // Verificar si se solicita un límite para testing
             $limit = $request->input('limit');
@@ -463,8 +529,7 @@ class ExcelController extends Controller
     public function exportCeboDispatchA3erp(Request $request)
     {
         try {
-            ini_set('memory_limit', '2048M');
-            ini_set('max_execution_time', 600);
+            $this->applyExportLimits('cebo_dispatch_a3erp');
 
             // Verificar si se solicita un límite para testing
             $limit = $request->input('limit');
@@ -492,8 +557,7 @@ class ExcelController extends Controller
     public function exportCeboDispatchA3erp2(Request $request)
     {
         try {
-            ini_set('memory_limit', '2048M');
-            ini_set('max_execution_time', 600);
+            $this->applyExportLimits('cebo_dispatch_a3erp2');
 
             // Verificar si se solicita un límite para testing
             $limit = $request->input('limit');
@@ -521,8 +585,7 @@ class ExcelController extends Controller
     public function exportRawMaterialReceptionA3erp(Request $request)
     {
         try {
-            ini_set('memory_limit', '2048M');
-            ini_set('max_execution_time', 600);
+            $this->applyExportLimits('raw_material_reception_a3erp');
 
             // Verificar si se solicita un límite para testing
             $limit = $request->input('limit');
