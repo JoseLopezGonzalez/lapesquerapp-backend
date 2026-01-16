@@ -339,11 +339,24 @@ class PunchController extends Controller
             // Determinar estado
             $status = 'no_ha_fichado';
             if ($lastEventData) {
+                $lastEventIsToday = $lastEventData->timestamp->isSameDay($date);
+                
                 if ($lastEventData->event_type === PunchEvent::TYPE_IN) {
-                    // Verificar si el último IN es de hoy
-                    $status = $lastEventData->timestamp->isSameDay($date) ? 'trabajando' : 'ha_finalizado';
+                    // Si el último evento es IN y es de hoy, está trabajando
+                    $status = $lastEventIsToday ? 'trabajando' : 'ha_finalizado';
                 } else {
-                    $status = $lastEventData->timestamp->isSameDay($date) ? 'descansando' : 'ha_finalizado';
+                    // Si el último evento es OUT
+                    if ($lastEventIsToday) {
+                        // Calcular horas transcurridas desde la última salida
+                        $hoursSinceLastExit = now()->diffInHours($lastEventData->timestamp);
+                        
+                        // Si han pasado menos de 2 horas, está descansando
+                        // Si han pasado 2 horas o más, ha finalizado su jornada
+                        $status = $hoursSinceLastExit < 2 ? 'descansando' : 'ha_finalizado';
+                    } else {
+                        // El último evento OUT no es de hoy, ya finalizó
+                        $status = 'ha_finalizado';
+                    }
                 }
             }
 
