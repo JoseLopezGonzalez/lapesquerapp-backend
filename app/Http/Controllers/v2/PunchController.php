@@ -496,6 +496,61 @@ class PunchController extends Controller
             })
             ->values();
 
+        // Detectar faltas de fichaje en días anteriores (sesiones abiertas)
+        $missingPunches = [];
+        $yesterday = now()->subDay()->startOfDay();
+        
+        // Buscar todos los eventos IN de días anteriores (excluyendo hoy)
+        $pastInEvents = PunchEvent::where('event_type', PunchEvent::TYPE_IN)
+            ->where('timestamp', '<', $date)
+            ->where('timestamp', '>=', $yesterday->copy()->subDays(30)) // Últimos 30 días
+            ->with('employee')
+            ->orderBy('timestamp', 'desc')
+            ->get()
+            ->groupBy('employee_id');
+
+        foreach ($pastInEvents as $employeeId => $inEvents) {
+            $employee = $inEvents->first()->employee;
+            
+            foreach ($inEvents as $inEvent) {
+                $eventDate = $inEvent->timestamp->startOfDay();
+                $eventDateEnd = $eventDate->copy()->endOfDay();
+                
+                // Verificar si existe un OUT en el mismo día después de este IN
+                $hasOut = PunchEvent::where('employee_id', $employeeId)
+                    ->where('event_type', PunchEvent::TYPE_OUT)
+                    ->where('timestamp', '>', $inEvent->timestamp)
+                    ->whereBetween('timestamp', [$eventDate, $eventDateEnd])
+                    ->exists();
+                
+                // Si no hay OUT, es una sesión abierta (falta de fichaje)
+                if (!$hasOut) {
+                    // Verificar si no está ya en la lista para este empleado y día
+                    $key = $employeeId . '_' . $eventDate->format('Y-m-d');
+                    
+                    if (!isset($missingPunches[$key])) {
+                        $daysAgo = now()->startOfDay()->diffInDays($eventDate);
+                        
+                        $missingPunches[$key] = [
+                            'employeeId' => $employee->id,
+                            'employeeName' => $employee->name,
+                            'nfcUid' => $employee->nfc_uid,
+                            'date' => $eventDate->format('Y-m-d'),
+                            'daysAgo' => $daysAgo,
+                            'entryTimestamp' => $inEvent->timestamp->format('Y-m-d H:i:s'),
+                            'entryDeviceId' => $inEvent->device_id,
+                            'hoursOpen' => round(now()->diffInHours($inEvent->timestamp), 1),
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Ordenar por días atrás (más recientes primero)
+        usort($missingPunches, function ($a, $b) {
+            return $a['daysAgo'] <=> $b['daysAgo'];
+        });
+
         // Estadísticas agregadas
         $statistics = [
             'totalWorking' => count($workingEmployees),
@@ -512,6 +567,10 @@ class PunchController extends Controller
                 'workingEmployees' => $workingEmployees,
                 'statistics' => $statistics,
                 'recentPunches' => $recentPunches,
+                'errors' => [
+                    'missingPunches' => array_values($missingPunches),
+                    'totalMissingPunches' => count($missingPunches),
+                ],
             ],
         ]);
     }
