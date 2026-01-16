@@ -47,29 +47,9 @@ class OrderPDFService
 
         // Crear PDF con Snappdf
         $snappdf = new Snappdf();
-        $snappdf->setChromiumPath('/usr/bin/google-chrome');
-
-        // Opciones Chromium
-        $snappdf->addChromiumArguments('--no-sandbox');
-        $snappdf->addChromiumArguments('--margin-top=10mm');
-        $snappdf->addChromiumArguments('--margin-right=30mm');
-        $snappdf->addChromiumArguments('--margin-bottom=10mm');
-        $snappdf->addChromiumArguments('--margin-left=10mm');
-        $snappdf->addChromiumArguments('--disable-gpu');
-        $snappdf->addChromiumArguments('--disable-translate');
-        $snappdf->addChromiumArguments('--disable-extensions');
-        $snappdf->addChromiumArguments('--disable-sync');
-        $snappdf->addChromiumArguments('--disable-background-networking');
-        $snappdf->addChromiumArguments('--disable-software-rasterizer');
-        $snappdf->addChromiumArguments('--disable-default-apps');
-        $snappdf->addChromiumArguments('--disable-dev-shm-usage');
-        $snappdf->addChromiumArguments('--safebrowsing-disable-auto-update');
-        $snappdf->addChromiumArguments('--run-all-compositor-stages-before-draw');
-        $snappdf->addChromiumArguments('--no-first-run');
-        $snappdf->addChromiumArguments('--print-to-pdf-no-header');
-        $snappdf->addChromiumArguments('--no-pdf-header-footer');
-        $snappdf->addChromiumArguments('--hide-scrollbars');
-        $snappdf->addChromiumArguments('--ignore-certificate-errors');
+        
+        // Configure Chromium using centralized configuration
+        $this->configureChromium($snappdf);
 
         // Generar contenido
         $pdfContent = $snappdf->setHtml($html)->generate();
@@ -78,5 +58,45 @@ class OrderPDFService
         file_put_contents($pdfPath, $pdfContent);
 
         return $pdfPath;
+    }
+
+    /**
+     * Configure Chromium/Chrome path and arguments for PDF generation.
+     *
+     * @param Snappdf $snappdf
+     * @param array $additionalArguments Additional arguments to add (optional)
+     * @return void
+     */
+    private function configureChromium(Snappdf $snappdf, array $additionalArguments = []): void
+    {
+        // Set Chromium path from configuration
+        $chromiumPath = config('pdf.chromium.path', '/usr/bin/google-chrome');
+        $snappdf->setChromiumPath($chromiumPath);
+
+        // Apply margins from configuration
+        $margins = config('pdf.chromium.margins', []);
+        if (isset($margins['top'])) {
+            $snappdf->addChromiumArguments('--margin-top=' . $margins['top']);
+        }
+        if (isset($margins['right'])) {
+            $snappdf->addChromiumArguments('--margin-right=' . $margins['right']);
+        }
+        if (isset($margins['bottom'])) {
+            $snappdf->addChromiumArguments('--margin-bottom=' . $margins['bottom']);
+        }
+        if (isset($margins['left'])) {
+            $snappdf->addChromiumArguments('--margin-left=' . $margins['left']);
+        }
+
+        // Apply default arguments from configuration
+        $defaultArguments = config('pdf.chromium.arguments', []);
+        foreach ($defaultArguments as $argument) {
+            $snappdf->addChromiumArguments($argument);
+        }
+
+        // Apply additional arguments if provided
+        foreach ($additionalArguments as $argument) {
+            $snappdf->addChromiumArguments($argument);
+        }
     }
 }

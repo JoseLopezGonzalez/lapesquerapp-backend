@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\v2\Traits\HandlesChromiumConfig;
 use App\Models\Supplier;
 use App\Models\RawMaterialReception;
 use App\Models\CeboDispatch;
@@ -12,6 +13,7 @@ use Beganovich\Snappdf\Snappdf;
 
 class SupplierLiquidationController extends Controller
 {
+    use HandlesChromiumConfig;
     /**
      * Listar proveedores con actividad (recepciones o salidas de cebo) en un rango de fechas
      * 
@@ -516,38 +518,8 @@ class SupplierLiquidationController extends Controller
             'show_transfer_payment' => $showTransferPayment,
         ])->render();
         
-        $snappdf->setChromiumPath('/usr/bin/google-chrome');
-
-        // Configuración de márgenes
-        $snappdf->addChromiumArguments('--margin-top=10mm');
-        $snappdf->addChromiumArguments('--margin-right=30mm');
-        $snappdf->addChromiumArguments('--margin-bottom=10mm');
-        $snappdf->addChromiumArguments('--margin-left=10mm');
-
-        // Argumentos de optimización y compatibilidad
-        $chromiumArgs = [
-            '--no-sandbox',
-            'disable-gpu',
-            'disable-translate',
-            'disable-extensions',
-            'disable-sync',
-            'disable-background-networking',
-            'disable-software-rasterizer',
-            'disable-default-apps',
-            'disable-dev-shm-usage',
-            'safebrowsing-disable-auto-update',
-            'run-all-compositor-stages-before-draw',
-            'no-first-run',
-            'no-margins',
-            'print-to-pdf-no-header',
-            'no-pdf-header-footer',
-            'hide-scrollbars',
-            'ignore-certificate-errors'
-        ];
-
-        foreach ($chromiumArgs as $arg) {
-            $snappdf->addChromiumArguments($arg);
-        }
+        // Configure Chromium using centralized configuration
+        $this->configureChromium($snappdf);
 
         // Generar PDF
         $pdf = $snappdf->setHtml($html)->generate();
