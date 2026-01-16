@@ -14,7 +14,8 @@ class CopyTenantEntities extends Command
 {
     protected $signature = 'tenants:copy-entities 
                             {source : Subdomain del tenant origen (ej: brisamar)}
-                            {destination : Subdomain del tenant destino (ej: pymcolorao)}';
+                            {destination : Subdomain del tenant destino (ej: pymcolorao)}
+                            {--replace : Borra primero las entidades en el destino antes de copiar}';
 
     protected $description = 'Copia entidades (Incoterms, Zonas de captura, Artes de pesca, Especies) de un tenant a otro';
 
@@ -61,6 +62,27 @@ class CopyTenantEntities extends Command
         DB::purge('tenant');
         DB::reconnect('tenant');
 
+        // Si se especifica --replace, borrar primero las entidades en el destino
+        if ($this->option('replace')) {
+            $this->warn("\n⚠️  Borrando entidades existentes en el destino...");
+            
+            // IMPORTANTE: Borrar en orden inverso de dependencias
+            // Primero especies (dependen de artes de pesca)
+            $deletedSpecies = Species::count();
+            Species::query()->delete();
+            $this->info("   🗑️  Borradas {$deletedSpecies} especies");
+            
+            // Luego artes de pesca (pueden tener especies relacionadas, pero ya se borraron)
+            $deletedGears = FishingGear::count();
+            FishingGear::query()->delete();
+            $this->info("   🗑️  Borrados {$deletedGears} artes de pesca");
+            
+            // Zonas de captura
+            $deletedZones = CaptureZone::count();
+            CaptureZone::query()->delete();
+            $this->info("   🗑️  Borradas {$deletedZones} zonas de captura");
+        }
+
         $copied = [
             'incoterms' => 0,
             'capture_zones' => 0,
@@ -87,15 +109,25 @@ class CopyTenantEntities extends Command
         // Copiar Zonas de Captura
         $this->info("\n🌍 Copiando Zonas de Captura...");
         foreach ($captureZones as $zone) {
-            $existing = CaptureZone::where('name', $zone->name)->first();
-            if (!$existing) {
+            if ($this->option('replace')) {
+                // Si se usa --replace, crear directamente sin verificar duplicados
                 CaptureZone::create([
                     'name' => $zone->name,
                 ]);
                 $copied['capture_zones']++;
                 $this->line("   ✓ Copiado: {$zone->name}");
             } else {
-                $this->line("   ⊗ Ya existe: {$zone->name}");
+                // Verificar duplicados solo si no se usa --replace
+                $existing = CaptureZone::where('name', $zone->name)->first();
+                if (!$existing) {
+                    CaptureZone::create([
+                        'name' => $zone->name,
+                    ]);
+                    $copied['capture_zones']++;
+                    $this->line("   ✓ Copiado: {$zone->name}");
+                } else {
+                    $this->line("   ⊗ Ya existe: {$zone->name}");
+                }
             }
         }
 
@@ -103,8 +135,8 @@ class CopyTenantEntities extends Command
         $this->info("\n🎣 Copiando Artes de Pesca...");
         $fishingGearMap = []; // Mapeo de ID origen -> ID destino
         foreach ($fishingGears as $gear) {
-            $existing = FishingGear::where('name', $gear->name)->first();
-            if (!$existing) {
+            if ($this->option('replace')) {
+                // Si se usa --replace, crear directamente sin verificar duplicados
                 $newGear = FishingGear::create([
                     'name' => $gear->name,
                 ]);
@@ -112,20 +144,27 @@ class CopyTenantEntities extends Command
                 $copied['fishing_gears']++;
                 $this->line("   ✓ Copiado: {$gear->name} (ID: {$gear->id} -> {$newGear->id})");
             } else {
-                $fishingGearMap[$gear->id] = $existing->id;
-                $this->line("   ⊗ Ya existe: {$gear->name} (ID: {$gear->id} -> {$existing->id})");
+                // Verificar duplicados solo si no se usa --replace
+                $existing = FishingGear::where('name', $gear->name)->first();
+                if (!$existing) {
+                    $newGear = FishingGear::create([
+                        'name' => $gear->name,
+                    ]);
+                    $fishingGearMap[$gear->id] = $newGear->id;
+                    $copied['fishing_gears']++;
+                    $this->line("   ✓ Copiado: {$gear->name} (ID: {$gear->id} -> {$newGear->id})");
+                } else {
+                    $fishingGearMap[$gear->id] = $existing->id;
+                    $this->line("   ⊗ Ya existe: {$gear->name} (ID: {$gear->id} -> {$existing->id})");
+                }
             }
         }
 
         // Copiar Especies (después de copiar artes de pesca)
         $this->info("\n🐟 Copiando Especies...");
         foreach ($species as $specie) {
-            // Verificar si ya existe por nombre (o por código FAO si es único)
-            $existing = Species::where('name', $specie->name)
-                ->where('fao', $specie->fao)
-                ->first();
-            
-            if (!$existing) {
+            if ($this->option('replace')) {
+                // Si se usa --replace, crear directamente sin verificar duplicados
                 // Verificar que el fishing_gear_id mapeado existe
                 $mappedFishingGearId = $fishingGearMap[$specie->fishing_gear_id] ?? null;
                 if (!$mappedFishingGearId) {
@@ -143,7 +182,31 @@ class CopyTenantEntities extends Command
                 $copied['species']++;
                 $this->line("   ✓ Copiado: {$specie->name} ({$specie->fao})");
             } else {
-                $this->line("   ⊗ Ya existe: {$specie->name} ({$specie->fao})");
+                // Verificar duplicados solo si no se usa --replace
+                $existing = Species::where('name', $specie->name)
+                    ->where('fao', $specie->fao)
+                    ->first();
+                
+                if (!$existing) {
+                    // Verificar que el fishing_gear_id mapeado existe
+                    $mappedFishingGearId = $fishingGearMap[$specie->fishing_gear_id] ?? null;
+                    if (!$mappedFishingGearId) {
+                        $this->error("   ✗ Error: No se encontró arte de pesca mapeado para especie '{$specie->name}' (fishing_gear_id: {$specie->fishing_gear_id})");
+                        continue;
+                    }
+
+                    Species::create([
+                        'name' => $specie->name,
+                        'scientific_name' => $specie->scientific_name,
+                        'fao' => $specie->fao,
+                        'image' => $specie->image ?? '',
+                        'fishing_gear_id' => $mappedFishingGearId,
+                    ]);
+                    $copied['species']++;
+                    $this->line("   ✓ Copiado: {$specie->name} ({$specie->fao})");
+                } else {
+                    $this->line("   ⊗ Ya existe: {$specie->name} ({$specie->fao})");
+                }
             }
         }
 
