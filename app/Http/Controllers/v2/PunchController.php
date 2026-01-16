@@ -176,6 +176,66 @@ class PunchController extends Controller
     }
 
     /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, string $id)
+    {
+        $punchEvent = PunchEvent::with('employee')->findOrFail($id);
+
+        $validated = $request->validate([
+            'employee_id' => 'sometimes|required|integer|exists:tenant.employees,id',
+            'event_type' => 'sometimes|required|in:IN,OUT',
+            'device_id' => 'sometimes|required|string',
+            'timestamp' => 'sometimes|required|date',
+        ], [
+            'employee_id.exists' => 'El empleado especificado no existe.',
+            'event_type.in' => 'El tipo de evento debe ser IN o OUT.',
+            'timestamp.date' => 'El timestamp debe ser una fecha válida.',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Actualizar solo los campos proporcionados
+            if (isset($validated['employee_id'])) {
+                $punchEvent->employee_id = $validated['employee_id'];
+            }
+
+            if (isset($validated['event_type'])) {
+                $punchEvent->event_type = $validated['event_type'];
+            }
+
+            if (isset($validated['device_id'])) {
+                $punchEvent->device_id = $validated['device_id'];
+            }
+
+            if (isset($validated['timestamp'])) {
+                $punchEvent->timestamp = Carbon::parse($validated['timestamp']);
+            }
+
+            $punchEvent->save();
+
+            // Recargar relación con empleado
+            $punchEvent->load('employee');
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Evento de fichaje actualizado correctamente.',
+                'data' => new PunchEventResource($punchEvent),
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'message' => 'Error al actualizar el evento de fichaje.',
+                'error' => 'PUNCH_UPDATE_FAILED',
+            ], 500);
+        }
+    }
+
+    /**
      * Determinar el tipo de evento (IN o OUT) basándose en el último evento.
      *
      * @param \App\Models\Employee $employee
