@@ -58,9 +58,8 @@ class ProductionInputController extends Controller
                 'data' => new ProductionInputResource($input),
             ], 201);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], 422);
+            // Dejar que el Handler procese la excepción para formato consistente con userMessage
+            throw $e;
         }
     }
 
@@ -81,10 +80,8 @@ class ProductionInputController extends Controller
                 'errors' => $result['errors'],
             ], 201);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error al crear las entradas.',
-                'error' => $e->getMessage(),
-            ], 500);
+            // Dejar que el Handler procese la excepción para formato consistente con userMessage
+            throw $e;
         }
     }
 
@@ -124,7 +121,8 @@ class ProductionInputController extends Controller
 
         if (!is_array($ids) || empty($ids)) {
             return response()->json([
-                'message' => 'No se han proporcionado IDs válidos',
+                'message' => 'No se han proporcionado IDs válidos.',
+                'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.'
             ], 400);
         }
 

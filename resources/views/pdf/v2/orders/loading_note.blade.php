@@ -101,7 +101,7 @@
 
                         <!-- Fila principal del producto -->
                         <tr class="{{ $rowClass }}">
-                            <td class="p-2 py-1">{{ $productLine['product']['article']['name'] }}</td>
+                            <td class="p-2 py-1">{{ $productLine['product']['name'] }}</td>
                             <td class="p-2 py-1">{{ $productLine['product']['boxGtin'] }}</td>
                             <td class="p-2 py-1">
                                 {{ count($productLine['lots']) === 1 ? $productLine['lots'][0]['lot'] : '' }}

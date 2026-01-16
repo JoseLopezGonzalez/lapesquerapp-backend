@@ -14,7 +14,10 @@ class IncidentController extends Controller
         $order = Order::with('incident')->findOrFail($orderId);
 
         if (!$order->incident) {
-            return response()->json(['message' => 'Incident not found'], 404);
+            return response()->json([
+                'message' => 'Incidencia no encontrada.',
+                'userMessage' => 'No se encontró incidencia para este pedido.'
+            ], 404);
         }
 
         return response()->json($order->incident);
@@ -25,7 +28,10 @@ class IncidentController extends Controller
         $order = Order::with('incident')->findOrFail($orderId);
 
         if ($order->incident) {
-            return response()->json(['message' => 'Incident already exists'], 400);
+            return response()->json([
+                'message' => 'La incidencia ya existe.',
+                'userMessage' => 'Este pedido ya tiene una incidencia registrada.'
+            ], 400);
         }
 
         $validated = $request->validate([
@@ -50,7 +56,10 @@ class IncidentController extends Controller
         $incident = $order->incident;
 
         if (!$incident) {
-            return response()->json(['message' => 'Incident not found'], 404);
+            return response()->json([
+                'message' => 'Incidencia no encontrada.',
+                'userMessage' => 'No se encontró incidencia para este pedido.'
+            ], 404);
         }
 
         $validated = $request->validate([
@@ -75,7 +84,10 @@ class IncidentController extends Controller
         $incident = $order->incident;
 
         if (!$incident) {
-            return response()->json(['message' => 'Incident not found'], 404);
+            return response()->json([
+                'message' => 'Incidencia no encontrada.',
+                'userMessage' => 'No se encontró incidencia para este pedido.'
+            ], 404);
         }
 
         $incident->delete();

@@ -96,7 +96,8 @@ class ProductionController extends Controller
 
         if (!is_array($ids) || empty($ids)) {
             return response()->json([
-                'message' => 'No se han proporcionado IDs válidos',
+                'message' => 'No se han proporcionado IDs válidos.',
+                'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.'
             ], 400);
         }
 

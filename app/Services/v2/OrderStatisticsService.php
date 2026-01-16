@@ -210,7 +210,7 @@ class OrderStatisticsService
         ?int $categoryId = null
     ): \Illuminate\Support\Collection {
         // Usar la misma lógica que totalAmountStats y totalNetWeightStats: usar load_date
-        // Para quantity: usar la misma estructura que calculateTotalNetWeight (boxes.net_weight con articles)
+        // Para quantity: usar la misma estructura que calculateTotalNetWeight (boxes.net_weight con products)
         // Para amount: usar order_planned_product_details (igual que calculateAmountDetails)
         
         if ($valueType === 'quantity') {

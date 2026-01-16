@@ -1118,7 +1118,10 @@ class PalletController extends Controller
         $lot = $request->query('lot');
 
         if (!$lot) {
-            return response()->json(['message' => 'El parámetro lot es requerido'], 400);
+            return response()->json([
+                'message' => 'El parámetro lot es requerido.',
+                'userMessage' => 'Debe proporcionar el número de lote para buscar.'
+            ], 400);
         }
 
         // Buscar palets registrados que tengan cajas con el lote especificado y que estén disponibles

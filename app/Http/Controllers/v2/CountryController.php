@@ -116,7 +116,10 @@ class CountryController extends Controller
         $ids = $request->input('ids', []);
 
         if (!is_array($ids) || empty($ids)) {
-            return response()->json(['message' => 'No se han proporcionado IDs válidos'], 400);
+            return response()->json([
+                'message' => 'No se han proporcionado IDs válidos.',
+                'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.'
+            ], 400);
         }
 
         Country::whereIn('id', $ids)->delete();

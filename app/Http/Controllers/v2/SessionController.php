@@ -41,7 +41,10 @@ class SessionController extends Controller
         $token = SanctumPersonalAccessToken::find($id);
 
         if (!$token) {
-            return response()->json(['message' => 'Sesión no encontrada'], 404);
+            return response()->json([
+                'message' => 'Sesión no encontrada.',
+                'userMessage' => 'La sesión especificada no existe o ya fue cerrada.'
+            ], 404);
         }
 
         $token->delete();

@@ -68,7 +68,7 @@
             <tbody>
                 @foreach($ceboDispatch->products as $product)
                     <tr>
-                        <td>{{ $product->product->article->name }}</td>
+                        <td>{{ $product->product->name }}</td>
                         <td class="text-end">{{ $product->net_weight }} kg</td>
                     </tr>
                 @endforeach

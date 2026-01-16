@@ -147,7 +147,7 @@
                             $totalAmount += $total;
                         @endphp
                         <tr>
-                            <td class="p-2 text-wrap">{{ $detail->product->article->name }}</td>
+                            <td class="p-2 text-wrap">{{ $detail->product->name }}</td>
                             <td class="p-2 text-center">{{ $detail->boxes }}</td>
                             <td class="p-2 text-center">{{ number_format($detail->quantity, 2, ',', '.') }} kg</td>
                             <td class="p-2 text-center">{{ number_format($detail->unit_price, 2, ',', '.') }} €</td>

@@ -28,7 +28,7 @@ class ProductLotDetailsExport implements FromCollection, WithHeadings, WithMappi
                 $rows[] = [
                     'Pedido' => $this->order->id,
                     'Cliente' => $this->order->customer->name,
-                    'Producto' => $productDetail['product']['article']['name'],
+                    'Producto' => $productDetail['product']['name'],
                     'GTIN Caja' => $productDetail['product']['boxGtin'] ?? 'N/A',
                     'Lote' => $lot['lot'],
                     'Cajas' => $lot['boxes'],

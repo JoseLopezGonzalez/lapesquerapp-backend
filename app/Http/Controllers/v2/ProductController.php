@@ -130,10 +130,7 @@ class ProductController extends Controller
         ]);
         
         if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Error de validación.',
-                'errors' => $validator->errors()
-            ], 422);
+            throw \Illuminate\Validation\ValidationException::withMessages($validator->errors()->toArray());
         }
         
         $validated = $validator->validated();
@@ -236,10 +233,7 @@ class ProductController extends Controller
         ]);
         
         if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Error de validación.',
-                'errors' => $validator->errors()
-            ], 422);
+            throw \Illuminate\Validation\ValidationException::withMessages($validator->errors()->toArray());
         }
         
         $validated = $validator->validated();
@@ -301,7 +295,10 @@ class ProductController extends Controller
         $ids = $request->input('ids', []);
 
         if (!is_array($ids) || empty($ids)) {
-            return response()->json(['message' => 'No se proporcionaron IDs válidos'], 400);
+            return response()->json([
+                'message' => 'No se proporcionaron IDs válidos.',
+                'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.'
+            ], 400);
         }
 
         Product::whereIn('id', $ids)->delete();

@@ -93,7 +93,7 @@
                     @foreach($order->productsBySpeciesAndCaptureZone as $productsBySpeciesAndCaptureZone)
                         @foreach($productsBySpeciesAndCaptureZone['products'] as $product)
                             <tr class="border-b border-gray-200">
-                                <th class="text-left font-medium p-1.5">{{ $product['product']->article->name}}</th>
+                                <th class="text-left font-medium p-1.5">{{ $product['product']->name}}</th>
                                 <td class="text-center">{{ $product['boxes'] }}</td>
                                 <td class="text-center">{{ number_format($product['netWeight'], 2, ',', '.') }} kg</td>
                             </tr>

@@ -188,7 +188,7 @@ class Box extends Model
         return [
             'id' => $this->id,
             'palletId' => $this->pallet_id,
-            'article' => $this->article ? $this->article->toArrayAssoc() : null,
+            'product' => $this->product ? $this->product->toArrayAssoc() : null,
             'lot' => $this->lot,
             'gs1128' => $this->gs1_128,
             'grossWeight' => $this->gross_weight,

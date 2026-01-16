@@ -113,7 +113,7 @@
                                 @foreach ($pallet->summary as $productDetail)
                                     <tr class="{{ $loop->even ? 'bg-white' : 'bg-gray-50' }}">
                                         <td class=" p-2 font-semibold">
-                                            {{ $productDetail['product']->article->name }}</td>
+                                            {{ $productDetail['product']->name }}</td>
                                         <td class=" p-2 text-center">
                                             {{ $productDetail['boxes'] }}
                                         </td>
@@ -139,7 +139,7 @@
                         @foreach ($pallet->summary as $productDetail)
                             <div class="border border-gray-300 p-2 bg-white rounded-lg">
                                 <p class="text-xs mb-1 font-semibold">
-                                    {{ $productDetail['product']->article->name }}
+                                    {{ $productDetail['product']->name }}
                                 </p>
 
                                 <div class="h-10 bg-gray-800 relative flex items-center justify-center">
@@ -171,7 +171,7 @@
                                     <tr class="{{ $loop->even ? 'bg-white' : 'bg-gray-50' }}">
                                         <td class=" p-1 font-mono">{{ $box->box->id }}</td>
                                         <td class=" p-1">
-                                            {{ $box->box->product->article->name }}</td>
+                                            {{ $box->box->product->name }}</td>
                                         <td class=" p-1 text-center font-mono text-xs">
                                             {{ $box->box->lot }}</td>
                                         <td class=" p-1 text-center font-mono text-xs">
