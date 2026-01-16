@@ -54,7 +54,7 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         // Para optimizar memoria, usamos eager loading con with() y limitamos con ->limit() si es necesario.
         return $query->with([
             'supplier',
-            'products.product.article'
+            'products.product'
         ])->get();
     }
 
@@ -138,7 +138,6 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         // Agregar productos regulares
         foreach ($reception->products as $product) {
             $productModel = $product->product;
-            $article = $productModel ? $productModel->article : null;
             
             $rows[] = [
                 $this->index, // Mismo código para toda la recepción
@@ -146,7 +145,7 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
                 $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
                 $supplier ? $supplier->name : '-',
                 $productModel && $productModel->facil_com_code ? $productModel->facil_com_code : '-',
-                $article ? $article->name : '-',
+                $productModel ? $productModel->name : '-',
                 $product->net_weight ?: '-',
                 $product->price ?: '-',
                 $reception->date ? date('dmY', strtotime($reception->date)) : '-',

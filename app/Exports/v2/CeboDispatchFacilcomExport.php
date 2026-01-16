@@ -54,7 +54,7 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
         // Para optimizar memoria, usamos eager loading con with() y limitamos con ->limit() si es necesario.
         return $query->with([
             'supplier',
-            'products.product.article'
+            'products.product'
         ])->get();
     }
 
@@ -144,7 +144,6 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
         if ($ceboDispatch->export_type == 'facilcom') {
             foreach ($ceboDispatch->products as $product) {
                 $productModel = $product->product;
-                $article = $productModel ? $productModel->article : null;
                 
                 $rows[] = [
                     $this->index, // Mismo código para todo el despacho
@@ -152,7 +151,7 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
                     $supplier && $supplier->facilcom_cebo_code ? $supplier->facilcom_cebo_code : '-',
                     $supplier ? $supplier->name : '-',
                     $productModel && $productModel->facil_com_code ? $productModel->facil_com_code : '-',
-                    $article ? $article->name : '-',
+                    $productModel ? $productModel->name : '-',
                     $product->net_weight ?: '-',
                     $product->price ?: '-',
                     $ceboDispatch->date ? date('dmY', strtotime($ceboDispatch->date)) : '-',

@@ -112,14 +112,14 @@ class SupplierLiquidationController extends Controller
         // Obtener recepciones
         $receptions = RawMaterialReception::where('supplier_id', $supplierId)
             ->whereBetween('date', [$startDate, $endDate])
-            ->with(['products.product.article', 'supplier'])
+            ->with(['products.product', 'supplier'])
             ->orderBy('date', 'asc')
             ->get();
 
         // Obtener salidas de cebo
         $dispatches = CeboDispatch::where('supplier_id', $supplierId)
             ->whereBetween('date', [$startDate, $endDate])
-            ->with(['products.product.article', 'supplier'])
+            ->with(['products.product', 'supplier'])
             ->orderBy('date', 'asc')
             ->get();
 
@@ -159,7 +159,7 @@ class SupplierLiquidationController extends Controller
                         'id' => $product->id,
                         'product' => [
                             'id' => $productModel->id ?? null,
-                            'name' => $productModel->name ?? ($productModel->article->name ?? null),
+                            'name' => $productModel->name ?? null,
                             'code' => $productModel->a3erp_code ?? $productModel->facil_com_code ?? null,
                         ],
                         'lot' => $product->lot ?? null,
@@ -197,7 +197,7 @@ class SupplierLiquidationController extends Controller
                                 'id' => $product->id,
                                 'product' => [
                                     'id' => $productModel->id ?? null,
-                                    'name' => $productModel->name ?? ($productModel->article->name ?? null),
+                                    'name' => $productModel->name ?? null,
                                     'code' => $productModel->a3erp_code ?? $productModel->facil_com_code ?? null,
                                 ],
                                 'net_weight' => round($product->net_weight ?? 0, 2),
@@ -241,7 +241,7 @@ class SupplierLiquidationController extends Controller
                             'id' => $product->id,
                             'product' => [
                                 'id' => $productModel->id ?? null,
-                                'name' => $productModel->name ?? ($productModel->article->name ?? null),
+                                'name' => $productModel->name ?? null,
                                 'code' => $productModel->a3erp_code ?? $productModel->facil_com_code ?? null,
                             ],
                             'net_weight' => round($product->net_weight ?? 0, 2),

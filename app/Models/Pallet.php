@@ -201,28 +201,28 @@ class Pallet extends Model
         };
     }
 
-    /* getArticlesAttribute from boxes.boxes.article.article  */
+    /* getArticlesAttribute from boxes - ahora usa products directamente */
     public function getArticlesAttribute()
     {
-        $articles = [];
+        $products = [];
         if ($this->boxes) {
-            $this->boxes->map(function ($box) use (&$articles) {
-                if ($box && $box->box && $box->box->article && $box->box->article->article) {
-                    $article = $box->box->article->article;
-                    if (!isset($articles[$article->id])) {
-                        $articles[$article->id] = $article;
+            $this->boxes->map(function ($box) use (&$products) {
+                if ($box && $box->box && $box->box->product) {
+                    $product = $box->box->product;
+                    if (!isset($products[$product->id])) {
+                        $products[$product->id] = $product;
                     }
                 }
             });
         }
-        return $articles;
+        return $products;
     }
 
-    /* Article names list array*/
+    /* Product names list array*/
     public function getArticlesNamesAttribute()
     {
-        return array_map(function ($article) {
-            return $article->name;
+        return array_map(function ($product) {
+            return $product->name;
         }, $this->articles);
     }
 
@@ -631,18 +631,18 @@ class Pallet extends Model
 
     public function getProductsAttribute()
     {
-        $articles = [];
+        $products = [];
         if ($this->boxes) {
-            $this->boxes->map(function ($box) use (&$articles) {
-                if ($box && $box->box && $box->box->article && $box->box->article->article) {
-                    $article = $box->box->article->article;
-                    if (!isset($articles[$article->id])) {
-                        $articles[$article->id] = $article;
+            $this->boxes->map(function ($box) use (&$products) {
+                if ($box && $box->box && $box->box->product) {
+                    $product = $box->box->product;
+                    if (!isset($products[$product->id])) {
+                        $products[$product->id] = $product;
                     }
                 }
             });
         }
-        return $articles;
+        return $products;
     }
 
     public function toArrayAssoc()

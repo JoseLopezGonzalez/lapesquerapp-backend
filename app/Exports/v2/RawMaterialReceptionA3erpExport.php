@@ -53,7 +53,7 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
         // Para optimizar memoria, usamos eager loading con with() y limitamos con ->limit() si es necesario.
         return $query->with([
             'supplier',
-            'products.product.article'
+            'products.product'
         ])->get();
     }
 
@@ -141,7 +141,6 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
         // Agregar productos regulares
         foreach ($reception->products as $product) {
             $productModel = $product->product;
-            $article = $productModel ? $productModel->article : null;
             
             $rows[] = [
                 $serie, // cabSerie - usando RE + año para recepciones de materia prima
@@ -150,7 +149,7 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
                 $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
                 $supplier && $reception->date ? $supplier->name . " - " . date('d/m/Y', strtotime($reception->date)) .' - ' . $reception->id  : '-',
                 $productModel && $productModel->facil_com_code ? $productModel->facil_com_code : '-',
-                $article ? $article->name : '-',
+                $productModel ? $productModel->name : '-',
                 $product->net_weight ?: '-',
                 $product->price ?: '-',
             ];

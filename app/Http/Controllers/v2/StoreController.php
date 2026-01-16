@@ -197,7 +197,7 @@ class StoreController extends Controller
             ])
             ->get();
 
-        $products = \App\Models\Product::with('article')->get();
+        $products = \App\Models\Product::all();
 
         $productsInventory = [];
 
@@ -230,7 +230,7 @@ class StoreController extends Controller
 
             $productsInventory[] = [
                 'id' => $product->id,
-                'name' => $product->article->name,
+                'name' => $product->name,
                 'total_kg' => round($totalNetWeight, 2),
             ];
         }

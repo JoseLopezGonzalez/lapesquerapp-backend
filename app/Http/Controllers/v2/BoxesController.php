@@ -36,12 +36,10 @@ class BoxesController extends Controller
             $query->whereIn('id', $request->ids);
         }
 
-        /*  product.article.name*/
+        /* Filter by product name */
         if ($request->has('name')) {
             $query->whereHas('product', function ($query) use ($request) {
-                $query->whereHas('article', function ($query) use ($request) {
-                    $query->where('name', 'like', '%' . $request->name . '%');
-                });
+                $query->where('name', 'like', '%' . $request->name . '%');
             });
         }
 

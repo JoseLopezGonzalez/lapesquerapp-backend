@@ -7,7 +7,6 @@ use App\Traits\UsesTenantConnection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-use App\Models\Article;
 use App\Models\Species;
 use App\Models\CaptureZone;
 
@@ -23,7 +22,7 @@ class Product extends Model
     /* fillable */
     protected $fillable = [
         'id',
-        'article_id', //Esto 
+        'name', // Campo real ahora (no accessor)
         'family_id',
         'species_id',
         'capture_zone_id',
@@ -31,15 +30,9 @@ class Product extends Model
         'box_gtin',
         'pallet_gtin',
         'fixed_weight',
-        'name',
         'a3erp_code',
         'facil_com_code',
     ];
-
-    /*  public function article()
-     {
-         return $this->belongsTo(Article::class, 'id'); // No se bien porque no indica que el id es el que relaciona las tablas
-     } */
 
     public function species()
     {
@@ -60,30 +53,20 @@ class Product extends Model
 
     public function toArrayAssoc()
     {
-        return array_merge(
-            $this->article ? ($this->article->toArrayAssoc() ?? []) : [],
-            [
-                'species' => $this->species ? ($this->species->toArrayAssoc() ?? []) : [],
-                'captureZone' => $this->captureZone ? ($this->captureZone->toArrayAssoc() ?? []) : [],
-                'category' => ($this->family && $this->family->category) ? ($this->family->category->toArrayAssoc() ?? []) : [],
-                'family' => $this->family ? ($this->family->toArrayAssoc() ?? []) : [],
-                'articleGtin' => $this->article_gtin,
-                'boxGtin' => $this->box_gtin,
-                'palletGtin' => $this->pallet_gtin,
-                'fixedWeight' => $this->fixed_weight,
-                'name' => $this->name,
-                'id' => $this->id,
-                'a3erpCode' => $this->a3erp_code,
-                'facilcomCode' => $this->facil_com_code,
-            ]
-        );
-    }
-
-
-    /* name attribute */
-    public function getNameAttribute()
-    {
-        return $this->article ? $this->article->name : null;
+        return [
+            'id' => $this->id,
+            'name' => $this->name, // Campo directo desde BD
+            'species' => $this->species ? ($this->species->toArrayAssoc() ?? []) : [],
+            'captureZone' => $this->captureZone ? ($this->captureZone->toArrayAssoc() ?? []) : [],
+            'category' => ($this->family && $this->family->category) ? ($this->family->category->toArrayAssoc() ?? []) : [],
+            'family' => $this->family ? ($this->family->toArrayAssoc() ?? []) : [],
+            'articleGtin' => $this->article_gtin,
+            'boxGtin' => $this->box_gtin,
+            'palletGtin' => $this->pallet_gtin,
+            'fixedWeight' => $this->fixed_weight,
+            'a3erpCode' => $this->a3erp_code,
+            'facilcomCode' => $this->facil_com_code,
+        ];
     }
 
     public function productionNodes()
@@ -96,12 +79,6 @@ class Product extends Model
         return $this->has(RawMaterial::class, 'id');
     }
 
-
-    public function article()
-    {
-        return $this->belongsTo(Article::class, 'id', 'id');
-    }
-
     /**
      * Boot del modelo - Validaciones y eventos
      */
@@ -110,6 +87,24 @@ class Product extends Model
         parent::boot();
 
         static::saving(function ($product) {
+            // Validar name no vacío
+            if (empty($product->name)) {
+                throw ValidationException::withMessages([
+                    'name' => 'El nombre del producto no puede estar vacío.',
+                ]);
+            }
+
+            // Validar name único por tenant
+            $existing = self::where('name', $product->name)
+                ->where('id', '!=', $product->id ?? 0)
+                ->first();
+            
+            if ($existing) {
+                throw ValidationException::withMessages([
+                    'name' => 'Ya existe un producto con este nombre.',
+                ]);
+            }
+
             // Validar species_id y capture_zone_id requeridos
             if (!$product->species_id) {
                 throw ValidationException::withMessages([
@@ -120,13 +115,6 @@ class Product extends Model
             if (!$product->capture_zone_id) {
                 throw ValidationException::withMessages([
                     'capture_zone_id' => 'El campo capture_zone_id es requerido.',
-                ]);
-            }
-
-            // Validar que name no esté vacío (desde Article)
-            if ($product->article && empty($product->article->name)) {
-                throw ValidationException::withMessages([
-                    'name' => 'El nombre del producto no puede estar vacío.',
                 ]);
             }
 

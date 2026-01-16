@@ -348,10 +348,8 @@ class Order extends Model
                 if (!isset($summary[$productKey])) {
                     $summary[$productKey] = [
                         'product' => [
-                            'article' => [
-                                'id' => $product->article->id,
-                                'name' => $product->article->name,
-                            ],
+                            'id' => $product->id,
+                            'name' => $product->name,
                             'boxGtin' => $product->box_gtin,
                             'boxes' => 0,
                             'netWeight' => 0,
@@ -645,7 +643,8 @@ class Order extends Model
     public function scopeWhereBoxArticleSpecies($query, $speciesId)
     {
         if ($speciesId) {
-            $query->where('articles.species_id', $speciesId);
+            $query->join('products', 'products.id', '=', 'boxes.article_id')
+                  ->where('products.species_id', $speciesId);
         }
 
         return $query;
@@ -658,7 +657,7 @@ class Order extends Model
             ->join('pallets', 'pallets.order_id', '=', 'orders.id')
             ->join('pallet_boxes', 'pallet_boxes.pallet_id', '=', 'pallets.id')
             ->join('boxes', 'boxes.id', '=', 'pallet_boxes.box_id')
-            ->join('articles', 'articles.id', '=', 'boxes.article_id');
+            ->join('products', 'products.id', '=', 'boxes.article_id');
     }
 
     public function scopeWithPlannedProductDetails($query)

@@ -28,7 +28,7 @@ class Cebo extends Model
     {
         return [
             'id' => $this->id,
-            'name' => $this->product->article->name,
+            'name' => $this->product->name,
             'fixed' => $this->fixed,
             'product' => $this->product->toArrayAssoc(),
         ];

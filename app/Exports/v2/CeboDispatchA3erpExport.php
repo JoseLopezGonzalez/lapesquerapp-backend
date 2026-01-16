@@ -53,7 +53,7 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
         // Para optimizar memoria, usamos eager loading con with() y limitamos con ->limit() si es necesario.
         return $query->with([
             'supplier',
-            'products.product.article'
+            'products.product'
         ])->get();
     }
 
@@ -148,7 +148,6 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
 
             foreach ($ceboDispatch->products as $product) {
                 $productModel = $product->product;
-                $article = $productModel ? $productModel->article : null;
                 
                 $rows[] = [
                     $serie, // cabSerie
@@ -157,7 +156,7 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
                     $supplier && $supplier->a3erp_cebo_code ? $supplier->a3erp_cebo_code : '-',
                     $supplier && $ceboDispatch->date ? $supplier->name . " - CEBO - " . date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
                     $productModel && $productModel->a3erp_code ? $productModel->a3erp_code : '-',
-                    $article ? $article->name : '-',
+                    $productModel ? $productModel->name : '-',
                     $product->net_weight ?: '-',
                     $product->price ?: '-',
                     'RED10', // iva

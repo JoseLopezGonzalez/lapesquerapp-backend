@@ -14,13 +14,8 @@ class Store extends Model
     use UsesTenantConnection;
     use HasFactory;
 
-    protected $fillable = ['name', 'category_id', 'temperature', 'capacity', 'map'];
+    protected $fillable = ['name', 'temperature', 'capacity', 'map'];
     //protected $table = 'stores';
-
-    public function categoria()
-    {
-        return $this->belongsTo(ArticleCategory::class, 'category_id');
-    }
 
     // Definir relación con Pallet
     /* public function pallets()

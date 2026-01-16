@@ -4,7 +4,6 @@ namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\v2\ProductResource;
-use App\Models\Article;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,8 +17,8 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $query = Product::query();
-        /* Add article */
-        $query->with(['article', 'family.category', 'family']);
+        /* Add family relations */
+        $query->with(['family.category', 'family']);
 
         if ($request->has('id')) {
             $query->where('id', $request->id);
@@ -29,11 +28,9 @@ class ProductController extends Controller
             $query->whereIn('id', $request->ids);
         }
 
-        /*name but product.article.name  */
+        /* Filter by name */
         if ($request->has('name')) {
-            $query->whereHas('article', function ($query) use ($request) {
-                $query->where('name', 'like', '%' . $request->name . '%');
-            });
+            $query->where('name', 'like', '%' . $request->name . '%');
         }
 
         /* species Where in*/
@@ -74,12 +71,8 @@ class ProductController extends Controller
         }
 
 
-        /* Always order by article.name */
-        $query->orderBy(
-            Article::select('name')
-                ->whereColumn('articles.id', 'products.id'),
-            'asc'
-        );
+        /* Always order by name */
+        $query->orderBy('name', 'asc');
 
 
         $perPage = $request->input('perPage', 14); // Default a 10 si no se proporciona
@@ -145,18 +138,11 @@ class ProductController extends Controller
         
         $validated = $validator->validated();
 
-        $articleId = null;
+        $productId = null;
 
-        DB::transaction(function () use (&$articleId, $validated) {
-            $article = Article::create([
+        DB::transaction(function () use (&$productId, $validated) {
+            $product = Product::create([
                 'name' => $validated['name'],
-                'category_id' => 1,
-            ]);
-
-            $articleId = $article->id;
-
-            Product::create([
-                'id' => $articleId,
                 'species_id' => $validated['speciesId'],
                 'capture_zone_id' => $validated['captureZoneId'],
                 'family_id' => $validated['familyId'] ?? null,
@@ -166,9 +152,10 @@ class ProductController extends Controller
                 'a3erp_code' => $validated['a3erp_code'] ?? null,
                 'facil_com_code' => $validated['facil_com_code'] ?? null,
             ]);
+            $productId = $product->id;
         });
 
-        $product = Product::with(['article', 'species', 'captureZone', 'family.category'])->find($articleId);
+        $product = Product::with(['species', 'captureZone', 'family.category'])->find($productId);
 
         return response()->json([
             'message' => 'Producto creado con éxito',
@@ -188,7 +175,7 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        $product = Product::with(['article', 'species', 'captureZone', 'family.category', 'family'])->findOrFail($id);
+        $product = Product::with(['species', 'captureZone', 'family.category', 'family'])->findOrFail($id);
 
         return response()->json([
             'message' => 'Producto obtenido con éxito',
@@ -203,7 +190,6 @@ class ProductController extends Controller
     public function update(Request $request, string $id)
     {
         $product = Product::findOrFail($id);
-        $article = Article::findOrFail($id); // mismo ID
 
         // Normalize snake_case to camelCase for backward compatibility
         $requestData = $request->all();
@@ -258,12 +244,9 @@ class ProductController extends Controller
         
         $validated = $validator->validated();
 
-        DB::transaction(function () use ($article, $product, $validated) {
-            $article->update([
-                'name' => $validated['name'],
-            ]);
-
+        DB::transaction(function () use ($product, $validated) {
             $product->update([
+                'name' => $validated['name'],
                 'species_id' => $validated['speciesId'],
                 'capture_zone_id' => $validated['captureZoneId'],
                 'family_id' => $validated['familyId'] ?? null,
@@ -275,7 +258,7 @@ class ProductController extends Controller
             ]);
         });
 
-        $updated = Product::with(['article', 'species', 'captureZone', 'family.category', 'family'])->find($id);
+        $updated = Product::with(['species', 'captureZone', 'family.category', 'family'])->find($id);
 
         return response()->json([
             'message' => 'Producto actualizado con éxito',
@@ -308,10 +291,7 @@ class ProductController extends Controller
             ], 400);
         }
 
-        DB::transaction(function () use ($id) {
-            $product->delete();
-            Article::where('id', $id)->delete();
-        });
+        $product->delete();
 
         return response()->json(['message' => 'Producto eliminado correctamente']);
     }
@@ -324,10 +304,7 @@ class ProductController extends Controller
             return response()->json(['message' => 'No se proporcionaron IDs válidos'], 400);
         }
 
-        DB::transaction(function () use ($ids) {
-            Product::whereIn('id', $ids)->delete();
-            Article::whereIn('id', $ids)->delete();
-        });
+        Product::whereIn('id', $ids)->delete();
 
         return response()->json(['message' => 'Productos eliminados correctamente']);
     }
@@ -341,13 +318,9 @@ class ProductController extends Controller
      */
     public function options()
     {
-        /* Ojo que product no tiene name, teiene article que a su vex tiene name */
-        /* box_gtin */
-        $products = Product::join('articles', 'products.id', '=', 'articles.id')
-            ->select('products.id', 'articles.name', 'products.box_gtin as boxGtin') // Selecciona los campos necesarios
-            ->orderBy('articles.name', 'asc') // Ordena por el nombre del artículo
+        $products = Product::select('id', 'name', 'box_gtin as boxGtin')
+            ->orderBy('name', 'asc')
             ->get();
-
 
         return response()->json($products);
     }

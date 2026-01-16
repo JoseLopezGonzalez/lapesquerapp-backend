@@ -158,11 +158,6 @@ class OrderStatisticsService
             ->whereBetween('orders.load_date', [$dateFrom, $dateTo])
             ->where('orders.status', Order::STATUS_FINISHED); // Solo pedidos terminados
 
-        // Join articles table when grouping by product (products.id = articles.id, 1:1 relationship)
-        if ($groupBy === 'product') {
-            $query->join('articles', 'products.id', '=', 'articles.id');
-        }
-
         if ($speciesId) {
             $query->where('products.species_id', $speciesId);
         }
@@ -170,7 +165,7 @@ class OrderStatisticsService
         $groupByField = match ($groupBy) {
             'client' => 'customers.name',
             'country' => 'countries.name',
-            'product' => 'articles.name',
+            'product' => 'products.name',
         };
 
         $valueField = match ($valueType) {
@@ -220,20 +215,17 @@ class OrderStatisticsService
         
         if ($valueType === 'quantity') {
             // Para quantity, usar la misma estructura que calculateTotalNetWeight
-            // Nota: joinBoxesAndArticles hace join con articles, pero para los filtros usamos products
             $query = Order::query()
                 ->join('pallets', 'pallets.order_id', '=', 'orders.id')
                 ->join('pallet_boxes', 'pallet_boxes.pallet_id', '=', 'pallets.id')
                 ->join('boxes', 'boxes.id', '=', 'pallet_boxes.box_id')
-                ->join('articles', 'articles.id', '=', 'boxes.article_id')
-                ->join('products', 'products.id', '=', 'articles.id') // products.id = articles.id (relación 1:1)
+                ->join('products', 'products.id', '=', 'boxes.article_id')
                 ->leftJoin('product_families', 'products.family_id', '=', 'product_families.id')
                 ->leftJoin('product_categories', 'product_families.category_id', '=', 'product_categories.id')
                 ->whereBetween('orders.load_date', [$dateFrom, $dateTo])
                 ->where('orders.status', Order::STATUS_FINISHED); // Solo pedidos terminados
 
-            // Aplicar filtros (usar products.species_id ya que articles no tiene species_id directamente)
-            // Esto es consistente porque products.id = articles.id (relación 1:1)
+            // Aplicar filtros
             if ($speciesId) {
                 $query->where('products.species_id', $speciesId);
             }

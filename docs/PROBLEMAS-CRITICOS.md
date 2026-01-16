@@ -35,19 +35,6 @@ Este documento resume los **problemas más críticos pendientes** identificados 
 ---
 
 
-## 📊 MEDIO - Lógica de Negocio
-
-### 23. Relación Product-Article No Obvia (Lo dejamos como punto muy importante para más tarde)
-
-**Archivos**: `app/Models/Product.php`, `app/Models/Article.php`
-
-**Problema**: `Product` y `Article` comparten el mismo `id` (relación 1:1 especial).
-
-**Impacto**:
-
-- Puede confundir a desarrolladores
-- Difícil de entender la arquitectura
-
 ---
 
 ## 📝 Resumen de Problemas Pendientes
@@ -55,10 +42,6 @@ Este documento resume los **problemas más críticos pendientes** identificados 
 ### Problemas de Mantenibilidad (🟡)
 
 1. **Rutas hardcoded** - Dificulta despliegue (marcado para mantener de momento)
-
-### Problemas de Arquitectura (🟢)
-
-1. **Relación Product-Article no obvia** - Dificulta comprensión (marcado para más tarde)
 
 ---
 
@@ -73,4 +56,17 @@ Para información detallada de cada problema:
 
 **Última actualización**: 2026-01-16
 **Total de problemas identificados**: 59 (ver `referencia/98-Errores-Comunes.md`)
-**Problemas críticos pendientes en este resumen**: 2
+**Problemas críticos pendientes en este resumen**: 1
+
+---
+
+## ✅ Problemas Resueltos
+
+### 23. Relación Product-Article No Obvia ✅ RESUELTO (2026-01-16)
+
+**Solución implementada**: Se eliminó la entidad `Article` y se consolidó todo en `Product`. El campo `name` ahora es un campo directo en la tabla `products`.
+
+**Archivos modificados**: 
+- Eliminado: `app/Models/Article.php`, `app/Models/ArticleCategory.php`
+- Actualizado: `app/Models/Product.php`, `app/Http/Controllers/v2/ProductController.php`, y múltiples exports
+- Ver: `docs/PLAN-ELIMINACION-ARTICLE.md` para detalles completos

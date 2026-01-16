@@ -49,7 +49,6 @@ class BoxesReportExport implements FromQuery, WithHeadings, WithMapping, WithSty
 
         // Cargar relaciones de forma más eficiente para chunking
         return $query->with([
-            'product.article',
             'product.species',
             'palletBox.pallet.order.customer',
             'palletBox.pallet.storedPallet.store'
@@ -78,12 +77,10 @@ class BoxesReportExport implements FromQuery, WithHeadings, WithMapping, WithSty
             $query->whereIn('id', $filters['ids']);
         }
 
-        // Filtro por nombre del artículo
+        // Filtro por nombre del producto
         if (isset($filters['name'])) {
             $query->whereHas('product', function ($query) use ($filters) {
-                $query->whereHas('article', function ($query) use ($filters) {
-                    $query->where('name', 'like', '%' . $filters['name'] . '%');
-                });
+                $query->where('name', 'like', '%' . $filters['name'] . '%');
             });
         }
 
@@ -268,7 +265,6 @@ class BoxesReportExport implements FromQuery, WithHeadings, WithMapping, WithSty
     {
         // Mejorar el manejo de relaciones nulas
         $product = $box->product;
-        $article = $product ? $product->article : null;
         $species = $product ? $product->species : null;
         
         $palletBox = $box->palletBox;
@@ -280,7 +276,7 @@ class BoxesReportExport implements FromQuery, WithHeadings, WithMapping, WithSty
 
         return [
             $box->id,
-            $article ? $article->name : '-',
+            $product ? $product->name : '-',
             $species ? $species->name : '-',
             $box->lot ?? '-',
             $box->net_weight ?? 0,
