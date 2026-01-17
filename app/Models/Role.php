@@ -12,7 +12,7 @@ class Role extends Model
     use UsesTenantConnection;
     use HasFactory;
 
-    protected $fillable = ['name', 'description'];
+    protected $fillable = ['name', 'display_name', 'description'];
 
     public function users()
     {

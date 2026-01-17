@@ -47,6 +47,7 @@ class RoleController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:tenant.roles,name',
+            'display_name' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:1000',
         ]);
 
@@ -76,6 +77,7 @@ class RoleController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255|unique:tenant.roles,name,' . $id,
+            'display_name' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:1000',
         ]);
 

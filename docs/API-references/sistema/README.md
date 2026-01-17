@@ -331,7 +331,9 @@ GET /api/v2/roles
       "id": 1,
       "name": "superuser",
       "display_name": "Super Usuario",
-      "created_at": "2024-01-15T10:00:00.000000Z"
+      "description": "Superusuario con acceso completo al sistema",
+      "created_at": "2024-01-15T10:00:00.000000Z",
+      "updated_at": "2024-01-15T10:00:00.000000Z"
     }
   ]
 }
@@ -357,6 +359,7 @@ Content-Type: application/json
 ```json
 {
   "name": "nuevo_rol",
+  "display_name": "Nuevo Rol",
   "description": "Descripción del nuevo rol"
 }
 ```
@@ -371,6 +374,7 @@ Content-Type: application/json
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
+| display_name | string | Nombre para mostrar del rol (máximo 255 caracteres) |
 | description | string | Descripción del rol (máximo 1000 caracteres) |
 
 #### Response Exitosa (201)
@@ -380,7 +384,11 @@ Content-Type: application/json
   "message": "Rol creado correctamente.",
   "data": {
     "id": 3,
-    "name": "nuevo_rol"
+    "name": "nuevo_rol",
+    "display_name": "Nuevo Rol",
+    "description": "Descripción del nuevo rol",
+    "created_at": "2024-01-15T10:00:00.000000Z",
+    "updated_at": "2024-01-15T10:00:00.000000Z"
   }
 }
 ```
@@ -436,6 +444,7 @@ Authorization: Bearer {access_token}
   "id": 3,
   "name": "admin",
   "display_name": "Administrador",
+  "description": "Administrador con permisos limitados",
   "created_at": "2024-01-15T10:00:00.000000Z",
   "updated_at": "2024-01-15T10:00:00.000000Z"
 }
@@ -476,6 +485,7 @@ Content-Type: application/json
 ```json
 {
   "name": "rol_actualizado",
+  "display_name": "Rol Actualizado",
   "description": "Descripción actualizada"
 }
 ```
@@ -485,6 +495,7 @@ Content-Type: application/json
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | name | string | Nombre del rol (único, máximo 255 caracteres) |
+| display_name | string | Nombre para mostrar del rol (máximo 255 caracteres) |
 | description | string | Descripción del rol (máximo 1000 caracteres) |
 
 #### Response Exitosa (200)
@@ -494,7 +505,11 @@ Content-Type: application/json
   "message": "Rol actualizado correctamente.",
   "data": {
     "id": 3,
-    "name": "rol_actualizado"
+    "name": "rol_actualizado",
+    "display_name": "Rol Actualizado",
+    "description": "Descripción actualizada",
+    "created_at": "2024-01-15T10:00:00.000000Z",
+    "updated_at": "2024-01-15T11:00:00.000000Z"
   }
 }
 ```
