@@ -7,6 +7,7 @@ Documentación de endpoints de autenticación y gestión de sesión.
 - [Login](#login)
 - [Logout](#logout)
 - [Obtener Usuario Actual](#obtener-usuario-actual)
+- [Obtener Información de Tenant](#obtener-información-de-tenant)
 
 ---
 
@@ -171,6 +172,48 @@ Authorization: Bearer {access_token}
 ```json
 {
   "message": "No autenticado."
+}
+```
+
+---
+
+## Obtener Información de Tenant
+
+Obtener información de un tenant por su subdominio. Este endpoint es público y no requiere autenticación.
+
+### Request
+
+```http
+GET /api/v2/public/tenant/{subdomain}
+```
+
+#### Headers
+```http
+Content-Type: application/json
+```
+
+**Nota:** Este endpoint NO requiere `X-Tenant` ni `Authorization` ya que es público.
+
+#### Path Parameters
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| subdomain | string | Subdominio del tenant |
+
+### Response Exitosa (200)
+
+```json
+{
+  "active": true,
+  "name": "Mi Empresa"
+}
+```
+
+### Response Errónea (404) - Tenant No Encontrado
+
+```json
+{
+  "error": "Tenant not found"
 }
 ```
 

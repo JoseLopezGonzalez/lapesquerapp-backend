@@ -15,6 +15,8 @@ Esta documentación está organizada por módulos:
 - **[Estadísticas](./estadisticas/README.md)** - Estadísticas y reportes
 - **[Utilidades](./utilidades/README.md)** - Generación de PDFs y exportación Excel
 - **[Sistema](./sistema/README.md)** - Usuarios, roles, logs de actividad
+- **[Recepciones y Despachos](./recepciones-despachos/README.md)** - Recepciones de materia prima, despachos de cebo, liquidaciones
+- **[Costos de Producción](./produccion-costos/README.md)** - Catálogo de costos y costos de producción
 
 ## 🔑 Información General
 

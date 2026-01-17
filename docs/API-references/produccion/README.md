@@ -264,6 +264,42 @@ DELETE /api/v2/production-records/{id}
 GET /api/v2/production-records/options
 ```
 
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+```
+
+#### Query Parameters (Opcionales)
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| production_id | integer | Filtrar por lote de producción |
+| exclude_id | integer | Excluir registro por ID |
+
+#### Response Exitosa (200)
+
+```json
+{
+  "message": "Opciones de nodos padres obtenidas correctamente.",
+  "data": [
+    {
+      "value": 1,
+      "label": "Proceso A - 15/01/2024 10:00 (Raíz)",
+      "processName": "Proceso A",
+      "processId": 1,
+      "productionId": 1,
+      "productionLot": "LOT-001",
+      "isRoot": true,
+      "isFinal": false,
+      "isCompleted": false,
+      "startedAt": "2024-01-15T10:00:00.000000Z",
+      "finishedAt": null
+    }
+  ]
+}
+```
+
 ---
 
 ### Obtener Datos de Fuentes
@@ -272,6 +308,103 @@ GET /api/v2/production-records/options
 GET /api/v2/production-records/{id}/sources-data
 ```
 
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+```
+
+#### Path Parameters
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| id | integer | ID del registro de producción |
+
+#### Response Exitosa (200)
+
+```json
+{
+  "message": "Datos de sources obtenidos correctamente.",
+  "data": {
+    "productionRecord": {
+      "id": 1,
+      "processId": 1,
+      "processName": "Proceso A",
+      "productionId": 1,
+      "productionLot": "LOT-001",
+      "totalInputWeight": 1500.00,
+      "totalInputCost": 7500.00
+    },
+    "stockBoxes": [
+      {
+        "productionInputId": 1,
+        "boxId": 1,
+        "product": {
+          "id": 1,
+          "name": "Producto A"
+        },
+        "lot": "LOT-001",
+        "netWeight": 20.00,
+        "grossWeight": 25.00,
+        "costPerKg": 5.00,
+        "totalCost": 100.00,
+        "gs1128": "1234567890123",
+        "palletId": 1
+      }
+    ],
+    "parentOutputs": [
+      {
+        "productionOutputConsumptionId": 1,
+        "productionOutputId": 1,
+        "product": {
+          "id": 2,
+          "name": "Producto B"
+        },
+        "lotId": 1,
+        "consumedWeightKg": 50.00,
+        "consumedBoxes": 2,
+        "outputTotalWeight": 100.00,
+        "outputTotalBoxes": 4,
+        "outputAvailableWeight": 50.00,
+        "outputAvailableBoxes": 2,
+        "costPerKg": 10.00,
+        "totalCost": 500.00,
+        "parentProcess": {
+          "id": 2,
+          "name": "Proceso Padre",
+          "processId": 2
+        }
+      }
+    ],
+    "totals": {
+      "stock": {
+        "count": 10,
+        "totalWeight": 1000.00,
+        "totalCost": 5000.00,
+        "averageCostPerKg": 5.00
+      },
+      "parent": {
+        "count": 2,
+        "totalWeight": 500.00,
+        "totalCost": 2500.00,
+        "averageCostPerKg": 5.00
+      },
+      "combined": {
+        "totalWeight": 1500.00,
+        "totalCost": 7500.00,
+        "averageCostPerKg": 5.00
+      }
+    }
+  }
+}
+```
+
+**Descripción:** Este endpoint devuelve toda la información necesaria para crear sources (fuentes) de outputs, incluyendo:
+- Inputs de stock (cajas) disponibles con sus costes
+- Consumos de outputs del padre disponibles con sus costes
+- Información del proceso actual
+- Totales y pesos disponibles
+
 ---
 
 ### Obtener Árbol del Registro
@@ -279,6 +412,41 @@ GET /api/v2/production-records/{id}/sources-data
 ```http
 GET /api/v2/production-records/{id}/tree
 ```
+
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+```
+
+#### Path Parameters
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| id | integer | ID del registro de producción |
+
+#### Response Exitosa (200)
+
+```json
+{
+  "message": "Árbol de procesos obtenido correctamente.",
+  "data": {
+    "id": 1,
+    "production": {...},
+    "process": {...},
+    "children": [
+      {
+        "id": 2,
+        "children": [...]
+      }
+    ],
+    "inputs": [...],
+    "outputs": [...]
+  }
+}
+```
+
+**Descripción:** Devuelve el árbol completo del registro con todos sus hijos recursivamente.
 
 ---
 
@@ -309,13 +477,55 @@ POST /api/v2/production-records/{id}/finish
 PUT /api/v2/production-records/{id}/outputs
 ```
 
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+Content-Type: application/json
+```
+
+#### Path Parameters
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| id | integer | ID del registro de producción |
+
 #### Request Body
 
 ```json
 {
-  "output_ids": [1, 2, 3]
+  "outputs": [
+    {
+      "id": 1,
+      "product": {
+        "id": 1
+      },
+      "weight_kg": 100.00,
+      "boxes": 5,
+      "lot_id": 1
+    }
+  ]
 }
 ```
+
+#### Response Exitosa (200)
+
+```json
+{
+  "message": "Salidas sincronizadas correctamente.",
+  "data": {
+    "id": 1,
+    "outputs": [...]
+  },
+  "summary": {
+    "created": 2,
+    "updated": 1,
+    "deleted": 0
+  }
+}
+```
+
+**Descripción:** Crea nuevas salidas, actualiza existentes y elimina las que no están en el array.
 
 ---
 
@@ -325,13 +535,52 @@ PUT /api/v2/production-records/{id}/outputs
 PUT /api/v2/production-records/{id}/parent-output-consumptions
 ```
 
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+Content-Type: application/json
+```
+
+#### Path Parameters
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| id | integer | ID del registro de producción |
+
 #### Request Body
 
 ```json
 {
-  "consumption_ids": [1, 2, 3]
+  "consumptions": [
+    {
+      "id": 1,
+      "production_output_id": 1,
+      "consumed_weight_kg": 50.00,
+      "consumed_boxes": 2
+    }
+  ]
 }
 ```
+
+#### Response Exitosa (200)
+
+```json
+{
+  "message": "Consumos sincronizados correctamente.",
+  "data": {
+    "id": 1,
+    "parent_output_consumptions": [...]
+  },
+  "summary": {
+    "created": 2,
+    "updated": 1,
+    "deleted": 0
+  }
+}
+```
+
+**Descripción:** Sincroniza los consumos de outputs del padre. Crea nuevos, actualiza existentes y elimina los que no están en el array.
 
 ---
 
@@ -597,6 +846,49 @@ DELETE /api/v2/production-output-consumptions/{id}
 ```http
 GET /api/v2/production-output-consumptions/available-outputs/{productionRecordId}
 ```
+
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+```
+
+#### Path Parameters
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| productionRecordId | integer | ID del registro de producción |
+
+#### Response Exitosa (200)
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "product": {
+        "id": 1,
+        "name": "Producto A"
+      },
+      "weight_kg": 100.00,
+      "boxes": 5,
+      "available_weight_kg": 50.00,
+      "available_boxes": 2,
+      "cost_per_kg": 5.00,
+      "total_cost": 500.00,
+      "production_record": {
+        "id": 2,
+        "process": {
+          "id": 1,
+          "name": "Proceso Padre"
+        }
+      }
+    }
+  ]
+}
+```
+
+**Descripción:** Devuelve los outputs de producción disponibles para ser consumidos por el proceso hijo especificado.
 
 ---
 
