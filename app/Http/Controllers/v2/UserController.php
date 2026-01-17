@@ -63,6 +63,9 @@ class UserController extends Controller
         // Ordenar por nombre o fecha de creación
         $query->orderBy($request->input('sort', 'created_at'), $request->input('direction', 'desc'));
 
+        // Cargar roles para la respuesta
+        $query->with('roles');
+
         // Paginación
         $perPage = $request->input('perPage', 10);
 
@@ -79,7 +82,9 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:tenant.users,email',
             'password' => 'required|string|min:8',
-            'role.id' => 'required|exists:tenant.roles,id',
+            'role_ids' => 'required|array|min:1',
+            'role_ids.*' => 'integer|exists:tenant.roles,id',
+            'active' => 'sometimes|boolean',
         ]);
 
         // Usar una transacción para asegurar que ambas operaciones se completen exitosamente
@@ -90,19 +95,23 @@ class UserController extends Controller
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),  // Usar Hash::make para mayor flexibilidad
+                'password' => Hash::make($validated['password']),
+                'active' => $validated['active'] ?? true,
             ]);
 
-            // Asignar rol al usuario
-            $user->roles()->attach($validated['role']);
+            // Asignar roles al usuario (múltiples roles)
+            $user->roles()->sync($validated['role_ids']);
 
             // Confirmar la transacción
             DB::commit();
 
+            // Cargar roles para la respuesta
+            $user->load('roles');
+
             // Responder con éxito y código 201 (Created)
             return response()->json([
                 'message' => 'Usuario creado correctamente.',
-                'user_id' => $user->id,
+                'data' => new UserResource($user),
             ], 201);
         } catch (Exception $e) {
             // Revertir la transacción en caso de error
@@ -122,7 +131,10 @@ class UserController extends Controller
     public function show($id)
     {
         $user = User::with('roles')->findOrFail($id);
-        return response()->json($user);
+        return response()->json([
+            'message' => 'Usuario obtenido correctamente.',
+            'data' => new UserResource($user),
+        ]);
     }
 
     /**
@@ -136,21 +148,30 @@ class UserController extends Controller
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|unique:tenant.users,email,' . $user->id,
             'password' => 'sometimes|string|min:8',
-            'roles' => 'array|exists:tenant.roles,id', // Validar roles si se envían
+            'active' => 'sometimes|boolean',
+            'role_ids' => 'sometimes|array|min:1',
+            'role_ids.*' => 'integer|exists:tenant.roles,id',
         ]);
 
         $user->update(array_filter([
             'name' => $validated['name'] ?? null,
             'email' => $validated['email'] ?? null,
-            'password' => isset($validated['password']) ? bcrypt($validated['password']) : null,
+            'password' => isset($validated['password']) ? Hash::make($validated['password']) : null,
+            'active' => $validated['active'] ?? null,
         ]));
 
-        // Asignar roles
-        if (!empty($validated['roles'])) {
-            $user->roles()->sync($validated['roles']);
+        // Asignar roles (múltiples roles)
+        if (isset($validated['role_ids'])) {
+            $user->roles()->sync($validated['role_ids']);
         }
 
-        return response()->json($user);
+        // Cargar roles para la respuesta
+        $user->load('roles');
+
+        return response()->json([
+            'message' => 'Usuario actualizado correctamente.',
+            'data' => new UserResource($user),
+        ]);
     }
 
     /**

@@ -52,7 +52,7 @@ class AuthController extends Controller
                 'assignedStoreId' => $user->assigned_store_id,
                 'companyName' => $user->company_name,
                 'companyLogoUrl' => $user->company_logo_url,
-                'role' => $user->roles->pluck('name'), // Si usas roles
+                'roles' => $user->roles->pluck('name'), // Array de nombres de roles
             ],
         ]);
     }
@@ -70,6 +70,23 @@ class AuthController extends Controller
     // Obtener usuario autenticado
     public function me(Request $request)
     {
-        return response()->json($request->user());
+        $user = $request->user();
+        
+        // Asegurar que se cargan los roles
+        $user->load('roles');
+        
+        // Formatear respuesta consistente con login
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'assigned_store_id' => $user->assigned_store_id,
+            'company_name' => $user->company_name,
+            'company_logo_url' => $user->company_logo_url,
+            'active' => $user->active,
+            'roles' => $user->roles->pluck('name'), // Array de nombres de roles (consistente con login)
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at,
+        ]);
     }
 }

@@ -73,7 +73,7 @@ X-Tenant: empresa1
         "assignedStoreId": 5,
         "companyName": "Empresa S.L.",
         "companyLogoUrl": "https://...",
-        "role": ["manager"]
+        "roles": ["manager"]
     }
 }
 ```

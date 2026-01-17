@@ -157,9 +157,6 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::get('/taxes/options', [TaxController::class, 'options']);
             Route::get('/capture-zones/options', [V2CaptureZoneController::class, 'options']);
             Route::get('/processes/options', [V2ProcessController::class, 'options']);
-            Route::get('/pallets/options', [V2PalletController::class, 'options']);
-            Route::get('/pallets/stored-options', [V2PalletController::class, 'storedOptions']);
-            Route::get('/pallets/shipped-options', [V2PalletController::class, 'shippedOptions']);
             Route::get('/pallets/registered', [V2PalletController::class, 'registeredPallets']);
             Route::get('/pallets/search-by-lot', [V2PalletController::class, 'searchByLot']);
             Route::get('/pallets/available-for-order', [V2PalletController::class, 'availableForOrder']);
@@ -249,7 +246,6 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::get('boxes/xlsx', [\App\Http\Controllers\v2\ExcelController::class, 'exportBoxesReport'])->name('export_boxes_report');
 
             Route::apiResource('boxes', BoxesController::class); /* Algo raro en el nombre */
-            Route::get('boxes/available', [BoxesController::class, 'available'])->name('boxes.available');
             Route::delete('boxes', [BoxesController::class, 'destroyMultiple']);
             Route::apiResource('pallets', V2PalletController::class);
             Route::delete('pallets', [V2PalletController::class, 'destroyMultiple'])->middleware(['role:superuser,manager,admin']);

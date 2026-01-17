@@ -291,99 +291,6 @@ DELETE /api/v2/pallets
 
 ---
 
-### Opciones de Palets
-
-```http
-GET /api/v2/pallets/options
-```
-
-#### Headers
-```http
-X-Tenant: {subdomain}
-Authorization: Bearer {access_token}
-```
-
-#### Response Exitosa (200)
-
-```json
-[
-  {
-    "id": 1,
-    "name": 1
-  },
-  {
-    "id": 2,
-    "name": 2
-  }
-]
-```
-
-**Descripción:** Devuelve una lista simple de todos los palets (id y name) para usar en opciones de formularios.
-
----
-
-### Palets Almacenados
-
-```http
-GET /api/v2/pallets/stored-options
-```
-
-#### Headers
-```http
-X-Tenant: {subdomain}
-Authorization: Bearer {access_token}
-```
-
-#### Response Exitosa (200)
-
-```json
-[
-  {
-    "id": 1,
-    "name": 1
-  },
-  {
-    "id": 5,
-    "name": 5
-  }
-]
-```
-
-**Descripción:** Devuelve una lista simple de palets con estado `stored` (almacenados) para usar en opciones de formularios.
-
----
-
-### Palets Enviados
-
-```http
-GET /api/v2/pallets/shipped-options
-```
-
-#### Headers
-```http
-X-Tenant: {subdomain}
-Authorization: Bearer {access_token}
-```
-
-#### Response Exitosa (200)
-
-```json
-[
-  {
-    "id": 3,
-    "name": 3
-  },
-  {
-    "id": 7,
-    "name": 7
-  }
-]
-```
-
-**Descripción:** Devuelve una lista simple de palets con estado `shipped` (enviados) para usar en opciones de formularios.
-
----
-
 ### Palets Registrados
 
 ```http
@@ -882,14 +789,6 @@ DELETE /api/v2/boxes
 {
   "ids": [1, 2, 3]
 }
-```
-
----
-
-### Cajas Disponibles
-
-```http
-GET /api/v2/boxes/available
 ```
 
 ---

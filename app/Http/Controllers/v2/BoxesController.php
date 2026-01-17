@@ -213,65 +213,6 @@ class BoxesController extends Controller
     }
 
     /**
-     * Obtener cajas disponibles para un proceso de producción específico
-     * Útil para el frontend al seleccionar cajas para producción
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function available(Request $request)
-    {
-        $query = Box::query()
-            ->whereDoesntHave('productionInputs') // Solo cajas disponibles
-            ->with(['product', 'palletBox.pallet']);
-
-        // Filtros opcionales para refinar la búsqueda
-        if ($request->has('lot')) {
-            $query->where('lot', $request->lot);
-        }
-
-        if ($request->has('product_id')) {
-            $query->where('article_id', $request->product_id);
-        }
-
-        if ($request->has('product_ids')) {
-            $query->whereIn('article_id', $request->product_ids);
-        }
-
-        if ($request->has('pallet_id')) {
-            $query->whereHas('palletBox', function ($q) use ($request) {
-                $q->where('pallet_id', $request->pallet_id);
-            });
-        }
-
-        if ($request->has('pallet_ids')) {
-            $query->whereHas('palletBox', function ($q) use ($request) {
-                $q->whereIn('pallet_id', $request->pallet_ids);
-            });
-        }
-
-        // Solo cajas que están en palets almacenados (status = 2)
-        if ($request->has('onlyStored') && $request->onlyStored === 'true') {
-            $query->whereHas('palletBox.pallet', function ($q) {
-                $q->where('status', \App\Models\Pallet::STATE_STORED);
-            });
-        }
-
-        /* stores - Filtro por almacén donde está el pallet */
-        if ($request->has('stores')) {
-            $stores = is_array($request->stores) ? $request->stores : explode(',', $request->stores);
-            $query->whereHas('palletBox.pallet.storedPallet', function ($q) use ($stores) {
-                $q->whereIn('store_id', $stores);
-            });
-        }
-
-        $perPage = $request->input('perPage', 50);
-        $boxes = $query->orderBy('id', 'desc')->paginate($perPage);
-
-        return BoxResource::collection($boxes);
-    }
-
-    /**
      * Show the form for creating a new resource.
      */
     public function create()

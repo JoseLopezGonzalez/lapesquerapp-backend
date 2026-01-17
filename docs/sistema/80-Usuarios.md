@@ -210,7 +210,8 @@ POST /v2/users
     'name' => 'required|string|max:255',
     'email' => 'required|email|unique:tenant.users,email',
     'password' => 'required|string|min:8',
-    'role.id' => 'required|exists:tenant.roles,id',
+    'role_ids' => 'required|array|min:1',
+    'role_ids.*' => 'integer|exists:tenant.roles,id',
 ]
 ```
 
@@ -220,22 +221,27 @@ POST /v2/users
     "name": "Juan Pérez",
     "email": "juan@example.com",
     "password": "password123",
-    "role": {
-        "id": 2
-    }
+    "role_ids": [1, 2]
 }
 ```
 
 **Comportamiento**:
 - Crea el usuario con contraseña hasheada
-- Asigna el rol especificado
+- Asigna los roles especificados (múltiples roles permitidos)
 - Usa transacción DB para garantizar consistencia
+- Usa `sync()` para asignar roles (reemplaza todos)
 
 **Respuesta** (201):
 ```json
 {
     "message": "Usuario creado correctamente.",
-    "user_id": 1
+    "data": {
+        "id": 1,
+        "name": "Juan Pérez",
+        "email": "juan@example.com",
+        "roles": ["admin", "manager"],
+        ...
+    }
 }
 ```
 
@@ -246,7 +252,7 @@ GET /v2/users/{id}
 
 **Eager Loading**: `roles`
 
-**Respuesta**: JSON directo (no usa Resource)
+**Respuesta**: `UserResource` con formato consistente
 
 #### `update(Request $request, $id)` - Actualizar Usuario
 ```php
@@ -258,17 +264,19 @@ PUT /v2/users/{id}
 [
     'name' => 'sometimes|string|max:255',
     'email' => 'sometimes|email|unique:tenant.users,email,{id}',
-    'password' => 'sometimes|string|min:8',
-    'roles' => 'array|exists:tenant.roles,id',
+    'password' => 'nullable|string|min:8',
+    'role_ids' => 'sometimes|array|min:1',
+    'role_ids.*' => 'integer|exists:tenant.roles,id',
 ]
 ```
 
 **Comportamiento**:
 - Actualiza solo los campos proporcionados
 - Si se proporciona `password`, se hashea automáticamente
-- Si se proporciona `roles` (array de IDs), sincroniza roles (reemplaza todos)
+- Si se proporciona `role_ids` (array de IDs), sincroniza roles (reemplaza todos los roles actuales)
+- Si no se proporciona `role_ids`, se mantienen los roles existentes
 
-**Respuesta**: JSON directo del usuario actualizado
+**Respuesta**: `UserResource` con formato consistente
 
 #### `destroy($id)` - Eliminar Usuario
 ```php
@@ -416,13 +424,12 @@ Las siguientes restricciones están planificadas pero **no implementadas aún**:
    - **Problema**: Comportamiento inesperado para IDs
    - **Recomendación**: Usar `where('id', $request->id)`
 
-### ⚠️ Roles en Store vs Update
+### ✅ Roles Actualizado
 
-8. **Inconsistencia en Manejo de Roles** (`app/Http/Controllers/v2/UserController.php`)
-   - `store()` usa `role.id` (singular)
-   - `update()` usa `roles` (plural, array)
-   - **Problema**: Inconsistencia en API
-   - **Recomendación**: Unificar formato (preferir plural)
+8. **Manejo Consistente de Múltiples Roles** (`app/Http/Controllers/v2/UserController.php`)
+   - `store()` usa `role_ids` (array de IDs) ✅
+   - `update()` usa `role_ids` (array de IDs) ✅
+   - Ambos endpoints ahora soportan múltiples roles consistentemente
 
 ### ⚠️ Sin Validación de Email Único en Update
 

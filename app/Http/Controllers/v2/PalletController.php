@@ -550,51 +550,6 @@ class PalletController extends Controller
         return response()->json(['message' => 'Palets eliminados correctamente']);
     }
 
-    /* options */
-    public function storedOptions()
-    {
-
-        /* $states = [
-            ['id' => 1, 'name' => 'registered'],
-            ['id' => 2, 'name' => 'stored'],
-            ['id' => 3, 'name' => 'shipped'],
-        ]; */
-
-        $pallets = Pallet::select('id', 'id as name')
-            ->where('status', Pallet::STATE_STORED)
-            ->orderBy('id')
-            ->get();
-
-        return response()->json($pallets);
-    }
-
-    /* shippedOptions */
-    public function shippedOptions()
-    {
-
-        /* $states = [
-            ['id' => 1, 'name' => 'registered'],
-            ['id' => 2, 'name' => 'stored'],
-            ['id' => 3, 'name' => 'shipped'],
-        ]; */
-        /* id as name */
-        $pallets = Pallet::select('id', 'id as name')
-            ->where('status', Pallet::STATE_SHIPPED)
-            ->orderBy('id')
-            ->get();
-
-        return response()->json($pallets);
-    }
-
-    /* options */
-    public function options()
-    {
-        $pallets = Pallet::select('id', 'id as name')
-            ->orderBy('id')
-            ->get();
-
-        return response()->json($pallets);
-    }
 
     public function assignToPosition(Request $request)
     {
