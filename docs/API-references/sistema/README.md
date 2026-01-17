@@ -227,12 +227,19 @@ GET /api/v2/roles
 POST /api/v2/roles
 ```
 
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+Content-Type: application/json
+```
+
 #### Request Body
 
 ```json
 {
   "name": "nuevo_rol",
-  "display_name": "Nuevo Rol"
+  "description": "Descripción del nuevo rol"
 }
 ```
 
@@ -240,8 +247,49 @@ POST /api/v2/roles
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
-| name | string | Nombre del rol (único, formato snake_case) |
-| display_name | string | Nombre para mostrar |
+| name | string | Nombre del rol (único, máximo 255 caracteres) |
+
+#### Campos Opcionales
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| description | string | Descripción del rol (máximo 1000 caracteres) |
+
+#### Response Exitosa (201)
+
+```json
+{
+  "message": "Rol creado correctamente.",
+  "data": {
+    "id": 3,
+    "name": "nuevo_rol"
+  }
+}
+```
+
+#### Response Errónea (422) - Validación
+
+```json
+{
+  "message": "Error de validación.",
+  "userMessage": "El campo name es obligatorio.",
+  "errors": {
+    "name": ["The name field is required."]
+  }
+}
+```
+
+#### Response Errónea (422) - Nombre Duplicado
+
+```json
+{
+  "message": "Error de validación.",
+  "userMessage": "El nombre del rol ya existe.",
+  "errors": {
+    "name": ["The name has already been taken."]
+  }
+}
+```
 
 ---
 
@@ -249,6 +297,39 @@ POST /api/v2/roles
 
 ```http
 GET /api/v2/roles/{id}
+```
+
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+```
+
+#### Path Parameters
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| id | integer | ID del rol |
+
+#### Response Exitosa (200)
+
+```json
+{
+  "id": 3,
+  "name": "admin",
+  "display_name": "Administrador",
+  "created_at": "2024-01-15T10:00:00.000000Z",
+  "updated_at": "2024-01-15T10:00:00.000000Z"
+}
+```
+
+#### Response Errónea (404) - Rol No Encontrado
+
+```json
+{
+  "message": "No query results for model [App\\Models\\Role] 3",
+  "userMessage": "El rol solicitado no existe."
+}
 ```
 
 ---
@@ -259,6 +340,56 @@ GET /api/v2/roles/{id}
 PUT /api/v2/roles/{id}
 ```
 
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+Content-Type: application/json
+```
+
+#### Path Parameters
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| id | integer | ID del rol |
+
+#### Request Body
+
+```json
+{
+  "name": "rol_actualizado",
+  "description": "Descripción actualizada"
+}
+```
+
+#### Campos Opcionales
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| name | string | Nombre del rol (único, máximo 255 caracteres) |
+| description | string | Descripción del rol (máximo 1000 caracteres) |
+
+#### Response Exitosa (200)
+
+```json
+{
+  "message": "Rol actualizado correctamente.",
+  "data": {
+    "id": 3,
+    "name": "rol_actualizado"
+  }
+}
+```
+
+#### Response Errónea (404) - Rol No Encontrado
+
+```json
+{
+  "message": "No query results for model [App\\Models\\Role] 3",
+  "userMessage": "El rol solicitado no existe."
+}
+```
+
 ---
 
 ### Eliminar Rol
@@ -266,6 +397,46 @@ PUT /api/v2/roles/{id}
 ```http
 DELETE /api/v2/roles/{id}
 ```
+
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+```
+
+#### Path Parameters
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| id | integer | ID del rol |
+
+#### Response Exitosa (200)
+
+```json
+{
+  "message": "Rol eliminado correctamente."
+}
+```
+
+#### Response Errónea (400) - Tiene Usuarios Asignados
+
+```json
+{
+  "message": "No se puede eliminar el rol porque tiene usuarios asignados.",
+  "userMessage": "Existen usuarios con este rol. Debe desasignarlos primero."
+}
+```
+
+#### Response Errónea (404) - Rol No Encontrado
+
+```json
+{
+  "message": "No query results for model [App\\Models\\Role] 3",
+  "userMessage": "El rol solicitado no existe."
+}
+```
+
+**Descripción:** Elimina un rol. No permite eliminar roles que tienen usuarios asignados.
 
 ---
 
