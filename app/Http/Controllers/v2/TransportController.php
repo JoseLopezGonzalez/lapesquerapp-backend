@@ -86,7 +86,10 @@ class TransportController extends Controller
             'emails' => $emailsText,
         ]);
 
-        return new TransportResource($transport);
+        return response()->json([
+            'message' => 'Transportista creado correctamente.',
+            'data' => new TransportResource($transport),
+        ], 201);
     }
 
 

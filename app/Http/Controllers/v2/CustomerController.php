@@ -136,7 +136,10 @@ class CustomerController extends Controller
         $customer->alias = "Cliente Nº " . $customer->id;
         $customer->save();  // Guardamos el alias en la base de datos
 
-        return new CustomerResource($customer);
+        return response()->json([
+            'message' => 'Cliente creado correctamente.',
+            'data' => new CustomerResource($customer),
+        ], 201);
     }
 
 
@@ -149,7 +152,9 @@ class CustomerController extends Controller
     {
         $customer = Customer::findOrFail($id);
 
-        return new CustomerResource($customer);
+        return response()->json([
+            'data' => new CustomerResource($customer),
+        ]);
     }
 
     /**
@@ -225,7 +230,10 @@ class CustomerController extends Controller
         $customer->alias = "Cliente Nº " . $customer->id;
         $customer->save();
 
-        return new CustomerResource($customer);
+        return response()->json([
+            'message' => 'Cliente actualizado correctamente.',
+            'data' => new CustomerResource($customer),
+        ]);
     }
 
 

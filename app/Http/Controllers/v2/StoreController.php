@@ -120,7 +120,9 @@ class StoreController extends Controller
             'palletsV2.storedPallet', // Cargar storedPallet para posición
         ])->findOrFail($id);
         
-        return new StoreDetailsResource($store);
+        return response()->json([
+            'data' => new StoreDetailsResource($store),
+        ]);
     }
 
     /**

@@ -60,7 +60,10 @@ class FishingGearController extends Controller
             'name' => $validated['name'],
         ]);
 
-        return new FishingGearResource($fishingGear);
+        return response()->json([
+            'message' => 'Arte de pesca creado correctamente.',
+            'data' => new FishingGearResource($fishingGear),
+        ], 201);
     }
 
     /**

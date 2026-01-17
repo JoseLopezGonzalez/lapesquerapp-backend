@@ -257,43 +257,45 @@ Authorization: Bearer {access_token}
 
 ```json
 {
-  "id": 1,
-  "customer": {
+  "data": {
     "id": 1,
-    "name": "Cliente A",
-    "code": "CLI001"
-  },
-  "salesperson": {
-    "id": 1,
-    "name": "Vendedor A"
-  },
-  "transport": {
-    "id": 1,
-    "name": "Transporte A"
-  },
-  "entry_date": "2024-01-15",
-  "load_date": "2024-01-20",
-  "status": "pending",
-  "buyer_reference": "REF-001",
-  "truck_plate": "ABC-1234",
-  "trailer_plate": "XYZ-5678",
-  "temperature": "-18°C",
-  "total_net_weight": 1500.50,
-  "total_amount": 45000.00,
-  "planned_products": [
-    {
+    "customer": {
       "id": 1,
-      "product": {
+      "name": "Cliente A",
+      "code": "CLI001"
+    },
+    "salesperson": {
+      "id": 1,
+      "name": "Vendedor A"
+    },
+    "transport": {
+      "id": 1,
+      "name": "Transporte A"
+    },
+    "entry_date": "2024-01-15",
+    "load_date": "2024-01-20",
+    "status": "pending",
+    "buyer_reference": "REF-001",
+    "truck_plate": "ABC-1234",
+    "trailer_plate": "XYZ-5678",
+    "temperature": "-18°C",
+    "total_net_weight": 1500.50,
+    "total_amount": 45000.00,
+    "planned_products": [
+      {
         "id": 1,
-        "name": "Producto A"
-      },
-      "quantity": 100.5,
-      "boxes": 10,
-      "unit_price": 15.50
-    }
-  ],
-  "created_at": "2024-01-15T10:00:00.000000Z",
-  "updated_at": "2024-01-15T10:00:00.000000Z"
+        "product": {
+          "id": 1,
+          "name": "Producto A"
+        },
+        "quantity": 100.5,
+        "boxes": 10,
+        "unit_price": 15.50
+      }
+    ],
+    "created_at": "2024-01-15T10:00:00.000000Z",
+    "updated_at": "2024-01-15T10:00:00.000000Z"
+  }
 }
 ```
 
@@ -760,22 +762,25 @@ Content-Type: application/json
 
 ```json
 {
-  "id": 1,
-  "order_id": 1,
-  "product": {
+  "message": "Detalle de producto planificado creado correctamente.",
+  "data": {
     "id": 1,
-    "name": "Producto A"
-  },
-  "quantity": 100.50,
-  "boxes": 10,
-  "unit_price": 15.50,
-  "tax": {
-    "id": 1,
-    "name": "IVA 21%"
-  },
-  "line_base": 1557.75,
-  "line_total": 1557.75,
-  "created_at": "2024-01-15T10:00:00.000000Z"
+    "order_id": 1,
+    "product": {
+      "id": 1,
+      "name": "Producto A"
+    },
+    "quantity": 100.50,
+    "boxes": 10,
+    "unit_price": 15.50,
+    "tax": {
+      "id": 1,
+      "name": "IVA 21%"
+    },
+    "line_base": 1557.75,
+    "line_total": 1557.75,
+    "created_at": "2024-01-15T10:00:00.000000Z"
+  }
 }
 ```
 
@@ -789,7 +794,29 @@ GET /api/v2/order-planned-product-details/{id}
 
 #### Response Exitosa (200)
 
-Misma estructura que [Crear Producto Planificado](#crear-producto-planificado).
+```json
+{
+  "data": {
+    "id": 1,
+    "order_id": 1,
+    "product": {
+      "id": 1,
+      "name": "Producto A"
+    },
+    "quantity": 100.50,
+    "boxes": 10,
+    "unit_price": 15.50,
+    "tax": {
+      "id": 1,
+      "name": "IVA 21%"
+    },
+    "line_base": 1557.75,
+    "line_total": 1557.75,
+    "created_at": "2024-01-15T10:00:00.000000Z",
+    "updated_at": "2024-01-15T10:00:00.000000Z"
+  }
+}
+```
 
 ---
 
@@ -828,18 +855,21 @@ Content-Type: application/json
 
 ```json
 {
-  "id": 1,
-  "order_id": 1,
-  "product": {
+  "message": "Detalle de producto planificado actualizado correctamente.",
+  "data": {
     "id": 1,
-    "name": "Producto A"
-  },
-  "quantity": 120.00,
-  "boxes": 12,
-  "unit_price": 16.00,
-  "line_base": 1920.00,
-  "line_total": 1920.00,
-  "updated_at": "2024-01-15T11:00:00.000000Z"
+    "order_id": 1,
+    "product": {
+      "id": 1,
+      "name": "Producto A"
+    },
+    "quantity": 120.00,
+    "boxes": 12,
+    "unit_price": 16.00,
+    "line_base": 1920.00,
+    "line_total": 1920.00,
+    "updated_at": "2024-01-15T11:00:00.000000Z"
+  }
 }
 ```
 
@@ -891,15 +921,17 @@ Authorization: Bearer {access_token}
 
 ```json
 {
-  "id": 1,
-  "order_id": 1,
-  "description": "Producto dañado durante el transporte",
-  "status": "open",
-  "resolution_type": null,
-  "resolution_notes": null,
-  "resolved_at": null,
-  "created_at": "2024-01-15T10:00:00.000000Z",
-  "updated_at": "2024-01-15T10:00:00.000000Z"
+  "data": {
+    "id": 1,
+    "order_id": 1,
+    "description": "Producto dañado durante el transporte",
+    "status": "open",
+    "resolution_type": null,
+    "resolution_notes": null,
+    "resolved_at": null,
+    "created_at": "2024-01-15T10:00:00.000000Z",
+    "updated_at": "2024-01-15T10:00:00.000000Z"
+  }
 }
 ```
 
@@ -1014,14 +1046,17 @@ Content-Type: application/json
 
 ```json
 {
-  "id": 1,
-  "order_id": 1,
-  "description": "Producto dañado durante el transporte",
-  "status": "resolved",
-  "resolution_type": "returned",
-  "resolution_notes": "Producto devuelto al almacén",
-  "resolved_at": "2024-01-15T12:00:00.000000Z",
-  "updated_at": "2024-01-15T12:00:00.000000Z"
+  "message": "Incidencia actualizada correctamente.",
+  "data": {
+    "id": 1,
+    "order_id": 1,
+    "description": "Producto dañado durante el transporte",
+    "status": "resolved",
+    "resolution_type": "returned",
+    "resolution_notes": "Producto devuelto al almacén",
+    "resolved_at": "2024-01-15T12:00:00.000000Z",
+    "updated_at": "2024-01-15T12:00:00.000000Z"
+  }
 }
 ```
 

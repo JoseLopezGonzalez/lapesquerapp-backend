@@ -77,7 +77,10 @@ class SalespersonController extends Controller
 
         $salesperson = Salesperson::create($validated);
 
-        return new SalespersonResource($salesperson);
+        return response()->json([
+            'message' => 'Comercial creado correctamente.',
+            'data' => new SalespersonResource($salesperson),
+        ], 201);
     }
 
 

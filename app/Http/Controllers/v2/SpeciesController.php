@@ -74,7 +74,10 @@ class SpeciesController extends Controller
             'fishing_gear_id' => $validated['fishingGearId'],
         ]);
 
-        return new SpeciesResource($species);
+        return response()->json([
+            'message' => 'Especie creada correctamente.',
+            'data' => new SpeciesResource($species),
+        ], 201);
     }
 
     /**
@@ -82,7 +85,9 @@ class SpeciesController extends Controller
      */
     public function show(Species $species)
     {
-        return new SpeciesResource($species);
+        return response()->json([
+            'data' => new SpeciesResource($species),
+        ]);
     }
 
     /**
@@ -104,7 +109,10 @@ class SpeciesController extends Controller
             'fishing_gear_id' => $validated['fishingGearId'],
         ]);
 
-        return new SpeciesResource($species);
+        return response()->json([
+            'message' => 'Especie actualizada correctamente.',
+            'data' => new SpeciesResource($species),
+        ]);
     }
 
     /**

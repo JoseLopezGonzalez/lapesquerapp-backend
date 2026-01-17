@@ -441,12 +441,14 @@ Authorization: Bearer {access_token}
 
 ```json
 {
-  "id": 3,
-  "name": "admin",
-  "display_name": "Administrador",
-  "description": "Administrador con permisos limitados",
-  "created_at": "2024-01-15T10:00:00.000000Z",
-  "updated_at": "2024-01-15T10:00:00.000000Z"
+  "data": {
+    "id": 3,
+    "name": "admin",
+    "display_name": "Administrador",
+    "description": "Administrador con permisos limitados",
+    "created_at": "2024-01-15T10:00:00.000000Z",
+    "updated_at": "2024-01-15T10:00:00.000000Z"
+  }
 }
 ```
 

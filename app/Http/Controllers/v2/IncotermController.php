@@ -63,7 +63,10 @@ class IncotermController extends Controller
 
         $incoterm = Incoterm::create($validated);
 
-        return new IncotermResource($incoterm);
+        return response()->json([
+            'message' => 'Incoterm creado correctamente.',
+            'data' => new IncotermResource($incoterm),
+        ], 201);
     }
 
 

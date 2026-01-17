@@ -281,7 +281,9 @@ class PalletController extends Controller
     public function show(string $id)
     {
         $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->firstOrFail();
-        return new PalletResource($pallet);
+        return response()->json([
+            'data' => new PalletResource($pallet),
+        ]);
     }
 
     /**

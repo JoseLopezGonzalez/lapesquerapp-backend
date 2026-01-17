@@ -56,7 +56,10 @@ class PaymentTermController extends Controller
 
         $paymentTerm = PaymentTerm::create($validated);
 
-        return new PaymentTermResource($paymentTerm);
+        return response()->json([
+            'message' => 'Término de pago creado correctamente.',
+            'data' => new PaymentTermResource($paymentTerm),
+        ], 201);
     }
 
 

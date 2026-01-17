@@ -107,13 +107,18 @@ class CeboDispatchController extends Controller
             }
         }
 
-        return new CeboDispatchResource($dispatch);
+        return response()->json([
+            'message' => 'Despacho de cebo creado correctamente.',
+            'data' => new CeboDispatchResource($dispatch),
+        ], 201);
     }
 
     public function show($id)
     {
         $dispatch = CeboDispatch::with('supplier', 'products.product')->findOrFail($id);
-        return new CeboDispatchResource($dispatch);
+        return response()->json([
+            'data' => new CeboDispatchResource($dispatch),
+        ]);
     }
 
     public function update(Request $request, $id)
@@ -146,7 +151,10 @@ class CeboDispatchController extends Controller
         });
 
         $dispatch->refresh();
-        return new CeboDispatchResource($dispatch);
+        return response()->json([
+            'message' => 'Despacho de cebo actualizado correctamente.',
+            'data' => new CeboDispatchResource($dispatch),
+        ]);
     }
 
     public function destroy($id)

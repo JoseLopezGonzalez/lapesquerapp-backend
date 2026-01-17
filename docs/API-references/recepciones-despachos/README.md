@@ -162,17 +162,20 @@ Content-Type: application/json
 
 ```json
 {
-  "id": 1,
-  "supplier": {
+  "message": "Recepción de materia prima creada correctamente.",
+  "data": {
     "id": 1,
-    "name": "Proveedor A"
-  },
-  "date": "2024-01-15",
-  "notes": "Recepción de materia prima",
-  "creation_mode": "lines",
-  "products": [...],
-  "pallets": [...],
-  "created_at": "2024-01-15T10:00:00.000000Z"
+    "supplier": {
+      "id": 1,
+      "name": "Proveedor A"
+    },
+    "date": "2024-01-15",
+    "notes": "Recepción de materia prima",
+    "creation_mode": "lines",
+    "products": [...],
+    "pallets": [...],
+    "created_at": "2024-01-15T10:00:00.000000Z"
+  }
 }
 ```
 
@@ -186,7 +189,23 @@ GET /api/v2/raw-material-receptions/{id}
 
 #### Response Exitosa (200)
 
-Misma estructura que [Crear Recepción](#crear-recepción).
+```json
+{
+  "data": {
+    "id": 1,
+    "supplier": {
+      "id": 1,
+      "name": "Proveedor A"
+    },
+    "date": "2024-01-15",
+    "notes": "Recepción de materia prima",
+    "creation_mode": "lines",
+    "products": [...],
+    "pallets": [...],
+    "created_at": "2024-01-15T10:00:00.000000Z"
+  }
+}
+```
 
 ---
 
@@ -204,13 +223,21 @@ PUT /api/v2/raw-material-receptions/{id}
 
 ```json
 {
-  "id": 1,
-  "supplier": {
+  "message": "Recepción de materia prima actualizada correctamente.",
+  "data": {
     "id": 1,
-    "name": "Proveedor A"
-  },
-  "date": "2024-01-15",
-  "updated_at": "2024-01-15T11:00:00.000000Z"
+    "supplier": {
+      "id": 1,
+      "name": "Proveedor A"
+    },
+    "date": "2024-01-15",
+    "notes": "Recepción de materia prima",
+    "creation_mode": "lines",
+    "products": [...],
+    "pallets": [...],
+    "created_at": "2024-01-15T10:00:00.000000Z",
+    "updated_at": "2024-01-15T11:00:00.000000Z"
+  }
 }
 ```
 
@@ -382,24 +409,27 @@ Content-Type: application/json
 
 ```json
 {
-  "id": 1,
-  "supplier": {
+  "message": "Despacho de cebo creado correctamente.",
+  "data": {
     "id": 1,
-    "name": "Proveedor A"
-  },
-  "date": "2024-01-15",
-  "notes": "Despacho de cebo",
-  "products": [
-    {
+    "supplier": {
       "id": 1,
-      "product": {
+      "name": "Proveedor A"
+    },
+    "date": "2024-01-15",
+    "notes": "Despacho de cebo",
+    "products": [
+      {
         "id": 1,
-        "name": "Producto A"
-      },
-      "net_weight": 500.00
-    }
-  ],
-  "created_at": "2024-01-15T10:00:00.000000Z"
+        "product": {
+          "id": 1,
+          "name": "Producto A"
+        },
+        "net_weight": 500.00
+      }
+    ],
+    "created_at": "2024-01-15T10:00:00.000000Z"
+  }
 }
 ```
 
@@ -413,7 +443,30 @@ GET /api/v2/cebo-dispatches/{id}
 
 #### Response Exitosa (200)
 
-Misma estructura que [Crear Despacho](#crear-despacho).
+```json
+{
+  "data": {
+    "id": 1,
+    "supplier": {
+      "id": 1,
+      "name": "Proveedor A"
+    },
+    "date": "2024-01-15",
+    "notes": "Despacho de cebo",
+    "products": [
+      {
+        "id": 1,
+        "product": {
+          "id": 1,
+          "name": "Producto A"
+        },
+        "net_weight": 500.00
+      }
+    ],
+    "created_at": "2024-01-15T10:00:00.000000Z"
+  }
+}
+```
 
 ---
 
@@ -449,14 +502,28 @@ PUT /api/v2/cebo-dispatches/{id}
 
 ```json
 {
-  "id": 1,
-  "supplier": {
+  "message": "Despacho de cebo actualizado correctamente.",
+  "data": {
     "id": 1,
-    "name": "Proveedor A"
-  },
-  "date": "2024-01-15",
-  "notes": "Despacho actualizado",
-  "updated_at": "2024-01-15T11:00:00.000000Z"
+    "supplier": {
+      "id": 1,
+      "name": "Proveedor A"
+    },
+    "date": "2024-01-15",
+    "notes": "Despacho actualizado",
+    "products": [
+      {
+        "id": 1,
+        "product": {
+          "id": 1,
+          "name": "Producto A"
+        },
+        "net_weight": 600.00
+      }
+    ],
+    "created_at": "2024-01-15T10:00:00.000000Z",
+    "updated_at": "2024-01-15T11:00:00.000000Z"
+  }
 }
 ```
 

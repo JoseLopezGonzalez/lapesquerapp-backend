@@ -72,7 +72,10 @@ class SupplierController extends Controller
 
         $supplier = Supplier::create($validated);
 
-        return new SupplierResource($supplier);
+        return response()->json([
+            'message' => 'Proveedor creado correctamente.',
+            'data' => new SupplierResource($supplier),
+        ], 201);
     }
 
 
@@ -125,7 +128,10 @@ class SupplierController extends Controller
 
         $supplier->update($validated);
 
-        return new SupplierResource($supplier);
+        return response()->json([
+            'message' => 'Proveedor actualizado correctamente.',
+            'data' => new SupplierResource($supplier),
+        ]);
     }
 
 

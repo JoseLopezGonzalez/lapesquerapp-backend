@@ -65,7 +65,9 @@ class RoleController extends Controller
     public function show($id)
     {
         $role = Role::findOrFail($id);
-        return new RoleResource($role);
+        return response()->json([
+            'data' => new RoleResource($role),
+        ]);
     }
 
     /**

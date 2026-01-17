@@ -21,12 +21,17 @@ class LabelController extends Controller
         ]);
 
         $label = Label::create($validated);
-        return new LabelResource($label);
+        return response()->json([
+            'message' => 'Etiqueta creada correctamente.',
+            'data' => new LabelResource($label),
+        ], 201);
     }
 
     public function show(Label $label)
     {
-        return new LabelResource($label);
+        return response()->json([
+            'data' => new LabelResource($label),
+        ]);
     }
 
     public function update(Request $request, Label $label)
@@ -37,7 +42,10 @@ class LabelController extends Controller
         ]);
 
         $label->update($validated);
-        return new LabelResource($label);
+        return response()->json([
+            'message' => 'Etiqueta actualizada correctamente.',
+            'data' => new LabelResource($label),
+        ]);
     }
 
     public function destroy(Label $label)

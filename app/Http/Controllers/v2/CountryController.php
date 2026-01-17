@@ -55,7 +55,10 @@ class CountryController extends Controller
         ]);
 
         $country = Country::create($validated);
-        return new CountryResource($country);
+        return response()->json([
+            'message' => 'País creado correctamente.',
+            'data' => new CountryResource($country),
+        ], 201);
     }
 
     /**

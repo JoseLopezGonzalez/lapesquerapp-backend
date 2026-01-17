@@ -142,14 +142,19 @@ class RawMaterialReceptionController extends Controller
             // 3. Cargar relaciones para respuesta
             $reception->load('supplier', 'products.product', 'pallets.reception', 'pallets.boxes.box.productionInputs');
       
-            return new RawMaterialReceptionResource($reception);
+            return response()->json([
+                'message' => 'Recepción de materia prima creada correctamente.',
+                'data' => new RawMaterialReceptionResource($reception),
+            ], 201);
         });
     }
 
     public function show($id)
     {
         $reception = RawMaterialReception::with('supplier', 'products.product', 'pallets.reception', 'pallets.boxes.box.productionInputs')->findOrFail($id);
-        return new RawMaterialReceptionResource($reception);
+        return response()->json([
+            'data' => new RawMaterialReceptionResource($reception),
+        ]);
     }
 
     public function update(Request $request, $id)
@@ -236,7 +241,10 @@ class RawMaterialReceptionController extends Controller
             }
 
             $reception->load('supplier', 'products.product', 'pallets.reception', 'pallets.boxes.box.productionInputs');
-            return new RawMaterialReceptionResource($reception);
+            return response()->json([
+                'message' => 'Recepción de materia prima actualizada correctamente.',
+                'data' => new RawMaterialReceptionResource($reception),
+            ]);
         });
     }
 

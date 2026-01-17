@@ -265,7 +265,10 @@ class OrderController extends Controller
                 'pallets.boxes.box.product',
             ]);
             
-            return new OrderDetailsResource($order);
+            return response()->json([
+                'message' => 'Pedido creado correctamente.',
+                'data' => new OrderDetailsResource($order),
+            ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -286,7 +289,9 @@ class OrderController extends Controller
             'pallets.boxes.box.product', // Cargar product para los cálculos
         ])->findOrFail($id);
         
-        return new OrderDetailsResource($order);
+        return response()->json([
+            'data' => new OrderDetailsResource($order),
+        ]);
     }
 
     /**
@@ -415,7 +420,10 @@ class OrderController extends Controller
             'pallets.boxes.box.product',
         ]);
 
-        return new OrderDetailsResource($order);
+        return response()->json([
+            'message' => 'Pedido actualizado correctamente.',
+            'data' => new OrderDetailsResource($order),
+        ]);
     }
 
 
@@ -521,7 +529,10 @@ class OrderController extends Controller
             'pallets.boxes.box.product',
         ]);
         
-        return new OrderDetailsResource($order);
+        return response()->json([
+            'message' => 'Estado del pedido actualizado correctamente.',
+            'data' => new OrderDetailsResource($order),
+        ]);
     }
 
 

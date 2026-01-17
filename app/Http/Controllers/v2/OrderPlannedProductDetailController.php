@@ -70,8 +70,10 @@ class OrderPlannedProductDetailController extends Controller
             'line_total' => $request->unitPrice * $request->quantity,
         ]);
 
-        return new OrderPlannedProductDetailResource($orderPlannedProductDetail);
-
+        return response()->json([
+            'message' => 'Detalle de producto planificado creado correctamente.',
+            'data' => new OrderPlannedProductDetailResource($orderPlannedProductDetail),
+        ], 201);
     }
 
     /**
@@ -80,7 +82,9 @@ class OrderPlannedProductDetailController extends Controller
     public function show(string $id)
     {
         $detail = OrderPlannedProductDetail::with(['product', 'tax', 'order'])->findOrFail($id);
-        return new OrderPlannedProductDetailResource($detail);
+        return response()->json([
+            'data' => new OrderPlannedProductDetailResource($detail),
+        ]);
     }
 
     /**
@@ -116,7 +120,10 @@ class OrderPlannedProductDetailController extends Controller
             'line_total' => $request->unitPrice * $request->quantity,
         ]);
 
-        return new OrderPlannedProductDetailResource($orderPlannedProductDetail);
+        return response()->json([
+            'message' => 'Detalle de producto planificado actualizado correctamente.',
+            'data' => new OrderPlannedProductDetailResource($orderPlannedProductDetail),
+        ]);
     }
 
     /**
