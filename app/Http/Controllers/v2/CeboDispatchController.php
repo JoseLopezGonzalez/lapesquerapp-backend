@@ -161,14 +161,8 @@ class CeboDispatchController extends Controller
     {
         $dispatch = CeboDispatch::findOrFail($id);
 
-        // Validar si el despacho tiene productos antes de eliminar
-        if ($dispatch->products()->exists()) {
-            return response()->json([
-                'message' => 'No se puede eliminar el despacho porque tiene productos asociados',
-                'details' => 'El despacho contiene productos que deben eliminarse primero'
-            ], 400);
-        }
-
+        // Eliminar el despacho - las líneas (cebo_dispatch_products) se eliminarán automáticamente
+        // por cascade, pero los productos en sí NO se eliminarán
         $dispatch->delete();
         return response()->json(['message' => 'Despacho de cebo eliminado correctamente'], 200);
     }
@@ -184,19 +178,8 @@ class CeboDispatchController extends Controller
             ], 400);
         }
 
-        // Validar que ningún despacho tenga productos
-        $dispatchesWithProducts = CeboDispatch::whereIn('id', $ids)
-            ->whereHas('products')
-            ->pluck('id')
-            ->toArray();
-
-        if (!empty($dispatchesWithProducts)) {
-            return response()->json([
-                'message' => 'No se pueden eliminar algunos despachos porque tienen productos asociados',
-                'details' => 'Los despachos con IDs: ' . implode(', ', $dispatchesWithProducts) . ' tienen productos asociados'
-            ], 400);
-        }
-
+        // Eliminar los despachos - las líneas (cebo_dispatch_products) se eliminarán automáticamente
+        // por cascade, pero los productos en sí NO se eliminarán
         CeboDispatch::whereIn('id', $ids)->delete();
 
         return response()->json(['message' => 'Despachos de cebo eliminados correctamente']);
