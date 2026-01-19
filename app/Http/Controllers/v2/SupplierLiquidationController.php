@@ -561,19 +561,26 @@ class SupplierLiquidationController extends Controller
         $totalCalculatedAmount = array_sum(array_column($receptions, 'calculated_total_amount'));
         
         // Totales de salidas de cebo: independientes + relacionadas (con IVA)
+        // Primero, obtener IDs de dispatches independientes para evitar duplicados
+        $independentDispatchIds = array_map(function($d) { return (int)($d['id'] ?? 0); }, $dispatches);
+        
         $totalDispatchesWeight = array_sum(array_column($dispatches, 'total_net_weight'));
         $totalDispatchesBaseAmount = array_sum(array_column($dispatches, 'base_amount'));
         $totalDispatchesIvaAmount = array_sum(array_column($dispatches, 'iva_amount'));
         $totalDispatchesAmount = array_sum(array_column($dispatches, 'total_amount'));
         
-        // Sumar salidas relacionadas dentro de las recepciones
+        // Sumar salidas relacionadas dentro de las recepciones (solo las que no están ya en dispatches independientes)
         foreach ($receptions as $reception) {
             if (!empty($reception['related_dispatches'])) {
                 foreach ($reception['related_dispatches'] as $dispatch) {
-                    $totalDispatchesWeight += $dispatch['total_net_weight'] ?? 0;
-                    $totalDispatchesBaseAmount += $dispatch['base_amount'] ?? 0;
-                    $totalDispatchesIvaAmount += $dispatch['iva_amount'] ?? 0;
-                    $totalDispatchesAmount += $dispatch['total_amount'] ?? 0;
+                    $dispatchId = (int)($dispatch['id'] ?? 0);
+                    // Solo sumar si no está ya contado en los dispatches independientes
+                    if (!in_array($dispatchId, $independentDispatchIds, true)) {
+                        $totalDispatchesWeight += $dispatch['total_net_weight'] ?? 0;
+                        $totalDispatchesBaseAmount += $dispatch['base_amount'] ?? 0;
+                        $totalDispatchesIvaAmount += $dispatch['iva_amount'] ?? 0;
+                        $totalDispatchesAmount += $dispatch['total_amount'] ?? 0;
+                    }
                 }
             }
         }
