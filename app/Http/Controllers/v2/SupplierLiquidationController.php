@@ -465,14 +465,18 @@ class SupplierLiquidationController extends Controller
             // debemos agregarlos al array de dispatches independientes para que aparezcan en el PDF
             // Recopilar todos los dispatches seleccionados que no están en recepciones seleccionadas
             $selectedDispatchesFromUnselectedReceptions = [];
+            $existingDispatchIds = array_map(function($d) { return (int)$d['id']; }, $filteredDispatches);
+            
             foreach ($details['receptions'] ?? [] as $reception) {
                 // Solo procesar recepciones que NO están seleccionadas
                 if (!in_array((int)$reception['id'], $selectedReceptionIds, true)) {
                     if (!empty($reception['related_dispatches'])) {
                         foreach ($reception['related_dispatches'] as $dispatch) {
-                            // Si este dispatch está seleccionado, agregarlo
-                            if (in_array((int)$dispatch['id'], $selectedDispatchIds, true)) {
+                            $dispatchId = (int)$dispatch['id'];
+                            // Si este dispatch está seleccionado Y no está ya en filteredDispatches, agregarlo
+                            if (in_array($dispatchId, $selectedDispatchIds, true) && !in_array($dispatchId, $existingDispatchIds, true)) {
                                 $selectedDispatchesFromUnselectedReceptions[] = $dispatch;
+                                $existingDispatchIds[] = $dispatchId; // Marcar como agregado
                             }
                         }
                     }

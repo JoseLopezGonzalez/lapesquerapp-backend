@@ -121,6 +121,7 @@
         @php
             // Recopilar todas las salidas de cebo: relacionadas y no relacionadas
             $allDispatches = [];
+            $processedDispatchIds = []; // Para evitar duplicados
             
             // Asegurar que $receptions y $dispatches sean arrays
             $receptions = $receptions ?? [];
@@ -130,14 +131,24 @@
             foreach ($receptions as $reception) {
                 if (!empty($reception['related_dispatches'])) {
                     foreach ($reception['related_dispatches'] as $dispatch) {
-                        $allDispatches[] = $dispatch;
+                        $dispatchId = (int)($dispatch['id'] ?? 0);
+                        // Solo agregar si no ha sido procesado antes
+                        if (!in_array($dispatchId, $processedDispatchIds, true)) {
+                            $allDispatches[] = $dispatch;
+                            $processedDispatchIds[] = $dispatchId;
+                        }
                     }
                 }
             }
             
-            // Agregar salidas sin recepción relacionada
+            // Agregar salidas sin recepción relacionada (solo si no están duplicadas)
             foreach ($dispatches as $dispatch) {
-                $allDispatches[] = $dispatch;
+                $dispatchId = (int)($dispatch['id'] ?? 0);
+                // Solo agregar si no ha sido procesado antes
+                if (!in_array($dispatchId, $processedDispatchIds, true)) {
+                    $allDispatches[] = $dispatch;
+                    $processedDispatchIds[] = $dispatchId;
+                }
             }
             
             // Ordenar por fecha
