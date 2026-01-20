@@ -215,7 +215,9 @@ class Handler extends ExceptionHandler
             '/^Debe/i',
             '/^Falta/i',
             '/^El .+ (?:es|debe|no puede)/i', // "El nombre es obligatorio", "El nombre debe ser texto", "El nombre no puede tener"
+            '/^La .+ (?:es|debe|no puede)/i', // "La descripción es obligatoria", "La descripción debe ser texto", "La descripción no puede tener"
             '/^El .+ no es válido/i',
+            '/^La .+ no es válida/i',
             '/^Los datos/i',
             '/^No se puede/i',
             '/^Uno o más/i',
@@ -642,6 +644,11 @@ class Handler extends ExceptionHandler
             if (stripos($errorMessage, 'vat_number') !== false || stripos($errorMessage, 'vatNumber') !== false) {
                 return 'Ya existe un transporte con este NIF/CIF.';
             }
+        }
+        
+        // Incoterms
+        if (stripos($errorMessage, 'incoterms') !== false && stripos($errorMessage, 'code') !== false) {
+            return 'Ya existe un incoterm con este código.';
         }
         
         // Intentar extraer el nombre del campo del mensaje de error

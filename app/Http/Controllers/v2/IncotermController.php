@@ -57,8 +57,16 @@ class IncotermController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:255',
+            'code' => 'required|string|max:10|unique:tenant.incoterms,code',
             'description' => 'required|string|max:255',
+        ], [
+            'code.required' => 'El código del incoterm es obligatorio.',
+            'code.string' => 'El código del incoterm debe ser texto.',
+            'code.max' => 'El código del incoterm no puede tener más de 10 caracteres.',
+            'code.unique' => 'Ya existe un incoterm con este código.',
+            'description.required' => 'La descripción del incoterm es obligatoria.',
+            'description.string' => 'La descripción del incoterm debe ser texto.',
+            'description.max' => 'La descripción del incoterm no puede tener más de 255 caracteres.',
         ]);
 
         $incoterm = Incoterm::create($validated);
@@ -100,8 +108,16 @@ class IncotermController extends Controller
         $incoterm = Incoterm::findOrFail($id);
 
         $validated = $request->validate([
-            'code' => 'required|string|max:255',
+            'code' => 'required|string|max:10|unique:tenant.incoterms,code,' . $id,
             'description' => 'required|string|max:255',
+        ], [
+            'code.required' => 'El código del incoterm es obligatorio.',
+            'code.string' => 'El código del incoterm debe ser texto.',
+            'code.max' => 'El código del incoterm no puede tener más de 10 caracteres.',
+            'code.unique' => 'Ya existe un incoterm con este código.',
+            'description.required' => 'La descripción del incoterm es obligatoria.',
+            'description.string' => 'La descripción del incoterm debe ser texto.',
+            'description.max' => 'La descripción del incoterm no puede tener más de 255 caracteres.',
         ]);
 
         $incoterm->update($validated);
@@ -119,6 +135,18 @@ class IncotermController extends Controller
     public function destroy(string $id)
     {
         $incoterm = Incoterm::findOrFail($id);
+
+        // Validar si el incoterm está en uso antes de eliminar
+        $usedInOrders = $incoterm->orders()->exists();
+
+        if ($usedInOrders) {
+            return response()->json([
+                'message' => 'No se puede eliminar el incoterm porque está en uso',
+                'details' => 'El incoterm está siendo utilizado en pedidos',
+                'userMessage' => 'No se puede eliminar el incoterm porque está siendo utilizado en pedidos'
+            ], 400);
+        }
+
         $incoterm->delete();
 
         return response()->json(['message' => 'Incoterm eliminado con éxito.']);
@@ -127,12 +155,41 @@ class IncotermController extends Controller
 
     public function destroyMultiple(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'ids' => 'required|array|min:1',
             'ids.*' => 'integer|exists:tenant.incoterms,id',
         ]);
 
-        Incoterm::whereIn('id', $request->ids)->delete();
+        $incoterms = Incoterm::whereIn('id', $validated['ids'])->get();
+        
+        // Validar si alguno de los incoterms está en uso
+        $inUse = [];
+        foreach ($incoterms as $incoterm) {
+            $usedInOrders = $incoterm->orders()->exists();
+            
+            if ($usedInOrders) {
+                $inUse[] = [
+                    'id' => $incoterm->id,
+                    'code' => $incoterm->code,
+                    'reasons' => 'pedidos'
+                ];
+            }
+        }
+
+        if (!empty($inUse)) {
+            $message = 'No se pueden eliminar algunos incoterms porque están en uso: ';
+            $details = array_map(function($item) {
+                return $item['code'] . ' (usado en: ' . $item['reasons'] . ')';
+            }, $inUse);
+            
+            return response()->json([
+                'message' => 'No se pueden eliminar algunos incoterms porque están en uso',
+                'details' => implode(', ', $details),
+                'userMessage' => $message . implode(', ', array_column($inUse, 'code'))
+            ], 400);
+        }
+
+        Incoterm::whereIn('id', $validated['ids'])->delete();
 
         return response()->json(['message' => 'Incoterms eliminados con éxito.']);
     }
