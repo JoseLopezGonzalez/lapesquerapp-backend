@@ -55,6 +55,18 @@ class SalespersonController extends Controller
             'emails.*' => 'string|email:rfc,dns|distinct',
             'ccEmails' => 'nullable|array',
             'ccEmails.*' => 'string|email:rfc,dns|distinct',
+        ], [
+            'name.required' => 'El nombre del comercial es obligatorio.',
+            'name.string' => 'El nombre del comercial debe ser texto.',
+            'name.max' => 'El nombre del comercial no puede tener más de 255 caracteres.',
+            'emails.array' => 'Los emails deben ser una lista.',
+            'emails.*.string' => 'Cada email debe ser texto.',
+            'emails.*.email' => 'Uno o más emails no son válidos.',
+            'emails.*.distinct' => 'No puede haber emails duplicados.',
+            'ccEmails.array' => 'Los emails en copia deben ser una lista.',
+            'ccEmails.*.string' => 'Cada email en copia debe ser texto.',
+            'ccEmails.*.email' => 'Uno o más emails en copia no son válidos.',
+            'ccEmails.*.distinct' => 'No puede haber emails en copia duplicados.',
         ]);
 
         // Combinar emails y ccEmails en un único string con ; y salto de línea
@@ -122,6 +134,18 @@ class SalespersonController extends Controller
             'emails.*' => 'string|email:rfc,dns|distinct',
             'ccEmails' => 'nullable|array',
             'ccEmails.*' => 'string|email:rfc,dns|distinct',
+        ], [
+            'name.required' => 'El nombre del comercial es obligatorio.',
+            'name.string' => 'El nombre del comercial debe ser texto.',
+            'name.max' => 'El nombre del comercial no puede tener más de 255 caracteres.',
+            'emails.array' => 'Los emails deben ser una lista.',
+            'emails.*.string' => 'Cada email debe ser texto.',
+            'emails.*.email' => 'Uno o más emails no son válidos.',
+            'emails.*.distinct' => 'No puede haber emails duplicados.',
+            'ccEmails.array' => 'Los emails en copia deben ser una lista.',
+            'ccEmails.*.string' => 'Cada email en copia debe ser texto.',
+            'ccEmails.*.email' => 'Uno o más emails en copia no son válidos.',
+            'ccEmails.*.distinct' => 'No puede haber emails en copia duplicados.',
         ]);
 
         $allEmails = [];
@@ -154,6 +178,24 @@ class SalespersonController extends Controller
      */
     public function destroy(Salesperson $salesperson)
     {
+        // Validar si el comercial está en uso antes de eliminar
+        $usedInCustomers = $salesperson->customers()->exists();
+        $usedInOrders = $salesperson->orders()->exists();
+
+        if ($usedInCustomers || $usedInOrders) {
+            $reasons = [];
+            if ($usedInCustomers) $reasons[] = 'clientes';
+            if ($usedInOrders) $reasons[] = 'pedidos';
+            
+            $reasonsText = implode(' y ', $reasons);
+            
+            return response()->json([
+                'message' => 'No se puede eliminar el comercial porque está en uso',
+                'details' => 'El comercial está siendo utilizado en: ' . $reasonsText,
+                'userMessage' => 'No se puede eliminar el comercial porque está siendo utilizado en: ' . $reasonsText
+            ], 400);
+        }
+
         $salesperson->delete();
         return response()->json(['message' => 'Comercial eliminado con éxito.']);
     }
@@ -163,9 +205,48 @@ class SalespersonController extends Controller
     public function destroyMultiple(Request $request)
     {
         $validated = $request->validate([
-            'ids' => 'required|array',
+            'ids' => 'required|array|min:1',
             'ids.*' => 'integer|exists:tenant.salespeople,id',
+        ], [
+            'ids.required' => 'Debe proporcionar al menos un ID válido para eliminar.',
+            'ids.min' => 'Debe proporcionar al menos un ID válido para eliminar.',
+            'ids.*.integer' => 'Los IDs deben ser números enteros.',
+            'ids.*.exists' => 'Uno o más IDs no existen.',
         ]);
+
+        $salespeople = Salesperson::whereIn('id', $validated['ids'])->get();
+        
+        // Validar si alguno de los comerciales está en uso
+        $inUse = [];
+        foreach ($salespeople as $salesperson) {
+            $usedInCustomers = $salesperson->customers()->exists();
+            $usedInOrders = $salesperson->orders()->exists();
+            
+            if ($usedInCustomers || $usedInOrders) {
+                $reasons = [];
+                if ($usedInCustomers) $reasons[] = 'clientes';
+                if ($usedInOrders) $reasons[] = 'pedidos';
+                
+                $inUse[] = [
+                    'id' => $salesperson->id,
+                    'name' => $salesperson->name,
+                    'reasons' => implode(' y ', $reasons)
+                ];
+            }
+        }
+
+        if (!empty($inUse)) {
+            $message = 'No se pueden eliminar algunos comerciales porque están en uso: ';
+            $details = array_map(function($item) {
+                return $item['name'] . ' (usado en: ' . $item['reasons'] . ')';
+            }, $inUse);
+            
+            return response()->json([
+                'message' => 'No se pueden eliminar algunos comerciales porque están en uso',
+                'details' => implode(', ', $details),
+                'userMessage' => $message . implode(', ', array_column($inUse, 'name'))
+            ], 400);
+        }
 
         Salesperson::whereIn('id', $validated['ids'])->delete();
 

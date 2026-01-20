@@ -661,6 +661,11 @@ class Handler extends ExceptionHandler
             return 'Ya existe un término de pago con este nombre.';
         }
         
+        // Comerciales (salespeople)
+        if (stripos($errorMessage, 'salespeople') !== false && stripos($errorMessage, 'name') !== false) {
+            return 'Ya existe un comercial con este nombre.';
+        }
+        
         // Intentar extraer el nombre del campo del mensaje de error
         if (preg_match("/Duplicate entry.*for key ['\"]?(\w+)['\"]?/i", $errorMessage, $matches)) {
             $keyName = $matches[1];
