@@ -14,6 +14,15 @@ class PaymentTerm extends Model
 
     protected $fillable = ['name'];
 
+    public function customers()
+    {
+        return $this->hasMany(Customer::class);
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
 
     public function toArrayAssoc()
     {

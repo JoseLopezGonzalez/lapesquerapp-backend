@@ -656,6 +656,11 @@ class Handler extends ExceptionHandler
             return 'Ya existe un país con este nombre.';
         }
         
+        // Términos de pago (payment_terms)
+        if (stripos($errorMessage, 'payment_terms') !== false && stripos($errorMessage, 'name') !== false) {
+            return 'Ya existe un término de pago con este nombre.';
+        }
+        
         // Intentar extraer el nombre del campo del mensaje de error
         if (preg_match("/Duplicate entry.*for key ['\"]?(\w+)['\"]?/i", $errorMessage, $matches)) {
             $keyName = $matches[1];
