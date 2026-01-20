@@ -122,11 +122,15 @@ class ProductController extends Controller
             'speciesId' => 'required|exists:tenant.species,id',
             'captureZoneId' => 'required|exists:tenant.capture_zones,id',
             'familyId' => 'nullable|exists:tenant.product_families,id',
-            'articleGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
-            'boxGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
-            'palletGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
+            'articleGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/|max:14',
+            'boxGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/|max:14',
+            'palletGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/|max:14',
             'a3erp_code' => 'nullable|string|max:255',
             'facil_com_code' => 'nullable|string|max:255',
+        ], [
+            'articleGtin.regex' => 'El GTIN del artículo debe tener entre 8 y 14 dígitos numéricos.',
+            'boxGtin.regex' => 'El GTIN de la caja debe tener entre 8 y 14 dígitos numéricos.',
+            'palletGtin.regex' => 'El GTIN del palet debe tener entre 8 y 14 dígitos numéricos.',
         ]);
         
         if ($validator->fails()) {
@@ -225,11 +229,15 @@ class ProductController extends Controller
             'speciesId' => 'required|exists:tenant.species,id',
             'captureZoneId' => 'required|exists:tenant.capture_zones,id',
             'familyId' => 'nullable|exists:tenant.product_families,id',
-            'articleGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
-            'boxGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
-            'palletGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/',
+            'articleGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/|max:14',
+            'boxGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/|max:14',
+            'palletGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/|max:14',
             'a3erp_code' => 'nullable|string|max:255',
             'facil_com_code' => 'nullable|string|max:255',
+        ], [
+            'articleGtin.regex' => 'El GTIN del artículo debe tener entre 8 y 14 dígitos numéricos.',
+            'boxGtin.regex' => 'El GTIN de la caja debe tener entre 8 y 14 dígitos numéricos.',
+            'palletGtin.regex' => 'El GTIN del palet debe tener entre 8 y 14 dígitos numéricos.',
         ]);
         
         if ($validator->fails()) {
