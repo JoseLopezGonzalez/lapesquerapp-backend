@@ -58,6 +58,26 @@ class LabelController extends Controller
 
     }
 
+    public function duplicate(Request $request, Label $label)
+    {
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+        ]);
+
+        // Si no se proporciona un nombre, usar el nombre original con " (Copia)"
+        $newName = $validated['name'] ?? $label->name . ' (Copia)';
+
+        // Crear nueva etiqueta con el mismo formato
+        $duplicatedLabel = Label::create([
+            'name' => $newName,
+            'format' => $label->format,
+        ]);
+
+        return response()->json([
+            'message' => 'Etiqueta duplicada correctamente.',
+            'data' => new LabelResource($duplicatedLabel),
+        ], 201);
+    }
 
     /* Labels options */
     public function options()

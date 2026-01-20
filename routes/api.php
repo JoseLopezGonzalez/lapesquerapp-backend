@@ -283,6 +283,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::apiResource('cebo-dispatches', V2CeboDispatchController::class);
             Route::delete('cebo-dispatches', [V2CeboDispatchController::class, 'destroyMultiple']);
             Route::get('labels/options', [LabelController::class, 'options'])->name('labels.options');
+            Route::post('labels/{label}/duplicate', [LabelController::class, 'duplicate'])->name('labels.duplicate');
             Route::apiResource('labels', LabelController::class);
 
             /* Production Module v2 */
