@@ -28,4 +28,10 @@ class CaptureZone extends Model
     {
         return $this->hasMany(Production::class, 'capture_zone_id');
     }
+
+    // Relación con el modelo Product
+    public function products()
+    {
+        return $this->hasMany(Product::class, 'capture_zone_id');
+    }
 }

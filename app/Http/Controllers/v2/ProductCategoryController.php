@@ -44,9 +44,11 @@ class ProductCategoryController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|min:3|max:255',
+            'name' => 'required|string|min:3|max:255|unique:tenant.product_categories,name',
             'description' => 'nullable|string|max:1000',
             'active' => 'boolean',
+        ], [
+            'name.unique' => 'Ya existe una categoría de producto con este nombre.',
         ]);
 
         $category = ProductCategory::create($validated);
@@ -78,9 +80,11 @@ class ProductCategoryController extends Controller
         $category = ProductCategory::findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|min:3|max:255',
+            'name' => 'sometimes|required|string|min:3|max:255|unique:tenant.product_categories,name,' . $id,
             'description' => 'nullable|string|max:1000',
             'active' => 'boolean',
+        ], [
+            'name.unique' => 'Ya existe una categoría de producto con este nombre.',
         ]);
 
         $category->update($validated);
@@ -102,6 +106,7 @@ class ProductCategoryController extends Controller
         if ($category->families()->count() > 0) {
             return response()->json([
                 'message' => 'No se puede eliminar la categoría porque tiene familias asociadas',
+                'userMessage' => 'No se puede eliminar la categoría porque tiene familias asociadas',
             ], 400);
         }
 
@@ -141,13 +146,37 @@ class ProductCategoryController extends Controller
             $deletedCount++;
         }
 
+        // Construir mensajes en lenguaje natural
         $message = "Se eliminaron {$deletedCount} categorías con éxito";
+        $userMessage = '';
+        
         if (!empty($errors)) {
             $message .= ". Errores: " . implode(', ', $errors);
+            
+            // Generar mensaje en lenguaje natural para el usuario
+            if ($deletedCount === 0) {
+                // No se eliminó ninguna
+                if (count($errors) === 1) {
+                    $userMessage = $errors[0];
+                } else {
+                    $userMessage = 'No se pudieron eliminar las categorías porque tienen familias asociadas';
+                }
+            } else {
+                // Se eliminaron algunas pero no todas
+                if (count($errors) === 1) {
+                    $userMessage = "Se eliminaron {$deletedCount} categorías. {$errors[0]}";
+                } else {
+                    $userMessage = "Se eliminaron {$deletedCount} categorías. Algunas no se pudieron eliminar porque tienen familias asociadas";
+                }
+            }
+        } else {
+            // Todas se eliminaron exitosamente
+            $userMessage = "Se eliminaron {$deletedCount} categorías con éxito";
         }
 
         return response()->json([
             'message' => $message,
+            'userMessage' => $userMessage,
             'deletedCount' => $deletedCount,
             'errors' => $errors,
         ]);

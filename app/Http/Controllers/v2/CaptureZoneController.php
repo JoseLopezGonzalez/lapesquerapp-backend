@@ -51,7 +51,9 @@ class CaptureZoneController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|min:3|max:255',
+            'name' => 'required|string|min:3|max:255|unique:tenant.capture_zones,name',
+        ], [
+            'name.unique' => 'Ya existe una zona de captura con este nombre.',
         ]);
 
         $captureZone = CaptureZone::create($validated);
@@ -92,7 +94,9 @@ class CaptureZoneController extends Controller
         $zone = CaptureZone::findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'required|string|min:3|max:255',
+            'name' => 'required|string|min:3|max:255|unique:tenant.capture_zones,name,' . $id,
+        ], [
+            'name.unique' => 'Ya existe una zona de captura con este nombre.',
         ]);
 
         $zone->update($validated);
@@ -110,9 +114,28 @@ class CaptureZoneController extends Controller
     public function destroy(string $id)
     {
         $zone = CaptureZone::findOrFail($id);
+        
+        // Verificar si tiene productos asociados
+        if ($zone->products()->count() > 0) {
+            return response()->json([
+                'message' => 'No se puede eliminar la zona de captura porque tiene productos asociados',
+                'userMessage' => 'No se puede eliminar la zona de captura porque tiene productos asociados',
+            ], 400);
+        }
+
+        // Verificar si tiene producciones asociadas
+        if ($zone->productions()->count() > 0) {
+            return response()->json([
+                'message' => 'No se puede eliminar la zona de captura porque tiene producciones asociadas',
+                'userMessage' => 'No se puede eliminar la zona de captura porque tiene producciones asociadas',
+            ], 400);
+        }
+
         $zone->delete();
 
-        return response()->json(['message' => 'Zona de captura eliminada correctamente']);
+        return response()->json([
+            'message' => 'Zona de captura eliminada correctamente',
+        ]);
     }
 
     public function destroyMultiple(Request $request)
@@ -120,12 +143,67 @@ class CaptureZoneController extends Controller
         $ids = $request->input('ids', []);
 
         if (!is_array($ids) || empty($ids)) {
-            return response()->json(['message' => 'No se proporcionaron IDs válidos'], 400);
+            return response()->json([
+                'message' => 'No se proporcionaron IDs válidos',
+                'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.',
+            ], 400);
         }
 
-        CaptureZone::whereIn('id', $ids)->delete();
+        $zones = CaptureZone::whereIn('id', $ids)->get();
+        $deletedCount = 0;
+        $errors = [];
 
-        return response()->json(['message' => 'Zonas de captura eliminadas correctamente']);
+        foreach ($zones as $zone) {
+            // Verificar si tiene productos asociados
+            if ($zone->products()->count() > 0) {
+                $errors[] = "Zona '{$zone->name}' no se puede eliminar porque tiene productos asociados";
+                continue;
+            }
+
+            // Verificar si tiene producciones asociadas
+            if ($zone->productions()->count() > 0) {
+                $errors[] = "Zona '{$zone->name}' no se puede eliminar porque tiene producciones asociadas";
+                continue;
+            }
+
+            $zone->delete();
+            $deletedCount++;
+        }
+
+        // Construir mensajes en lenguaje natural
+        $message = "Se eliminaron {$deletedCount} zonas de captura con éxito";
+        $userMessage = '';
+        
+        if (!empty($errors)) {
+            $message .= ". Errores: " . implode(', ', $errors);
+            
+            // Generar mensaje en lenguaje natural para el usuario
+            if ($deletedCount === 0) {
+                // No se eliminó ninguna
+                if (count($errors) === 1) {
+                    $userMessage = $errors[0];
+                } else {
+                    $userMessage = 'No se pudieron eliminar las zonas de captura porque tienen productos o producciones asociadas';
+                }
+            } else {
+                // Se eliminaron algunas pero no todas
+                if (count($errors) === 1) {
+                    $userMessage = "Se eliminaron {$deletedCount} zonas de captura. {$errors[0]}";
+                } else {
+                    $userMessage = "Se eliminaron {$deletedCount} zonas de captura. Algunas no se pudieron eliminar porque tienen productos o producciones asociadas";
+                }
+            }
+        } else {
+            // Todas se eliminaron exitosamente
+            $userMessage = "Se eliminaron {$deletedCount} zonas de captura con éxito";
+        }
+
+        return response()->json([
+            'message' => $message,
+            'userMessage' => $userMessage,
+            'deletedCount' => $deletedCount,
+            'errors' => $errors,
+        ]);
     }
 
     /**

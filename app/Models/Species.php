@@ -38,5 +38,10 @@ class Species extends Model
         return $this->hasMany(Production::class, 'species_id');
     }
 
+    // Relación con el modelo Product
+    public function products()
+    {
+        return $this->hasMany(Product::class, 'species_id');
+    }
 
 }
