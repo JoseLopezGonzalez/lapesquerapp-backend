@@ -51,7 +51,13 @@ class CountryController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|min:2|max:255',
+            'name' => 'required|string|min:2|max:255|unique:tenant.countries,name',
+        ], [
+            'name.required' => 'El nombre del país es obligatorio.',
+            'name.string' => 'El nombre del país debe ser texto.',
+            'name.min' => 'El nombre del país debe tener al menos 2 caracteres.',
+            'name.max' => 'El nombre del país no puede tener más de 255 caracteres.',
+            'name.unique' => 'Ya existe un país con este nombre.',
         ]);
 
         $country = Country::create($validated);
@@ -91,7 +97,13 @@ class CountryController extends Controller
         $country = Country::findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'required|string|min:2|max:255',
+            'name' => 'required|string|min:2|max:255|unique:tenant.countries,name,' . $id,
+        ], [
+            'name.required' => 'El nombre del país es obligatorio.',
+            'name.string' => 'El nombre del país debe ser texto.',
+            'name.min' => 'El nombre del país debe tener al menos 2 caracteres.',
+            'name.max' => 'El nombre del país no puede tener más de 255 caracteres.',
+            'name.unique' => 'Ya existe un país con este nombre.',
         ]);
 
         $country->update($validated);
@@ -109,6 +121,18 @@ class CountryController extends Controller
     public function destroy(string $id)
     {
         $country = Country::findOrFail($id);
+
+        // Validar si el país está en uso antes de eliminar
+        $usedInCustomers = $country->customers()->exists();
+
+        if ($usedInCustomers) {
+            return response()->json([
+                'message' => 'No se puede eliminar el país porque está en uso',
+                'details' => 'El país está siendo utilizado en clientes',
+                'userMessage' => 'No se puede eliminar el país porque está siendo utilizado en clientes'
+            ], 400);
+        }
+
         $country->delete();
 
         return response()->json(['message' => 'País eliminado con éxito']);
@@ -116,16 +140,46 @@ class CountryController extends Controller
 
     public function destroyMultiple(Request $request)
     {
-        $ids = $request->input('ids', []);
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:tenant.countries,id',
+        ], [
+            'ids.required' => 'Debe proporcionar al menos un ID válido para eliminar.',
+            'ids.min' => 'Debe proporcionar al menos un ID válido para eliminar.',
+            'ids.*.integer' => 'Los IDs deben ser números enteros.',
+            'ids.*.exists' => 'Uno o más IDs no existen.',
+        ]);
 
-        if (!is_array($ids) || empty($ids)) {
+        $countries = Country::whereIn('id', $validated['ids'])->get();
+        
+        // Validar si alguno de los países está en uso
+        $inUse = [];
+        foreach ($countries as $country) {
+            $usedInCustomers = $country->customers()->exists();
+            
+            if ($usedInCustomers) {
+                $inUse[] = [
+                    'id' => $country->id,
+                    'name' => $country->name,
+                    'reasons' => 'clientes'
+                ];
+            }
+        }
+
+        if (!empty($inUse)) {
+            $message = 'No se pueden eliminar algunos países porque están en uso: ';
+            $details = array_map(function($item) {
+                return $item['name'] . ' (usado en: ' . $item['reasons'] . ')';
+            }, $inUse);
+            
             return response()->json([
-                'message' => 'No se han proporcionado IDs válidos.',
-                'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.'
+                'message' => 'No se pueden eliminar algunos países porque están en uso',
+                'details' => implode(', ', $details),
+                'userMessage' => $message . implode(', ', array_column($inUse, 'name'))
             ], 400);
         }
 
-        Country::whereIn('id', $ids)->delete();
+        Country::whereIn('id', $validated['ids'])->delete();
 
         return response()->json(['message' => 'Países eliminados con éxito']);
     }

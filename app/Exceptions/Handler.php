@@ -651,6 +651,11 @@ class Handler extends ExceptionHandler
             return 'Ya existe un incoterm con este código.';
         }
         
+        // Países (countries)
+        if (stripos($errorMessage, 'countries') !== false && stripos($errorMessage, 'name') !== false) {
+            return 'Ya existe un país con este nombre.';
+        }
+        
         // Intentar extraer el nombre del campo del mensaje de error
         if (preg_match("/Duplicate entry.*for key ['\"]?(\w+)['\"]?/i", $errorMessage, $matches)) {
             $keyName = $matches[1];
