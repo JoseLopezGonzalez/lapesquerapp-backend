@@ -22,7 +22,6 @@ class ProductFactory extends Factory
             'article_gtin' => $this->faker->numberBetween(0, 99999999999999),
             'box_gtin' => $this->faker->numberBetween(0, 99999999999999),
             'pallet_gtin' => $this->faker->numberBetween(0, 99999999999999),
-            'fixed_weight' => $this->faker->randomFloat(2, 0, 100),
         ];
     }
 }

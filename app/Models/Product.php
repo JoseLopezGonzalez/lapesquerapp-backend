@@ -29,7 +29,6 @@ class Product extends Model
         'article_gtin',
         'box_gtin',
         'pallet_gtin',
-        'fixed_weight',
         'a3erp_code',
         'facil_com_code',
     ];
@@ -63,7 +62,6 @@ class Product extends Model
             'articleGtin' => $this->article_gtin,
             'boxGtin' => $this->box_gtin,
             'palletGtin' => $this->pallet_gtin,
-            'fixedWeight' => $this->fixed_weight,
             'a3erpCode' => $this->a3erp_code,
             'facilcomCode' => $this->facil_com_code,
         ];
