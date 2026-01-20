@@ -55,14 +55,19 @@ class Handler extends ExceptionHandler
             if ($exception instanceof AuthenticationException) {
                 return response()->json([
                     'message' => 'No autenticado.',
+                    'userMessage' => 'Debes iniciar sesión para acceder a este recurso.',
                 ], 401); // 401 Unauthorized
             }
 
             // Manejar errores HTTP estándar (404, 403, etc.)
             if ($exception instanceof HttpException) {
+                $statusCode = $exception->getStatusCode();
+                $userMessage = $this->formatHttpExceptionMessage($statusCode, $exception->getMessage());
+                
                 return response()->json([
                     'message' => $exception->getMessage() ?: 'Error HTTP.',
-                ], $exception->getStatusCode());
+                    'userMessage' => $userMessage,
+                ], $statusCode);
             }
 
             // Manejar errores de base de datos (QueryException)
@@ -116,7 +121,43 @@ class Handler extends ExceptionHandler
      */
     private function formatValidationErrorsForUser(array $errors): string
     {
-        // Agrupar errores por categoría
+        $messages = [];
+        
+        // Primero, intentar usar los mensajes personalizados directamente
+        foreach ($errors as $field => $fieldErrors) {
+            foreach ($fieldErrors as $error) {
+                // Si el mensaje ya está en lenguaje natural (no es un mensaje técnico de Laravel),
+                // usarlo directamente
+                if (!$this->isTechnicalErrorMessage($error)) {
+                    if (!in_array($error, $messages)) {
+                        $messages[] = $error;
+                    }
+                    continue;
+                }
+                
+                // Si es un mensaje técnico, intentar traducirlo
+                $translated = $this->translateErrorMessage($error, $field);
+                if ($translated && !in_array($translated, $messages)) {
+                    $messages[] = $translated;
+                }
+            }
+        }
+        
+        // Si tenemos mensajes personalizados, usarlos
+        if (!empty($messages)) {
+            // Si hay un solo error, devolverlo directamente
+            if (count($messages) === 1) {
+                return $messages[0];
+            }
+            
+            // Si hay múltiples errores, combinarlos
+            if (count($messages) > 1) {
+                $lastMessage = array_pop($messages);
+                return implode('. ', $messages) . ' y ' . $lastMessage;
+            }
+        }
+        
+        // Si no hay mensajes personalizados, usar la lógica de categorización
         $groupedErrors = [];
         
         foreach ($errors as $field => $fieldErrors) {
@@ -135,29 +176,87 @@ class Handler extends ExceptionHandler
         }
         
         // Generar mensajes genéricos por categoría
-        $messages = [];
+        $genericMessages = [];
         
         foreach ($groupedErrors as $category => $errorTypes) {
             foreach ($errorTypes as $errorType => $count) {
                 $message = $this->getGenericErrorMessage($category, $errorType);
-                if ($message && !in_array($message, $messages)) {
-                    $messages[] = $message;
+                if ($message && !in_array($message, $genericMessages)) {
+                    $genericMessages[] = $message;
                 }
             }
         }
         
         // Si hay un solo error, devolverlo directamente
-        if (count($messages) === 1) {
-            return $messages[0];
+        if (count($genericMessages) === 1) {
+            return $genericMessages[0];
         }
         
         // Si hay múltiples errores, combinarlos
-        if (count($messages) > 1) {
-            $lastMessage = array_pop($messages);
-            return implode('. ', $messages) . ' y ' . $lastMessage;
+        if (count($genericMessages) > 1) {
+            $lastMessage = array_pop($genericMessages);
+            return implode('. ', $genericMessages) . ' y ' . $lastMessage;
         }
         
         return 'Hay errores en los datos enviados.';
+    }
+    
+    /**
+     * Verifica si un mensaje de error es técnico (de Laravel) o ya está en lenguaje natural
+     * 
+     * @param string $error Mensaje de error
+     * @return bool true si es técnico, false si ya está en lenguaje natural
+     */
+    private function isTechnicalErrorMessage(string $error): bool
+    {
+        // Si el mensaje empieza con "Ya existe", "Debe", "Falta", etc., ya está en lenguaje natural
+        $naturalLanguagePatterns = [
+            '/^Ya existe/i',
+            '/^Debe/i',
+            '/^Falta/i',
+            '/^El .+ (?:es|debe|no puede)/i', // "El nombre es obligatorio", "El nombre debe ser texto", "El nombre no puede tener"
+            '/^El .+ no es válido/i',
+            '/^Los datos/i',
+            '/^No se puede/i',
+            '/^Uno o más/i',
+            '/^El formato debe/i', // "El formato debe ser un objeto o array"
+        ];
+        
+        foreach ($naturalLanguagePatterns as $pattern) {
+            if (preg_match($pattern, $error)) {
+                return false; // Ya está en lenguaje natural
+            }
+        }
+        
+        // Patrones de mensajes técnicos de Laravel
+        $technicalPatterns = [
+            '/^The .+ field is required\.?$/i',
+            '/^The .+ must be (?:a|an) .+\.?$/i',
+            '/^The .+ format is invalid\.?$/i',
+            '/^The selected .+ is invalid\.?$/i',
+            '/^The .+ does not exist\.?$/i',
+            '/^The .+ has already been taken\.?$/i',
+            '/^The .+ may not be greater than/i',
+            '/^The .+ may not be less than/i',
+            '/^The .+ must be at least/i',
+            '/^The .+ must be an? .+\.?$/i',
+        ];
+        
+        foreach ($technicalPatterns as $pattern) {
+            if (preg_match($pattern, $error)) {
+                return true;
+            }
+        }
+        
+        // Si contiene palabras técnicas comunes y empieza con "The", probablemente es técnico
+        $technicalKeywords = ['field', 'must be', 'format', 'selected', 'does not exist', 'has already been taken'];
+        foreach ($technicalKeywords as $keyword) {
+            if (stripos($error, $keyword) !== false && stripos($error, 'The ') === 0) {
+                return true;
+            }
+        }
+        
+        return false;
     }
     
     /**
@@ -332,6 +431,11 @@ class Handler extends ExceptionHandler
         // "The prices.1.price does not exist." -> "No existe"
         if (preg_match('/does not exist\.?$/i', $error)) {
             return 'No existe';
+        }
+        
+        // "The name has already been taken." -> "Ya existe un registro con este valor"
+        if (preg_match('/has already been taken\.?$/i', $error)) {
+            return 'Ya existe un registro con este valor';
         }
         
         // "The prices.1.price must be at least :min." -> "Debe ser al menos X"
@@ -530,6 +634,16 @@ class Handler extends ExceptionHandler
             }
         }
         
+        // Transportes (transports)
+        if (stripos($errorMessage, 'transports') !== false) {
+            if (stripos($errorMessage, 'name') !== false) {
+                return 'Ya existe un transporte con este nombre.';
+            }
+            if (stripos($errorMessage, 'vat_number') !== false || stripos($errorMessage, 'vatNumber') !== false) {
+                return 'Ya existe un transporte con este NIF/CIF.';
+            }
+        }
+        
         // Intentar extraer el nombre del campo del mensaje de error
         if (preg_match("/Duplicate entry.*for key ['\"]?(\w+)['\"]?/i", $errorMessage, $matches)) {
             $keyName = $matches[1];
@@ -545,6 +659,39 @@ class Handler extends ExceptionHandler
         
         // Mensaje genérico si no se puede identificar específicamente
         return 'Ya existe un registro con estos datos. Por favor, verifica que no estés duplicando información.';
+    }
+
+    /**
+     * Formatea el mensaje de excepción HTTP para el usuario
+     * 
+     * @param int $statusCode Código de estado HTTP
+     * @param string|null $message Mensaje original de la excepción
+     * @return string Mensaje en lenguaje natural
+     */
+    private function formatHttpExceptionMessage(int $statusCode, ?string $message = null): string
+    {
+        switch ($statusCode) {
+            case 403:
+                return 'No tienes permisos para realizar esta acción.';
+            case 404:
+                return 'El recurso solicitado no existe.';
+            case 405:
+                return 'El método utilizado no está permitido para este recurso.';
+            case 422:
+                return 'Los datos enviados no son válidos.';
+            case 429:
+                return 'Has realizado demasiadas solicitudes. Por favor, espera un momento antes de intentar nuevamente.';
+            case 500:
+                return 'Ocurrió un error en el servidor. Por favor, intenta nuevamente más tarde.';
+            case 503:
+                return 'El servicio no está disponible temporalmente. Por favor, intenta nuevamente más tarde.';
+            default:
+                // Si el mensaje original ya está en lenguaje natural, usarlo
+                if ($message && !$this->isTechnicalErrorMessage($message)) {
+                    return $message;
+                }
+                return 'Ocurrió un error al procesar la solicitud.';
+        }
     }
 
     /* public function render($request, Throwable $exception)

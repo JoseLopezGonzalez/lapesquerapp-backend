@@ -19,7 +19,11 @@ class LabelController extends Controller
             'name' => 'required|string|max:255|unique:tenant.labels,name',
             'format' => 'nullable|array',
         ], [
+            'name.required' => 'El nombre de la etiqueta es obligatorio.',
+            'name.string' => 'El nombre de la etiqueta debe ser texto.',
+            'name.max' => 'El nombre de la etiqueta no puede tener más de 255 caracteres.',
             'name.unique' => 'Ya existe una etiqueta con este nombre.',
+            'format.array' => 'El formato debe ser un objeto o array.',
         ]);
 
         $label = Label::create($validated);
@@ -42,7 +46,11 @@ class LabelController extends Controller
             'name' => 'sometimes|required|string|max:255|unique:tenant.labels,name,' . $label->id,
             'format' => 'nullable|array',
         ], [
+            'name.required' => 'El nombre de la etiqueta es obligatorio.',
+            'name.string' => 'El nombre de la etiqueta debe ser texto.',
+            'name.max' => 'El nombre de la etiqueta no puede tener más de 255 caracteres.',
             'name.unique' => 'Ya existe una etiqueta con este nombre.',
+            'format.array' => 'El formato debe ser un objeto o array.',
         ]);
 
         $label->update($validated);
@@ -70,6 +78,8 @@ class LabelController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255|unique:tenant.labels,name',
         ], [
+            'name.string' => 'El nombre de la etiqueta debe ser texto.',
+            'name.max' => 'El nombre de la etiqueta no puede tener más de 255 caracteres.',
             'name.unique' => 'Ya existe una etiqueta con este nombre.',
         ]);
 
