@@ -16,8 +16,10 @@ class LabelController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:tenant.labels,name',
             'format' => 'nullable|array',
+        ], [
+            'name.unique' => 'Ya existe una etiqueta con este nombre.',
         ]);
 
         $label = Label::create($validated);
@@ -37,8 +39,10 @@ class LabelController extends Controller
     public function update(Request $request, Label $label)
     {
         $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
+            'name' => 'sometimes|required|string|max:255|unique:tenant.labels,name,' . $label->id,
             'format' => 'nullable|array',
+        ], [
+            'name.unique' => 'Ya existe una etiqueta con este nombre.',
         ]);
 
         $label->update($validated);
@@ -60,12 +64,26 @@ class LabelController extends Controller
 
     public function duplicate(Request $request, Label $label)
     {
+        // Si no se proporciona un nombre, usar el nombre original con " (Copia)"
+        $defaultName = $label->name . ' (Copia)';
+        
         $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
+            'name' => 'sometimes|string|max:255|unique:tenant.labels,name',
+        ], [
+            'name.unique' => 'Ya existe una etiqueta con este nombre.',
         ]);
 
-        // Si no se proporciona un nombre, usar el nombre original con " (Copia)"
-        $newName = $validated['name'] ?? $label->name . ' (Copia)';
+        $newName = $validated['name'] ?? $defaultName;
+        
+        // Validar que el nombre por defecto no exista ya
+        if ($newName === $defaultName && Label::where('name', $newName)->exists()) {
+            // Si el nombre por defecto ya existe, buscar uno disponible
+            $counter = 1;
+            do {
+                $newName = $label->name . ' (Copia ' . $counter . ')';
+                $counter++;
+            } while (Label::where('name', $newName)->exists() && $counter < 100);
+        }
 
         // Crear nueva etiqueta con el mismo formato
         $duplicatedLabel = Label::create([

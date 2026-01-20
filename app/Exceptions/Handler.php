@@ -7,6 +7,7 @@ use Throwable;
 
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Database\QueryException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class Handler extends ExceptionHandler
@@ -62,6 +63,33 @@ class Handler extends ExceptionHandler
                 return response()->json([
                     'message' => $exception->getMessage() ?: 'Error HTTP.',
                 ], $exception->getStatusCode());
+            }
+
+            // Manejar errores de base de datos (QueryException)
+            if ($exception instanceof QueryException) {
+                $errorMessage = $exception->getMessage();
+                $errorCode = $exception->getCode();
+                $sqlState = $exception->errorInfo[0] ?? null;
+                
+                // Detectar violación de clave única
+                // MySQL: código 1062, SQLSTATE 23000
+                // PostgreSQL: código 23505, SQLSTATE 23505
+                if ($errorCode == 23000 || $errorCode == '23000' || 
+                    $errorCode == 1062 || $errorCode == '1062' ||
+                    $sqlState == '23000' || $sqlState == '23505' ||
+                    stripos($errorMessage, 'Duplicate entry') !== false ||
+                    stripos($errorMessage, 'UNIQUE constraint') !== false ||
+                    stripos($errorMessage, 'duplicate key value') !== false ||
+                    stripos($errorMessage, 'unique constraint') !== false) {
+                    
+                    $userMessage = $this->formatUniqueConstraintViolationForUser($errorMessage, $request);
+                    
+                    return response()->json([
+                        'message' => 'Error de validación.',
+                        'userMessage' => $userMessage,
+                        'error' => $errorMessage, // Detalles técnicos para programadores
+                    ], 422); // 422 Unprocessable Entity
+                }
             }
 
             // Manejar cualquier otra excepción como error interno del servidor
@@ -430,6 +458,93 @@ class Handler extends ExceptionHandler
         
         // Si no se puede traducir, devolver el mensaje original
         return $errorMessage;
+    }
+
+    /**
+     * Formatea el mensaje de violación de clave única para el usuario
+     * 
+     * @param string $errorMessage Mensaje de error técnico
+     * @param \Illuminate\Http\Request|null $request Request para obtener contexto
+     * @return string Mensaje en lenguaje natural
+     */
+    private function formatUniqueConstraintViolationForUser(string $errorMessage, $request = null): string
+    {
+        // Detectar violaciones específicas por tabla y campo
+        
+        // Etiquetas (labels)
+        if (stripos($errorMessage, 'labels') !== false && stripos($errorMessage, 'name') !== false) {
+            return 'Ya existe una etiqueta con este nombre.';
+        }
+        
+        // Productos (products)
+        if (stripos($errorMessage, 'products') !== false) {
+            if (stripos($errorMessage, 'name') !== false) {
+                return 'Ya existe un producto con este nombre.';
+            }
+            if (stripos($errorMessage, 'article_gtin') !== false || stripos($errorMessage, 'articleGtin') !== false) {
+                return 'Ya existe un producto con este GTIN de artículo.';
+            }
+            if (stripos($errorMessage, 'box_gtin') !== false || stripos($errorMessage, 'boxGtin') !== false) {
+                return 'Ya existe un producto con este GTIN de caja.';
+            }
+            if (stripos($errorMessage, 'pallet_gtin') !== false || stripos($errorMessage, 'palletGtin') !== false) {
+                return 'Ya existe un producto con este GTIN de palet.';
+            }
+        }
+        
+        // Clientes (customers)
+        if (stripos($errorMessage, 'customers') !== false && stripos($errorMessage, 'name') !== false) {
+            return 'Ya existe un cliente con este nombre.';
+        }
+        
+        // Usuarios (users)
+        if (stripos($errorMessage, 'users') !== false && stripos($errorMessage, 'email') !== false) {
+            return 'Ya existe un usuario con este correo electrónico.';
+        }
+        
+        // Zonas de captura (capture_zones)
+        if (stripos($errorMessage, 'capture_zones') !== false && stripos($errorMessage, 'name') !== false) {
+            return 'Ya existe una zona de captura con este nombre.';
+        }
+        
+        // Categorías de productos (product_categories)
+        if (stripos($errorMessage, 'product_categories') !== false && stripos($errorMessage, 'name') !== false) {
+            return 'Ya existe una categoría de producto con este nombre.';
+        }
+        
+        // Familias de productos (product_families)
+        if (stripos($errorMessage, 'product_families') !== false && stripos($errorMessage, 'name') !== false) {
+            return 'Ya existe una familia de producto con este nombre.';
+        }
+        
+        // Especies (species)
+        if (stripos($errorMessage, 'species') !== false) {
+            if (stripos($errorMessage, 'name') !== false) {
+                return 'Ya existe una especie con este nombre.';
+            }
+            if (stripos($errorMessage, 'scientific_name') !== false || stripos($errorMessage, 'scientificName') !== false) {
+                return 'Ya existe una especie con este nombre científico.';
+            }
+            if (stripos($errorMessage, 'fao') !== false) {
+                return 'Ya existe una especie con este código FAO.';
+            }
+        }
+        
+        // Intentar extraer el nombre del campo del mensaje de error
+        if (preg_match("/Duplicate entry.*for key ['\"]?(\w+)['\"]?/i", $errorMessage, $matches)) {
+            $keyName = $matches[1];
+            
+            // Si el nombre de la clave contiene el nombre del campo, usarlo
+            if (stripos($keyName, 'name') !== false) {
+                return 'Ya existe un registro con este nombre.';
+            }
+            if (stripos($keyName, 'email') !== false) {
+                return 'Ya existe un registro con este correo electrónico.';
+            }
+        }
+        
+        // Mensaje genérico si no se puede identificar específicamente
+        return 'Ya existe un registro con estos datos. Por favor, verifica que no estés duplicando información.';
     }
 
     /* public function render($request, Throwable $exception)
