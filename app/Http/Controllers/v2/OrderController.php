@@ -201,7 +201,64 @@ class OrderController extends Controller
             'plannedProducts.*.boxes' => 'required|integer',
             'plannedProducts.*.unitPrice' => 'required|numeric',
             'plannedProducts.*.tax' => 'required|integer|exists:tenant.taxes,id',
+        ], [
+            'customer.required' => 'El cliente es obligatorio.',
+            'customer.integer' => 'El cliente debe ser un número entero.',
+            'customer.exists' => 'El cliente seleccionado no existe.',
+            'entryDate.required' => 'La fecha de entrada es obligatoria.',
+            'entryDate.date' => 'La fecha de entrada debe ser una fecha válida.',
+            'loadDate.required' => 'La fecha de carga es obligatoria.',
+            'loadDate.date' => 'La fecha de carga debe ser una fecha válida.',
+            'salesperson.integer' => 'El comercial debe ser un número entero.',
+            'salesperson.exists' => 'El comercial seleccionado no existe.',
+            'payment.integer' => 'El término de pago debe ser un número entero.',
+            'payment.exists' => 'El término de pago seleccionado no existe.',
+            'incoterm.integer' => 'El incoterm debe ser un número entero.',
+            'incoterm.exists' => 'El incoterm seleccionado no existe.',
+            'buyerReference.string' => 'La referencia del comprador debe ser texto.',
+            'transport.integer' => 'El transporte debe ser un número entero.',
+            'transport.exists' => 'El transporte seleccionado no existe.',
+            'truckPlate.string' => 'La matrícula del camión debe ser texto.',
+            'trailerPlate.string' => 'La matrícula del remolque debe ser texto.',
+            'temperature.string' => 'La temperatura debe ser texto.',
+            'billingAddress.string' => 'La dirección de facturación debe ser texto.',
+            'shippingAddress.string' => 'La dirección de envío debe ser texto.',
+            'transportationNotes.string' => 'Las notas de transporte deben ser texto.',
+            'productionNotes.string' => 'Las notas de producción deben ser texto.',
+            'accountingNotes.string' => 'Las notas contables deben ser texto.',
+            'emails.array' => 'Los emails deben ser una lista.',
+            'emails.*.string' => 'Cada email debe ser texto.',
+            'emails.*.email' => 'Uno o más emails no son válidos.',
+            'emails.*.distinct' => 'No puede haber emails duplicados.',
+            'ccEmails.array' => 'Los emails en copia deben ser una lista.',
+            'ccEmails.*.string' => 'Cada email en copia debe ser texto.',
+            'ccEmails.*.email' => 'Uno o más emails en copia no son válidos.',
+            'ccEmails.*.distinct' => 'No puede haber emails en copia duplicados.',
+            'plannedProducts.array' => 'Los productos planificados deben ser una lista.',
+            'plannedProducts.*.product.required' => 'El producto es obligatorio en cada línea.',
+            'plannedProducts.*.product.integer' => 'El producto debe ser un número entero.',
+            'plannedProducts.*.product.exists' => 'Uno o más productos seleccionados no existen.',
+            'plannedProducts.*.quantity.required' => 'La cantidad es obligatoria en cada línea.',
+            'plannedProducts.*.quantity.numeric' => 'La cantidad debe ser un número.',
+            'plannedProducts.*.boxes.required' => 'El número de cajas es obligatorio en cada línea.',
+            'plannedProducts.*.boxes.integer' => 'El número de cajas debe ser un número entero.',
+            'plannedProducts.*.unitPrice.required' => 'El precio unitario es obligatorio en cada línea.',
+            'plannedProducts.*.unitPrice.numeric' => 'El precio unitario debe ser un número.',
+            'plannedProducts.*.tax.required' => 'El impuesto es obligatorio en cada línea.',
+            'plannedProducts.*.tax.integer' => 'El impuesto debe ser un número entero.',
+            'plannedProducts.*.tax.exists' => 'Uno o más impuestos seleccionados no existen.',
         ]);
+
+        // Validar entry_date ≤ load_date
+        if ($validated['entryDate'] > $validated['loadDate']) {
+            return response()->json([
+                'message' => 'Error de validación',
+                'errors' => [
+                    'loadDate' => ['La fecha de carga debe ser mayor o igual a la fecha de entrada.']
+                ],
+                'userMessage' => 'La fecha de carga debe ser mayor o igual a la fecha de entrada.'
+            ], 422);
+        }
 
         // Formatear emails
         $allEmails = [];
@@ -307,34 +364,77 @@ class OrderController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $request->validate([
+        $validated = $request->validate([
             'buyerReference' => 'sometimes|nullable|string',
-            'payment' => 'sometimes|integer',
+            'payment' => 'sometimes|integer|exists:tenant.payment_terms,id',
             'billingAddress' => 'sometimes|string',
             'shippingAddress' => 'sometimes|string',
             'transportationNotes' => 'sometimes|nullable|string',
             'productionNotes' => 'sometimes|nullable|string',
             'accountingNotes' => 'sometimes|nullable|string',
-            'salesperson' => 'sometimes|integer',
+            'salesperson' => 'sometimes|integer|exists:tenant.salespeople,id',
             'emails' => 'sometimes|nullable|array',
             'emails.*' => 'string|email:rfc,dns|distinct',
             'ccEmails' => 'sometimes|nullable|array',
             'ccEmails.*' => 'string|email:rfc,dns|distinct',
-            'transport' => 'sometimes|integer',
+            'transport' => 'sometimes|integer|exists:tenant.transports,id',
             'entryDate' => 'sometimes|date',
             'loadDate' => 'sometimes|date',
-            'status' => 'sometimes|string',
-            'incoterm' => 'sometimes|integer',
+            'status' => 'sometimes|string|in:pending,finished,incident',
+            'incoterm' => 'sometimes|integer|exists:tenant.incoterms,id',
             'truckPlate' => 'sometimes|nullable|string',
             'trailerPlate' => 'sometimes|nullable|string',
-
             'temperature' => 'sometimes|nullable|numeric',
+        ], [
+            'buyerReference.string' => 'La referencia del comprador debe ser texto.',
+            'payment.integer' => 'El término de pago debe ser un número entero.',
+            'payment.exists' => 'El término de pago seleccionado no existe.',
+            'billingAddress.string' => 'La dirección de facturación debe ser texto.',
+            'shippingAddress.string' => 'La dirección de envío debe ser texto.',
+            'transportationNotes.string' => 'Las notas de transporte deben ser texto.',
+            'productionNotes.string' => 'Las notas de producción deben ser texto.',
+            'accountingNotes.string' => 'Las notas contables deben ser texto.',
+            'salesperson.integer' => 'El comercial debe ser un número entero.',
+            'salesperson.exists' => 'El comercial seleccionado no existe.',
+            'emails.array' => 'Los emails deben ser una lista.',
+            'emails.*.string' => 'Cada email debe ser texto.',
+            'emails.*.email' => 'Uno o más emails no son válidos.',
+            'emails.*.distinct' => 'No puede haber emails duplicados.',
+            'ccEmails.array' => 'Los emails en copia deben ser una lista.',
+            'ccEmails.*.string' => 'Cada email en copia debe ser texto.',
+            'ccEmails.*.email' => 'Uno o más emails en copia no son válidos.',
+            'ccEmails.*.distinct' => 'No puede haber emails en copia duplicados.',
+            'transport.integer' => 'El transporte debe ser un número entero.',
+            'transport.exists' => 'El transporte seleccionado no existe.',
+            'entryDate.date' => 'La fecha de entrada debe ser una fecha válida.',
+            'loadDate.date' => 'La fecha de carga debe ser una fecha válida.',
+            'status.string' => 'El estado debe ser texto.',
+            'status.in' => 'El estado del pedido no es válido. Valores permitidos: pending, finished, incident.',
+            'incoterm.integer' => 'El incoterm debe ser un número entero.',
+            'incoterm.exists' => 'El incoterm seleccionado no existe.',
+            'truckPlate.string' => 'La matrícula del camión debe ser texto.',
+            'trailerPlate.string' => 'La matrícula del remolque debe ser texto.',
+            'temperature.numeric' => 'La temperatura debe ser un número.',
         ]);
 
         $order = Order::with([
             'pallets.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
             'pallets.boxes.box.product', // Cargar product para los cálculos
         ])->findOrFail($id);
+
+        // Validar entry_date ≤ load_date si ambas fechas están presentes
+        $entryDate = $request->has('entryDate') ? $validated['entryDate'] : $order->entry_date;
+        $loadDate = $request->has('loadDate') ? $validated['loadDate'] : $order->load_date;
+        
+        if ($entryDate && $loadDate && $entryDate > $loadDate) {
+            return response()->json([
+                'message' => 'Error de validación',
+                'errors' => [
+                    'loadDate' => ['La fecha de carga debe ser mayor o igual a la fecha de entrada.']
+                ],
+                'userMessage' => 'La fecha de carga debe ser mayor o igual a la fecha de entrada.'
+            ], 422);
+        }
 
         if ($request->has('buyerReference')) {
             $order->buyer_reference = $request->buyerReference;
@@ -433,22 +533,63 @@ class OrderController extends Controller
     public function destroy(string $id)
     {
         $order = Order::findOrFail($id);
+
+        // Validar si el pedido está en uso antes de eliminar
+        $usedInPallets = $order->pallets()->exists();
+
+        if ($usedInPallets) {
+            return response()->json([
+                'message' => 'No se puede eliminar el pedido porque está en uso',
+                'details' => 'El pedido está siendo utilizado en palets',
+                'userMessage' => 'No se puede eliminar el pedido porque está siendo utilizado en palets'
+            ], 400);
+        }
+
         $order->delete();
         return response()->json(['message' => 'Pedido eliminado correctamente'], 200);
     }
 
     public function destroyMultiple(Request $request)
     {
-        $ids = $request->input('ids', []);
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:tenant.orders,id',
+        ], [
+            'ids.required' => 'Debe proporcionar al menos un ID válido para eliminar.',
+            'ids.min' => 'Debe proporcionar al menos un ID válido para eliminar.',
+            'ids.*.integer' => 'Los IDs deben ser números enteros.',
+            'ids.*.exists' => 'Uno o más IDs no existen.',
+        ]);
 
-        if (!is_array($ids) || empty($ids)) {
+        $orders = Order::whereIn('id', $validated['ids'])->get();
+        
+        // Validar si alguno de los pedidos está en uso
+        $inUse = [];
+        foreach ($orders as $order) {
+            $usedInPallets = $order->pallets()->exists();
+            
+            if ($usedInPallets) {
+                $inUse[] = [
+                    'id' => $order->id,
+                    'formattedId' => $order->formatted_id ?? '#' . str_pad($order->id, 5, '0', STR_PAD_LEFT),
+                ];
+            }
+        }
+
+        if (!empty($inUse)) {
+            $message = 'No se pueden eliminar algunos pedidos porque están en uso: ';
+            $details = array_map(function($item) {
+                return $item['formattedId'] . ' (usado en palets)';
+            }, $inUse);
+            
             return response()->json([
-                'message' => 'No se proporcionaron IDs válidos.',
-                'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.'
+                'message' => 'No se pueden eliminar algunos pedidos porque están en uso',
+                'details' => implode(', ', $details),
+                'userMessage' => $message . implode(', ', array_column($inUse, 'formattedId'))
             ], 400);
         }
 
-        Order::whereIn('id', $ids)->delete();
+        Order::whereIn('id', $validated['ids'])->delete();
 
         return response()->json(['message' => 'Pedidos eliminados correctamente']);
     }
@@ -504,7 +645,11 @@ class OrderController extends Controller
     public function updateStatus(Request $request, string $id)
     {
         $request->validate([
-            'status' => 'required|string',
+            'status' => 'required|string|in:pending,finished,incident',
+        ], [
+            'status.required' => 'El estado es obligatorio.',
+            'status.string' => 'El estado debe ser texto.',
+            'status.in' => 'El estado del pedido no es válido. Valores permitidos: pending, finished, incident.',
         ]);
 
         $order = Order::with([

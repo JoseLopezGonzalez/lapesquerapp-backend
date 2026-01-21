@@ -91,6 +91,40 @@ class CustomerController extends Controller
             'transport_id' => 'nullable|exists:tenant.transports,id',
             'a3erp_code' => 'nullable|string|max:255',
             'facilcom_code' => 'nullable|string|max:255',
+        ], [
+            'name.required' => 'El nombre del cliente es obligatorio.',
+            'name.string' => 'El nombre del cliente debe ser texto.',
+            'name.max' => 'El nombre del cliente no puede tener más de 255 caracteres.',
+            'vatNumber.string' => 'El NIF/CIF debe ser texto.',
+            'vatNumber.max' => 'El NIF/CIF no puede tener más de 20 caracteres.',
+            'billing_address.string' => 'La dirección de facturación debe ser texto.',
+            'billing_address.max' => 'La dirección de facturación no puede tener más de 1000 caracteres.',
+            'shipping_address.string' => 'La dirección de envío debe ser texto.',
+            'shipping_address.max' => 'La dirección de envío no puede tener más de 1000 caracteres.',
+            'transportation_notes.string' => 'Las notas de transporte deben ser texto.',
+            'transportation_notes.max' => 'Las notas de transporte no pueden tener más de 1000 caracteres.',
+            'production_notes.string' => 'Las notas de producción deben ser texto.',
+            'production_notes.max' => 'Las notas de producción no pueden tener más de 1000 caracteres.',
+            'accounting_notes.string' => 'Las notas contables deben ser texto.',
+            'accounting_notes.max' => 'Las notas contables no pueden tener más de 1000 caracteres.',
+            'emails.array' => 'Los emails deben ser una lista.',
+            'emails.*.string' => 'Cada email debe ser texto.',
+            'emails.*.email' => 'Uno o más emails no son válidos.',
+            'emails.*.distinct' => 'No puede haber emails duplicados.',
+            'ccEmails.array' => 'Los emails en copia deben ser una lista.',
+            'ccEmails.*.string' => 'Cada email en copia debe ser texto.',
+            'ccEmails.*.email' => 'Uno o más emails en copia no son válidos.',
+            'ccEmails.*.distinct' => 'No puede haber emails en copia duplicados.',
+            'contact_info.string' => 'La información de contacto debe ser texto.',
+            'contact_info.max' => 'La información de contacto no puede tener más de 1000 caracteres.',
+            'salesperson_id.exists' => 'El comercial seleccionado no existe.',
+            'country_id.exists' => 'El país seleccionado no existe.',
+            'payment_term_id.exists' => 'El término de pago seleccionado no existe.',
+            'transport_id.exists' => 'El transporte seleccionado no existe.',
+            'a3erp_code.string' => 'El código A3ERP debe ser texto.',
+            'a3erp_code.max' => 'El código A3ERP no puede tener más de 255 caracteres.',
+            'facilcom_code.string' => 'El código Facilcom debe ser texto.',
+            'facilcom_code.max' => 'El código Facilcom no puede tener más de 255 caracteres.',
         ]);
 
         // Formatear emails
@@ -191,6 +225,40 @@ class CustomerController extends Controller
             'transport_id' => 'nullable|exists:tenant.transports,id',
             'a3erp_code' => 'nullable|string|max:255',
             'facilcom_code' => 'nullable|string|max:255',
+        ], [
+            'name.required' => 'El nombre del cliente es obligatorio.',
+            'name.string' => 'El nombre del cliente debe ser texto.',
+            'name.max' => 'El nombre del cliente no puede tener más de 255 caracteres.',
+            'vatNumber.string' => 'El NIF/CIF debe ser texto.',
+            'vatNumber.max' => 'El NIF/CIF no puede tener más de 20 caracteres.',
+            'billing_address.string' => 'La dirección de facturación debe ser texto.',
+            'billing_address.max' => 'La dirección de facturación no puede tener más de 1000 caracteres.',
+            'shipping_address.string' => 'La dirección de envío debe ser texto.',
+            'shipping_address.max' => 'La dirección de envío no puede tener más de 1000 caracteres.',
+            'transportation_notes.string' => 'Las notas de transporte deben ser texto.',
+            'transportation_notes.max' => 'Las notas de transporte no pueden tener más de 1000 caracteres.',
+            'production_notes.string' => 'Las notas de producción deben ser texto.',
+            'production_notes.max' => 'Las notas de producción no pueden tener más de 1000 caracteres.',
+            'accounting_notes.string' => 'Las notas contables deben ser texto.',
+            'accounting_notes.max' => 'Las notas contables no pueden tener más de 1000 caracteres.',
+            'emails.array' => 'Los emails deben ser una lista.',
+            'emails.*.string' => 'Cada email debe ser texto.',
+            'emails.*.email' => 'Uno o más emails no son válidos.',
+            'emails.*.distinct' => 'No puede haber emails duplicados.',
+            'ccEmails.array' => 'Los emails en copia deben ser una lista.',
+            'ccEmails.*.string' => 'Cada email en copia debe ser texto.',
+            'ccEmails.*.email' => 'Uno o más emails en copia no son válidos.',
+            'ccEmails.*.distinct' => 'No puede haber emails en copia duplicados.',
+            'contact_info.string' => 'La información de contacto debe ser texto.',
+            'contact_info.max' => 'La información de contacto no puede tener más de 1000 caracteres.',
+            'salesperson_id.exists' => 'El comercial seleccionado no existe.',
+            'country_id.exists' => 'El país seleccionado no existe.',
+            'payment_term_id.exists' => 'El término de pago seleccionado no existe.',
+            'transport_id.exists' => 'El transporte seleccionado no existe.',
+            'a3erp_code.string' => 'El código A3ERP debe ser texto.',
+            'a3erp_code.max' => 'El código A3ERP no puede tener más de 255 caracteres.',
+            'facilcom_code.string' => 'El código Facilcom debe ser texto.',
+            'facilcom_code.max' => 'El código Facilcom no puede tener más de 255 caracteres.',
         ]);
 
         $allEmails = [];
@@ -243,6 +311,18 @@ class CustomerController extends Controller
     public function destroy(string $id)
     {
         $customer = Customer::findOrFail($id);
+
+        // Validar si el cliente está en uso antes de eliminar
+        $usedInOrders = $customer->orders()->exists();
+
+        if ($usedInOrders) {
+            return response()->json([
+                'message' => 'No se puede eliminar el cliente porque está en uso',
+                'details' => 'El cliente está siendo utilizado en pedidos',
+                'userMessage' => 'No se puede eliminar el cliente porque está siendo utilizado en pedidos'
+            ], 400);
+        }
+
         $customer->delete();
 
         return response()->json(['message' => 'Cliente eliminado con éxito']);
@@ -250,16 +330,45 @@ class CustomerController extends Controller
 
     public function destroyMultiple(Request $request)
     {
-        $ids = $request->input('ids', []);
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:tenant.customers,id',
+        ], [
+            'ids.required' => 'Debe proporcionar al menos un ID válido para eliminar.',
+            'ids.min' => 'Debe proporcionar al menos un ID válido para eliminar.',
+            'ids.*.integer' => 'Los IDs deben ser números enteros.',
+            'ids.*.exists' => 'Uno o más IDs no existen.',
+        ]);
 
-        if (!is_array($ids) || empty($ids)) {
+        $customers = Customer::whereIn('id', $validated['ids'])->get();
+        
+        // Validar si alguno de los clientes está en uso
+        $inUse = [];
+        foreach ($customers as $customer) {
+            $usedInOrders = $customer->orders()->exists();
+            
+            if ($usedInOrders) {
+                $inUse[] = [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                ];
+            }
+        }
+
+        if (!empty($inUse)) {
+            $message = 'No se pueden eliminar algunos clientes porque están en uso: ';
+            $details = array_map(function($item) {
+                return $item['name'] . ' (usado en pedidos)';
+            }, $inUse);
+            
             return response()->json([
-                'message' => 'No se han proporcionado IDs válidos.',
-                'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.'
+                'message' => 'No se pueden eliminar algunos clientes porque están en uso',
+                'details' => implode(', ', $details),
+                'userMessage' => $message . implode(', ', array_column($inUse, 'name'))
             ], 400);
         }
 
-        Customer::whereIn('id', $ids)->delete();
+        Customer::whereIn('id', $validated['ids'])->delete();
 
         return response()->json(['message' => 'Clientes eliminados con éxito']);
     }
