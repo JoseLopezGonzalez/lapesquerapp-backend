@@ -15,6 +15,7 @@ use App\Models\Product;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class RawMaterialReceptionController extends Controller
 {
@@ -1132,5 +1133,260 @@ class RawMaterialReceptionController extends Controller
             // ✅ NUEVO: Ya no bloqueamos si hay cajas en producción
             // La validación de que no se modifiquen cajas usadas se hará en updatePalletsFromRequest()
         }
+    }
+
+    /**
+     * Validar y previsualizar actualización de datos declarados de múltiples recepciones
+     * Este endpoint solo valida sin hacer cambios, permitiendo al frontend mostrar preview
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function validateBulkUpdateDeclaredData(Request $request)
+    {
+        $validated = $request->validate([
+            'receptions' => 'required|array|min:1',
+            'receptions.*.supplier_id' => 'required|integer|exists:tenant.suppliers,id',
+            'receptions.*.date' => 'required|date',
+            'receptions.*.declared_total_amount' => 'nullable|numeric|min:0',
+            'receptions.*.declared_total_net_weight' => 'nullable|numeric|min:0',
+        ]);
+
+        $results = [];
+        $errors = [];
+
+        foreach ($validated['receptions'] as $receptionData) {
+            $supplierId = $receptionData['supplier_id'];
+            $date = $receptionData['date'];
+            $newDeclaredAmount = $receptionData['declared_total_amount'] ?? null;
+            $newDeclaredWeight = $receptionData['declared_total_net_weight'] ?? null;
+
+            try {
+                // Buscar la recepción
+                $reception = RawMaterialReception::where('supplier_id', $supplierId)
+                    ->whereDate('date', $date)
+                    ->with('supplier')
+                    ->first();
+
+                if (!$reception) {
+                    // Buscar recepciones más cercanas
+                    $closestReceptions = $this->findClosestReceptions($supplierId, $date);
+
+                    $errorDetails = [
+                        'supplier_id' => $supplierId,
+                        'date' => $date,
+                        'valid' => false,
+                        'error' => 'No existe recepción para este proveedor y fecha',
+                        'message' => 'No existe recepción para este proveedor y fecha',
+                    ];
+
+                    // Construir mensaje de ayuda con la recepción más cercana
+                    if ($closestReceptions['closest']) {
+                        $closest = $closestReceptions['closest'];
+                        $direction = $closest['type'] === 'previous' ? 'anterior' : 'posterior';
+                        $errorDetails['hint'] = "Recepción más cercana ({$direction}): {$closest['date']} (ID: {$closest['id']}) diferencia: {$closest['days_diff']}";
+                    } else {
+                        $errorDetails['hint'] = 'No existen recepciones para este proveedor';
+                    }
+
+                    $errors[] = $errorDetails;
+                    continue;
+                }
+
+                // Calcular valores que tendría después de la actualización
+                $currentDeclaredAmount = $reception->declared_total_amount;
+                $currentDeclaredWeight = $reception->declared_total_net_weight;
+                
+                $finalDeclaredAmount = $newDeclaredAmount !== null ? $newDeclaredAmount : $currentDeclaredAmount;
+                $finalDeclaredWeight = $newDeclaredWeight !== null ? $newDeclaredWeight : $currentDeclaredWeight;
+
+                // Verificar si habría cambios
+                $hasChanges = ($newDeclaredAmount !== null && $currentDeclaredAmount != $newDeclaredAmount) ||
+                             ($newDeclaredWeight !== null && $currentDeclaredWeight != $newDeclaredWeight);
+
+                $results[] = [
+                    'supplier_id' => $supplierId,
+                    'date' => $date,
+                    'valid' => true,
+                    'can_update' => true,
+                    'has_changes' => $hasChanges,
+                    'message' => $hasChanges 
+                        ? 'Recepción válida y lista para actualizar' 
+                        : 'Recepción válida pero sin cambios',
+                    'supplier_name' => $reception->supplier->name ?? null,
+                ];
+            } catch (\Exception $e) {
+                $errors[] = [
+                    'supplier_id' => $supplierId,
+                    'date' => $date,
+                    'error' => 'Error al validar la recepción',
+                    'message' => 'Error al validar la recepción',
+                ];
+            }
+        }
+
+        $response = [
+            'valid' => count($results),
+            'invalid' => count($errors),
+            'ready_to_update' => count(array_filter($results, fn($r) => $r['valid'] && $r['has_changes'])),
+            'results' => $results,
+        ];
+
+        if (!empty($errors)) {
+            $response['errors_details'] = $errors;
+        }
+
+        // Si hay errores, devolver 207 Multi-Status, si todo está bien 200
+        $statusCode = empty($errors) ? 200 : 207;
+        return response()->json($response, $statusCode);
+    }
+
+    /**
+     * Actualizar datos declarados de múltiples recepciones de forma masiva
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function bulkUpdateDeclaredData(Request $request)
+    {
+        $validated = $request->validate([
+            'receptions' => 'required|array|min:1',
+            'receptions.*.supplier_id' => 'required|integer|exists:tenant.suppliers,id',
+            'receptions.*.date' => 'required|date',
+            'receptions.*.declared_total_amount' => 'nullable|numeric|min:0',
+            'receptions.*.declared_total_net_weight' => 'nullable|numeric|min:0',
+        ]);
+
+        $updated = 0;
+        $errors = [];
+
+        foreach ($validated['receptions'] as $receptionData) {
+            $supplierId = $receptionData['supplier_id'];
+            $date = $receptionData['date'];
+
+            try {
+                // Buscar la recepción
+                $reception = RawMaterialReception::where('supplier_id', $supplierId)
+                    ->whereDate('date', $date)
+                    ->first();
+
+                if (!$reception) {
+                    // Buscar recepciones más cercanas
+                    $closestReceptions = $this->findClosestReceptions($supplierId, $date);
+
+                    $errorDetails = [
+                        'supplier_id' => $supplierId,
+                        'date' => $date,
+                        'error' => 'No existe recepción para este proveedor y fecha',
+                        'message' => 'No existe recepción para este proveedor y fecha',
+                    ];
+
+                    // Construir mensaje de ayuda con la recepción más cercana
+                    if ($closestReceptions['closest']) {
+                        $closest = $closestReceptions['closest'];
+                        $direction = $closest['type'] === 'previous' ? 'anterior' : 'posterior';
+                        $errorDetails['hint'] = "Recepción más cercana ({$direction}): {$closest['date']} (ID: {$closest['id']}) diferencia: {$closest['days_diff']}";
+                    } else {
+                        $errorDetails['hint'] = 'No existen recepciones para este proveedor';
+                    }
+
+                    $errors[] = $errorDetails;
+                    continue;
+                }
+
+                // Actualizar los valores
+                $reception->update([
+                    'declared_total_amount' => $receptionData['declared_total_amount'] ?? $reception->declared_total_amount,
+                    'declared_total_net_weight' => $receptionData['declared_total_net_weight'] ?? $reception->declared_total_net_weight,
+                ]);
+
+                $updated++;
+            } catch (\Exception $e) {
+                $errors[] = [
+                    'supplier_id' => $supplierId,
+                    'date' => $date,
+                    'error' => 'Error al actualizar la recepción',
+                    'message' => 'Error al actualizar la recepción',
+                ];
+            }
+        }
+
+        $response = [
+            'updated' => $updated,
+            'errors' => count($errors),
+        ];
+
+        if (!empty($errors)) {
+            $response['errors_details'] = $errors;
+        }
+
+        $statusCode = empty($errors) ? 200 : 207; // 207 Multi-Status si hay algunos errores
+        return response()->json($response, $statusCode);
+    }
+
+    /**
+     * Buscar las recepciones más cercanas (anterior y posterior) a una fecha para un proveedor
+     *
+     * @param int $supplierId
+     * @param string $date
+     * @return array
+     */
+    private function findClosestReceptions(int $supplierId, string $date): array
+    {
+        $searchDate = Carbon::parse($date);
+        
+        // Buscar recepción anterior más cercana (fecha <= fecha buscada)
+        $previousReception = RawMaterialReception::where('supplier_id', $supplierId)
+            ->whereDate('date', '<=', $searchDate)
+            ->orderBy('date', 'desc')
+            ->first();
+        
+        // Buscar recepción posterior más cercana (fecha >= fecha buscada)
+        $nextReception = RawMaterialReception::where('supplier_id', $supplierId)
+            ->whereDate('date', '>=', $searchDate)
+            ->orderBy('date', 'asc')
+            ->first();
+        
+        $closestReception = null;
+        $closestType = null;
+        
+        // Determinar cuál es la más cercana
+        if ($previousReception && $nextReception) {
+            $prevDiff = $searchDate->diffInDays(Carbon::parse($previousReception->date));
+            $nextDiff = $searchDate->diffInDays(Carbon::parse($nextReception->date));
+            
+            if ($prevDiff <= $nextDiff) {
+                $closestReception = $previousReception;
+                $closestType = 'previous';
+            } else {
+                $closestReception = $nextReception;
+                $closestType = 'next';
+            }
+        } elseif ($previousReception) {
+            $closestReception = $previousReception;
+            $closestType = 'previous';
+        } elseif ($nextReception) {
+            $closestReception = $nextReception;
+            $closestType = 'next';
+        }
+        
+        return [
+            'previous' => $previousReception ? [
+                'id' => $previousReception->id,
+                'date' => Carbon::parse($previousReception->date)->format('Y-m-d'),
+                'days_diff' => $previousReception ? $searchDate->diffInDays(Carbon::parse($previousReception->date)) : null,
+            ] : null,
+            'next' => $nextReception ? [
+                'id' => $nextReception->id,
+                'date' => Carbon::parse($nextReception->date)->format('Y-m-d'),
+                'days_diff' => $nextReception ? $searchDate->diffInDays(Carbon::parse($nextReception->date)) : null,
+            ] : null,
+            'closest' => $closestReception ? [
+                'id' => $closestReception->id,
+                'date' => Carbon::parse($closestReception->date)->format('Y-m-d'),
+                'type' => $closestType,
+                'days_diff' => $searchDate->diffInDays(Carbon::parse($closestReception->date)),
+            ] : null,
+        ];
     }
 }
