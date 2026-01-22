@@ -5,7 +5,7 @@
         <x-mail::header :url="tenantSetting('company.website_url')">
             @php($logoUrl = tenantSetting('company.logo_url_small'))
             @if(!empty($logoUrl))
-                <img src="{{ $logoUrl }}" alt="{{ config('company.name') }}" width="200" style="width:200px; height:auto; display:block; margin:0 auto;">
+                <img src="{{ $logoUrl }}" alt="{{ tenantSetting('company.name') }}" width="200" style="width:200px; height:auto; display:block; margin:0 auto;">
             @endif
         </x-mail::header>
     </x-slot:header>

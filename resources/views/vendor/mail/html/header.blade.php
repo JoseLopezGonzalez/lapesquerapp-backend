@@ -2,15 +2,16 @@
 
 <tr style="display: none;">
     <td>
-        {{ config('company.name') }}
+        {{ tenantSetting('company.name') }}
     </td>
 </tr>
 
 <tr>
     <td class="header">
-        <a href="{{ $url ?? config('company.website_url') }}" style="display: inline-block; color: white;">
-            @if (trim($slot) === 'Congelados_Brisamar_App')
-                <img src="{{ config('company.logo_url_small') }}" class="logo" alt="Logo {{ config('company.name') }}">
+        <a href="{{ $url ?? tenantSetting('company.website_url') }}" style="display: inline-block; color: white;">
+            @php($logoUrl = tenantSetting('company.logo_url_small'))
+            @if(!empty($logoUrl) && !empty(trim($slot)))
+                <img src="{{ $logoUrl }}" class="logo" alt="Logo {{ tenantSetting('company.name') }}">
             @else
                 {{ $slot }}
             @endif
