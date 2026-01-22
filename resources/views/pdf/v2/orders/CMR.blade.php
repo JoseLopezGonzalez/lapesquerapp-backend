@@ -75,9 +75,15 @@
                     @endif
 
                     {{-- img --}}
-
-                    <img src="{{ asset('images/documents/CMR/sello-brisamar.png') }}"
-                        style="position: absolute; left: 80px; top: 923px; width: 190px; " />
+                    @php
+                        $currentTenant = app('currentTenant');
+                        $sealPath = "images/documents/CMR/sello-{$currentTenant}.png";
+                        $sealExists = file_exists(public_path($sealPath));
+                    @endphp
+                    @if ($sealExists)
+                        <img src="{{ asset($sealPath) }}"
+                            style="position: absolute; left: 80px; top: 923px; width: 190px; " />
+                    @endif
 
 
 
