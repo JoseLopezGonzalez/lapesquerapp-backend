@@ -95,6 +95,15 @@ class Handler extends ExceptionHandler
                         'error' => $errorMessage, // Detalles técnicos para programadores
                     ], 422); // 422 Unprocessable Entity
                 }
+                
+                // Otros errores de base de datos (foreign key, not null, etc.)
+                $userMessage = $this->formatQueryExceptionForUser($errorMessage, $request);
+                
+                return response()->json([
+                    'message' => 'Error de base de datos.',
+                    'userMessage' => $userMessage,
+                    'error' => $errorMessage, // Detalles técnicos para programadores
+                ], 500); // 500 Internal Server Error
             }
 
             // Manejar cualquier otra excepción como error interno del servidor
@@ -562,8 +571,47 @@ class Handler extends ExceptionHandler
             return 'No se puede realizar esta operación porque hay cajas usadas en producción';
         }
         
-        // Si no se puede traducir, devolver el mensaje original
-        return $errorMessage;
+        // Si no se puede traducir, devolver un mensaje genérico en lenguaje natural
+        return 'Ocurrió un error al procesar la solicitud. Por favor, verifica los datos e intenta nuevamente.';
+    }
+
+    /**
+     * Formatea el mensaje de excepción de base de datos (QueryException) para el usuario
+     * 
+     * @param string $errorMessage Mensaje de error técnico
+     * @param \Illuminate\Http\Request|null $request Request para obtener contexto
+     * @return string Mensaje en lenguaje natural
+     */
+    private function formatQueryExceptionForUser(string $errorMessage, $request = null): string
+    {
+        // Detectar violaciones de clave foránea
+        if (stripos($errorMessage, 'Integrity constraint violation') !== false || 
+            stripos($errorMessage, 'foreign key constraint fails') !== false ||
+            stripos($errorMessage, 'Cannot delete or update a parent row') !== false) {
+            
+            return $this->formatExceptionMessageForUser($errorMessage, $request);
+        }
+        
+        // Detectar errores de campo no nulo
+        if (stripos($errorMessage, 'cannot be null') !== false ||
+            stripos($errorMessage, 'Column') !== false && stripos($errorMessage, 'cannot be null') !== false) {
+            return 'Faltan datos obligatorios. Por favor, completa todos los campos requeridos.';
+        }
+        
+        // Detectar errores de tabla no encontrada
+        if (stripos($errorMessage, "doesn't exist") !== false ||
+            stripos($errorMessage, 'Table') !== false && stripos($errorMessage, "doesn't exist") !== false) {
+            return 'Ocurrió un error en la base de datos. Por favor, contacta al administrador.';
+        }
+        
+        // Detectar errores de conexión
+        if (stripos($errorMessage, 'Connection') !== false ||
+            stripos($errorMessage, 'SQLSTATE[HY000]') !== false) {
+            return 'No se pudo conectar con la base de datos. Por favor, intenta nuevamente más tarde.';
+        }
+        
+        // Mensaje genérico para otros errores de base de datos
+        return 'Ocurrió un error al guardar los datos. Por favor, verifica la información e intenta nuevamente.';
     }
 
     /**
@@ -664,6 +712,11 @@ class Handler extends ExceptionHandler
         // Comerciales (salespeople)
         if (stripos($errorMessage, 'salespeople') !== false && stripos($errorMessage, 'name') !== false) {
             return 'Ya existe un comercial con este nombre.';
+        }
+        
+        // Almacenes (stores)
+        if (stripos($errorMessage, 'stores') !== false && stripos($errorMessage, 'name') !== false) {
+            return 'Ya existe un almacén con este nombre.';
         }
         
         // Intentar extraer el nombre del campo del mensaje de error

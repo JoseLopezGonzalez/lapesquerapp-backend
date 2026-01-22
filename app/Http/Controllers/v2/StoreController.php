@@ -85,9 +85,13 @@ class StoreController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|min:3|max:255',
-            'temperature' => 'required|string|max:255',
+            'name' => 'required|string|min:3|max:255|unique:tenant.stores,name',
+            'temperature' => 'required|numeric|between:-99.99,99.99',
             'capacity' => 'required|numeric|min:0',
+        ], [
+            'name.unique' => 'Ya existe un almacén con este nombre.',
+            'temperature.numeric' => 'La temperatura debe ser un número.',
+            'temperature.between' => 'La temperatura debe estar entre -99.99 y 99.99.',
         ]);
 
         $validated['map'] = json_encode($this->getDefaultMap());
@@ -133,9 +137,13 @@ class StoreController extends Controller
         $store = Store::findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'required|string|min:3|max:255',
-            'temperature' => 'required|string|max:255',
+            'name' => 'required|string|min:3|max:255|unique:tenant.stores,name,' . $id,
+            'temperature' => 'required|numeric|between:-99.99,99.99',
             'capacity' => 'required|numeric|min:0',
+        ], [
+            'name.unique' => 'Ya existe un almacén con este nombre.',
+            'temperature.numeric' => 'La temperatura debe ser un número.',
+            'temperature.between' => 'La temperatura debe estar entre -99.99 y 99.99.',
         ]);
 
         $store->update($validated);
@@ -161,8 +169,13 @@ class StoreController extends Controller
     public function deleteMultiple(Request $request)
     {
         $validated = $request->validate([
-            'ids' => 'required|array',
+            'ids' => 'required|array|min:1',
             'ids.*' => 'integer|exists:tenant.stores,id',
+        ], [
+            'ids.required' => 'Debe proporcionar al menos un ID válido para eliminar.',
+            'ids.min' => 'Debe proporcionar al menos un ID válido para eliminar.',
+            'ids.*.integer' => 'Los IDs deben ser números enteros.',
+            'ids.*.exists' => 'Uno o más almacenes no existen.',
         ]);
 
         Store::whereIn('id', $validated['ids'])->delete();
