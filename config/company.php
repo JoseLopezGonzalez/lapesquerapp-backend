@@ -53,4 +53,16 @@ return [
         'terms_url' => '/docs/condiciones-legales.pdf',
         'privacy_policy_url' => '/docs/politica-privacidad.pdf',
     ],
+
+    // Configuración de email (SMTP por tenant)
+    'mail' => [
+        'mailer' => 'smtp',
+        'host' => '',
+        'port' => '587',
+        'encryption' => 'tls', // 'tls' o 'ssl'
+        'username' => '',
+        'password' => '',
+        'from_address' => '',
+        'from_name' => '',
+    ],
 ];
