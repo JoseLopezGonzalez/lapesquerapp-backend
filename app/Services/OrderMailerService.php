@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Services\TenantMailConfigService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -10,10 +11,12 @@ class OrderMailerService
 {
 
     protected $pdfService;
+    protected $mailConfigService;
 
-    public function __construct(OrderPDFService $pdfService)
+    public function __construct(OrderPDFService $pdfService, TenantMailConfigService $mailConfigService)
     {
         $this->pdfService = $pdfService;
+        $this->mailConfigService = $mailConfigService;
     }
 
     /**
@@ -77,6 +80,9 @@ class OrderMailerService
             ];
             $markdownTemplate = $markdownTemplates[$recipientKey] ?? 'emails.orders.shipped';
 
+            // Configurar mailer del tenant antes de enviar
+            $this->mailConfigService->configureTenantMailer();
+
             // Crear y enviar
             $mailable = new \App\Mail\StandardOrderDocuments(
                 $order,
@@ -128,6 +134,9 @@ class OrderMailerService
                 Log::warning("No se encontraron emails para el destinatario: {$recipientKey}");
                 continue;
             }
+
+            // Configurar mailer del tenant antes de enviar
+            $this->mailConfigService->configureTenantMailer();
 
             // ✅ Crear mailable con adjunto
             $mailable = new \App\Mail\GenericOrderDocument(

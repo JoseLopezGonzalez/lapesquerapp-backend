@@ -25,7 +25,13 @@ class StandardOrderDocuments extends Mailable
 
     public function build()
     {
+        // Obtener configuración de remitente del tenant
+        $mailConfigService = app(\App\Services\TenantMailConfigService::class);
+        $fromAddress = $mailConfigService->getFromAddress();
+        $fromName = $mailConfigService->getFromName();
+
         $email = $this->subject($this->subjectText)
+                      ->from($fromAddress, $fromName)
                       ->markdown($this->markdownTemplate, [
                           'order' => $this->order
                       ]);

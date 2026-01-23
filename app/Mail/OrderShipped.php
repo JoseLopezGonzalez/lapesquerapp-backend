@@ -90,7 +90,13 @@ class OrderShipped extends Mailable
         $pdfPath = storage_path('app/public/delivery-note-' . $this->order->id . '.pdf');
         file_put_contents($pdfPath, $pdfContent);
 
+        // Obtener configuración de remitente del tenant
+        $mailConfigService = app(\App\Services\TenantMailConfigService::class);
+        $fromAddress = $mailConfigService->getFromAddress();
+        $fromName = $mailConfigService->getFromName();
+
         return $this->subject('Order Shipped: #' . $this->order->id)
+            ->from($fromAddress, $fromName)
             ->markdown('emails.orders.shipped', [
                 'order' => $this->order,
             ])

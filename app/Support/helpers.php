@@ -25,8 +25,8 @@ if (! function_exists('tenantSetting')) {
             ->where('key', $normalizedKey)
             ->value('value');
 
-        // Usar fallback si no existe
-        if (is_null($value)) {
+        // Usar fallback si no existe o está vacío
+        if (is_null($value) || $value === '') {
             // Si la clave ya incluye prefijo 'company.', usarla tal cual
             $value = config($normalizedKey, $default);
         }

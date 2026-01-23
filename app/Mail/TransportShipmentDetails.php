@@ -47,7 +47,13 @@ class TransportShipmentDetails extends Mailable
         $pdfPath = storage_path('app/public/delivery-note-' . $this->order->id . '.pdf');
         file_put_contents($pdfPath, $pdfContent);
 
+        // Obtener configuración de remitente del tenant
+        $mailConfigService = app(\App\Services\TenantMailConfigService::class);
+        $fromAddress = $mailConfigService->getFromAddress();
+        $fromName = $mailConfigService->getFromName();
+
         return $this->subject('Detalle mercancía ' . /* formated date */ date('d/m/Y', strtotime($this->order->load_date)) . ' - ' . $this->order->customer->name)
+            ->from($fromAddress, $fromName)
             ->markdown('emails.orders.transport_details', [
                 'order' => $this->order,
             ])
