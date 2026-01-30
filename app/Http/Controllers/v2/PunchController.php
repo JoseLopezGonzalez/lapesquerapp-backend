@@ -583,61 +583,66 @@ class PunchController extends Controller
      */
     public function statistics(Request $request)
     {
-        // Validar y parsear parámetros de período
-        $period = $request->input('period', 'month'); // 'week', 'month', 'year'
-        $date = $request->has('date') 
-            ? Carbon::parse($request->date)
-            : now();
+        // Validar que se proporcionen date_start y date_end
+        if (!$request->has('date_start') || !$request->has('date_end')) {
+            return response()->json([
+                'message' => 'Los parámetros date_start y date_end son requeridos.',
+                'userMessage' => 'Debe proporcionar las fechas de inicio y fin del período.',
+                'error' => 'MISSING_DATE_PARAMETERS',
+            ], 400);
+        }
 
-        // Calcular fechas del período actual
-        $dateStart = null;
-        $dateEnd = null;
-        $periodLabel = '';
+        try {
+            $dateStart = Carbon::parse($request->date_start)->startOfDay();
+            $dateEnd = Carbon::parse($request->date_end)->endOfDay();
+            
+            // Validar que date_start <= date_end
+            if ($dateStart->gt($dateEnd)) {
+                return response()->json([
+                    'message' => 'La fecha de inicio debe ser anterior o igual a la fecha de fin.',
+                    'userMessage' => 'La fecha de inicio no puede ser posterior a la fecha de fin.',
+                    'error' => 'INVALID_DATE_RANGE',
+                ], 400);
+            }
 
-        switch ($period) {
-            case 'week':
-                $dateStart = $date->copy()->startOfWeek();
-                $dateEnd = $date->copy()->endOfWeek();
+            // Generar label basado en las fechas
+            $daysDiff = $dateStart->diffInDays($dateEnd);
+            $period = 'custom';
+            
+            if ($daysDiff <= 7) {
+                // Rango corto: mostrar fechas
                 $periodLabel = $dateStart->format('d/m/Y') . ' - ' . $dateEnd->format('d/m/Y');
-                break;
-            case 'year':
-                $dateStart = $date->copy()->startOfYear();
-                $dateEnd = $date->copy()->endOfYear();
-                $periodLabel = $date->format('Y');
-                break;
-            case 'month':
-            default:
-                $dateStart = $date->copy()->startOfMonth();
-                $dateEnd = $date->copy()->endOfMonth();
-                // Formatear mes en español
+            } elseif ($dateStart->isSameMonth($dateEnd) && $dateStart->day === 1 && $dateEnd->isLastOfMonth()) {
+                // Es un mes completo
                 $months = [
                     1 => 'enero', 2 => 'febrero', 3 => 'marzo', 4 => 'abril',
                     5 => 'mayo', 6 => 'junio', 7 => 'julio', 8 => 'agosto',
                     9 => 'septiembre', 10 => 'octubre', 11 => 'noviembre', 12 => 'diciembre'
                 ];
-                $monthName = $months[$date->month] ?? $date->format('F');
-                $periodLabel = ucfirst($monthName) . ' ' . $date->year; // Ej: "Enero 2026"
-                break;
-        }
+                $monthName = $months[$dateStart->month] ?? $dateStart->format('F');
+                $periodLabel = ucfirst($monthName) . ' ' . $dateStart->year;
+                $period = 'month';
+            } elseif ($dateStart->isSameYear($dateEnd) && $dateStart->dayOfYear === 1 && $dateEnd->isLastOfYear()) {
+                // Es un año completo
+                $periodLabel = $dateStart->format('Y');
+                $period = 'year';
+            } else {
+                // Rango personalizado
+                $periodLabel = $dateStart->format('d/m/Y') . ' - ' . $dateEnd->format('d/m/Y');
+            }
 
-        // Calcular período anterior para comparación
-        $previousDateStart = null;
-        $previousDateEnd = null;
-        
-        switch ($period) {
-            case 'week':
-                $previousDateStart = $dateStart->copy()->subWeek()->startOfWeek();
-                $previousDateEnd = $dateStart->copy()->subWeek()->endOfWeek();
-                break;
-            case 'year':
-                $previousDateStart = $dateStart->copy()->subYear()->startOfYear();
-                $previousDateEnd = $dateStart->copy()->subYear()->endOfYear();
-                break;
-            case 'month':
-            default:
-                $previousDateStart = $dateStart->copy()->subMonth()->startOfMonth();
-                $previousDateEnd = $dateStart->copy()->subMonth()->endOfMonth();
-                break;
+            // Calcular período anterior basado en la duración del período actual
+            $daysDiff = $dateStart->diffInDays($dateEnd);
+            // El período anterior tiene la misma duración, pero justo antes del período actual
+            $previousDateEnd = $dateStart->copy()->subDay()->endOfDay();
+            $previousDateStart = $previousDateEnd->copy()->subDays($daysDiff)->startOfDay();
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Formato de fecha inválido. Use formato YYYY-MM-DD.',
+                'userMessage' => 'El formato de fecha es incorrecto. Use el formato YYYY-MM-DD (ejemplo: 2026-01-15).',
+                'error' => 'INVALID_DATE_FORMAT',
+            ], 400);
         }
 
         // Obtener todos los empleados
@@ -647,7 +652,8 @@ class PunchController extends Controller
         if ($employeeIds->isEmpty()) {
             return response()->json([
                 'message' => 'No hay empleados registrados.',
-                'data' => $this->getEmptyStatisticsResponse($periodLabel, $dateStart, $dateEnd),
+                'userMessage' => 'No hay empleados registrados en el sistema.',
+                'data' => $this->getEmptyStatisticsResponse($periodLabel, $dateStart, $dateEnd, $period),
             ]);
         }
 
@@ -666,18 +672,21 @@ class PunchController extends Controller
             ->groupBy('employee_id');
 
         // Procesar datos por empleado
+        // IMPORTANTE: Las incidencias (entradas sin salida) NO contaminan las estadísticas
         $employeeStats = [];
         $totalHours = 0;
         $totalDaysWithActivity = [];
         $totalSessions = 0;
-        $totalDays = 0;
-        $openIncidents = 0;
-        $anomalousDays = 0;
-        $totalWorkDays = 0;
         $closedSessionsCount = 0;
         $totalSessionsCount = 0;
         $employeeHours = [];
-        $allDayHours = []; // Para calcular media de horas por jornada
+        $allDayHours = []; // Para calcular media de horas por jornada (solo jornadas completas)
+        
+        // Detalles de incidencias y anomalías
+        $incidentsDetails = [];
+        $anomalousDaysDetails = [];
+        $dayActivityDetails = []; // Para desglose de actividad por día
+        $employeeActivityDetails = []; // Para desglose de actividad por empleado
 
         foreach ($allEmployees as $employee) {
             $employeeEvents = $periodEvents->get($employee->id, collect())->sortBy('timestamp')->values();
@@ -694,7 +703,7 @@ class PunchController extends Controller
             $employeeTotalMinutes = 0;
             $employeeDaysWithActivity = 0;
             $employeeSessions = 0;
-            $employeeWorkDays = [];
+            $employeeClosedSessions = 0;
 
             foreach ($eventsByDay as $day => $dayEvents) {
                 $dayStart = Carbon::parse($day)->startOfDay();
@@ -705,51 +714,80 @@ class PunchController extends Controller
                 
                 $dayMinutes = 0;
                 $daySessions = 0;
+                $dayClosedSessions = 0;
                 $hasOpenSession = false;
+                $openSessionEntry = null;
 
-                // Calcular horas del día
+                // Calcular horas del día (SOLO sesiones completas)
                 for ($i = 0; $i < $dayEvents->count(); $i++) {
                     if ($dayEvents[$i]->event_type === PunchEvent::TYPE_IN) {
                         $nextOut = $dayEvents->slice($i + 1)->firstWhere('event_type', PunchEvent::TYPE_OUT);
                         
                         if ($nextOut) {
-                            // Sesión completa
+                            // Sesión completa - SÍ cuenta en estadísticas
                             $sessionMinutes = $dayEvents[$i]->timestamp->diffInMinutes($nextOut->timestamp);
                             $dayMinutes += $sessionMinutes;
                             $daySessions++;
+                            $dayClosedSessions++;
                             $closedSessionsCount++;
                         } else {
-                            // Sesión abierta (incidencia)
+                            // Sesión abierta (incidencia) - NO cuenta en estadísticas
                             $hasOpenSession = true;
-                            // Calcular hasta el final del día o hasta ahora si es hoy
-                            $endTime = $dayEnd->isFuture() ? now() : $dayEnd;
-                            $sessionMinutes = $dayEvents[$i]->timestamp->diffInMinutes($endTime);
-                            $dayMinutes += $sessionMinutes;
-                            $daySessions++;
+                            $openSessionEntry = $dayEvents[$i];
+                            // NO sumamos minutos ni sesiones a las estadísticas
                         }
                         $totalSessionsCount++;
                     }
                 }
 
+                // Registrar incidencia si existe
+                if ($hasOpenSession && $openSessionEntry) {
+                    $incidentsDetails[] = [
+                        'employee_id' => $employee->id,
+                        'employee_name' => $employee->name,
+                        'date' => $day,
+                        'entry_timestamp' => $openSessionEntry->timestamp->format('Y-m-d H:i:s'),
+                        'entry_time' => $openSessionEntry->timestamp->format('H:i:s'),
+                        'device_id' => $openSessionEntry->device_id,
+                    ];
+                }
+
+                // Solo contar días con sesiones completas en estadísticas
                 if ($dayMinutes > 0) {
                     $dayHours = round($dayMinutes / 60, 2);
                     $employeeTotalMinutes += $dayMinutes;
                     $employeeDaysWithActivity++;
+                    // Marcar día como activo (usar true para contar días únicos)
                     $totalDaysWithActivity[$day] = true;
-                    $employeeWorkDays[] = [
-                        'date' => $day,
-                        'minutes' => $dayMinutes,
-                        'hours' => $dayHours,
-                    ];
+                    // Acumular sesiones para el desglose
+                    if (!isset($totalDaysWithActivity[$day . '_sessions'])) {
+                        $totalDaysWithActivity[$day . '_sessions'] = 0;
+                    }
+                    $totalDaysWithActivity[$day . '_sessions'] += $dayClosedSessions;
+                    
                     $employeeSessions += $daySessions;
-                    $allDayHours[] = $dayHours; // Guardar para calcular media después
-                }
+                    $employeeClosedSessions += $dayClosedSessions;
+                    $allDayHours[] = [
+                        'hours' => $dayHours,
+                        'employee_id' => $employee->id,
+                        'employee_name' => $employee->name,
+                        'date' => $day,
+                    ];
 
-                if ($hasOpenSession) {
-                    $openIncidents++;
+                    // Registrar actividad por día
+                    if (!isset($dayActivityDetails[$day])) {
+                        $dayActivityDetails[$day] = [
+                            'date' => $day,
+                            'sessions' => 0,
+                            'employees' => 0,
+                        ];
+                    }
+                    $dayActivityDetails[$day]['sessions'] += $dayClosedSessions;
+                    $dayActivityDetails[$day]['employees']++;
                 }
             }
 
+            // Solo contar empleados con sesiones completas
             if ($employeeTotalMinutes > 0) {
                 $employeeHoursValue = round($employeeTotalMinutes / 60, 2);
                 $totalHours += $employeeHoursValue;
@@ -762,21 +800,43 @@ class PunchController extends Controller
                     'total_hours' => $employeeHoursValue,
                     'total_minutes' => $employeeTotalMinutes,
                     'days_with_activity' => $employeeDaysWithActivity,
-                    'sessions' => $employeeSessions,
+                    'sessions' => $employeeClosedSessions, // Solo sesiones cerradas
+                ];
+
+                // Registrar actividad por empleado
+                $employeeActivityDetails[] = [
+                    'employee_id' => $employee->id,
+                    'employee_name' => $employee->name,
+                    'sessions' => $employeeClosedSessions,
+                    'days' => $employeeDaysWithActivity,
                 ];
             }
         }
 
-        // Calcular media de horas por jornada y detectar jornadas anómalas
+        // Calcular media de horas por jornada y detectar jornadas anómalas (solo jornadas completas)
+        $anomalousDaysCount = 0;
         if (!empty($allDayHours)) {
-            $averageHoursPerDay = array_sum($allDayHours) / count($allDayHours);
+            $dayHoursValues = array_column($allDayHours, 'hours');
+            $averageHoursPerDay = array_sum($dayHoursValues) / count($dayHoursValues);
             // Considerar anómalas las jornadas que son menos del 50% o más del 200% de la media
             $minThreshold = $averageHoursPerDay * 0.5;
             $maxThreshold = $averageHoursPerDay * 2.0;
             
-            foreach ($allDayHours as $dayHours) {
+            foreach ($allDayHours as $dayData) {
+                $dayHours = $dayData['hours'];
                 if ($dayHours < $minThreshold || $dayHours > $maxThreshold) {
-                    $anomalousDays++;
+                    $anomalousDaysCount++;
+                    $reason = $dayHours < $minThreshold ? 'muy_pocas_horas' : 'muchas_horas';
+                    $anomalousDaysDetails[] = [
+                        'employee_id' => $dayData['employee_id'],
+                        'employee_name' => $dayData['employee_name'],
+                        'date' => $dayData['date'],
+                        'hours' => $dayHours,
+                        'reason' => $reason,
+                        'reason_label' => $reason === 'muy_pocas_horas' 
+                            ? 'Muy pocas horas (< ' . round($minThreshold, 2) . 'h)' 
+                            : 'Muchas horas (> ' . round($maxThreshold, 2) . 'h)',
+                    ];
                 }
             }
         }
@@ -805,9 +865,23 @@ class PunchController extends Controller
         // Calcular métricas
         $activeEmployeesCount = count($employeeStats);
         $averageHoursPerEmployee = $activeEmployeesCount > 0 ? round($totalHours / $activeEmployeesCount, 2) : 0;
-        $daysWithActivityCount = count($totalDaysWithActivity);
+        
+        // Contar días únicos con actividad (filtrar claves que terminan en '_sessions')
+        $daysWithActivityCount = 0;
+        $totalSessionsAllDays = 0;
+        foreach ($totalDaysWithActivity as $key => $value) {
+            if (substr($key, -9) === '_sessions') {
+                // Es una clave de sesiones, sumar al total
+                $totalSessionsAllDays += $value;
+            } else {
+                // Es una clave de día, contar
+                $daysWithActivityCount++;
+            }
+        }
         $averageDaysPerEmployee = $activeEmployeesCount > 0 ? round($daysWithActivityCount / $activeEmployeesCount, 2) : 0;
-        $averageSessionsPerDay = $daysWithActivityCount > 0 ? round($totalSessions / $daysWithActivityCount, 2) : 0;
+        
+        // Calcular promedio de sesiones por día
+        $averageSessionsPerDay = $daysWithActivityCount > 0 ? round($totalSessionsAllDays / $daysWithActivityCount, 2) : 0;
         
         // Variación respecto al período anterior
         $hoursVariation = 0;
@@ -827,6 +901,38 @@ class PunchController extends Controller
             ? round(($closedSessionsCount / $totalSessionsCount) * 100, 2) 
             : 0;
 
+        // Top y Bottom trabajadores por horas
+        $topEmployees = [];
+        $bottomEmployees = [];
+        if (!empty($employeeStats)) {
+            usort($employeeStats, function ($a, $b) {
+                return $b['total_hours'] <=> $a['total_hours'];
+            });
+            $topEmployees = array_slice($employeeStats, 0, 3); // Top 3
+            $bottomEmployees = array_slice(array_reverse($employeeStats), 0, 3); // Bottom 3
+        }
+
+        // Días más y menos activos
+        $mostActiveDays = [];
+        $leastActiveDays = [];
+        if (!empty($dayActivityDetails)) {
+            $daysArray = array_values($dayActivityDetails);
+            usort($daysArray, function ($a, $b) {
+                return $b['sessions'] <=> $a['sessions'];
+            });
+            $mostActiveDays = array_slice($daysArray, 0, 3); // Top 3
+            $leastActiveDays = array_slice(array_reverse($daysArray), 0, 3); // Bottom 3
+        }
+
+        // Trabajadores más activos (por sesiones)
+        $mostActiveEmployees = [];
+        if (!empty($employeeActivityDetails)) {
+            usort($employeeActivityDetails, function ($a, $b) {
+                return $b['sessions'] <=> $a['sessions'];
+            });
+            $mostActiveEmployees = array_slice($employeeActivityDetails, 0, 3); // Top 3
+        }
+
         return response()->json([
             'message' => 'Estadísticas obtenidas correctamente.',
             'data' => [
@@ -836,21 +942,58 @@ class PunchController extends Controller
                     'date_start' => $dateStart->format('Y-m-d'),
                     'date_end' => $dateEnd->format('Y-m-d'),
                 ],
+                'definitions' => [
+                    'incident' => [
+                        'title' => 'Incidencia',
+                        'description' => 'Jornada incompleta: entrada sin salida. Es un problema operativo que requiere atención.',
+                        'type' => 'operational_issue',
+                    ],
+                    'anomaly' => [
+                        'title' => 'Anomalía',
+                        'description' => 'Jornada cerrada pero con duración fuera de lo normal (menos del 50% o más del 200% de la media). Es un dato estadístico sospechoso.',
+                        'type' => 'statistical_alert',
+                    ],
+                ],
                 'work' => [
                     'total_hours' => round($totalHours, 2),
                     'average_hours_per_employee' => $averageHoursPerEmployee,
                     'hours_variation' => $hoursVariation,
                     'hours_variation_percentage' => $hoursVariationPercentage,
                     'previous_period_hours' => round($previousTotalHours, 2),
+                    'breakdown' => [
+                        'top_employees' => array_map(function ($emp) {
+                            return [
+                                'employee_id' => $emp['employee_id'],
+                                'employee_name' => $emp['employee_name'],
+                                'total_hours' => $emp['total_hours'],
+                            ];
+                        }, $topEmployees),
+                        'bottom_employees' => array_map(function ($emp) {
+                            return [
+                                'employee_id' => $emp['employee_id'],
+                                'employee_name' => $emp['employee_name'],
+                                'total_hours' => $emp['total_hours'],
+                            ];
+                        }, $bottomEmployees),
+                    ],
                 ],
                 'activity' => [
                     'days_with_activity' => $daysWithActivityCount,
                     'average_days_per_employee' => $averageDaysPerEmployee,
                     'average_sessions_per_day' => $averageSessionsPerDay,
+                    'breakdown' => [
+                        'most_active_days' => $mostActiveDays,
+                        'least_active_days' => $leastActiveDays,
+                        'most_active_employees' => $mostActiveEmployees,
+                    ],
                 ],
                 'incidents' => [
-                    'open_incidents_count' => $openIncidents,
-                    'anomalous_days_count' => $anomalousDays,
+                    'open_incidents_count' => count($incidentsDetails),
+                    'details' => $incidentsDetails,
+                ],
+                'anomalies' => [
+                    'anomalous_days_count' => $anomalousDaysCount,
+                    'details' => $anomalousDaysDetails,
                 ],
                 'context' => [
                     'active_employees_count' => $activeEmployeesCount,
@@ -868,13 +1011,26 @@ class PunchController extends Controller
     /**
      * Retorna una respuesta vacía para estadísticas cuando no hay datos.
      */
-    private function getEmptyStatisticsResponse(string $periodLabel, Carbon $dateStart, Carbon $dateEnd): array
+    private function getEmptyStatisticsResponse(string $periodLabel, Carbon $dateStart, Carbon $dateEnd, string $period): array
     {
         return [
             'period' => [
                 'label' => $periodLabel,
+                'type' => $period,
                 'date_start' => $dateStart->format('Y-m-d'),
                 'date_end' => $dateEnd->format('Y-m-d'),
+            ],
+            'definitions' => [
+                'incident' => [
+                    'title' => 'Incidencia',
+                    'description' => 'Jornada incompleta: entrada sin salida. Es un problema operativo que requiere atención.',
+                    'type' => 'operational_issue',
+                ],
+                'anomaly' => [
+                    'title' => 'Anomalía',
+                    'description' => 'Jornada cerrada pero con duración fuera de lo normal (menos del 50% o más del 200% de la media). Es un dato estadístico sospechoso.',
+                    'type' => 'statistical_alert',
+                ],
             ],
             'work' => [
                 'total_hours' => 0,
@@ -882,15 +1038,28 @@ class PunchController extends Controller
                 'hours_variation' => 0,
                 'hours_variation_percentage' => 0,
                 'previous_period_hours' => 0,
+                'breakdown' => [
+                    'top_employees' => [],
+                    'bottom_employees' => [],
+                ],
             ],
             'activity' => [
                 'days_with_activity' => 0,
                 'average_days_per_employee' => 0,
                 'average_sessions_per_day' => 0,
+                'breakdown' => [
+                    'most_active_days' => [],
+                    'least_active_days' => [],
+                    'most_active_employees' => [],
+                ],
             ],
             'incidents' => [
                 'open_incidents_count' => 0,
+                'details' => [],
+            ],
+            'anomalies' => [
                 'anomalous_days_count' => 0,
+                'details' => [],
             ],
             'context' => [
                 'active_employees_count' => 0,
