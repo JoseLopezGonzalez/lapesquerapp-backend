@@ -867,10 +867,23 @@ class PunchController extends Controller
         
         // Contar días únicos con actividad
         $daysWithActivityCount = count($totalDaysWithActivity);
-        $averageDaysPerEmployee = $activeEmployeesCount > 0 ? round($daysWithActivityCount / $activeEmployeesCount, 2) : 0;
-        
         // Calcular promedio de horas por día (en lugar de sesiones)
         $averageHoursPerDay = $daysWithActivityCount > 0 ? round($totalHours / $daysWithActivityCount, 2) : 0;
+        
+        // Calcular promedio de horas por día de media por trabajador
+        // Para cada trabajador: horas totales / días trabajados, luego media de todos
+        $averageHoursPerDayPerEmployee = 0;
+        if (!empty($employeeStats)) {
+            $hoursPerDayByEmployee = [];
+            foreach ($employeeStats as $employee) {
+                if ($employee['days_with_activity'] > 0) {
+                    $hoursPerDayByEmployee[] = $employee['total_hours'] / $employee['days_with_activity'];
+                }
+            }
+            if (!empty($hoursPerDayByEmployee)) {
+                $averageHoursPerDayPerEmployee = round(array_sum($hoursPerDayByEmployee) / count($hoursPerDayByEmployee), 2);
+            }
+        }
         
         // Variación respecto al período anterior
         $hoursVariation = 0;
@@ -882,13 +895,6 @@ class PunchController extends Controller
             $hoursVariation = $totalHours;
             $hoursVariationPercentage = 100;
         }
-
-        // Métricas derivadas
-        $averageHoursPerWorkDay = $daysWithActivityCount > 0 ? round($totalHours / $daysWithActivityCount, 2) : 0;
-        $maxHoursDifference = !empty($employeeHours) ? round(max($employeeHours) - min($employeeHours), 2) : 0;
-        $closedSessionsPercentage = $totalSessionsCount > 0 
-            ? round(($closedSessionsCount / $totalSessionsCount) * 100, 2) 
-            : 0;
 
         // Top y Bottom trabajadores por horas
         $topEmployees = [];
@@ -1001,8 +1007,8 @@ class PunchController extends Controller
                 ],
                 'activity' => [
                     'days_with_activity' => $daysWithActivityCount,
-                    'average_days_per_employee' => $averageDaysPerEmployee,
                     'average_hours_per_day' => $averageHoursPerDay,
+                    'average_hours_per_day_per_employee' => $averageHoursPerDayPerEmployee,
                     'breakdown' => [
                         'most_active_days' => $mostActiveDays,
                         'least_active_days' => $leastActiveDays,
@@ -1019,11 +1025,6 @@ class PunchController extends Controller
                 'context' => [
                     'active_employees_count' => $activeEmployeesCount,
                     'total_employees_count' => $allEmployees->count(),
-                ],
-                'derived_metrics' => [
-                    'average_hours_per_work_day' => $averageHoursPerWorkDay,
-                    'max_hours_difference_between_employees' => $maxHoursDifference,
-                    'closed_sessions_percentage' => $closedSessionsPercentage,
                 ],
             ],
         ]);
@@ -1066,12 +1067,11 @@ class PunchController extends Controller
             ],
             'activity' => [
                 'days_with_activity' => 0,
-                'average_days_per_employee' => 0,
-                'average_sessions_per_day' => 0,
+                'average_hours_per_day' => 0,
+                'average_hours_per_day_per_employee' => 0,
                 'breakdown' => [
                     'most_active_days' => [],
                     'least_active_days' => [],
-                    'most_active_employees' => [],
                 ],
             ],
             'incidents' => [
@@ -1085,11 +1085,6 @@ class PunchController extends Controller
             'context' => [
                 'active_employees_count' => 0,
                 'total_employees_count' => 0,
-            ],
-            'derived_metrics' => [
-                'average_hours_per_work_day' => 0,
-                'max_hours_difference_between_employees' => 0,
-                'closed_sessions_percentage' => 0,
             ],
         ];
     }
