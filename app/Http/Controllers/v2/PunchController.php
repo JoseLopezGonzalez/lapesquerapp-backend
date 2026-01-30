@@ -575,7 +575,7 @@ class PunchController extends Controller
             })
             ->values();
 
-        // Detectar faltas de fichaje en días anteriores (sesiones abiertas)
+        // Detectar faltas de fichaje en días anteriores (entradas sin salida y salidas sin entrada)
         $missingPunches = [];
         $yesterday = now()->subDay()->startOfDay();
         
@@ -602,10 +602,10 @@ class PunchController extends Controller
                     ->whereBetween('timestamp', [$eventDate, $eventDateEnd])
                     ->exists();
                 
-                // Si no hay OUT, es una sesión abierta (falta de fichaje)
+                // Si no hay OUT, es una sesión abierta (falta de fichaje: entrada sin salida)
                 if (!$hasOut) {
                     // Verificar si no está ya en la lista para este empleado y día
-                    $key = $employeeId . '_' . $eventDate->format('Y-m-d');
+                    $key = $employeeId . '_' . $eventDate->format('Y-m-d') . '_entry';
                     
                     if (!isset($missingPunches[$key])) {
                         $daysAgo = now()->startOfDay()->diffInDays($eventDate);
@@ -616,9 +616,58 @@ class PunchController extends Controller
                             'nfcUid' => $employee->nfc_uid,
                             'date' => $eventDate->format('Y-m-d'),
                             'daysAgo' => $daysAgo,
+                            'type' => 'entry_without_exit',
+                            'typeLabel' => 'Entrada sin salida',
                             'entryTimestamp' => $inEvent->timestamp->format('Y-m-d H:i:s'),
                             'entryDeviceId' => $inEvent->device_id,
                             'hoursOpen' => round(now()->diffInHours($inEvent->timestamp), 1),
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Buscar todos los eventos OUT de días anteriores (excluyendo hoy) sin entrada previa
+        $pastOutEvents = PunchEvent::where('event_type', PunchEvent::TYPE_OUT)
+            ->where('timestamp', '<', $date)
+            ->where('timestamp', '>=', $yesterday->copy()->subDays(30)) // Últimos 30 días
+            ->with('employee')
+            ->orderBy('timestamp', 'desc')
+            ->get()
+            ->groupBy('employee_id');
+
+        foreach ($pastOutEvents as $employeeId => $outEvents) {
+            $employee = $outEvents->first()->employee;
+            
+            foreach ($outEvents as $outEvent) {
+                $eventDate = $outEvent->timestamp->startOfDay();
+                $eventDateEnd = $eventDate->copy()->endOfDay();
+                
+                // Verificar si existe un IN en el mismo día antes de este OUT
+                $hasIn = PunchEvent::where('employee_id', $employeeId)
+                    ->where('event_type', PunchEvent::TYPE_IN)
+                    ->where('timestamp', '<', $outEvent->timestamp)
+                    ->whereBetween('timestamp', [$eventDate, $eventDateEnd])
+                    ->exists();
+                
+                // Si no hay IN, es una incidencia (salida sin entrada)
+                if (!$hasIn) {
+                    // Verificar si no está ya en la lista para este empleado y día
+                    $key = $employeeId . '_' . $eventDate->format('Y-m-d') . '_exit';
+                    
+                    if (!isset($missingPunches[$key])) {
+                        $daysAgo = now()->startOfDay()->diffInDays($eventDate);
+                        
+                        $missingPunches[$key] = [
+                            'employeeId' => $employee->id,
+                            'employeeName' => $employee->name,
+                            'nfcUid' => $employee->nfc_uid,
+                            'date' => $eventDate->format('Y-m-d'),
+                            'daysAgo' => $daysAgo,
+                            'type' => 'exit_without_entry',
+                            'typeLabel' => 'Salida sin entrada',
+                            'exitTimestamp' => $outEvent->timestamp->format('Y-m-d H:i:s'),
+                            'exitDeviceId' => $outEvent->device_id,
                         ];
                     }
                 }
@@ -656,7 +705,7 @@ class PunchController extends Controller
 
     /**
      * Obtener fichajes agrupados por día para un calendario.
-     * Incluye incidencias (entradas sin salida) y anomalías (jornadas con horas anómalas).
+     * Incluye incidencias (entradas sin salida y salidas sin entrada) y anomalías (jornadas con horas anómalas).
      * 
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -736,10 +785,18 @@ class PunchController extends Controller
                     ];
                 }
 
-                // Detectar incidencias (entradas sin salida)
+                // Detectar incidencias (entradas sin salida y salidas sin entrada)
                 $dayMinutes = 0;
                 $hasOpenSession = false;
                 $openSessionEntry = null;
+                $hasOrphanExit = false;
+                $orphanExit = null;
+
+                // Verificar si el primer evento del día es una salida (sin entrada previa)
+                if ($dayEvents->isNotEmpty() && $dayEvents->first()->event_type === PunchEvent::TYPE_OUT) {
+                    $hasOrphanExit = true;
+                    $orphanExit = $dayEvents->first();
+                }
 
                 for ($i = 0; $i < $dayEvents->count(); $i++) {
                     if ($dayEvents[$i]->event_type === PunchEvent::TYPE_IN) {
@@ -750,21 +807,44 @@ class PunchController extends Controller
                             $sessionMinutes = $dayEvents[$i]->timestamp->diffInMinutes($nextOut->timestamp);
                             $dayMinutes += $sessionMinutes;
                         } else {
-                            // Sesión abierta (incidencia)
+                            // Sesión abierta (incidencia: entrada sin salida)
                             $hasOpenSession = true;
                             $openSessionEntry = $dayEvents[$i];
+                        }
+                    } elseif ($dayEvents[$i]->event_type === PunchEvent::TYPE_OUT) {
+                        // Verificar si hay una entrada previa en el mismo día
+                        $prevIn = $dayEvents->slice(0, $i)->reverse()->firstWhere('event_type', PunchEvent::TYPE_IN);
+                        if (!$prevIn) {
+                            // Salida sin entrada previa en el mismo día (incidencia)
+                            $hasOrphanExit = true;
+                            $orphanExit = $dayEvents[$i];
                         }
                     }
                 }
 
-                // Registrar incidencia si existe
+                // Registrar incidencia de entrada sin salida
                 if ($hasOpenSession && $openSessionEntry) {
                     $punchesByDay[$day]['incidents'][] = [
                         'employee_id' => $openSessionEntry->employee_id,
                         'employee_name' => $openSessionEntry->employee->name ?? '',
+                        'type' => 'entry_without_exit',
+                        'type_label' => 'Entrada sin salida',
                         'entry_timestamp' => $openSessionEntry->timestamp->format('Y-m-d H:i:s'),
                         'entry_time' => $openSessionEntry->timestamp->format('H:i:s'),
                         'device_id' => $openSessionEntry->device_id,
+                    ];
+                }
+
+                // Registrar incidencia de salida sin entrada
+                if ($hasOrphanExit && $orphanExit) {
+                    $punchesByDay[$day]['incidents'][] = [
+                        'employee_id' => $orphanExit->employee_id,
+                        'employee_name' => $orphanExit->employee->name ?? '',
+                        'type' => 'exit_without_entry',
+                        'type_label' => 'Salida sin entrada',
+                        'exit_timestamp' => $orphanExit->timestamp->format('Y-m-d H:i:s'),
+                        'exit_time' => $orphanExit->timestamp->format('H:i:s'),
+                        'device_id' => $orphanExit->device_id,
                     ];
                 }
 
@@ -943,7 +1023,7 @@ class PunchController extends Controller
             ->groupBy('employee_id');
 
         // Procesar datos por empleado
-        // IMPORTANTE: Las incidencias (entradas sin salida) NO contaminan las estadísticas
+        // IMPORTANTE: Las incidencias (entradas sin salida y salidas sin entrada) NO contaminan las estadísticas
         $employeeStats = [];
         $totalHours = 0;
         $totalDaysWithActivity = [];
@@ -987,6 +1067,14 @@ class PunchController extends Controller
                 $dayClosedSessions = 0;
                 $hasOpenSession = false;
                 $openSessionEntry = null;
+                $hasOrphanExit = false;
+                $orphanExit = null;
+
+                // Verificar si el primer evento del día es una salida (sin entrada previa)
+                if ($dayEvents->isNotEmpty() && $dayEvents->first()->event_type === PunchEvent::TYPE_OUT) {
+                    $hasOrphanExit = true;
+                    $orphanExit = $dayEvents->first();
+                }
 
                 // Calcular horas del día (SOLO sesiones completas)
                 for ($i = 0; $i < $dayEvents->count(); $i++) {
@@ -1001,24 +1089,48 @@ class PunchController extends Controller
                             $dayClosedSessions++;
                             $closedSessionsCount++;
                         } else {
-                            // Sesión abierta (incidencia) - NO cuenta en estadísticas
+                            // Sesión abierta (incidencia: entrada sin salida) - NO cuenta en estadísticas
                             $hasOpenSession = true;
                             $openSessionEntry = $dayEvents[$i];
                             // NO sumamos minutos ni sesiones a las estadísticas
                         }
                         $totalSessionsCount++;
+                    } elseif ($dayEvents[$i]->event_type === PunchEvent::TYPE_OUT) {
+                        // Verificar si hay una entrada previa en el mismo día
+                        $prevIn = $dayEvents->slice(0, $i)->reverse()->firstWhere('event_type', PunchEvent::TYPE_IN);
+                        if (!$prevIn) {
+                            // Salida sin entrada previa en el mismo día (incidencia)
+                            $hasOrphanExit = true;
+                            $orphanExit = $dayEvents[$i];
+                        }
                     }
                 }
 
-                // Registrar incidencia si existe
+                // Registrar incidencia de entrada sin salida
                 if ($hasOpenSession && $openSessionEntry) {
                     $incidentsDetails[] = [
                         'employee_id' => $employee->id,
                         'employee_name' => $employee->name,
                         'date' => $day,
+                        'type' => 'entry_without_exit',
+                        'type_label' => 'Entrada sin salida',
                         'entry_timestamp' => $openSessionEntry->timestamp->format('Y-m-d H:i:s'),
                         'entry_time' => $openSessionEntry->timestamp->format('H:i:s'),
                         'device_id' => $openSessionEntry->device_id,
+                    ];
+                }
+
+                // Registrar incidencia de salida sin entrada
+                if ($hasOrphanExit && $orphanExit) {
+                    $incidentsDetails[] = [
+                        'employee_id' => $employee->id,
+                        'employee_name' => $employee->name,
+                        'date' => $day,
+                        'type' => 'exit_without_entry',
+                        'type_label' => 'Salida sin entrada',
+                        'exit_timestamp' => $orphanExit->timestamp->format('Y-m-d H:i:s'),
+                        'exit_time' => $orphanExit->timestamp->format('H:i:s'),
+                        'device_id' => $orphanExit->device_id,
                     ];
                 }
 
