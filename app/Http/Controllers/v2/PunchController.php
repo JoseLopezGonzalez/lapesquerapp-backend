@@ -759,11 +759,6 @@ class PunchController extends Controller
                     $employeeDaysWithActivity++;
                     // Marcar día como activo (usar true para contar días únicos)
                     $totalDaysWithActivity[$day] = true;
-                    // Acumular sesiones para el desglose
-                    if (!isset($totalDaysWithActivity[$day . '_sessions'])) {
-                        $totalDaysWithActivity[$day . '_sessions'] = 0;
-                    }
-                    $totalDaysWithActivity[$day . '_sessions'] += $dayClosedSessions;
                     
                     $employeeSessions += $daySessions;
                     $employeeClosedSessions += $dayClosedSessions;
@@ -774,16 +769,21 @@ class PunchController extends Controller
                         'date' => $day,
                     ];
 
-                    // Registrar actividad por día
+                    // Registrar actividad por día (basada en horas trabajadas)
                     if (!isset($dayActivityDetails[$day])) {
                         $dayActivityDetails[$day] = [
                             'date' => $day,
-                            'sessions' => 0,
-                            'employees' => 0,
+                            'total_hours' => 0,
+                            'employees' => [],
                         ];
                     }
-                    $dayActivityDetails[$day]['sessions'] += $dayClosedSessions;
-                    $dayActivityDetails[$day]['employees']++;
+                    $dayActivityDetails[$day]['total_hours'] += $dayHours;
+                    // Agregar empleado con sus horas del día
+                    $dayActivityDetails[$day]['employees'][] = [
+                        'employee_id' => $employee->id,
+                        'employee_name' => $employee->name,
+                        'hours' => $dayHours,
+                    ];
                 }
             }
 
@@ -803,11 +803,11 @@ class PunchController extends Controller
                     'sessions' => $employeeClosedSessions, // Solo sesiones cerradas
                 ];
 
-                // Registrar actividad por empleado
+                // Registrar actividad por empleado (basada en horas trabajadas)
                 $employeeActivityDetails[] = [
                     'employee_id' => $employee->id,
                     'employee_name' => $employee->name,
-                    'sessions' => $employeeClosedSessions,
+                    'total_hours' => $employeeHoursValue,
                     'days' => $employeeDaysWithActivity,
                 ];
             }
@@ -866,22 +866,12 @@ class PunchController extends Controller
         $activeEmployeesCount = count($employeeStats);
         $averageHoursPerEmployee = $activeEmployeesCount > 0 ? round($totalHours / $activeEmployeesCount, 2) : 0;
         
-        // Contar días únicos con actividad (filtrar claves que terminan en '_sessions')
-        $daysWithActivityCount = 0;
-        $totalSessionsAllDays = 0;
-        foreach ($totalDaysWithActivity as $key => $value) {
-            if (substr($key, -9) === '_sessions') {
-                // Es una clave de sesiones, sumar al total
-                $totalSessionsAllDays += $value;
-            } else {
-                // Es una clave de día, contar
-                $daysWithActivityCount++;
-            }
-        }
+        // Contar días únicos con actividad
+        $daysWithActivityCount = count($totalDaysWithActivity);
         $averageDaysPerEmployee = $activeEmployeesCount > 0 ? round($daysWithActivityCount / $activeEmployeesCount, 2) : 0;
         
-        // Calcular promedio de sesiones por día
-        $averageSessionsPerDay = $daysWithActivityCount > 0 ? round($totalSessionsAllDays / $daysWithActivityCount, 2) : 0;
+        // Calcular promedio de horas por día (en lugar de sesiones)
+        $averageHoursPerDay = $daysWithActivityCount > 0 ? round($totalHours / $daysWithActivityCount, 2) : 0;
         
         // Variación respecto al período anterior
         $hoursVariation = 0;
@@ -908,27 +898,62 @@ class PunchController extends Controller
             usort($employeeStats, function ($a, $b) {
                 return $b['total_hours'] <=> $a['total_hours'];
             });
-            $topEmployees = array_slice($employeeStats, 0, 3); // Top 3
-            $bottomEmployees = array_slice(array_reverse($employeeStats), 0, 3); // Bottom 3
+            
+            $totalEmployees = count($employeeStats);
+            
+            if ($totalEmployees < 6) {
+                // Si hay menos de 6, dividir equitativamente
+                $topCount = (int) ceil($totalEmployees / 2);
+                $bottomCount = $totalEmployees - $topCount;
+                
+                $topEmployees = array_slice($employeeStats, 0, $topCount);
+                $bottomEmployees = array_slice($employeeStats, -$bottomCount);
+                // Invertir el orden del bottom para que el de menos horas aparezca primero
+                $bottomEmployees = array_reverse($bottomEmployees);
+            } else {
+                // Si hay 6 o más, top 3 y bottom 3 sin solapamiento
+                $topEmployees = array_slice($employeeStats, 0, 3);
+                
+                // Obtener IDs de los top employees para evitar duplicados
+                $topEmployeeIds = array_column($topEmployees, 'employee_id');
+                
+                // Filtrar bottom employees excluyendo los que ya están en top
+                $bottomCandidates = array_reverse($employeeStats);
+                $bottomEmployees = [];
+                foreach ($bottomCandidates as $employee) {
+                    if (!in_array($employee['employee_id'], $topEmployeeIds)) {
+                        $bottomEmployees[] = $employee;
+                        if (count($bottomEmployees) >= 3) {
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
-        // Días más y menos activos
+        // Días más y menos activos (basados en horas trabajadas)
         $mostActiveDays = [];
         $leastActiveDays = [];
         if (!empty($dayActivityDetails)) {
             $daysArray = array_values($dayActivityDetails);
+            // Calcular total de horas y número de empleados para cada día
+            foreach ($daysArray as &$day) {
+                $day['employees_count'] = count($day['employees']);
+            }
+            unset($day);
+            
             usort($daysArray, function ($a, $b) {
-                return $b['sessions'] <=> $a['sessions'];
+                return $b['total_hours'] <=> $a['total_hours'];
             });
             $mostActiveDays = array_slice($daysArray, 0, 3); // Top 3
             $leastActiveDays = array_slice(array_reverse($daysArray), 0, 3); // Bottom 3
         }
 
-        // Trabajadores más activos (por sesiones)
+        // Trabajadores más activos (por horas trabajadas)
         $mostActiveEmployees = [];
         if (!empty($employeeActivityDetails)) {
             usort($employeeActivityDetails, function ($a, $b) {
-                return $b['sessions'] <=> $a['sessions'];
+                return $b['total_hours'] <=> $a['total_hours'];
             });
             $mostActiveEmployees = array_slice($employeeActivityDetails, 0, 3); // Top 3
         }
@@ -980,7 +1005,7 @@ class PunchController extends Controller
                 'activity' => [
                     'days_with_activity' => $daysWithActivityCount,
                     'average_days_per_employee' => $averageDaysPerEmployee,
-                    'average_sessions_per_day' => $averageSessionsPerDay,
+                    'average_hours_per_day' => $averageHoursPerDay,
                     'breakdown' => [
                         'most_active_days' => $mostActiveDays,
                         'least_active_days' => $leastActiveDays,
