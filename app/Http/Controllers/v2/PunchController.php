@@ -105,12 +105,20 @@ class PunchController extends Controller
 
     /**
      * Registrar un nuevo evento de fichaje.
+     * Detecta automáticamente si es un fichaje manual (con timestamp y event_type) o NFC.
      *
      * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
     {
+        // Detectar si es un fichaje manual (tiene timestamp y event_type)
+        if ($request->has('timestamp') && $request->has('event_type')) {
+            // Es un fichaje manual, redirigir al método correspondiente
+            return $this->storeManual($request);
+        }
+
+        // Es un fichaje NFC (dispositivo físico)
         $validated = $request->validate([
             'uid' => 'nullable|string|required_without:employee_id',
             'employee_id' => 'nullable|integer|exists:tenant.employees,id|required_without:uid',
@@ -686,7 +694,6 @@ class PunchController extends Controller
         $incidentsDetails = [];
         $anomalousDaysDetails = [];
         $dayActivityDetails = []; // Para desglose de actividad por día
-        $employeeActivityDetails = []; // Para desglose de actividad por empleado
 
         foreach ($allEmployees as $employee) {
             $employeeEvents = $periodEvents->get($employee->id, collect())->sortBy('timestamp')->values();
@@ -801,14 +808,6 @@ class PunchController extends Controller
                     'total_minutes' => $employeeTotalMinutes,
                     'days_with_activity' => $employeeDaysWithActivity,
                     'sessions' => $employeeClosedSessions, // Solo sesiones cerradas
-                ];
-
-                // Registrar actividad por empleado (basada en horas trabajadas)
-                $employeeActivityDetails[] = [
-                    'employee_id' => $employee->id,
-                    'employee_name' => $employee->name,
-                    'total_hours' => $employeeHoursValue,
-                    'days' => $employeeDaysWithActivity,
                 ];
             }
         }
@@ -956,15 +955,6 @@ class PunchController extends Controller
             $leastActiveDays = array_slice(array_reverse($daysArray), 0, 3); // Bottom 3
         }
 
-        // Trabajadores más activos (por horas trabajadas)
-        $mostActiveEmployees = [];
-        if (!empty($employeeActivityDetails)) {
-            usort($employeeActivityDetails, function ($a, $b) {
-                return $b['total_hours'] <=> $a['total_hours'];
-            });
-            $mostActiveEmployees = array_slice($employeeActivityDetails, 0, 3); // Top 3
-        }
-
         return response()->json([
             'message' => 'Estadísticas obtenidas correctamente.',
             'data' => [
@@ -1016,7 +1006,6 @@ class PunchController extends Controller
                     'breakdown' => [
                         'most_active_days' => $mostActiveDays,
                         'least_active_days' => $leastActiveDays,
-                        'most_active_employees' => $mostActiveEmployees,
                     ],
                 ],
                 'incidents' => [
@@ -1162,6 +1151,670 @@ class PunchController extends Controller
         return response()->json([
             'message' => 'Eventos de fichaje eliminados correctamente.',
         ]);
+    }
+
+    /**
+     * Crear un fichaje manual individual.
+     * 
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function storeManual(Request $request)
+    {
+        // Los fichajes manuales requieren autenticación
+        if (!$request->user()) {
+            return response()->json([
+                'message' => 'Error al crear fichaje',
+                'userMessage' => 'Los fichajes manuales requieren autenticación.',
+                'errors' => [
+                    'auth' => ['Se requiere autenticación para crear fichajes manuales.'],
+                ],
+            ], 401);
+        }
+
+        $validated = $request->validate([
+            'employee_id' => 'required|integer|exists:tenant.employees,id',
+            'event_type' => 'required|in:IN,OUT',
+            'timestamp' => 'required|date',
+            'device_id' => 'nullable|string',
+        ], [
+            'employee_id.required' => 'El ID del empleado es obligatorio.',
+            'employee_id.integer' => 'El ID del empleado debe ser un número entero.',
+            'employee_id.exists' => 'El empleado especificado no existe.',
+            'event_type.required' => 'El tipo de evento es obligatorio.',
+            'event_type.in' => 'El tipo de evento debe ser IN o OUT.',
+            'timestamp.required' => 'El timestamp es obligatorio.',
+            'timestamp.date' => 'El timestamp debe ser una fecha válida en formato ISO 8601.',
+        ]);
+
+        // Usar device_id proporcionado o "manual-admin" por defecto
+        $deviceId = $validated['device_id'] ?? 'manual-admin';
+
+        // Parsear timestamp
+        try {
+            $timestamp = Carbon::parse($validated['timestamp']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al crear fichaje',
+                'userMessage' => 'El formato de fecha es inválido. Use formato ISO 8601 (ejemplo: 2024-01-15T08:30:00.000Z).',
+                'errors' => [
+                    'timestamp' => ['El formato de fecha es inválido.'],
+                ],
+            ], 422);
+        }
+
+        // Validar que no sea fecha futura
+        if ($timestamp->isFuture()) {
+            return response()->json([
+                'message' => 'Error al crear fichaje',
+                'userMessage' => 'No se pueden registrar fichajes con fechas futuras.',
+                'errors' => [
+                    'timestamp' => ['No se permiten fechas futuras.'],
+                ],
+            ], 422);
+        }
+
+        // Obtener empleado
+        $employee = Employee::find($validated['employee_id']);
+        if (!$employee) {
+            return response()->json([
+                'message' => 'Error al crear fichaje',
+                'userMessage' => 'El empleado especificado no existe.',
+                'errors' => [
+                    'employee_id' => ['El empleado especificado no existe.'],
+                ],
+            ], 422);
+        }
+
+        // Validar integridad de secuencia
+        $validationResult = $this->validatePunchSequence($employee, $validated['event_type'], $timestamp);
+        if (!$validationResult['valid']) {
+            return response()->json([
+                'message' => 'Error al crear fichaje',
+                'userMessage' => $validationResult['userMessage'],
+                'errors' => $validationResult['errors'],
+            ], 422);
+        }
+
+        // Verificar duplicados
+        $duplicate = PunchEvent::where('employee_id', $employee->id)
+            ->where('event_type', $validated['event_type'])
+            ->where('timestamp', $timestamp->format('Y-m-d H:i:s'))
+            ->first();
+
+        if ($duplicate) {
+            return response()->json([
+                'message' => 'Error al crear fichaje',
+                'userMessage' => 'Ya existe un fichaje con los mismos datos (empleado, tipo y fecha/hora).',
+                'errors' => [
+                    'timestamp' => ['Ya existe un fichaje duplicado.'],
+                ],
+            ], 422);
+        }
+
+        // Crear el fichaje en transacción
+        try {
+            DB::beginTransaction();
+
+            $punchEvent = PunchEvent::create([
+                'employee_id' => $employee->id,
+                'event_type' => $validated['event_type'],
+                'device_id' => $deviceId,
+                'timestamp' => $timestamp,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'data' => [
+                    'id' => $punchEvent->id,
+                    'employee_id' => $punchEvent->employee_id,
+                    'event_type' => $punchEvent->event_type,
+                    'timestamp' => $punchEvent->timestamp->toIso8601String(),
+                    'device_id' => $punchEvent->device_id,
+                    'created_at' => $punchEvent->created_at->toIso8601String(),
+                    'updated_at' => $punchEvent->updated_at->toIso8601String(),
+                ],
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'message' => 'Error al crear fichaje',
+                'userMessage' => 'Ocurrió un error inesperado al registrar el fichaje.',
+                'errors' => [],
+            ], 500);
+        }
+    }
+
+    /**
+     * Validar múltiples fichajes antes de crearlos.
+     * 
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function bulkValidate(Request $request)
+    {
+        // Los fichajes manuales requieren autenticación
+        if (!$request->user()) {
+            return response()->json([
+                'message' => 'Error al validar fichajes',
+                'userMessage' => 'La validación de fichajes manuales requiere autenticación.',
+                'errors' => [
+                    'auth' => ['Se requiere autenticación para validar fichajes manuales.'],
+                ],
+            ], 401);
+        }
+
+        $validated = $request->validate([
+            'punches' => 'required|array|min:1',
+            'punches.*.employee_id' => 'required|integer|exists:tenant.employees,id',
+            'punches.*.event_type' => 'required|in:IN,OUT',
+            'punches.*.timestamp' => 'required|date',
+            'punches.*.device_id' => 'nullable|string',
+        ], [
+            'punches.required' => 'Debe proporcionar un array de fichajes.',
+            'punches.array' => 'Los fichajes deben ser un array.',
+            'punches.min' => 'Debe proporcionar al menos un fichaje.',
+            'punches.*.employee_id.required' => 'El ID del empleado es obligatorio.',
+            'punches.*.employee_id.integer' => 'El ID del empleado debe ser un número entero.',
+            'punches.*.employee_id.exists' => 'El empleado especificado no existe.',
+            'punches.*.event_type.required' => 'El tipo de evento es obligatorio.',
+            'punches.*.event_type.in' => 'El tipo de evento debe ser IN o OUT.',
+            'punches.*.timestamp.required' => 'El timestamp es obligatorio.',
+            'punches.*.timestamp.date' => 'El timestamp debe ser una fecha válida.',
+        ]);
+
+        $validationResults = [];
+        $validCount = 0;
+        $invalidCount = 0;
+
+        // Obtener todos los empleados únicos para optimizar consultas
+        $employeeIds = collect($validated['punches'])->pluck('employee_id')->unique();
+        $employees = Employee::whereIn('id', $employeeIds)->get()->keyBy('id');
+
+        // Obtener últimos fichajes de cada empleado
+        $lastPunches = [];
+        foreach ($employeeIds as $empId) {
+            $lastPunch = PunchEvent::where('employee_id', $empId)
+                ->orderBy('timestamp', 'desc')
+                ->first();
+            $lastPunches[$empId] = $lastPunch;
+        }
+
+        // Validar cada fichaje
+        foreach ($validated['punches'] as $index => $punch) {
+            $errors = [];
+            
+            // Parsear timestamp
+            try {
+                $timestamp = Carbon::parse($punch['timestamp']);
+            } catch (\Exception $e) {
+                $errors[] = 'El formato de fecha es inválido. Use formato ISO 8601.';
+                $validationResults[] = [
+                    'index' => $index,
+                    'valid' => false,
+                    'errors' => $errors,
+                ];
+                $invalidCount++;
+                continue;
+            }
+
+            // Validar que no sea fecha futura
+            if ($timestamp->isFuture()) {
+                $errors[] = 'No se permiten fechas futuras.';
+            }
+
+            // Verificar que el empleado existe
+            $employee = $employees->get($punch['employee_id']);
+            if (!$employee) {
+                $errors[] = 'El empleado especificado no existe.';
+                $validationResults[] = [
+                    'index' => $index,
+                    'valid' => false,
+                    'errors' => $errors,
+                ];
+                $invalidCount++;
+                continue;
+            }
+
+            // Validar secuencia lógica con último fichaje existente
+            $lastPunch = $lastPunches[$punch['employee_id']];
+            if ($lastPunch) {
+                if ($lastPunch->event_type === $punch['event_type']) {
+                    if ($punch['event_type'] === PunchEvent::TYPE_IN) {
+                        $errors[] = 'No se puede registrar una entrada sin una salida previa.';
+                        $errors[] = 'El último fichaje del empleado es una entrada.';
+                    } else {
+                        $errors[] = 'No se puede registrar una salida sin una entrada previa.';
+                        $errors[] = 'El último fichaje del empleado es una salida.';
+                    }
+                }
+            } else {
+                // No hay fichajes previos, el primer fichaje puede ser IN o OUT
+                // (según política, pero no validamos esto como error)
+            }
+
+            // Verificar duplicados con fichajes existentes
+            $duplicate = PunchEvent::where('employee_id', $punch['employee_id'])
+                ->where('event_type', $punch['event_type'])
+                ->where('timestamp', $timestamp->format('Y-m-d H:i:s'))
+                ->exists();
+
+            if ($duplicate) {
+                $errors[] = 'Ya existe un fichaje con los mismos datos (empleado, tipo y fecha/hora).';
+            }
+
+            // Validar coherencia temporal: OUT debe ser posterior al IN correspondiente
+            if ($punch['event_type'] === PunchEvent::TYPE_OUT && $lastPunch && $lastPunch->event_type === PunchEvent::TYPE_IN) {
+                if ($timestamp->lte($lastPunch->timestamp)) {
+                    $errors[] = 'La salida debe ser posterior a la entrada correspondiente.';
+                }
+            }
+
+            // Validar contra otros fichajes del mismo lote (orden cronológico)
+            // Esto se hace después de validar contra BD
+            foreach ($validationResults as $prevResult) {
+                if ($prevResult['index'] < $index) {
+                    $prevPunch = $validated['punches'][$prevResult['index']];
+                    if ($prevPunch['employee_id'] === $punch['employee_id']) {
+                        // Mismo empleado, verificar orden
+                        try {
+                            $prevTimestamp = Carbon::parse($prevPunch['timestamp']);
+                            if ($punch['event_type'] === PunchEvent::TYPE_OUT && $prevPunch['event_type'] === PunchEvent::TYPE_IN) {
+                                if ($timestamp->lte($prevTimestamp)) {
+                                    $errors[] = 'La salida debe ser posterior a la entrada en el mismo lote.';
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            // Ignorar si no se puede parsear (ya tiene error)
+                        }
+                    }
+                }
+            }
+
+            $isValid = empty($errors);
+            if ($isValid) {
+                $validCount++;
+            } else {
+                $invalidCount++;
+            }
+
+            $validationResults[] = [
+                'index' => $index,
+                'valid' => $isValid,
+                'errors' => $errors,
+            ];
+        }
+
+        return response()->json([
+            'data' => [
+                'valid' => $validCount,
+                'invalid' => $invalidCount,
+                'validation_results' => $validationResults,
+            ],
+        ]);
+    }
+
+    /**
+     * Crear múltiples fichajes de forma masiva.
+     * 
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function bulkStore(Request $request)
+    {
+        // Los fichajes manuales requieren autenticación
+        if (!$request->user()) {
+            return response()->json([
+                'message' => 'Error al crear fichajes masivos',
+                'userMessage' => 'La creación de fichajes manuales requiere autenticación.',
+                'errors' => [
+                    'auth' => ['Se requiere autenticación para crear fichajes manuales.'],
+                ],
+            ], 401);
+        }
+
+        $validated = $request->validate([
+            'punches' => 'required|array|min:1',
+            'punches.*.employee_id' => 'required|integer|exists:tenant.employees,id',
+            'punches.*.event_type' => 'required|in:IN,OUT',
+            'punches.*.timestamp' => 'required|date',
+            'punches.*.device_id' => 'nullable|string',
+        ], [
+            'punches.required' => 'Debe proporcionar un array de fichajes.',
+            'punches.array' => 'Los fichajes deben ser un array.',
+            'punches.min' => 'Debe proporcionar al menos un fichaje.',
+            'punches.*.employee_id.required' => 'El ID del empleado es obligatorio.',
+            'punches.*.employee_id.integer' => 'El ID del empleado debe ser un número entero.',
+            'punches.*.employee_id.exists' => 'El empleado especificado no existe.',
+            'punches.*.event_type.required' => 'El tipo de evento es obligatorio.',
+            'punches.*.event_type.in' => 'El tipo de evento debe ser IN o OUT.',
+            'punches.*.timestamp.required' => 'El timestamp es obligatorio.',
+            'punches.*.timestamp.date' => 'El timestamp debe ser una fecha válida.',
+        ]);
+
+        // Primero validar todos los fichajes
+        $validationResults = [];
+        $validPunches = [];
+        $invalidPunches = [];
+
+        // Obtener todos los empleados únicos para optimizar consultas
+        $employeeIds = collect($validated['punches'])->pluck('employee_id')->unique();
+        $employees = Employee::whereIn('id', $employeeIds)->get()->keyBy('id');
+
+        // Obtener últimos fichajes de cada empleado antes de procesar
+        $lastPunches = [];
+        foreach ($employeeIds as $empId) {
+            $lastPunch = PunchEvent::where('employee_id', $empId)
+                ->orderBy('timestamp', 'desc')
+                ->first();
+            $lastPunches[$empId] = $lastPunch;
+        }
+
+        // Validar cada fichaje
+        foreach ($validated['punches'] as $index => $punch) {
+            $errors = [];
+            
+            // Parsear timestamp
+            try {
+                $timestamp = Carbon::parse($punch['timestamp']);
+            } catch (\Exception $e) {
+                $errors[] = 'El formato de fecha es inválido. Use formato ISO 8601.';
+                $invalidPunches[] = [
+                    'index' => $index,
+                    'punch' => $punch,
+                    'errors' => $errors,
+                ];
+                continue;
+            }
+
+            // Validar que no sea fecha futura
+            if ($timestamp->isFuture()) {
+                $errors[] = 'No se permiten fechas futuras.';
+            }
+
+            // Verificar que el empleado existe
+            $employee = $employees->get($punch['employee_id']);
+            if (!$employee) {
+                $errors[] = 'El empleado especificado no existe.';
+                $invalidPunches[] = [
+                    'index' => $index,
+                    'punch' => $punch,
+                    'errors' => $errors,
+                ];
+                continue;
+            }
+
+            // Validar secuencia lógica con último fichaje existente
+            $lastPunch = $lastPunches[$punch['employee_id']];
+            if ($lastPunch) {
+                if ($lastPunch->event_type === $punch['event_type']) {
+                    if ($punch['event_type'] === PunchEvent::TYPE_IN) {
+                        $errors[] = 'No se puede registrar una entrada sin una salida previa.';
+                    } else {
+                        $errors[] = 'No se puede registrar una salida sin una entrada previa.';
+                    }
+                }
+            }
+
+            // Verificar duplicados con fichajes existentes
+            $duplicate = PunchEvent::where('employee_id', $punch['employee_id'])
+                ->where('event_type', $punch['event_type'])
+                ->where('timestamp', $timestamp->format('Y-m-d H:i:s'))
+                ->exists();
+
+            if ($duplicate) {
+                $errors[] = 'Ya existe un fichaje con los mismos datos (empleado, tipo y fecha/hora).';
+            }
+
+            // Validar coherencia temporal: OUT debe ser posterior al IN correspondiente
+            if ($punch['event_type'] === PunchEvent::TYPE_OUT && $lastPunch && $lastPunch->event_type === PunchEvent::TYPE_IN) {
+                if ($timestamp->lte($lastPunch->timestamp)) {
+                    $errors[] = 'La salida debe ser posterior a la entrada correspondiente.';
+                }
+            }
+
+            // Validar contra otros fichajes del mismo lote
+            foreach ($validPunches as $prevValid) {
+                $prevPunch = $prevValid['punch'];
+                if ($prevPunch['employee_id'] === $punch['employee_id']) {
+                    try {
+                        $prevTimestamp = Carbon::parse($prevPunch['timestamp']);
+                        if ($punch['event_type'] === PunchEvent::TYPE_OUT && $prevPunch['event_type'] === PunchEvent::TYPE_IN) {
+                            if ($timestamp->lte($prevTimestamp)) {
+                                $errors[] = 'La salida debe ser posterior a la entrada en el mismo lote.';
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        // Ignorar
+                    }
+                }
+            }
+
+            if (empty($errors)) {
+                $validPunches[] = [
+                    'index' => $index,
+                    'punch' => $punch,
+                    'timestamp' => $timestamp,
+                ];
+            } else {
+                $invalidPunches[] = [
+                    'index' => $index,
+                    'punch' => $punch,
+                    'errors' => $errors,
+                ];
+            }
+        }
+
+        // Si todos tienen errores, retornar error
+        if (empty($validPunches)) {
+            return response()->json([
+                'message' => 'Error al crear fichajes masivos',
+                'userMessage' => 'Todos los fichajes tienen errores de validación.',
+                'errors' => array_map(function ($invalid) {
+                    return [
+                        'index' => $invalid['index'],
+                        'message' => implode(' ', $invalid['errors']),
+                    ];
+                }, $invalidPunches),
+            ], 422);
+        }
+
+        // Crear fichajes válidos en transacción
+        $results = [];
+        $created = 0;
+        $failed = 0;
+        $errors = [];
+
+        try {
+            DB::beginTransaction();
+
+            // Ordenar por timestamp para mantener coherencia
+            usort($validPunches, function ($a, $b) {
+                return $a['timestamp']->lte($b['timestamp']) ? -1 : 1;
+            });
+
+            foreach ($validPunches as $validPunch) {
+                $punch = $validPunch['punch'];
+                $timestamp = $validPunch['timestamp'];
+                $deviceId = $punch['device_id'] ?? 'manual-admin';
+
+                try {
+                    // Verificar duplicados nuevamente (por si otro proceso creó fichajes)
+                    $duplicate = PunchEvent::where('employee_id', $punch['employee_id'])
+                        ->where('event_type', $punch['event_type'])
+                        ->where('timestamp', $timestamp->format('Y-m-d H:i:s'))
+                        ->exists();
+
+                    if ($duplicate) {
+                        throw new \Exception('Ya existe un fichaje con los mismos datos.');
+                    }
+
+                    // Validar secuencia nuevamente (por si otro proceso creó fichajes)
+                    $lastPunch = PunchEvent::where('employee_id', $punch['employee_id'])
+                        ->orderBy('timestamp', 'desc')
+                        ->first();
+
+                    if ($lastPunch && $lastPunch->event_type === $punch['event_type']) {
+                        throw new \Exception('No se puede registrar fichajes consecutivos del mismo tipo.');
+                    }
+
+                    $punchEvent = PunchEvent::create([
+                        'employee_id' => $punch['employee_id'],
+                        'event_type' => $punch['event_type'],
+                        'device_id' => $deviceId,
+                        'timestamp' => $timestamp,
+                    ]);
+
+                    $results[] = [
+                        'index' => $validPunch['index'],
+                        'success' => true,
+                        'punch' => [
+                            'id' => $punchEvent->id,
+                            'employee_id' => $punchEvent->employee_id,
+                            'event_type' => $punchEvent->event_type,
+                            'timestamp' => $punchEvent->timestamp->toIso8601String(),
+                            'device_id' => $punchEvent->device_id,
+                            'created_at' => $punchEvent->created_at->toIso8601String(),
+                        ],
+                    ];
+                    $created++;
+
+                } catch (\Exception $e) {
+                    $results[] = [
+                        'index' => $validPunch['index'],
+                        'success' => false,
+                        'error' => $e->getMessage(),
+                    ];
+                    $errors[] = [
+                        'index' => $validPunch['index'],
+                        'message' => $e->getMessage(),
+                    ];
+                    $failed++;
+                }
+            }
+
+            // Si hay errores pero algunos se crearon, decidir si hacer rollback
+            // Opción A: Rollback completo si hay algún error
+            if ($failed > 0) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'Error al crear fichajes masivos',
+                    'userMessage' => 'Algunos fichajes no pudieron crearse. Ningún fichaje fue registrado.',
+                    'data' => [
+                        'created' => 0,
+                        'failed' => $failed + count($invalidPunches),
+                        'results' => $results,
+                        'errors' => array_merge(
+                            $errors,
+                            array_map(function ($invalid) {
+                                return [
+                                    'index' => $invalid['index'],
+                                    'message' => implode(' ', $invalid['errors']),
+                                ];
+                            }, $invalidPunches)
+                        ),
+                    ],
+                ], 200);
+            }
+
+            DB::commit();
+
+            // Agregar resultados de fichajes inválidos
+            foreach ($invalidPunches as $invalid) {
+                $results[] = [
+                    'index' => $invalid['index'],
+                    'success' => false,
+                    'error' => implode(' ', $invalid['errors']),
+                ];
+            }
+
+            // Ordenar resultados por índice original
+            usort($results, function ($a, $b) {
+                return $a['index'] <=> $b['index'];
+            });
+
+            return response()->json([
+                'data' => [
+                    'created' => $created,
+                    'failed' => $failed + count($invalidPunches),
+                    'results' => $results,
+                    'errors' => array_map(function ($invalid) {
+                        return [
+                            'index' => $invalid['index'],
+                            'message' => implode(' ', $invalid['errors']),
+                        ];
+                    }, $invalidPunches),
+                ],
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'message' => 'Error al crear fichajes masivos',
+                'userMessage' => 'Ocurrió un error inesperado al registrar los fichajes.',
+                'errors' => [],
+            ], 500);
+        }
+    }
+
+    /**
+     * Validar la secuencia lógica de un fichaje.
+     * 
+     * @param \App\Models\Employee $employee
+     * @param string $eventType
+     * @param \Carbon\Carbon $timestamp
+     * @return array
+     */
+    private function validatePunchSequence(Employee $employee, string $eventType, Carbon $timestamp): array
+    {
+        $lastPunch = PunchEvent::where('employee_id', $employee->id)
+            ->orderBy('timestamp', 'desc')
+            ->first();
+
+        if (!$lastPunch) {
+            // No hay fichajes previos, el primer fichaje puede ser IN o OUT
+            return ['valid' => true, 'userMessage' => '', 'errors' => []];
+        }
+
+        // Validar que no sean dos fichajes consecutivos del mismo tipo
+        if ($lastPunch->event_type === $eventType) {
+            if ($eventType === PunchEvent::TYPE_IN) {
+                return [
+                    'valid' => false,
+                    'userMessage' => 'No se puede registrar una entrada sin una salida previa',
+                    'errors' => [
+                        'event_type' => ['El último fichaje del empleado es una entrada, no se puede registrar otra entrada'],
+                    ],
+                ];
+            } else {
+                return [
+                    'valid' => false,
+                    'userMessage' => 'No se puede registrar una salida sin una entrada previa',
+                    'errors' => [
+                        'event_type' => ['El último fichaje del empleado es una salida, no se puede registrar otra salida'],
+                    ],
+                ];
+            }
+        }
+
+        // Validar coherencia temporal: OUT debe ser posterior al IN
+        if ($eventType === PunchEvent::TYPE_OUT && $lastPunch->event_type === PunchEvent::TYPE_IN) {
+            if ($timestamp->lte($lastPunch->timestamp)) {
+                return [
+                    'valid' => false,
+                    'userMessage' => 'La salida debe ser posterior a la entrada correspondiente',
+                    'errors' => [
+                        'timestamp' => ['La salida debe ser posterior a la entrada'],
+                    ],
+                ];
+            }
+        }
+
+        return ['valid' => true, 'userMessage' => '', 'errors' => []];
     }
 }
 
