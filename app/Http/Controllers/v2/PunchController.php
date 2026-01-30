@@ -1400,15 +1400,6 @@ class PunchController extends Controller
         $employeeIds = collect($validated['punches'])->pluck('employee_id')->unique();
         $employees = Employee::whereIn('id', $employeeIds)->get()->keyBy('id');
 
-        // Obtener últimos fichajes de cada empleado
-        $lastPunches = [];
-        foreach ($employeeIds as $empId) {
-            $lastPunch = PunchEvent::where('employee_id', $empId)
-                ->orderBy('timestamp', 'desc')
-                ->first();
-            $lastPunches[$empId] = $lastPunch;
-        }
-
         // Validar cada fichaje
         foreach ($validated['punches'] as $index => $punch) {
             $errors = [];
@@ -1445,10 +1436,57 @@ class PunchController extends Controller
                 continue;
             }
 
-            // Validar secuencia lógica con último fichaje existente
-            $lastPunch = $lastPunches[$punch['employee_id']];
-            if ($lastPunch) {
-                if ($lastPunch->event_type === $punch['event_type']) {
+            // Obtener el último fichaje existente en BD que sea ANTERIOR al timestamp actual
+            $lastPunchInDb = PunchEvent::where('employee_id', $punch['employee_id'])
+                ->where('timestamp', '<', $timestamp)
+                ->orderBy('timestamp', 'desc')
+                ->first();
+
+            // Buscar el último fichaje del mismo lote (ya validados) que sea anterior
+            $lastPunchInBatch = null;
+            $lastPunchInBatchTimestamp = null;
+            foreach ($validationResults as $prevResult) {
+                if ($prevResult['index'] < $index) {
+                    $prevPunch = $validated['punches'][$prevResult['index']];
+                    if ($prevPunch['employee_id'] === $punch['employee_id']) {
+                        try {
+                            $prevTimestamp = Carbon::parse($prevPunch['timestamp']);
+                            if ($prevTimestamp->lt($timestamp)) {
+                                if (!$lastPunchInBatchTimestamp || $prevTimestamp->gt($lastPunchInBatchTimestamp)) {
+                                    $lastPunchInBatch = $prevPunch;
+                                    $lastPunchInBatchTimestamp = $prevTimestamp;
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            // Ignorar si no se puede parsear
+                        }
+                    }
+                }
+            }
+
+            // Determinar el último fichaje relevante (el más reciente entre BD y lote)
+            $relevantLastPunch = null;
+            $relevantLastTimestamp = null;
+            
+            if ($lastPunchInDb) {
+                $relevantLastPunch = $lastPunchInDb;
+                $relevantLastTimestamp = $lastPunchInDb->timestamp;
+            }
+            
+            if ($lastPunchInBatch && $lastPunchInBatchTimestamp) {
+                if (!$relevantLastTimestamp || $lastPunchInBatchTimestamp->gt($relevantLastTimestamp)) {
+                    // El fichaje del lote es más reciente, usar ese
+                    $relevantLastPunch = (object)[
+                        'event_type' => $lastPunchInBatch['event_type'],
+                        'timestamp' => $lastPunchInBatchTimestamp,
+                    ];
+                    $relevantLastTimestamp = $lastPunchInBatchTimestamp;
+                }
+            }
+
+            // Validar secuencia lógica con el último fichaje relevante
+            if ($relevantLastPunch) {
+                if ($relevantLastPunch->event_type === $punch['event_type']) {
                     if ($punch['event_type'] === PunchEvent::TYPE_IN) {
                         $errors[] = 'No se puede registrar una entrada sin una salida previa.';
                         $errors[] = 'El último fichaje del empleado es una entrada.';
@@ -1456,10 +1494,14 @@ class PunchController extends Controller
                         $errors[] = 'No se puede registrar una salida sin una entrada previa.';
                         $errors[] = 'El último fichaje del empleado es una salida.';
                     }
+                } else {
+                    // Validar coherencia temporal: OUT debe ser posterior al IN correspondiente
+                    if ($punch['event_type'] === PunchEvent::TYPE_OUT && $relevantLastPunch->event_type === PunchEvent::TYPE_IN) {
+                        if ($timestamp->lte($relevantLastTimestamp)) {
+                            $errors[] = 'La salida debe ser posterior a la entrada correspondiente.';
+                        }
+                    }
                 }
-            } else {
-                // No hay fichajes previos, el primer fichaje puede ser IN o OUT
-                // (según política, pero no validamos esto como error)
             }
 
             // Verificar duplicados con fichajes existentes
@@ -1472,15 +1514,8 @@ class PunchController extends Controller
                 $errors[] = 'Ya existe un fichaje con los mismos datos (empleado, tipo y fecha/hora).';
             }
 
-            // Validar coherencia temporal: OUT debe ser posterior al IN correspondiente
-            if ($punch['event_type'] === PunchEvent::TYPE_OUT && $lastPunch && $lastPunch->event_type === PunchEvent::TYPE_IN) {
-                if ($timestamp->lte($lastPunch->timestamp)) {
-                    $errors[] = 'La salida debe ser posterior a la entrada correspondiente.';
-                }
-            }
-
             // Validar contra otros fichajes del mismo lote (orden cronológico)
-            // Esto se hace después de validar contra BD
+            // Verificar que no haya fichajes del mismo tipo sin el opuesto intermedio
             foreach ($validationResults as $prevResult) {
                 if ($prevResult['index'] < $index) {
                     $prevPunch = $validated['punches'][$prevResult['index']];
@@ -1488,6 +1523,14 @@ class PunchController extends Controller
                         // Mismo empleado, verificar orden
                         try {
                             $prevTimestamp = Carbon::parse($prevPunch['timestamp']);
+                            // Si el fichaje previo es del mismo tipo y es más reciente que el último relevante
+                            if ($prevPunch['event_type'] === $punch['event_type'] && 
+                                $prevTimestamp->gt($timestamp)) {
+                                // Hay un fichaje del mismo tipo más adelante en el tiempo
+                                // Esto es un error de orden
+                                $errors[] = 'Hay un fichaje del mismo tipo con fecha posterior en el mismo lote.';
+                            }
+                            // Validar que OUT sea posterior a IN en el mismo lote
                             if ($punch['event_type'] === PunchEvent::TYPE_OUT && $prevPunch['event_type'] === PunchEvent::TYPE_IN) {
                                 if ($timestamp->lte($prevTimestamp)) {
                                     $errors[] = 'La salida debe ser posterior a la entrada en el mismo lote.';
@@ -1570,15 +1613,6 @@ class PunchController extends Controller
         $employeeIds = collect($validated['punches'])->pluck('employee_id')->unique();
         $employees = Employee::whereIn('id', $employeeIds)->get()->keyBy('id');
 
-        // Obtener últimos fichajes de cada empleado antes de procesar
-        $lastPunches = [];
-        foreach ($employeeIds as $empId) {
-            $lastPunch = PunchEvent::where('employee_id', $empId)
-                ->orderBy('timestamp', 'desc')
-                ->first();
-            $lastPunches[$empId] = $lastPunch;
-        }
-
         // Validar cada fichaje
         foreach ($validated['punches'] as $index => $punch) {
             $errors = [];
@@ -1613,14 +1647,66 @@ class PunchController extends Controller
                 continue;
             }
 
-            // Validar secuencia lógica con último fichaje existente
-            $lastPunch = $lastPunches[$punch['employee_id']];
-            if ($lastPunch) {
-                if ($lastPunch->event_type === $punch['event_type']) {
+            // Obtener el último fichaje existente en BD que sea ANTERIOR al timestamp actual
+            $lastPunchInDb = PunchEvent::where('employee_id', $punch['employee_id'])
+                ->where('timestamp', '<', $timestamp)
+                ->orderBy('timestamp', 'desc')
+                ->first();
+
+            // Buscar el último fichaje del mismo lote (ya validados) que sea anterior
+            $lastPunchInBatch = null;
+            $lastPunchInBatchTimestamp = null;
+            foreach ($validPunches as $prevValid) {
+                $prevPunch = $prevValid['punch'];
+                if ($prevPunch['employee_id'] === $punch['employee_id']) {
+                    try {
+                        $prevTimestamp = Carbon::parse($prevPunch['timestamp']);
+                        if ($prevTimestamp->lt($timestamp)) {
+                            if (!$lastPunchInBatchTimestamp || $prevTimestamp->gt($lastPunchInBatchTimestamp)) {
+                                $lastPunchInBatch = $prevPunch;
+                                $lastPunchInBatchTimestamp = $prevTimestamp;
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        // Ignorar si no se puede parsear
+                    }
+                }
+            }
+
+            // Determinar el último fichaje relevante (el más reciente entre BD y lote)
+            $relevantLastPunch = null;
+            $relevantLastTimestamp = null;
+            
+            if ($lastPunchInDb) {
+                $relevantLastPunch = $lastPunchInDb;
+                $relevantLastTimestamp = $lastPunchInDb->timestamp;
+            }
+            
+            if ($lastPunchInBatch && $lastPunchInBatchTimestamp) {
+                if (!$relevantLastTimestamp || $lastPunchInBatchTimestamp->gt($relevantLastTimestamp)) {
+                    // El fichaje del lote es más reciente, usar ese
+                    $relevantLastPunch = (object)[
+                        'event_type' => $lastPunchInBatch['event_type'],
+                        'timestamp' => $lastPunchInBatchTimestamp,
+                    ];
+                    $relevantLastTimestamp = $lastPunchInBatchTimestamp;
+                }
+            }
+
+            // Validar secuencia lógica con el último fichaje relevante
+            if ($relevantLastPunch) {
+                if ($relevantLastPunch->event_type === $punch['event_type']) {
                     if ($punch['event_type'] === PunchEvent::TYPE_IN) {
                         $errors[] = 'No se puede registrar una entrada sin una salida previa.';
                     } else {
                         $errors[] = 'No se puede registrar una salida sin una entrada previa.';
+                    }
+                } else {
+                    // Validar coherencia temporal: OUT debe ser posterior al IN correspondiente
+                    if ($punch['event_type'] === PunchEvent::TYPE_OUT && $relevantLastPunch->event_type === PunchEvent::TYPE_IN) {
+                        if ($timestamp->lte($relevantLastTimestamp)) {
+                            $errors[] = 'La salida debe ser posterior a la entrada correspondiente.';
+                        }
                     }
                 }
             }
@@ -1635,19 +1721,19 @@ class PunchController extends Controller
                 $errors[] = 'Ya existe un fichaje con los mismos datos (empleado, tipo y fecha/hora).';
             }
 
-            // Validar coherencia temporal: OUT debe ser posterior al IN correspondiente
-            if ($punch['event_type'] === PunchEvent::TYPE_OUT && $lastPunch && $lastPunch->event_type === PunchEvent::TYPE_IN) {
-                if ($timestamp->lte($lastPunch->timestamp)) {
-                    $errors[] = 'La salida debe ser posterior a la entrada correspondiente.';
-                }
-            }
-
             // Validar contra otros fichajes del mismo lote
             foreach ($validPunches as $prevValid) {
                 $prevPunch = $prevValid['punch'];
                 if ($prevPunch['employee_id'] === $punch['employee_id']) {
                     try {
                         $prevTimestamp = Carbon::parse($prevPunch['timestamp']);
+                        // Si el fichaje previo es del mismo tipo y es más reciente que el último relevante
+                        if ($prevPunch['event_type'] === $punch['event_type'] && 
+                            $prevTimestamp->gt($timestamp)) {
+                            // Hay un fichaje del mismo tipo más adelante en el tiempo
+                            $errors[] = 'Hay un fichaje del mismo tipo con fecha posterior en el mismo lote.';
+                        }
+                        // Validar que OUT sea posterior a IN en el mismo lote
                         if ($punch['event_type'] === PunchEvent::TYPE_OUT && $prevPunch['event_type'] === PunchEvent::TYPE_IN) {
                             if ($timestamp->lte($prevTimestamp)) {
                                 $errors[] = 'La salida debe ser posterior a la entrada en el mismo lote.';
@@ -1719,11 +1805,49 @@ class PunchController extends Controller
                     }
 
                     // Validar secuencia nuevamente (por si otro proceso creó fichajes)
-                    $lastPunch = PunchEvent::where('employee_id', $punch['employee_id'])
+                    // Obtener el último fichaje existente que sea ANTERIOR al timestamp actual
+                    $lastPunchInDb = PunchEvent::where('employee_id', $punch['employee_id'])
+                        ->where('timestamp', '<', $timestamp)
                         ->orderBy('timestamp', 'desc')
                         ->first();
 
-                    if ($lastPunch && $lastPunch->event_type === $punch['event_type']) {
+                    // Buscar el último fichaje del mismo lote ya creado que sea anterior
+                    $lastPunchInBatch = null;
+                    $lastPunchInBatchTimestamp = null;
+                    foreach ($results as $prevResult) {
+                        if ($prevResult['success'] && isset($prevResult['punch'])) {
+                            $prevPunch = $prevResult['punch'];
+                            if ($prevPunch['employee_id'] === $punch['employee_id']) {
+                                try {
+                                    $prevTimestamp = Carbon::parse($prevPunch['timestamp']);
+                                    if ($prevTimestamp->lt($timestamp)) {
+                                        if (!$lastPunchInBatchTimestamp || $prevTimestamp->gt($lastPunchInBatchTimestamp)) {
+                                            $lastPunchInBatch = $prevPunch;
+                                            $lastPunchInBatchTimestamp = $prevTimestamp;
+                                        }
+                                    }
+                                } catch (\Exception $e) {
+                                    // Ignorar
+                                }
+                            }
+                        }
+                    }
+
+                    // Determinar el último fichaje relevante
+                    $relevantLastPunch = null;
+                    if ($lastPunchInDb) {
+                        $relevantLastPunch = $lastPunchInDb;
+                    }
+                    if ($lastPunchInBatch && $lastPunchInBatchTimestamp) {
+                        if (!$relevantLastPunch || $lastPunchInBatchTimestamp->gt($relevantLastPunch->timestamp)) {
+                            $relevantLastPunch = (object)[
+                                'event_type' => $lastPunchInBatch['event_type'],
+                                'timestamp' => $lastPunchInBatchTimestamp,
+                            ];
+                        }
+                    }
+
+                    if ($relevantLastPunch && $relevantLastPunch->event_type === $punch['event_type']) {
                         throw new \Exception('No se puede registrar fichajes consecutivos del mismo tipo.');
                     }
 
@@ -1837,12 +1961,14 @@ class PunchController extends Controller
      */
     private function validatePunchSequence(Employee $employee, string $eventType, Carbon $timestamp): array
     {
+        // Obtener el último fichaje existente que sea ANTERIOR al timestamp actual
         $lastPunch = PunchEvent::where('employee_id', $employee->id)
+            ->where('timestamp', '<', $timestamp)
             ->orderBy('timestamp', 'desc')
             ->first();
 
         if (!$lastPunch) {
-            // No hay fichajes previos, el primer fichaje puede ser IN o OUT
+            // No hay fichajes previos anteriores a este timestamp, el fichaje puede ser IN o OUT
             return ['valid' => true, 'userMessage' => '', 'errors' => []];
         }
 
