@@ -85,7 +85,7 @@ class SupplierController extends Controller
 
         return response()->json([
             'message' => 'Proveedor obtenido con éxito',
-            'data' => new V2SupplierResource($supplier),
+            'data' => new SupplierResource($supplier),
         ]);
     }
 
