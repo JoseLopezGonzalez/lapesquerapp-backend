@@ -936,9 +936,21 @@ class PunchController extends Controller
         $leastActiveDays = [];
         if (!empty($dayActivityDetails)) {
             $daysArray = array_values($dayActivityDetails);
-            // Calcular total de horas y número de empleados para cada día
+            // Calcular total de horas, número de empleados y promedio de horas por trabajador para cada día
             foreach ($daysArray as &$day) {
                 $day['employees_count'] = count($day['employees']);
+                // Calcular horas medias por trabajador
+                $day['average_hours_per_employee'] = $day['employees_count'] > 0 
+                    ? round($day['total_hours'] / $day['employees_count'], 2) 
+                    : 0;
+                // Reemplazar el array de employees con solo los datos básicos (sin horas individuales)
+                // ya que ahora mostramos el promedio
+                $day['employees'] = array_map(function($emp) {
+                    return [
+                        'employee_id' => $emp['employee_id'],
+                        'employee_name' => $emp['employee_name'],
+                    ];
+                }, $day['employees']);
             }
             unset($day);
             
