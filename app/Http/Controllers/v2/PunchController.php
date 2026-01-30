@@ -655,6 +655,79 @@ class PunchController extends Controller
     }
 
     /**
+     * Obtener fichajes agrupados por día para un calendario.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function calendar(Request $request)
+    {
+        // Obtener año y mes de los parámetros (por defecto: año y mes actual)
+        $year = $request->input('year', now()->year);
+        $month = $request->input('month', now()->month);
+
+        // Validar año y mes
+        if (!is_numeric($year) || $year < 2000 || $year > 2100) {
+            return response()->json([
+                'message' => 'El año debe ser un número válido entre 2000 y 2100.',
+                'userMessage' => 'El año proporcionado no es válido.',
+                'error' => 'INVALID_YEAR',
+            ], 400);
+        }
+
+        if (!is_numeric($month) || $month < 1 || $month > 12) {
+            return response()->json([
+                'message' => 'El mes debe ser un número válido entre 1 y 12.',
+                'userMessage' => 'El mes proporcionado no es válido.',
+                'error' => 'INVALID_MONTH',
+            ], 400);
+        }
+
+        // Crear fechas de inicio y fin del mes
+        $startDate = Carbon::create($year, $month, 1)->startOfDay();
+        $endDate = $startDate->copy()->endOfMonth()->endOfDay();
+
+        // Obtener todos los fichajes del mes con la relación de empleado
+        $punches = PunchEvent::whereBetween('timestamp', [$startDate, $endDate])
+            ->with('employee')
+            ->orderBy('timestamp', 'asc')
+            ->get();
+
+        // Agrupar fichajes por día
+        $punchesByDay = [];
+        foreach ($punches as $punch) {
+            $day = $punch->timestamp->day;
+            
+            if (!isset($punchesByDay[$day])) {
+                $punchesByDay[$day] = [];
+            }
+
+            $punchesByDay[$day][] = [
+                'id' => $punch->id,
+                'employee_id' => $punch->employee_id,
+                'employee_name' => $punch->employee->name ?? '',
+                'event_type' => $punch->event_type,
+                'timestamp' => $punch->timestamp->format('Y-m-d H:i:s'),
+                'device_id' => $punch->device_id,
+            ];
+        }
+
+        // Contar totales
+        $totalPunches = $punches->count();
+        $totalEmployees = $punches->pluck('employee_id')->unique()->count();
+
+        return response()->json([
+            'data' => [
+                'year' => (int) $year,
+                'month' => (int) $month,
+                'punches_by_day' => $punchesByDay,
+                'total_punches' => $totalPunches,
+                'total_employees' => $totalEmployees,
+            ],
+        ]);
+    }
+
+    /**
      * Obtener estadísticas de trabajadores por período.
      * 
      * @param Request $request

@@ -211,6 +211,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             // Rutas específicas de punches deben ir ANTES del apiResource
             Route::get('punches/dashboard', [PunchController::class, 'dashboard'])->name('punches.dashboard');
             Route::get('punches/statistics', [PunchController::class, 'statistics'])->name('punches.statistics');
+            Route::get('punches/calendar', [PunchController::class, 'calendar'])->name('punches.calendar');
             // Fichajes manuales (requieren autenticación)
             // Nota: POST /api/v2/punches detecta automáticamente si es manual (tiene timestamp/event_type) o NFC
             // Las rutas bulk solo son para fichajes manuales
