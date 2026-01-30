@@ -936,26 +936,21 @@ class PunchController extends Controller
         $leastActiveDays = [];
         if (!empty($dayActivityDetails)) {
             $daysArray = array_values($dayActivityDetails);
-            // Calcular total de horas, número de empleados y promedio de horas por trabajador para cada día
+            // Calcular número de empleados y promedio de horas por trabajador para cada día
             foreach ($daysArray as &$day) {
                 $day['employees_count'] = count($day['employees']);
-                // Calcular horas medias por trabajador
+                // Calcular horas medias por trabajador (reemplaza total_hours)
                 $day['average_hours_per_employee'] = $day['employees_count'] > 0 
                     ? round($day['total_hours'] / $day['employees_count'], 2) 
                     : 0;
-                // Reemplazar el array de employees con solo los datos básicos (sin horas individuales)
-                // ya que ahora mostramos el promedio
-                $day['employees'] = array_map(function($emp) {
-                    return [
-                        'employee_id' => $emp['employee_id'],
-                        'employee_name' => $emp['employee_name'],
-                    ];
-                }, $day['employees']);
+                // Eliminar total_hours ya que ahora usamos average_hours_per_employee
+                unset($day['total_hours']);
             }
             unset($day);
             
+            // Ordenar por horas medias por trabajador
             usort($daysArray, function ($a, $b) {
-                return $b['total_hours'] <=> $a['total_hours'];
+                return $b['average_hours_per_employee'] <=> $a['average_hours_per_employee'];
             });
             $mostActiveDays = array_slice($daysArray, 0, 3); // Top 3
             $leastActiveDays = array_slice(array_reverse($daysArray), 0, 3); // Bottom 3
