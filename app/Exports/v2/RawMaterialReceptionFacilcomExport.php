@@ -135,6 +135,8 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         
         $rows = [];
 
+        // Procesar todas las recepciones, incluso si no tienen códigos
+        // Los campos faltantes se mostrarán con "-" y se resaltarán en amarillo
         // Agregar productos regulares
         foreach ($reception->products as $product) {
             $productModel = $product->product;
@@ -142,8 +144,10 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
             $rows[] = [
                 $this->index, // Mismo código para toda la recepción
                 $reception->date ? date('d/m/Y', strtotime($reception->date)) : '-',
+                // Mostrar "-" si el proveedor no tiene código Facilcom
                 $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
                 $supplier ? $supplier->name : '-',
+                // Mostrar "-" si el producto no tiene código Facilcom
                 $productModel && $productModel->facil_com_code ? $productModel->facil_com_code : '-',
                 $productModel ? $productModel->name : '-',
                 $product->net_weight ?: '-',

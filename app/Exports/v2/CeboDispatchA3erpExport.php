@@ -140,7 +140,8 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
         
         $rows = [];
 
-        // Solo procesar si el tipo de exportación es a3erp
+        // Procesar todos los despachos de tipo a3erp, incluso si no tienen códigos
+        // Los campos faltantes se mostrarán con "-" y se resaltarán en amarillo
         if ($ceboDispatch->export_type === 'a3erp') {
             // Obtener año de 2 dígitos basado en la fecha del despacho
             $year = $ceboDispatch->date ? date('y', strtotime($ceboDispatch->date)) : '25';
@@ -153,8 +154,10 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
                     $serie, // cabSerie
                     $ceboDispatch->id ?: '-', // id
                     $ceboDispatch->date ? date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
+                    // Mostrar "-" si el proveedor no tiene código A3ERP
                     $supplier && $supplier->a3erp_cebo_code ? $supplier->a3erp_cebo_code : '-',
-                    $supplier && $ceboDispatch->date ? $supplier->name . " - CEBO - " . date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
+                    $supplier && $ceboDispatch->date ? $supplier->name . " - CEBO - " . date('d/m/Y', strtotime($ceboDispatch->date)) : ($supplier ? $supplier->name : '-'),
+                    // Mostrar "-" si el producto no tiene código A3ERP
                     $productModel && $productModel->a3erp_code ? $productModel->a3erp_code : '-',
                     $productModel ? $productModel->name : '-',
                     $product->net_weight ?: '-',

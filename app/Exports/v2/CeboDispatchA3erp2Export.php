@@ -140,7 +140,9 @@ class CeboDispatchA3erp2Export implements FromCollection, WithHeadings, WithMapp
         
         $rows = [];
 
-        // Solo procesar si el tipo de exportación es facilcom (doble verificación)
+        // Procesar todos los despachos de tipo facilcom, incluso si no tienen códigos
+        // Los campos faltantes se mostrarán con "-" y se resaltarán en amarillo
+        // (La colección ya filtra por export_type == 'facilcom', pero mantenemos la verificación por seguridad)
         if ($ceboDispatch->export_type == 'facilcom') {
             // Obtener año de 2 dígitos basado en la fecha del despacho
             $year = $ceboDispatch->date ? date('y', strtotime($ceboDispatch->date)) : '25';
@@ -153,10 +155,10 @@ class CeboDispatchA3erp2Export implements FromCollection, WithHeadings, WithMapp
                     $serie, // cabSerie
                     $ceboDispatch->id ?: '-', // id
                     $ceboDispatch->date ? date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
-                    // Usar códigos de Facilcom en lugar de A3ERP
+                    // Usar códigos de Facilcom, mostrar "-" si no existe
                     $supplier && $supplier->facilcom_cebo_code ? $supplier->facilcom_cebo_code : '-',
-                    $supplier && $ceboDispatch->date ? $supplier->name . " - CEBO - " . date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
-                    // Usar códigos de Facilcom en lugar de A3ERP
+                    $supplier && $ceboDispatch->date ? $supplier->name . " - CEBO - " . date('d/m/Y', strtotime($ceboDispatch->date)) : ($supplier ? $supplier->name : '-'),
+                    // Usar códigos de Facilcom, mostrar "-" si no existe
                     $productModel && $productModel->facil_com_code ? $productModel->facil_com_code : '-',
                     $productModel ? $productModel->name : '-',
                     $product->net_weight ?: '-',

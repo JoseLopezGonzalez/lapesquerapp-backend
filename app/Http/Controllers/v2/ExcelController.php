@@ -332,18 +332,15 @@ class ExcelController extends Controller
         );
     }
 
-    /* A3ERP2 Orders Sales Delivery Notes Export - Formato A3 con códigos Facilcom, solo clientes con facilcom_code */
+    /* A3ERP2 Orders Sales Delivery Notes Export - Formato A3 con códigos Facilcom */
     public function exportA3ERP2OrderSalesDeliveryNoteWithFilters(Request $request)
     {
         $this->applyExportLimits('standard');
 
         $query = Order::query();
 
-        // IMPORTANTE: Solo exportar pedidos de clientes con código Facilcom
-        $query->whereHas('customer', function ($q) {
-            $q->whereNotNull('facilcom_code')
-              ->where('facilcom_code', '!=', '');
-        });
+        // NOTA: Exportamos todos los pedidos, incluso si no tienen código Facilcom
+        // Los campos faltantes se mostrarán con "-" y se resaltarán en amarillo
 
         if ($request->has('active')) {
             if ($request->active == 'true') {

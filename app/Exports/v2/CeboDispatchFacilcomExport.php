@@ -140,7 +140,8 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
         
         $rows = [];
 
-        // Solo procesar si el tipo de exportación es facilcom
+        // Procesar todos los despachos de tipo facilcom, incluso si no tienen códigos
+        // Los campos faltantes se mostrarán con "-" y se resaltarán en amarillo
         if ($ceboDispatch->export_type == 'facilcom') {
             foreach ($ceboDispatch->products as $product) {
                 $productModel = $product->product;
@@ -148,8 +149,10 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
                 $rows[] = [
                     $this->index, // Mismo código para todo el despacho
                     $ceboDispatch->date ? date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
+                    // Mostrar "-" si el proveedor no tiene código Facilcom
                     $supplier && $supplier->facilcom_cebo_code ? $supplier->facilcom_cebo_code : '-',
                     $supplier ? $supplier->name : '-',
+                    // Mostrar "-" si el producto no tiene código Facilcom
                     $productModel && $productModel->facil_com_code ? $productModel->facil_com_code : '-',
                     $productModel ? $productModel->name : '-',
                     $product->net_weight ?: '-',

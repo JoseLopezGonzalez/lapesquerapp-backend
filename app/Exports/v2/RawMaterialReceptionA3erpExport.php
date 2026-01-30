@@ -134,6 +134,8 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
         
         $rows = [];
 
+        // Procesar todas las recepciones, incluso si no tienen códigos
+        // Los campos faltantes se mostrarán con "-" y se resaltarán en amarillo
         // Obtener año de 2 dígitos basado en la fecha de recepción
         $year = $reception->date ? date('y', strtotime($reception->date)) : '25';
         $serie = 'RE' . $year;
@@ -146,8 +148,10 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
                 $serie, // cabSerie - usando RE + año para recepciones de materia prima
                 $reception->id ?: '-', // id
                 $reception->date ? date('d/m/Y', strtotime($reception->date)) : '-',
+                // Mostrar "-" si el proveedor no tiene código
                 $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
-                $supplier && $reception->date ? $supplier->name . " - " . date('d/m/Y', strtotime($reception->date)) .' - ' . $reception->id  : '-',
+                $supplier && $reception->date ? $supplier->name . " - " . date('d/m/Y', strtotime($reception->date)) .' - ' . $reception->id  : ($supplier ? $supplier->name : '-'),
+                // Mostrar "-" si el producto no tiene código
                 $productModel && $productModel->facil_com_code ? $productModel->facil_com_code : '-',
                 $productModel ? $productModel->name : '-',
                 $product->net_weight ?: '-',
