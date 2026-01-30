@@ -576,6 +576,335 @@ class PunchController extends Controller
     }
 
     /**
+     * Obtener estadísticas de trabajadores por período.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function statistics(Request $request)
+    {
+        // Validar y parsear parámetros de período
+        $period = $request->input('period', 'month'); // 'week', 'month', 'year'
+        $date = $request->has('date') 
+            ? Carbon::parse($request->date)
+            : now();
+
+        // Calcular fechas del período actual
+        $dateStart = null;
+        $dateEnd = null;
+        $periodLabel = '';
+
+        switch ($period) {
+            case 'week':
+                $dateStart = $date->copy()->startOfWeek();
+                $dateEnd = $date->copy()->endOfWeek();
+                $periodLabel = $dateStart->format('d/m/Y') . ' - ' . $dateEnd->format('d/m/Y');
+                break;
+            case 'year':
+                $dateStart = $date->copy()->startOfYear();
+                $dateEnd = $date->copy()->endOfYear();
+                $periodLabel = $date->format('Y');
+                break;
+            case 'month':
+            default:
+                $dateStart = $date->copy()->startOfMonth();
+                $dateEnd = $date->copy()->endOfMonth();
+                // Formatear mes en español
+                $months = [
+                    1 => 'enero', 2 => 'febrero', 3 => 'marzo', 4 => 'abril',
+                    5 => 'mayo', 6 => 'junio', 7 => 'julio', 8 => 'agosto',
+                    9 => 'septiembre', 10 => 'octubre', 11 => 'noviembre', 12 => 'diciembre'
+                ];
+                $monthName = $months[$date->month] ?? $date->format('F');
+                $periodLabel = ucfirst($monthName) . ' ' . $date->year; // Ej: "Enero 2026"
+                break;
+        }
+
+        // Calcular período anterior para comparación
+        $previousDateStart = null;
+        $previousDateEnd = null;
+        
+        switch ($period) {
+            case 'week':
+                $previousDateStart = $dateStart->copy()->subWeek()->startOfWeek();
+                $previousDateEnd = $dateStart->copy()->subWeek()->endOfWeek();
+                break;
+            case 'year':
+                $previousDateStart = $dateStart->copy()->subYear()->startOfYear();
+                $previousDateEnd = $dateStart->copy()->subYear()->endOfYear();
+                break;
+            case 'month':
+            default:
+                $previousDateStart = $dateStart->copy()->subMonth()->startOfMonth();
+                $previousDateEnd = $dateStart->copy()->subMonth()->endOfMonth();
+                break;
+        }
+
+        // Obtener todos los empleados
+        $allEmployees = Employee::all();
+        $employeeIds = $allEmployees->pluck('id');
+
+        if ($employeeIds->isEmpty()) {
+            return response()->json([
+                'message' => 'No hay empleados registrados.',
+                'data' => $this->getEmptyStatisticsResponse($periodLabel, $dateStart, $dateEnd),
+            ]);
+        }
+
+        // Obtener todos los eventos del período
+        $periodEvents = PunchEvent::whereBetween('timestamp', [$dateStart, $dateEnd])
+            ->whereIn('employee_id', $employeeIds)
+            ->orderBy('timestamp', 'asc')
+            ->get()
+            ->groupBy('employee_id');
+
+        // Obtener eventos del período anterior para comparación
+        $previousPeriodEvents = PunchEvent::whereBetween('timestamp', [$previousDateStart, $previousDateEnd])
+            ->whereIn('employee_id', $employeeIds)
+            ->orderBy('timestamp', 'asc')
+            ->get()
+            ->groupBy('employee_id');
+
+        // Procesar datos por empleado
+        $employeeStats = [];
+        $totalHours = 0;
+        $totalDaysWithActivity = [];
+        $totalSessions = 0;
+        $totalDays = 0;
+        $openIncidents = 0;
+        $anomalousDays = 0;
+        $totalWorkDays = 0;
+        $closedSessionsCount = 0;
+        $totalSessionsCount = 0;
+        $employeeHours = [];
+        $allDayHours = []; // Para calcular media de horas por jornada
+
+        foreach ($allEmployees as $employee) {
+            $employeeEvents = $periodEvents->get($employee->id, collect())->sortBy('timestamp')->values();
+            
+            if ($employeeEvents->isEmpty()) {
+                continue;
+            }
+
+            // Agrupar eventos por día
+            $eventsByDay = $employeeEvents->groupBy(function ($event) {
+                return $event->timestamp->format('Y-m-d');
+            });
+
+            $employeeTotalMinutes = 0;
+            $employeeDaysWithActivity = 0;
+            $employeeSessions = 0;
+            $employeeWorkDays = [];
+
+            foreach ($eventsByDay as $day => $dayEvents) {
+                $dayStart = Carbon::parse($day)->startOfDay();
+                $dayEnd = Carbon::parse($day)->endOfDay();
+                
+                // Ordenar eventos del día por timestamp
+                $dayEvents = $dayEvents->sortBy('timestamp')->values();
+                
+                $dayMinutes = 0;
+                $daySessions = 0;
+                $hasOpenSession = false;
+
+                // Calcular horas del día
+                for ($i = 0; $i < $dayEvents->count(); $i++) {
+                    if ($dayEvents[$i]->event_type === PunchEvent::TYPE_IN) {
+                        $nextOut = $dayEvents->slice($i + 1)->firstWhere('event_type', PunchEvent::TYPE_OUT);
+                        
+                        if ($nextOut) {
+                            // Sesión completa
+                            $sessionMinutes = $dayEvents[$i]->timestamp->diffInMinutes($nextOut->timestamp);
+                            $dayMinutes += $sessionMinutes;
+                            $daySessions++;
+                            $closedSessionsCount++;
+                        } else {
+                            // Sesión abierta (incidencia)
+                            $hasOpenSession = true;
+                            // Calcular hasta el final del día o hasta ahora si es hoy
+                            $endTime = $dayEnd->isFuture() ? now() : $dayEnd;
+                            $sessionMinutes = $dayEvents[$i]->timestamp->diffInMinutes($endTime);
+                            $dayMinutes += $sessionMinutes;
+                            $daySessions++;
+                        }
+                        $totalSessionsCount++;
+                    }
+                }
+
+                if ($dayMinutes > 0) {
+                    $dayHours = round($dayMinutes / 60, 2);
+                    $employeeTotalMinutes += $dayMinutes;
+                    $employeeDaysWithActivity++;
+                    $totalDaysWithActivity[$day] = true;
+                    $employeeWorkDays[] = [
+                        'date' => $day,
+                        'minutes' => $dayMinutes,
+                        'hours' => $dayHours,
+                    ];
+                    $employeeSessions += $daySessions;
+                    $allDayHours[] = $dayHours; // Guardar para calcular media después
+                }
+
+                if ($hasOpenSession) {
+                    $openIncidents++;
+                }
+            }
+
+            if ($employeeTotalMinutes > 0) {
+                $employeeHoursValue = round($employeeTotalMinutes / 60, 2);
+                $totalHours += $employeeHoursValue;
+                $totalSessions += $employeeSessions;
+                $employeeHours[] = $employeeHoursValue;
+
+                $employeeStats[] = [
+                    'employee_id' => $employee->id,
+                    'employee_name' => $employee->name,
+                    'total_hours' => $employeeHoursValue,
+                    'total_minutes' => $employeeTotalMinutes,
+                    'days_with_activity' => $employeeDaysWithActivity,
+                    'sessions' => $employeeSessions,
+                ];
+            }
+        }
+
+        // Calcular media de horas por jornada y detectar jornadas anómalas
+        if (!empty($allDayHours)) {
+            $averageHoursPerDay = array_sum($allDayHours) / count($allDayHours);
+            // Considerar anómalas las jornadas que son menos del 50% o más del 200% de la media
+            $minThreshold = $averageHoursPerDay * 0.5;
+            $maxThreshold = $averageHoursPerDay * 2.0;
+            
+            foreach ($allDayHours as $dayHours) {
+                if ($dayHours < $minThreshold || $dayHours > $maxThreshold) {
+                    $anomalousDays++;
+                }
+            }
+        }
+
+        // Calcular estadísticas del período anterior
+        $previousTotalHours = 0;
+        foreach ($previousPeriodEvents as $employeeId => $events) {
+            $eventsByDay = $events->groupBy(function ($event) {
+                return $event->timestamp->format('Y-m-d');
+            });
+
+            foreach ($eventsByDay as $dayEvents) {
+                $dayEvents = collect($dayEvents)->sortBy('timestamp')->values();
+                for ($i = 0; $i < $dayEvents->count(); $i++) {
+                    if ($dayEvents[$i]->event_type === PunchEvent::TYPE_IN) {
+                        $nextOut = $dayEvents->slice($i + 1)->firstWhere('event_type', PunchEvent::TYPE_OUT);
+                        if ($nextOut) {
+                            $sessionMinutes = $dayEvents[$i]->timestamp->diffInMinutes($nextOut->timestamp);
+                            $previousTotalHours += round($sessionMinutes / 60, 2);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Calcular métricas
+        $activeEmployeesCount = count($employeeStats);
+        $averageHoursPerEmployee = $activeEmployeesCount > 0 ? round($totalHours / $activeEmployeesCount, 2) : 0;
+        $daysWithActivityCount = count($totalDaysWithActivity);
+        $averageDaysPerEmployee = $activeEmployeesCount > 0 ? round($daysWithActivityCount / $activeEmployeesCount, 2) : 0;
+        $averageSessionsPerDay = $daysWithActivityCount > 0 ? round($totalSessions / $daysWithActivityCount, 2) : 0;
+        
+        // Variación respecto al período anterior
+        $hoursVariation = 0;
+        $hoursVariationPercentage = 0;
+        if ($previousTotalHours > 0) {
+            $hoursVariation = round($totalHours - $previousTotalHours, 2);
+            $hoursVariationPercentage = round(($hoursVariation / $previousTotalHours) * 100, 2);
+        } elseif ($totalHours > 0) {
+            $hoursVariation = $totalHours;
+            $hoursVariationPercentage = 100;
+        }
+
+        // Métricas derivadas
+        $averageHoursPerWorkDay = $daysWithActivityCount > 0 ? round($totalHours / $daysWithActivityCount, 2) : 0;
+        $maxHoursDifference = !empty($employeeHours) ? round(max($employeeHours) - min($employeeHours), 2) : 0;
+        $closedSessionsPercentage = $totalSessionsCount > 0 
+            ? round(($closedSessionsCount / $totalSessionsCount) * 100, 2) 
+            : 0;
+
+        return response()->json([
+            'message' => 'Estadísticas obtenidas correctamente.',
+            'data' => [
+                'period' => [
+                    'label' => $periodLabel,
+                    'type' => $period,
+                    'date_start' => $dateStart->format('Y-m-d'),
+                    'date_end' => $dateEnd->format('Y-m-d'),
+                ],
+                'work' => [
+                    'total_hours' => round($totalHours, 2),
+                    'average_hours_per_employee' => $averageHoursPerEmployee,
+                    'hours_variation' => $hoursVariation,
+                    'hours_variation_percentage' => $hoursVariationPercentage,
+                    'previous_period_hours' => round($previousTotalHours, 2),
+                ],
+                'activity' => [
+                    'days_with_activity' => $daysWithActivityCount,
+                    'average_days_per_employee' => $averageDaysPerEmployee,
+                    'average_sessions_per_day' => $averageSessionsPerDay,
+                ],
+                'incidents' => [
+                    'open_incidents_count' => $openIncidents,
+                    'anomalous_days_count' => $anomalousDays,
+                ],
+                'context' => [
+                    'active_employees_count' => $activeEmployeesCount,
+                    'total_employees_count' => $allEmployees->count(),
+                ],
+                'derived_metrics' => [
+                    'average_hours_per_work_day' => $averageHoursPerWorkDay,
+                    'max_hours_difference_between_employees' => $maxHoursDifference,
+                    'closed_sessions_percentage' => $closedSessionsPercentage,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Retorna una respuesta vacía para estadísticas cuando no hay datos.
+     */
+    private function getEmptyStatisticsResponse(string $periodLabel, Carbon $dateStart, Carbon $dateEnd): array
+    {
+        return [
+            'period' => [
+                'label' => $periodLabel,
+                'date_start' => $dateStart->format('Y-m-d'),
+                'date_end' => $dateEnd->format('Y-m-d'),
+            ],
+            'work' => [
+                'total_hours' => 0,
+                'average_hours_per_employee' => 0,
+                'hours_variation' => 0,
+                'hours_variation_percentage' => 0,
+                'previous_period_hours' => 0,
+            ],
+            'activity' => [
+                'days_with_activity' => 0,
+                'average_days_per_employee' => 0,
+                'average_sessions_per_day' => 0,
+            ],
+            'incidents' => [
+                'open_incidents_count' => 0,
+                'anomalous_days_count' => 0,
+            ],
+            'context' => [
+                'active_employees_count' => 0,
+                'total_employees_count' => 0,
+            ],
+            'derived_metrics' => [
+                'average_hours_per_work_day' => 0,
+                'max_hours_difference_between_employees' => 0,
+                'closed_sessions_percentage' => 0,
+            ],
+        ];
+    }
+
+    /**
      * Formatear minutos en formato legible (ej: "4h 30m" o "45m").
      */
     private function formatTime(int $minutes): string

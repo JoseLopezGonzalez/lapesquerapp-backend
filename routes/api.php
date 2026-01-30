@@ -210,6 +210,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::delete('employees', [EmployeeController::class, 'destroyMultiple']);
             // Rutas específicas de punches deben ir ANTES del apiResource
             Route::get('punches/dashboard', [PunchController::class, 'dashboard'])->name('punches.dashboard');
+            Route::get('punches/statistics', [PunchController::class, 'statistics'])->name('punches.statistics');
             Route::apiResource('punches', PunchController::class)->except(['store']);
             Route::delete('punches', [PunchController::class, 'destroyMultiple']);
             Route::apiResource('orders', V2OrderController::class);
