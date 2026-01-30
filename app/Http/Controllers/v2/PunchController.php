@@ -23,64 +23,11 @@ class PunchController extends Controller
         // Cargar relación con empleado
         $query->with('employee');
 
-        // Filtro por ID
-        if ($request->has('id')) {
-            $query->where('id', $request->id);
-        }
+        // Extraer todos los filtros del request (soporta estructura anidada)
+        $filters = $request->all();
 
-        // Filtro por IDs
-        if ($request->has('ids')) {
-            $query->whereIn('id', $request->ids);
-        }
-
-        // Filtro por empleado
-        if ($request->has('employee_id')) {
-            $query->where('employee_id', $request->employee_id);
-        }
-
-        // Filtro por múltiples empleados
-        if ($request->has('employee_ids')) {
-            $query->whereIn('employee_id', $request->employee_ids);
-        }
-
-        // Filtro por tipo de evento
-        if ($request->has('event_type')) {
-            $query->where('event_type', $request->event_type);
-        }
-
-        // Filtro por dispositivo
-        if ($request->has('device_id')) {
-            $query->where('device_id', $request->device_id);
-        }
-
-        // Filtro por rango de fechas (date_start y date_end)
-        // Carbon::parse() usa automáticamente la zona horaria configurada en config/app.php
-        if ($request->has('date_start')) {
-            $dateStart = Carbon::parse($request->date_start)->startOfDay();
-            $query->where('timestamp', '>=', $dateStart);
-        }
-
-        if ($request->has('date_end')) {
-            $dateEnd = Carbon::parse($request->date_end)->endOfDay();
-            $query->where('timestamp', '<=', $dateEnd);
-        }
-
-        // Filtro por rango de timestamps (más preciso)
-        if ($request->has('timestamp_start')) {
-            $timestampStart = Carbon::parse($request->timestamp_start);
-            $query->where('timestamp', '>=', $timestampStart);
-        }
-
-        if ($request->has('timestamp_end')) {
-            $timestampEnd = Carbon::parse($request->timestamp_end);
-            $query->where('timestamp', '<=', $timestampEnd);
-        }
-
-        // Filtro por día específico (shortcut)
-        if ($request->has('date')) {
-            $date = Carbon::parse($request->date);
-            $query->whereDate('timestamp', $date->toDateString());
-        }
+        // Aplicar filtros usando el método helper
+        $query = $this->applyFiltersToQuery($query, $filters);
 
         // Ordenar por timestamp descendente (más recientes primero)
         $query->orderBy('timestamp', 'desc');
@@ -88,6 +35,130 @@ class PunchController extends Controller
         $perPage = $request->input('perPage', 15);
         
         return PunchEventResource::collection($query->paginate($perPage));
+    }
+
+    /**
+     * Aplicar filtros a la consulta de fichajes.
+     * Soporta estructura anidada de filtros como otros controladores genéricos.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param array $filters
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    private function applyFiltersToQuery($query, $filters)
+    {
+        // Para aceptar filtros anidados
+        if (isset($filters['filters'])) {
+            $filters = $filters['filters'];
+        }
+
+        // Filtro por ID único
+        if (isset($filters['id'])) {
+            $query->where('id', $filters['id']);
+        }
+
+        // Filtro por múltiples IDs
+        if (isset($filters['ids']) && is_array($filters['ids']) && !empty($filters['ids'])) {
+            $query->whereIn('id', $filters['ids']);
+        }
+
+        // Filtro por empleado único
+        if (isset($filters['employee_id'])) {
+            $query->where('employee_id', $filters['employee_id']);
+        }
+
+        // Filtro por múltiples empleados (employee_ids o employees)
+        if (isset($filters['employee_ids']) && is_array($filters['employee_ids']) && !empty($filters['employee_ids'])) {
+            $query->whereIn('employee_id', $filters['employee_ids']);
+        } elseif (isset($filters['employees']) && is_array($filters['employees']) && !empty($filters['employees'])) {
+            $query->whereIn('employee_id', $filters['employees']);
+        }
+
+        // Filtro por tipo de evento
+        if (isset($filters['event_type'])) {
+            $query->where('event_type', $filters['event_type']);
+        }
+
+        // Filtro por dispositivo único
+        if (isset($filters['device_id'])) {
+            $query->where('device_id', $filters['device_id']);
+        }
+
+        // Filtro por múltiples dispositivos (devices)
+        if (isset($filters['devices']) && is_array($filters['devices']) && !empty($filters['devices'])) {
+            $query->whereIn('device_id', $filters['devices']);
+        }
+
+        // Filtro por rango de fechas (dates con start y end)
+        if (isset($filters['dates'])) {
+            $dates = $filters['dates'];
+            if (isset($dates['start'])) {
+                try {
+                    $dateStart = Carbon::parse($dates['start'])->startOfDay();
+                    $query->where('timestamp', '>=', $dateStart);
+                } catch (\Exception $e) {
+                    // Ignorar si la fecha no es válida
+                }
+            }
+            if (isset($dates['end'])) {
+                try {
+                    $dateEnd = Carbon::parse($dates['end'])->endOfDay();
+                    $query->where('timestamp', '<=', $dateEnd);
+                } catch (\Exception $e) {
+                    // Ignorar si la fecha no es válida
+                }
+            }
+        }
+
+        // Filtro por rango de fechas (date_start y date_end) - compatibilidad con formato anterior
+        if (isset($filters['date_start'])) {
+            try {
+                $dateStart = Carbon::parse($filters['date_start'])->startOfDay();
+                $query->where('timestamp', '>=', $dateStart);
+            } catch (\Exception $e) {
+                // Ignorar si la fecha no es válida
+            }
+        }
+
+        if (isset($filters['date_end'])) {
+            try {
+                $dateEnd = Carbon::parse($filters['date_end'])->endOfDay();
+                $query->where('timestamp', '<=', $dateEnd);
+            } catch (\Exception $e) {
+                // Ignorar si la fecha no es válida
+            }
+        }
+
+        // Filtro por rango de timestamps (más preciso)
+        if (isset($filters['timestamp_start'])) {
+            try {
+                $timestampStart = Carbon::parse($filters['timestamp_start']);
+                $query->where('timestamp', '>=', $timestampStart);
+            } catch (\Exception $e) {
+                // Ignorar si la fecha no es válida
+            }
+        }
+
+        if (isset($filters['timestamp_end'])) {
+            try {
+                $timestampEnd = Carbon::parse($filters['timestamp_end']);
+                $query->where('timestamp', '<=', $timestampEnd);
+            } catch (\Exception $e) {
+                // Ignorar si la fecha no es válida
+            }
+        }
+
+        // Filtro por día específico (shortcut)
+        if (isset($filters['date'])) {
+            try {
+                $date = Carbon::parse($filters['date']);
+                $query->whereDate('timestamp', $date->toDateString());
+            } catch (\Exception $e) {
+                // Ignorar si la fecha no es válida
+            }
+        }
+
+        return $query;
     }
 
     /**
