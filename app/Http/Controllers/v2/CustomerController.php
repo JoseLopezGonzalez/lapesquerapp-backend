@@ -498,7 +498,33 @@ class CustomerController extends Controller
             }
         }
 
-        // Calcular el precio medio ponderado y ordenar líneas por fecha descendente
+        // Calcular el precio medio ponderado, ordenar líneas y calcular trend
+        $previousPeriodDates = $this->getPreviousPeriodDates($request);
+        
+        // Obtener pesos netos del período anterior para todos los productos (una sola consulta)
+        $previousPeriodNetWeights = [];
+        if ($previousPeriodDates) {
+            $previousOrders = Order::where('customer_id', $customer->id)
+                ->whereBetween('load_date', [$previousPeriodDates['from'], $previousPeriodDates['to']])
+                ->with([
+                    'plannedProductDetails.product',
+                    'pallets.boxes.box.product',
+                    'pallets.boxes.box.productionInputs'
+                ])
+                ->get();
+
+            // Agrupar por producto y sumar pesos netos
+            foreach ($previousOrders as $order) {
+                foreach ($order->productDetails as $detail) {
+                    $productId = $detail['product']['id'];
+                    if (!isset($previousPeriodNetWeights[$productId])) {
+                        $previousPeriodNetWeights[$productId] = 0;
+                    }
+                    $previousPeriodNetWeights[$productId] += $detail['netWeight'];
+                }
+            }
+        }
+        
         foreach ($history as &$product) {
             // Calcular average_unit_price: total_amount / total_net_weight
             if ($product['total_net_weight'] > 0) {
@@ -516,6 +542,20 @@ class CustomerController extends Controller
             $product['total_boxes'] = (int) $product['total_boxes'];
             $product['total_net_weight'] = round((float) $product['total_net_weight'], 2);
             $product['total_amount'] = round((float) $product['total_amount'], 2);
+
+            // Calcular trend si hay período anterior definido
+            if ($previousPeriodDates) {
+                $productId = $product['product']['id'];
+                $previousNetWeight = $previousPeriodNetWeights[$productId] ?? 0;
+                
+                $trend = $this->calculateTrendValue(
+                    $product['total_net_weight'],
+                    $previousNetWeight
+                );
+                
+                // Siempre agregar trend si hay período anterior (puede ser stable con 0%)
+                $product['trend'] = $trend;
+            }
         }
 
         // Reindexar para devolver un array limpio
@@ -586,5 +626,114 @@ class CustomerController extends Controller
         }
 
         // Si no hay ningún filtro, la query devolverá todos los pedidos
+    }
+
+    /**
+     * Obtener las fechas del período anterior según el filtro aplicado.
+     * 
+     * @param \Illuminate\Http\Request $request
+     * @return array|null Array con 'from' y 'to' o null si no hay filtro
+     */
+    private function getPreviousPeriodDates(Request $request): ?array
+    {
+        // Opción 1: Filtro por rango de fechas (date_from y date_to)
+        if ($request->has('date_from') && $request->has('date_to')) {
+            $dateFrom = \Carbon\Carbon::parse($request->date_from);
+            $dateTo = \Carbon\Carbon::parse($request->date_to);
+            
+            // Calcular la duración del período
+            $daysDiff = $dateFrom->diffInDays($dateTo);
+            
+            // Calcular período anterior del mismo rango
+            $previousDateEnd = $dateFrom->copy()->subDay()->endOfDay();
+            $previousDateStart = $previousDateEnd->copy()->subDays($daysDiff)->startOfDay();
+            
+            return [
+                'from' => $previousDateStart->format('Y-m-d 00:00:00'),
+                'to' => $previousDateEnd->format('Y-m-d 23:59:59'),
+            ];
+        }
+
+        // Opción 2: Filtro por año específico
+        if ($request->has('year')) {
+            $year = (int) $request->year;
+            $previousYear = $year - 1;
+            
+            return [
+                'from' => $previousYear . '-01-01 00:00:00',
+                'to' => $previousYear . '-12-31 23:59:59',
+            ];
+        }
+
+        // Opción 3: Filtro por tipo de período (month, quarter, year)
+        if ($request->has('period')) {
+            $period = $request->period;
+            $now = \Carbon\Carbon::now();
+
+            switch ($period) {
+                case 'month':
+                    // Mes anterior
+                    $previousMonth = $now->copy()->subMonth();
+                    return [
+                        'from' => $previousMonth->copy()->startOfMonth()->format('Y-m-d 00:00:00'),
+                        'to' => $previousMonth->copy()->endOfMonth()->format('Y-m-d 23:59:59'),
+                    ];
+
+                case 'quarter':
+                    // Trimestre anterior
+                    $previousQuarter = $now->copy()->subQuarter();
+                    return [
+                        'from' => $previousQuarter->copy()->startOfQuarter()->format('Y-m-d 00:00:00'),
+                        'to' => $previousQuarter->copy()->endOfQuarter()->format('Y-m-d 23:59:59'),
+                    ];
+
+                case 'year':
+                    // Año anterior
+                    $previousYear = $now->copy()->subYear();
+                    return [
+                        'from' => $previousYear->copy()->startOfYear()->format('Y-m-d 00:00:00'),
+                        'to' => $previousYear->copy()->endOfYear()->format('Y-m-d 23:59:59'),
+                    ];
+
+                default:
+                    return null;
+            }
+        }
+
+        // Si no hay filtro, no hay período anterior definido
+        return null;
+    }
+
+    /**
+     * Calcular el trend comparando el peso neto del período actual vs período anterior.
+     * 
+     * @param float $currentNetWeight Peso neto del período actual
+     * @param float $previousNetWeight Peso neto del período anterior
+     * @return array|null Array con 'direction' y 'percentage' o null si no se puede calcular
+     */
+    private function calculateTrendValue(float $currentNetWeight, float $previousNetWeight): ?array
+    {
+        // Si no hay datos del período anterior o el peso es 0, devolver stable
+        if ($previousNetWeight == 0) {
+            return [
+                'direction' => 'stable',
+                'percentage' => 0,
+            ];
+        }
+
+        // Calcular porcentaje de cambio
+        $percentage = (($currentNetWeight - $previousNetWeight) / $previousNetWeight) * 100;
+        $absolutePercentage = abs($percentage);
+
+        // Determinar dirección
+        $direction = 'stable';
+        if ($absolutePercentage >= 5) {
+            $direction = $percentage > 0 ? 'up' : 'down';
+        }
+
+        return [
+            'direction' => $direction,
+            'percentage' => round($absolutePercentage, 2),
+        ];
     }
 }
