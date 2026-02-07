@@ -8,6 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     * Idempotente: no falla si la tabla ya existe (p. ej. tenant con migraciones desincronizadas).
      */
     public function up()
     {
