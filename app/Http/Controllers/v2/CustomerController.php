@@ -5,6 +5,7 @@ namespace App\Http\Controllers\v2;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\v2\CustomerResource;
 use App\Models\Customer;
+use App\Models\Order;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
@@ -385,5 +386,80 @@ class CustomerController extends Controller
             ->get();
 
         return response()->json($customers);
+    }
+
+    /**
+     * Obtener el historial completo de pedidos del cliente.
+     * Devuelve un resumen de todos los productos pedidos por el cliente, incluyendo todos los pedidos.
+     */
+    public function getOrderHistory(string $id)
+    {
+        $customer = Customer::findOrFail($id);
+
+        // Obtener todos los pedidos del cliente sin exclusiones
+        $orders = Order::where('customer_id', $customer->id)
+            ->with('plannedProductDetails.product', 'pallets.boxes.box.product')
+            ->orderBy('load_date', 'desc')
+            ->get();
+
+        $history = [];
+
+        foreach ($orders as $order) {
+            // Usar el atributo dinámico productDetails del modelo Order
+            foreach ($order->productDetails as $detail) {
+                $productId = $detail['product']['id'];
+
+                if (!isset($history[$productId])) {
+                    $history[$productId] = [
+                        'product' => $detail['product'],
+                        'total_boxes' => 0,
+                        'total_net_weight' => 0,
+                        'average_unit_price' => 0,
+                        'last_order_date' => $order->load_date,
+                        'lines' => [],
+                        'total_amount' => 0,
+                    ];
+                }
+
+                // Actualizar valores acumulados
+                $history[$productId]['total_boxes'] += $detail['boxes'];
+                $history[$productId]['total_net_weight'] += $detail['netWeight'];
+                $history[$productId]['total_amount'] += $detail['subtotal'];
+
+                // Registrar línea individual
+                $history[$productId]['lines'][] = [
+                    'order_id' => $order->id,
+                    'formatted_id' => $order->formatted_id,
+                    'load_date' => $order->load_date,
+                    'boxes' => $detail['boxes'],
+                    'net_weight' => round((float) $detail['netWeight'], 2),
+                    'unit_price' => $detail['unitPrice'],
+                    'subtotal' => $detail['subtotal'],
+                    'total' => $detail['total'],
+                ];
+
+                // Actualizar la última fecha de pedido si es más reciente
+                if ($order->load_date > $history[$productId]['last_order_date']) {
+                    $history[$productId]['last_order_date'] = $order->load_date;
+                }
+            }
+        }
+
+        // Finalmente, calcular el precio medio ponderado por kg de producto
+        foreach ($history as &$product) {
+            if ($product['total_net_weight'] > 0) {
+                $product['average_unit_price'] = round($product['total_amount'] / $product['total_net_weight'], 2);
+            } else {
+                $product['average_unit_price'] = 0;
+            }
+        }
+
+        // Reindexar para devolver un array limpio
+        $history = array_values($history);
+
+        return response()->json([
+            'message' => 'Historial de pedidos del cliente obtenido correctamente.',
+            'data' => $history,
+        ]);
     }
 }

@@ -261,6 +261,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::delete('pallets', [V2PalletController::class, 'destroyMultiple'])->middleware(['role:superuser,manager,admin']);
             Route::apiResource('customers', V2CustomerController::class);
             Route::delete('customers', [V2CustomerController::class, 'destroyMultiple']);
+            Route::get('customers/{customer}/order-history', [V2CustomerController::class, 'getOrderHistory'])->name('customers.order_history');
 
             Route::apiResource('suppliers', V2SupplierController::class);
             Route::delete('suppliers', [V2SupplierController::class, 'destroyMultiple']);
