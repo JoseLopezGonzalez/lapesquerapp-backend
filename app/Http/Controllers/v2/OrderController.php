@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\v2\ActiveOrderCardResource;
 use App\Http\Resources\v2\OrderDetailsResource;
 use App\Http\Resources\v2\OrderResource;
 use App\Models\Order;
@@ -646,27 +647,22 @@ class OrderController extends Controller
     }
 
     /**
-     * List active orders for Order Manager
-     * Returns orders with status 'pending' or load_date >= today
+     * List active orders for Order Manager (tarjetas: estado, id, cliente, fecha de carga).
+     * Returns orders with status 'pending' or load_date >= today.
+     * Ref.: docs/referencia/102-Plan-Mejoras-GET-orders-active.md
      */
     public function active()
     {
-        $orders = Order::with([
-            'customer',
-            'salesperson',
-            'transport',
-            'incoterm',
-            'pallets.boxes.box.productionInputs', // Para calcular totalNetWeight y totalBoxes
-            'pallets.boxes.box.product', // Para los cálculos
-        ])
-        ->where(function ($query) {
-            $query->where('status', 'pending')
-                  ->orWhereDate('load_date', '>=', now());
-        })
-        ->orderBy('load_date', 'desc')
-        ->get();
+        $orders = Order::select('id', 'status', 'load_date', 'customer_id')
+            ->with(['customer' => fn ($q) => $q->select('id', 'name')])
+            ->where(function ($query) {
+                $query->where('status', 'pending')
+                    ->orWhereDate('load_date', '>=', now());
+            })
+            ->orderBy('load_date', 'desc')
+            ->get();
 
-        return OrderResource::collection($orders);
+        return ActiveOrderCardResource::collection($orders);
     }
 
     /* Active Orders Options */

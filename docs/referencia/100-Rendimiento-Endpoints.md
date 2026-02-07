@@ -11,7 +11,7 @@ Este documento detalla el **rendimiento en tiempo y recursos** de los endpoints 
 | Categoría | Descripción | Endpoints afectados |
 |-----------|-------------|---------------------|
 | **Crítico** | Alto uso de CPU/memoria, I/O pesado. Pueden superar 5–30 s o 512 MB. | PDFs (incl. masivo filtrado), Excel, `stores/total-stock-by-products`, `orders?active=`, `statistics/orders/*` (algunos) |
-| **Alto** | Consultas con muchas relaciones, sin paginación en algunos filtros, o límites aumentados. | Listados con filtros complejos (orders, pallets), `orders/active`, `orders/pdf/order-sheets-filtered`, liquidación proveedores (getSuppliers/getDetails), estadísticas |
+| **Alto** | Consultas con muchas relaciones, sin paginación en algunos filtros, o límites aumentados. | Listados con filtros complejos (orders, pallets), `orders/pdf/order-sheets-filtered`, liquidación proveedores (getSuppliers/getDetails), estadísticas |
 | **Medio** | Paginación correcta, eager loading presente, consultas acotadas. | CRUD estándar v2 con paginate, options, show con `with()` |
 | **Bajo** | Consultas simples, poco volumen de datos. | Auth (login con throttle), tenant, options de catálogos, settings, fichajes (punches) listado |
 
@@ -71,14 +71,14 @@ Endpoints incluidos (entre otros):
 | `GET` | `orders` | Medio–Alto | Medio | Variable | Paginación con `perPage` (default 10). Usa `Order::withTotals()->with([...])`. Muchos filtros opcionales: `whereHas` sobre `pallets`, `pallets.palletBoxes.box`, `pallets.palletBoxes.box.product`. Con filtros por productos/especies la consulta es más pesada. |
 | `GET` | `orders?active=true` | **Alto** | **Alto** | 1 | **Sin paginación:** `Order::withTotals()->with([...])->where(...)->orWhereDate(...)->get()`. Carga todos los pedidos activos en memoria. Riesgo con muchos pedidos. |
 | `GET` | `orders?active=false` | **Alto** | **Alto** | 1 | Mismo patrón que `active=true` para pedidos finalizados. |
-| `GET` | `orders/active` | **Alto** | **Alto** | 1 | `Order::with([...])->where(...)->get()`. Eager loading correcto pero **sin paginación**; devuelve todos los pedidos activos con relaciones (customer, salesperson, transport, incoterm, pallets.boxes...). |
+| `GET` | `orders/active` | Medio | Bajo | 1 | **Optimizado:** Solo `Order::select(id,status,load_date,customer_id)->with(['customer'=>id,name])`, recurso `ActiveOrderCardResource` (id, formattedId, status, customer, loadDate). Índice `(status, load_date)`. Sin paginación por negocio. Ref.: 102-Plan-Mejoras-GET-orders-active.md. |
 | `GET` | `orders/{id}` | Medio | Medio | 1 | `Order::with(['pallets.boxes.box.productionInputs','pallets.boxes.box.product'])->findOrFail()`. Relaciones profundas pero un solo pedido. |
 | `POST` | `orders` | Medio | Medio | 1 + N líneas | Transacción: creación order + OrderPlannedProductDetail. Luego `load()` de relaciones para el resource. |
 | `PUT` | `orders/{id}` | Medio | Medio | Varias | Actualización + posible cambio de estado de palets a shipped. Recarga relaciones. |
 | `DELETE` | `orders`, `orders` (destroyMultiple) | Bajo–Medio | Bajo | 1 | Eliminación por ID o por lista de IDs. |
 | `GET` | `orders/sales-by-salesperson` | Medio | Bajo | 1 | Query con joins (orders, pallets, pallet_boxes, boxes, production_inputs, salespeople). Agrupación y filtros por fechas. Eficiente. |
 | `GET` | `orders/transport-chart-data` | Medio | Bajo | 1 | Similar a sales-by-salesperson: joins y agrupación por transporte. |
-| `GET` | `orders/active` (listado activos) | **Alto** | **Alto** | 1 | Ver fila `orders/active` arriba. |
+| `GET` | `orders/active` (listado activos) | Medio | Bajo | 1 | Ver fila `orders/active` arriba (optimizado). |
 | `PUT` | `orders/{order}/status` | Medio | Medio | Varias | Actualización estado + posible cambio masivo de palets. |
 
 ---
@@ -275,7 +275,7 @@ En la versión actual del backend **solo están registradas rutas v2** en `route
 ## Resumen de endpoints críticos o de alto impacto
 
 1. **GET** `v2/stores/total-stock-by-products` — Carga masiva (todos StoredPallet, Pallet registrados, Product) + bucles en PHP. Reescribir con agregación en BD.
-2. **GET** `v2/orders?active=true|false` y **GET** `v2/orders/active` — Sin paginación; devuelven todos los pedidos activos o finalizados.
+2. **GET** `v2/orders?active=true|false` — Sin paginación; devuelven todos los pedidos activos o finalizados. **GET** `v2/orders/active` — Optimizado (payload ligero, índice, sin pallets); ver 102-Plan-Mejoras-GET-orders-active.md.
 3. **GET** `v2/orders/pdf/order-sheets-filtered` — PDF masivo con filtros; `get()` sin límite + un PDF combinado; 512M, 300 s. Limitar filtros o usar cola.
 4. **GET** `v2/orders_report` y exports Excel filtrados (A3ERP, A3ERP2, Facilcom) — 1024M memoria, 300 s; muy sensibles al volumen.
 5. **GET** `v2/orders/{id}/pdf/*` (todos) — Chromium/Snappdf; alto tiempo de respuesta por documento.

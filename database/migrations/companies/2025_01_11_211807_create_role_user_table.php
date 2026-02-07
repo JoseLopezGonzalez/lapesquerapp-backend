@@ -16,6 +16,10 @@ return new class extends Migration
             return;
         }
 
+        if (Schema::hasTable('role_user')) {
+            return;
+        }
+
         Schema::create('role_user', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Relación con usuarios
