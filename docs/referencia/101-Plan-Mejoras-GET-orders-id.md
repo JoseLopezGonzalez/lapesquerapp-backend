@@ -4,6 +4,10 @@ Este documento describe el análisis de la implementación actual del endpoint *
 
 **Estado:** Mejoras 2, 3 y 5 implementadas. **Pendiente de probar** en entorno real/staging; si falta algún campo en la respuesta, añadirlo al `select()` en `OrderController::show()` y documentar en §8.
 
+**Revisión post-pull:** Tras contrastar con la versión actual del código (origin/main), se ajustó el `show()`: (1) **Customer** usa columna `facilcom_code` (no `facil_com_code`). (2) **Product** ya no tiene relación `article` ni modelo Article; se eliminaron `product.article` y `product.article.categoria` del `with()` y se quitaron `article_id` y `fixed_weight` del select de Product (la tabla `products` ya no tiene `fixed_weight` por migración `remove_fixed_weight_from_products_table`). (3) **Box::toArrayAssoc()** usa `$this->product`, no `$this->article`; se sigue cargando `pallets.boxes.box.product` correctamente.
+
+**Segunda revisión (exhaustiva):** (4) **pallet_boxes:** La tabla solo tiene `id`, `pallet_id`, `box_id`, `created_at`, `updated_at` (migración `2023_08_10_093037_pallet_boxes`); no tiene `lot`, `net_weight`, `article_id`. Se corrigió el select a `['id', 'pallet_id', 'box_id', 'created_at', 'updated_at']` para evitar error SQL. (5) **role_user:** Se reañadió la comprobación `Schema::hasTable('role_user')` antes de `Schema::create` para que la migración sea idempotente en todos los tenants.
+
 ---
 
 ## 1. Implementación actual
@@ -127,7 +131,7 @@ Hay que revisar cada `toArrayAssoc()` / resource y anotar columnas usadas. Resum
 | Order | id, buyer_reference, customer_id, payment_term_id, billing_address, shipping_address, transportation_notes, production_notes, accounting_notes, salesperson_id, emails, transport_id, entry_date, load_date, status, incoterm_id, created_at, updated_at, truck_plate, trailer_plate, temperature |
 | Customer | id, name, alias, vat_number, payment_term_id, billing_address, shipping_address, ..., country_id, transport_id, ... (todas las usadas en toArrayAssoc) |
 | Pallet | id, observations, status, order_id, ... (y reception_id si se usa en toArrayAssoc) |
-| PalletBox | id, pallet_id, box_id (y lot, net_weight, article_id si se exponen) |
+| PalletBox | id, pallet_id, box_id, created_at, updated_at (tabla sin lot, net_weight, article_id) |
 | Box | id, article_id, lot, gs1_128, gross_weight, net_weight, created_at (+ pallet_id si es accessor/atributo) |
 | ProductionInput | id, box_id (solo para exists/isEmpty; a veces con select mínimo) |
 | Product | id, article_id, family_id, species_id, capture_zone_id, name, a3erp_code, facil_com_code, article_gtin, box_gtin, pallet_gtin, fixed_weight, ... |
@@ -217,6 +221,7 @@ En Laravel, `foreignId()` y `foreign()` suelen crear índice sobre la columna. A
 
 - **Box.palletId:** En `Box::toArrayAssoc()` se expone `palletId` como `$this->pallet_id`. La tabla `boxes` no tiene columna `pallet_id`; ese valor puede ser `null` si no se rellena desde otro sitio. Si el frontend necesita el pallet id en cada caja, se puede obtener del `PalletBox` padre (p. ej. en el resource o en un accessor en el modelo que use la relación `palletBox`).
 - **getCustomerHistory():** Sigue haciendo una query aparte con `Order::where(...)->with(...)->get()`. No se ha aplicado select explícito ni límite de pedidos; se puede optimizar en un paso posterior si hace falta.
+- **Código actual (Product/Article):** En la rama actual no existe el modelo `Article`; `Product::toArrayAssoc()` no usa `article`. Las relaciones `product.article` y `product.article.categoria` se eliminaron del `show()` para evitar errores. Si en el futuro se reintroduce Article u otra estructura, revisar de nuevo el `with()` y los selects.
 
 ### 8.3 Resumen de lo implementado (revisión)
 
@@ -225,12 +230,46 @@ En Laravel, `foreignId()` y `foreign()` suelen crear índice sobre la columna. A
 | Order | select con id, buyer_reference, todas las FKs, direcciones, notas, emails, fechas, status, truck_plate, trailer_plate, temperature. |
 | customer + customer.payment_term, salesperson, country, transport | select con columnas usadas en toArrayAssoc(). |
 | payment_term, salesperson, transport, incoterm | select con columnas usadas (incl. emails donde aplica). |
-| plannedProductDetails + product + tax | select con id, FKs, quantity, boxes, unit_price; product con species_id y campos para productDetails; **product.article, article.categoria, product.species, captureZone, product.family, family.category** (para evitar N+1 en detail->toArrayAssoc()); tax con id, name, rate. |
+| plannedProductDetails + product + tax | select con id, FKs, quantity, boxes, unit_price; product (sin article_id ni fixed_weight; Product ya no tiene relación article); product.species, captureZone, product.family, family.category; tax con id, name, rate. |
 | incident | select con todas las columnas de toArrayAssoc(). |
 | pallets | select id, observations, status, order_id. |
-| pallet_boxes | select id, pallet_id, box_id, lot, net_weight, article_id. |
+| pallet_boxes | select id, pallet_id, box_id, created_at, updated_at. |
 | boxes | select id, article_id, lot, gs1_128, gross_weight, net_weight, created_at. |
 | production_inputs | select id, box_id (solo para isEmpty / isAvailable). |
-| product (en pallets) + article.categoria, species, captureZone, family, family.category | select con columnas usadas en Product::toArrayAssoc() y modelos anidados. |
+| product (en pallets) + species, captureZone, family, family.category | select con columnas usadas en Product::toArrayAssoc() (sin article; Product actual no tiene relación article). |
 
 Si tras las pruebas se detecta algún campo faltante, añadirlo al `select()` de la relación correspondiente en `OrderController::show()` y anotar el cambio en este apartado.
+
+---
+
+## 9. Tercera revisión final (seguridad)
+
+Revisión exhaustiva de columnas, relaciones y flujo sin modificar código adicional.
+
+### 9.1 Checklist de verificación
+
+| Verificación | Resultado |
+|--------------|-----------|
+| **Order** select vs. migraciones (orders, add_plates, add_temperature) | Todas las columnas existen. |
+| **Customer** select vs. create_customers + add a3erp_code + add facilcom_code | Incl. `facilcom_code`; columnas correctas. |
+| **Customer::toArrayAssoc()** | Usa `? -> : null` en payment_term, salesperson, country, transport; seguro con null. |
+| **PaymentTerm, Tax, Incoterm, Country** | Selects alineados con create_* y toArrayAssoc(). |
+| **Salesperson, Transport** | create_* + add_emails (salespeople); columnas correctas. |
+| **OrderPlannedProductDetail** | Tabla order_planned_product_details; select sin columnas inexistentes. |
+| **Product** | Sin article_id ni fixed_weight; columnas actuales (name, family_id, species_id, capture_zone_id, a3erp_code, facil_com_code, article_gtin, box_gtin, pallet_gtin) existen. |
+| **Incident, Pallet, Box, ProductionInput** | Selects coherentes con create_* y toArrayAssoc(). |
+| **Species, CaptureZone, ProductFamily, ProductCategory** | Columnas usadas en toArrayAssoc() incluidas en select. |
+| **Relaciones** | Nombres correctos: pallets.boxes (PalletBox), .box (Box), .product, .species, .captureZone, .family.category; plannedProductDetails.product, .tax. |
+| **FK en selects** | order_id, customer_id, payment_term_id, product_id, tax_id, pallet_id, box_id, article_id, etc. incluidos donde corresponde para que Eloquent monte las relaciones. |
+| **PalletBox** | Select solo id, pallet_id, box_id, created_at, updated_at (tabla sin lot, net_weight, article_id). |
+| **Migración role_user** | Incluye `Schema::hasTable('role_user')` antes de create; idempotente. |
+| **Migración índices** | Tablas y columnas existentes; lógica “solo si no hay índice” correcta. |
+
+### 9.2 Riesgo de relaciones null (mitigado)
+
+- Tras `fix_orders_foreign_keys_on_delete`, algunos pedidos pueden tener `customer_id`, `payment_term_id`, `salesperson_id`, `transport_id` o `incoterm_id` en NULL; el resource podría devolver 500 al llamar `->toArrayAssoc()` sobre null.
+- **Aplicado en tercera revisión:** en `OrderDetailsResource::toArray()` se usó acceso condicional para esas relaciones: `$this->customer?->toArrayAssoc()`, `$this->payment_term?->toArrayAssoc()`, `$this->salesperson?->toArrayAssoc()`, `$this->transport?->toArrayAssoc()`, `$this->incoterm?->toArrayAssoc()`. Así el endpoint devuelve `null` en el campo correspondiente en lugar de fallar.
+
+### 9.3 Conclusión
+
+En la tercera revisión se verificó la checklist (§9.1), se documentó el riesgo de FKs null y se aplicó la mitigación en el resource (§9.2). No hubo más cambios en el controlador ni en migraciones. Pendiente solo la prueba en entorno real/staging (§8.1).

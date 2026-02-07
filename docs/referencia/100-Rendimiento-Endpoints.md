@@ -1,6 +1,8 @@
 # Análisis de rendimiento por endpoint
 
-Este documento detalla el **rendimiento en tiempo y recursos** de los endpoints de la API (v1 y v2), basado en el análisis del código de controladores, servicios y rutas.
+Este documento detalla el **rendimiento en tiempo y recursos** de los endpoints de la **API v2**, basado en el análisis del código actual de controladores, servicios y rutas (`routes/api.php`).
+
+**Nota:** En la versión actual del proyecto **solo están registradas rutas v2**; no existen rutas v1 en `api.php`.
 
 ---
 
@@ -8,12 +10,12 @@ Este documento detalla el **rendimiento en tiempo y recursos** de los endpoints 
 
 | Categoría | Descripción | Endpoints afectados |
 |-----------|-------------|---------------------|
-| **Crítico** | Alto uso de CPU/memoria, I/O pesado o llamadas externas. Pueden superar 5–30 s o 512 MB. | PDFs, Excel, Document AI, `stores/total-stock-by-products`, `orders?active=`, `statistics/orders/*` (algunos) |
-| **Alto** | Consultas con muchas relaciones, sin paginación en algunos filtros, o límites aumentados. | Listados con filtros complejos (orders, pallets), `orders/active`, estadísticas de stock/recepciones/despachos |
+| **Crítico** | Alto uso de CPU/memoria, I/O pesado. Pueden superar 5–30 s o 512 MB. | PDFs (incl. masivo filtrado), Excel, `stores/total-stock-by-products`, `orders?active=`, `statistics/orders/*` (algunos) |
+| **Alto** | Consultas con muchas relaciones, sin paginación en algunos filtros, o límites aumentados. | Listados con filtros complejos (orders, pallets), `orders/active`, `orders/pdf/order-sheets-filtered`, liquidación proveedores (getSuppliers/getDetails), estadísticas |
 | **Medio** | Paginación correcta, eager loading presente, consultas acotadas. | CRUD estándar v2 con paginate, options, show con `with()` |
-| **Bajo** | Consultas simples, poco volumen de datos. | Auth, tenant, options de catálogos, settings |
+| **Bajo** | Consultas simples, poco volumen de datos. | Auth (login con throttle), tenant, options de catálogos, settings, fichajes (punches) listado |
 
-**Recomendación general:** Limitar rangos de fechas en estadísticas y exportaciones, usar paginación en listados, y considerar colas para generación de PDF/Excel y Document AI.
+**Recomendación general:** Limitar rangos de fechas en estadísticas y exportaciones, usar paginación en listados, y considerar colas para generación de PDF/Excel pesados.
 
 ---
 
@@ -37,10 +39,11 @@ Prefijo base: `/api/v2`. Middleware: `tenant`, y `auth:sanctum` en rutas protegi
 
 | Método | Ruta | Tiempo | Memoria | BD | Notas |
 |--------|------|--------|---------|-----|-------|
-| `POST` | `login` | Bajo | Bajo | 1–2 | Validación + búsqueda usuario + token. |
+| `POST` | `login` | Bajo | Bajo | 1–2 | Validación + búsqueda usuario + token. **Throttle:** 5 intentos por minuto (`throttle:5,1`). |
 | `POST` | `logout` | Bajo | Bajo | 1–2 | Revocación token. |
 | `GET` | `me` | Bajo | Bajo | 1 | Usuario actual + relaciones mínimas. |
 | `GET` | `public/tenant/{subdomain}` | Bajo | Bajo | 1 | Lectura tenant por subdominio. |
+| `POST` | `punches` (público) | Bajo | Bajo | 1–2 | Fichaje desde dispositivo NFC; no requiere auth. Creación de PunchEvent. |
 
 ---
 
@@ -52,10 +55,12 @@ Todos los endpoints `*/options` y `customers/op` comparten un patrón similar:
 - **Memoria:** baja.
 - **BD:** una consulta `select id, name` (o equivalente) con `get()` sin paginación.
 
-En catálogos pequeños (clientes, especies, transportes, etc.) el volumen es bajo. En entidades con muchos registros (por ejemplo `products/options`, `pallets/options`) el tamaño de la respuesta puede crecer; considerar paginación o búsqueda si se superan unos miles de registros.
+En catálogos pequeños (clientes, especies, transportes, etc.) el volumen es bajo. En entidades con muchos registros (por ejemplo `products/options`) el tamaño de la respuesta puede crecer; considerar paginación o búsqueda si se superan unos miles de registros.
 
 Endpoints incluidos (entre otros):  
-`customers/op`, `customers/options`, `salespeople/options`, `transports/options`, `incoterms/options`, `suppliers/options`, `species/options`, `products/options`, `product-categories/options`, `product-families/options`, `taxes/options`, `capture-zones/options`, `processes/options`, `pallets/options`, `pallets/stored-options`, `pallets/shipped-options`, `stores/options`, `orders/options`, `active-orders/options`, `fishing-gears/options`, `countries/options`, `payment-terms/options`, `labels/options`, `roles/options`, `users/options`, `production-records/options`.
+`customers/op`, `customers/options`, `salespeople/options`, `employees/options`, `transports/options`, `incoterms/options`, `suppliers/options`, `species/options`, `products/options`, `product-categories/options`, `product-families/options`, `taxes/options`, `capture-zones/options`, `processes/options`, `stores/options`, `orders/options`, `active-orders/options`, `fishing-gears/options`, `countries/options`, `payment-terms/options`, `labels/options`, `roles/options`, `users/options`, `production-records/options`.
+
+**Nota:** No existen en la API actual `pallets/options`, `pallets/stored-options` ni `pallets/shipped-options`; sí existen `pallets/registered`, `pallets/search-by-lot`, `pallets/available-for-order` (consultas específicas, no listas para dropdown).
 
 ---
 
@@ -63,9 +68,9 @@ Endpoints incluidos (entre otros):
 
 | Método | Ruta | Tiempo | Memoria | BD | Notas |
 |--------|------|--------|---------|-----|-------|
-| `GET` | `orders` | Medio–Alto | Medio | Variable | Paginación con `perPage` (default 10). Muchos filtros opcionales: `whereHas` sobre `pallets`, `pallets.palletBoxes.box`, `pallets.palletBoxes.box.product`. Con filtros por productos/especies la consulta es más pesada. |
-| `GET` | `orders?active=true` | **Alto** | **Alto** | 1 + N | **Sin paginación:** `Order::where(...)->orWhereDate(...)->get()`. Carga todos los pedidos activos en memoria. Riesgo con muchos pedidos. |
-| `GET` | `orders?active=false` | **Alto** | **Alto** | 1 + N | Mismo patrón que `active=true` para pedidos finalizados. |
+| `GET` | `orders` | Medio–Alto | Medio | Variable | Paginación con `perPage` (default 10). Usa `Order::withTotals()->with([...])`. Muchos filtros opcionales: `whereHas` sobre `pallets`, `pallets.palletBoxes.box`, `pallets.palletBoxes.box.product`. Con filtros por productos/especies la consulta es más pesada. |
+| `GET` | `orders?active=true` | **Alto** | **Alto** | 1 | **Sin paginación:** `Order::withTotals()->with([...])->where(...)->orWhereDate(...)->get()`. Carga todos los pedidos activos en memoria. Riesgo con muchos pedidos. |
+| `GET` | `orders?active=false` | **Alto** | **Alto** | 1 | Mismo patrón que `active=true` para pedidos finalizados. |
 | `GET` | `orders/active` | **Alto** | **Alto** | 1 | `Order::with([...])->where(...)->get()`. Eager loading correcto pero **sin paginación**; devuelve todos los pedidos activos con relaciones (customer, salesperson, transport, incoterm, pallets.boxes...). |
 | `GET` | `orders/{id}` | Medio | Medio | 1 | `Order::with(['pallets.boxes.box.productionInputs','pallets.boxes.box.product'])->findOrFail()`. Relaciones profundas pero un solo pedido. |
 | `POST` | `orders` | Medio | Medio | 1 + N líneas | Transacción: creación order + OrderPlannedProductDetail. Luego `load()` de relaciones para el resource. |
@@ -97,8 +102,8 @@ Endpoints incluidos (entre otros):
 | `GET` | `pallets/{id}` | Medio | Medio | 1 | Mismas relaciones que index. |
 | `POST` | `pallets` | Alto | Alto | Varias | Lógica compleja: cajas, posiciones, almacén; transacciones y múltiples escrituras. |
 | `PUT` | `pallets/{id}` | Medio–Alto | Medio | Varias | Actualización y posible recálculo de relaciones. |
-| `POST` | `pallets/assign-to-position`, `move-to-store`, etc. | Medio | Bajo | Varias | Operaciones acotadas por palet/almacén. |
-| `GET` | `pallets/registered`, `search-by-lot`, `available-for-order` | Medio | Medio | 1 | Dependen de filtros y volumen; en general consultas acotadas. |
+| `POST` | `pallets/assign-to-position`, `move-to-store`, `move-multiple-to-store`, `unlink-orders` | Medio | Bajo | Varias | Operaciones acotadas por palet/almacén; move-multiple y unlink-orders actúan sobre varios IDs. |
+| `GET` | `pallets/registered`, `search-by-lot`, `available-for-order` | Medio | Medio | 1 | Consultas específicas (no son options); dependen de filtros y volumen. |
 | `POST` | `pallets/update-state` (bulk) | Medio–Alto | Medio | N | Actualización masiva por IDs; N proporcional al tamaño del lote. |
 | `DELETE` | `pallets`, `pallets` (destroyMultiple) | Medio | Bajo | 1 | Eliminación por lista de IDs. |
 
@@ -130,6 +135,7 @@ Endpoints incluidos (entre otros):
 | `GET` | `raw-material-receptions` | Medio | Medio | 1 por página | Eager: `supplier`, `products.product`, `pallets.reception`, `pallets.boxes.box.productionInputs`. Paginación. |
 | `GET` | `raw-material-receptions/{id}` | Medio | Medio | 1 | Mismas relaciones. |
 | `GET` | `raw-material-receptions/reception-chart-data` | Medio | Bajo | 1 | RawMaterialReceptionStatisticsService; agregación por fechas. |
+| `POST` | `raw-material-receptions/validate-bulk-update-declared-data`, `bulk-update-declared-data` | Medio | Medio | Varias | Validación y actualización masiva de datos declarados; volumen según IDs. |
 | `GET` | `raw-material-receptions/facilcom-xls`, `a3erp-xls` | **Alto** | **Alto** | 1 + export | Export Excel; depende del volumen de recepciones. |
 | Resto CRUD / destroyMultiple | - | Bajo–Medio | Bajo | Varias | Transacciones y eliminaciones. |
 
@@ -154,11 +160,11 @@ Patrón típico:
 - **store/update:** validación + una o varias escrituras. **Tiempo:** bajo–medio.
 - **destroy / destroyMultiple:** eliminación por ID(s). **Tiempo:** bajo–medio.
 
-Entidades: `products`, `product-categories`, `product-families`, `boxes`, `customers`, `suppliers`, `transports`, `salespeople`, `incoterms`, `payment-terms`, `countries`, `capture-zones`, `species`, `fishing-gears`, `labels`, `processes`, `order-planned-product-details`, etc.
+Entidades: `products`, `product-categories`, `product-families`, `boxes`, `customers`, `suppliers`, `transports`, `salespeople`, `employees`, `incoterms`, `payment-terms`, `countries`, `capture-zones`, `species`, `fishing-gears`, `labels` (incl. `POST labels/{label}/duplicate`), `processes`, `order-planned-product-details`, etc.
 
 ---
 
-### Producción (Productions, ProductionRecords, Inputs/Outputs)
+### Producción (Productions, ProductionRecords, Inputs/Outputs, Costes)
 
 | Método | Ruta | Tiempo | Memoria | BD | Notas |
 |--------|------|--------|---------|-----|-------|
@@ -166,23 +172,32 @@ Entidades: `products`, `product-categories`, `product-families`, `boxes`, `custo
 | `GET` | `productions/{id}` | Medio–Alto | Medio | Varias | ProductionService getWithReconciliation; puede incluir árbol y reconciliación. |
 | `GET` | `productions/{id}/diagram`, `process-tree`, `totals`, `reconciliation`, `available-products-for-outputs` | Medio | Medio | Varias | Dependen de la complejidad del lote y procesos. |
 | `GET` | `production-records` | Medio | Medio | 1 por página | Paginación. |
-| `GET` | `production-records/{id}/tree` | Medio–Alto | Medio | Varias | Árbol de registros. |
+| `GET` | `production-records/{id}/tree`, `production-records/{id}/sources-data` | Medio–Alto | Medio | Varias | Árbol de registros; sources-data para datos de fuentes. |
 | `POST` | `production-records/{id}/finish` | Alto | Medio | Varias | Lógica de cierre y posible propagación. |
+| `GET` | `production-outputs/{id}/cost-breakdown` | Medio | Bajo | Varias | Desglose de costes de una salida. |
 | `POST` | `production-inputs/multiple`, `production-outputs/multiple`, etc. | Medio | Medio | Varias | Inserción múltiple en transacción. |
+| CRUD | `cost-catalog`, `production-costs` | Bajo–Medio | Bajo | 1 por página / 1 | Catálogo de costes y costes de producción; apiResource estándar. |
 
 ---
 
 ### Generación de PDF (v2)
 
-Todos los endpoints `GET orders/{orderId}/pdf/*` siguen el mismo patrón:
+El controlador usa el trait **HandlesChromiumConfig** para configurar Chromium (Snappdf) de forma centralizada.
 
-- **BD:** `Order::findOrFail($orderId)` (sin eager loading explícito en el controlador; las vistas pueden acceder a relaciones y provocar N+1 si no se cargan en la vista o en un scope).
-- **I/O:** Snappdf (Chromium) genera el PDF desde HTML: **uso intensivo de CPU y tiempo** (típicamente 2–10+ segundos según complejidad del documento).
+**Endpoints por pedido** `GET orders/{orderId}/pdf/*`:
+
+- **BD:** `Order::findOrFail($orderId)` (sin eager loading explícito; las vistas pueden provocar N+1 si acceden a relaciones no cargadas).
+- **I/O:** Snappdf (Chromium) genera el PDF desde HTML: **uso intensivo de CPU y tiempo** (típicamente 2–10+ s por documento).
 - **Memoria:** media–alta durante el renderizado.
 
-Endpoints: `order-sheet`, `order-signs`, `order-packing-list`, `loading-note`, `restricted-loading-note`, `order-cmr`, `valued-loading-note`, `incident`, `order-confirmation`, `transport-pickup-request`.
+Rutas: `order-sheet`, `order-signs`, `order-packing-list`, `loading-note`, `restricted-loading-note`, `order-cmr`, `valued-loading-note`, `incident`, `order-confirmation`, `transport-pickup-request`.
 
-**Recomendación:** cargar relaciones necesarias con `Order::with([...])->findOrFail()` antes de pasar a la vista y considerar cola para generación asíncrona en documentos pesados.
+**Endpoint masivo** `GET orders/pdf/order-sheets-filtered`:
+
+- **Tiempo/memoria:** **Alto.** `ini_set('memory_limit','512M')`, `max_execution_time 300`. Aplica los mismos filtros que las exportaciones Excel, hace `$query->get()` (sin paginación) y genera **un único PDF combinado** con todas las hojas de pedido (vista `order_sheets_combined`). Si los filtros devuelven muchos pedidos, la consulta y el HTML/PDF pueden ser muy pesados.
+- **Recomendación:** limitar filtros (p. ej. rango de fechas o lista de IDs) o mover a cola.
+
+**Recomendación general PDF:** cargar relaciones necesarias con `Order::with([...])->findOrFail()` en endpoints por pedido y considerar cola para el PDF masivo.
 
 ---
 
@@ -202,9 +217,33 @@ Endpoints: `order-sheet`, `order-signs`, `order-packing-list`, `loading-note`, `
 
 ### Document AI (Azure)
 
-| Método | Ruta | Tiempo | Memoria | I/O | Notas |
+En la versión actual del proyecto **la ruta `POST document-ai/parse` no está registrada** en `routes/api.php` (el controlador Azure Document AI existe en el código pero no está enlazado en rutas). Si se vuelve a exponer, tener en cuenta: tiempo muy alto (API externa + polling), uso de red y disco; recomendable ejecutar en cola.
+
+---
+
+### Fichajes (Punches) y empleados (Employees)
+
+| Método | Ruta | Tiempo | Memoria | BD | Notas |
 |--------|------|--------|---------|-----|-------|
-| `POST` | `document-ai/parse` | **Muy alto (10–60+ s)** | Medio | Red + disco | Subida PDF (max 20 MB), guardado temporal, envío a Azure Form Recognizer, **polling cada 2 s** hasta que el análisis termine. Tiempo dominado por la API externa. **Crítico:** no ejecutar en request síncrono en producción; usar cola. |
+| `POST` | `punches` (público) | Bajo | Bajo | 1–2 | Ver Autenticación; creación de fichaje (NFC o manual). |
+| `GET` | `punches` | Medio | Bajo | 1 por página | Paginación (perPage 15), filtros (empleado, fechas, event_type, device_id). Eager `employee`. |
+| `GET` | `punches/dashboard` | Medio | Medio | Varias | Datos para dashboard de fichajes; depende de la implementación. |
+| `GET` | `punches/statistics` | Medio | Bajo | 1–2 | Agregaciones por período/empleado. |
+| `GET` | `punches/calendar` | Medio | Medio | 1 | Eventos para vista calendario. |
+| `POST` | `punches/bulk/validate`, `punches/bulk` | Medio | Medio | Varias | Validación e inserción masiva de fichajes manuales. |
+| `DELETE` | `punches`, `punches` (destroyMultiple) | Bajo–Medio | Bajo | 1 | Eliminación por ID(s). |
+| CRUD | `employees` | Bajo–Medio | Bajo | 1 por página / 1 | Paginación, filtros (name, nfc_uid). Opción `with_last_punch` para cargar último fichaje. |
+| `GET` | `employees/options` | Bajo | Bajo | 1 | Lista id, name, nfcUid con `get()`; filtro opcional por nombre. |
+
+---
+
+### Liquidación de proveedores (Supplier Liquidations)
+
+| Método | Ruta | Tiempo | Memoria | BD | Notas |
+|--------|------|--------|---------|-----|-------|
+| `GET` | `supplier-liquidations/suppliers` | **Alto** | Medio | 2 + N×2 | Proveedores con recepciones o despachos en rango de fechas. Para cada proveedor se hace `RawMaterialReception::where(...)->with('products')->get()` y `CeboDispatch::where(...)->with('products')->get()`; **riesgo N+1** y carga en memoria si hay muchos proveedores. Acotar rango de fechas. |
+| `GET` | `supplier-liquidations/{supplierId}/details` | Medio–Alto | Medio | 2 | Recepciones y despachos del proveedor en rango, con `with(['products.product','supplier'])`; luego procesamiento en PHP (relación recepción–despachos, totales). |
+| `GET` | `supplier-liquidations/{supplierId}/pdf` | **Alto** | Alto | Varias + Chromium | Generación de PDF de liquidación (Snappdf/HandlesChromiumConfig). Similar a otros PDFs; tiempo y CPU altos. |
 
 ---
 
@@ -214,7 +253,7 @@ Endpoints: `order-sheet`, `order-signs`, `order-packing-list`, `loading-note`, `
 |--------|------|--------|---------|-----|-------|
 | `GET` | `sessions` | Bajo–Medio | Bajo | 1 | Listado de sesiones; paginación recomendable si existe. |
 | `GET` | `activity-logs` | Medio | Medio | 1 por página | Filtros por usuario, IP, fechas, path. Paginación. |
-| `GET` | `users`, `roles` | Bajo–Medio | Bajo | 1 por página | CRUD estándar. |
+| `GET` | `users`, `roles`, `employees` | Bajo–Medio | Bajo | 1 por página | CRUD estándar; employees con paginación y filtros. |
 
 ---
 
@@ -227,31 +266,21 @@ Endpoints: `order-sheet`, `order-signs`, `order-packing-list`, `loading-note`, `
 
 ---
 
-## API v1 (obsoleta)
+## API v1
 
-Resumen de endpoints v1 más relevantes desde el punto de vista de rendimiento:
-
-- **Auth:** `v1/register`, `v1/login`, `v1/logout`, `v1/me` — bajo.
-- **CRUD** (stores, pallets, customers, orders, transports, etc.): en su mayoría sin middleware auth en bloque; varios listados sin paginación o con `get()` (p. ej. recursos apiResource que no definen paginate). **Riesgo:** listados grandes en memoria.
-- **v1/boxes_report,** **v1/raw_material_receptions_report,** **v1/cebo_dispatches_report/*:** export Excel; análogos a v2 en consumo de memoria y tiempo.
-- **v1/send_order_documentation**, **v1/send_order_documentation_transport:** envío de documentación; pueden generar PDFs y enviar correo (I/O y tiempo altos).
-- **v1/orders/{id}/delivery-note**, **restricted-delivery-note**, **order-signs**, **order_CMR**, etc.: generación PDF con Snappdf/Chromium; **tiempo y CPU altos** (varios segundos por documento).
-- **v1/rawMaterialReceptions/document,** **v1/ceboDispatches/document:** PDFs de recepciones/despachos; mismo perfil que el resto de PDFs.
-- **v1/process-nodes-decrease,** **process-nodes-decrease-stats,** **v1/final-nodes-profit,** **final-nodes-cost-per-kg-by-day,** **final-nodes-daily-profit:** estadísticas; dependen de la implementación (consultas agregadas vs. cargar muchos modelos).
-- **v1/raw-material-receptions-monthly-stats,** **annual-stats,** **daily-by-products-stats:** estadísticas por período; pueden ser pesadas si no están basadas en agregación en BD.
-- **v1/total-inventory-by-species,** **v1/total-inventory-by-products:** análogos conceptuales a v2 stores/total-stock-by-products; si están implementados con bucles en PHP sobre todos los palets/cajas, **riesgo alto** de tiempo y memoria.
-- **v1/process-options,** **v1/auto-sales-customers,** **v1/auto-sales,** **v1/insert-auto-sales-customers:** catálogos y autocompletado; normalmente ligeros.
+En la versión actual del backend **solo están registradas rutas v2** en `routes/api.php`. No hay rutas v1 (auth, CRUD, reportes, PDFs, etc.) expuestas; si en el futuro se volvieran a registrar, aplicar el mismo criterio de rendimiento que en v2 (paginación, límites de memoria/tiempo, agregación en BD).
 
 ---
 
 ## Resumen de endpoints críticos o de alto impacto
 
-1. **GET** `v2/stores/total-stock-by-products` — Carga masiva + bucles en PHP. Reescribir con agregación en BD.
-2. **GET** `v2/orders?active=true|false` y **GET** `v2/orders/active` — Sin paginación; devuelven todos los pedidos activos/finalizados.
-3. **GET** `v2/orders_report` y exports Excel filtrados (A3ERP, A3ERP2, Facilcom) — 1024M memoria, 300 s; muy sensibles al volumen.
-4. **POST** `v2/document-ai/parse` — Llamada externa + polling; mover a cola.
-5. **GET** `v2/orders/{id}/pdf/*` (todos) — Chromium/Snappdf; alto tiempo de respuesta.
-6. **GET** `v2/statistics/orders/total-amount` y **ranking** — Límites elevados (300 s, 512M); acotar rangos de fechas.
+1. **GET** `v2/stores/total-stock-by-products` — Carga masiva (todos StoredPallet, Pallet registrados, Product) + bucles en PHP. Reescribir con agregación en BD.
+2. **GET** `v2/orders?active=true|false` y **GET** `v2/orders/active` — Sin paginación; devuelven todos los pedidos activos o finalizados.
+3. **GET** `v2/orders/pdf/order-sheets-filtered` — PDF masivo con filtros; `get()` sin límite + un PDF combinado; 512M, 300 s. Limitar filtros o usar cola.
+4. **GET** `v2/orders_report` y exports Excel filtrados (A3ERP, A3ERP2, Facilcom) — 1024M memoria, 300 s; muy sensibles al volumen.
+5. **GET** `v2/orders/{id}/pdf/*` (todos) — Chromium/Snappdf; alto tiempo de respuesta por documento.
+6. **GET** `v2/supplier-liquidations/suppliers` — N+1 al cargar recepciones/despachos por proveedor; acotar rango de fechas.
+7. **GET** `v2/statistics/orders/total-amount` y **ranking** — Límites elevados (300 s, 512M); acotar rangos de fechas.
 
 ---
 
@@ -260,8 +289,7 @@ Resumen de endpoints v1 más relevantes desde el punto de vista de rendimiento:
 - **Paginación:** Usar siempre en listados (orders, pallets, activity-logs, etc.) y evitar `get()` sin límite cuando el conjunto pueda crecer.
 - **Rangos de fechas:** En estadísticas y exportaciones, limitar `dateFrom`/`dateTo` (p. ej. máximo 1 año) y documentarlo.
 - **Stores total-stock-by-products:** Sustituir la carga de todos los palets/productos y bucles en PHP por una consulta agregada (GROUP BY product, SUM(net_weight)).
-- **PDF/Excel:** Para informes pesados o por lotes, considerar generación en cola y descarga asíncrona (estado + URL cuando esté listo).
-- **Document AI:** Ejecutar en job en cola; devolver un identificador de tarea y permitir consultar el resultado más tarde.
+- **PDF/Excel:** Para informes pesados (order-sheets-filtered, orders_report, exports filtrados) considerar generación en cola y descarga asíncrona (estado + URL cuando esté listo).
 - **Eager loading:** Revisar vistas de PDF y recursos que serializan relaciones (orders, stores, pallets) para cargar con `with()` y evitar N+1.
 - **Índices:** Asegurar índices en columnas de filtro y fechas (load_date, entry_date, created_at) y en FKs usadas en joins (order_id, pallet_id, box_id, etc.).
 

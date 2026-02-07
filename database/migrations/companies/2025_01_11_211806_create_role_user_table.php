@@ -17,6 +17,11 @@ return new class extends Migration
             return;
         }
 
+        // No fallar si la tabla ya existe (tenant con migraciones desincronizadas)
+        if (Schema::hasTable('role_user')) {
+            return;
+        }
+
         Schema::create('role_user', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Relación con usuarios
