@@ -1178,26 +1178,29 @@ class PalletController extends Controller
      * 
      * Solo palets almacenados o registrados, excluyendo los que están vinculados a otros pedidos
      * 
+     * @param int $orderId ID del pedido
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function availableForOrder(Request $request)
+    public function availableForOrder(int $orderId, Request $request)
     {
+        // Validar que el pedido existe
+        \Validator::make(['orderId' => $orderId], [
+            'orderId' => 'required|integer|exists:tenant.orders,id',
+        ])->validate();
+        
         $validated = $request->validate([
-            'orderId' => 'nullable|integer|exists:tenant.orders,id',
-            'id' => 'nullable|string', // Filtro por ID con coincidencias parciales
             'ids' => 'nullable|array', // Filtro por múltiples IDs específicos
             'ids.*' => 'integer', // Cada ID debe ser un entero
             'storeId' => 'nullable|integer|exists:tenant.stores,id',
             'perPage' => 'nullable|integer|min:1|max:100',
             'page' => 'nullable|integer|min:1',
         ]);
-
-        $orderId = $validated['orderId'] ?? null;
-        $idFilter = $validated['id'] ?? null;
         $idsFilter = $validated['ids'] ?? null;
         $storeId = $validated['storeId'] ?? null;
         $perPage = $validated['perPage'] ?? 20;
+        
+        // orderId viene de la ruta, siempre está presente
 
         // Construir query base
         $query = Pallet::query()
@@ -1209,34 +1212,30 @@ class PalletController extends Controller
                 'reception'
             ]);
 
-        // Filtrar por múltiples IDs específicos (tiene prioridad sobre id)
+        // Filtrar por IDs específicos si se proporcionan
+        // ids tiene prioridad absoluta sobre storeId: si un ID está en ids, se muestra aunque no cumpla storeId
         if ($idsFilter && is_array($idsFilter) && !empty($idsFilter)) {
+            // Filtrar por los IDs proporcionados (solo los que existen se devolverán)
             $query->whereIn('id', $idsFilter);
-        }
-        // Filtrar por ID si se proporciona (búsqueda por coincidencias parciales)
-        elseif ($idFilter) {
-            $query->where('id', 'like', "%{$idFilter}%");
-        }
-
-        // Filtrar por almacén si se proporciona storeId
-        if ($storeId !== null) {
-            // Solo incluir palets que tienen storedPallet con el store_id especificado
-            $query->whereHas('storedPallet', function ($q) use ($storeId) {
-                $q->where('store_id', $storeId);
-            });
+            // Nota: storeId se ignora cuando hay ids porque ids tiene prioridad absoluta
+        } else {
+            // Si no hay ids, aplicar filtro de almacén normalmente
+            
+            // Filtrar por almacén si se proporciona storeId
+            if ($storeId !== null) {
+                // Solo incluir palets que tienen storedPallet con el store_id especificado
+                $query->whereHas('storedPallet', function ($q) use ($storeId) {
+                    $q->where('store_id', $storeId);
+                });
+            }
         }
 
         // Excluir palets vinculados a otros pedidos
-        // Si se proporciona orderId, incluir palets sin pedido O del mismo pedido (para permitir cambio)
-        if ($orderId) {
-            $query->where(function ($q) use ($orderId) {
-                $q->whereNull('order_id')
-                  ->orWhere('order_id', $orderId);
-            });
-        } else {
-            // Si no se proporciona orderId, solo palets sin pedido
-            $query->whereNull('order_id');
-        }
+        // Incluir palets sin pedido O del mismo pedido (para permitir cambio de palets)
+        $query->where(function ($q) use ($orderId) {
+            $q->whereNull('order_id')
+              ->orWhere('order_id', $orderId);
+        });
 
         // Ordenar por ID descendente
         $query->orderBy('id', 'desc');
