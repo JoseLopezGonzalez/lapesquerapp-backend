@@ -1311,6 +1311,7 @@ class PalletController extends Controller
                 'totalAvailableWeight' => $pallet->totalAvailableWeight !== null ? round($pallet->totalAvailableWeight, 3) : null,
                 'storedPallet' => $pallet->storedPallet ? [
                     'store_id' => $pallet->storedPallet->store_id,
+                    'store_name' => $pallet->storedPallet->store ? $pallet->storedPallet->store->name : null,
                     'position' => $pallet->storedPallet->position,
                 ] : null,
                 'order_id' => $pallet->order_id,
