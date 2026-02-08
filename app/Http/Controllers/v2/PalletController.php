@@ -1186,11 +1186,14 @@ class PalletController extends Controller
         $validated = $request->validate([
             'orderId' => 'nullable|integer|exists:tenant.orders,id',
             'id' => 'nullable|string', // Filtro por ID con coincidencias
+            'storeId' => 'nullable|integer|exists:tenant.stores,id',
             'perPage' => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1',
         ]);
 
         $orderId = $validated['orderId'] ?? null;
         $idFilter = $validated['id'] ?? null;
+        $storeId = $validated['storeId'] ?? null;
         $perPage = $validated['perPage'] ?? 20;
 
         // Construir query base
@@ -1206,6 +1209,14 @@ class PalletController extends Controller
         // Filtrar por ID si se proporciona (búsqueda por coincidencias)
         if ($idFilter) {
             $query->where('id', 'like', "%{$idFilter}%");
+        }
+
+        // Filtrar por almacén si se proporciona storeId
+        if ($storeId !== null) {
+            // Solo incluir palets que tienen storedPallet con el store_id especificado
+            $query->whereHas('storedPallet', function ($q) use ($storeId) {
+                $q->where('store_id', $storeId);
+            });
         }
 
         // Excluir palets vinculados a otros pedidos
@@ -1230,6 +1241,7 @@ class PalletController extends Controller
         $formattedPallets = $pallets->map(function ($pallet) {
             return [
                 'id' => $pallet->id,
+                'status' => $pallet->status,
                 'state' => [
                     'id' => $pallet->status,
                     'name' => $pallet->stateArray['name'] ?? null,
@@ -1239,12 +1251,11 @@ class PalletController extends Controller
                 'availableBoxesCount' => $pallet->availableBoxesCount ?? 0,
                 'netWeight' => $pallet->netWeight !== null ? round($pallet->netWeight, 3) : null,
                 'totalAvailableWeight' => $pallet->totalAvailableWeight !== null ? round($pallet->totalAvailableWeight, 3) : null,
-                'store' => $pallet->storedPallet && $pallet->storedPallet->store ? [
-                    'id' => $pallet->storedPallet->store->id,
-                    'name' => $pallet->storedPallet->store->name,
+                'storedPallet' => $pallet->storedPallet ? [
+                    'store_id' => $pallet->storedPallet->store_id,
+                    'position' => $pallet->storedPallet->position,
                 ] : null,
-                'position' => $pallet->storedPallet->position ?? null,
-                'orderId' => $pallet->order_id,
+                'order_id' => $pallet->order_id,
                 'receptionId' => $pallet->reception_id,
                 'observations' => $pallet->observations,
             ];
@@ -1252,18 +1263,10 @@ class PalletController extends Controller
 
         return response()->json([
             'data' => $formattedPallets,
-            'meta' => [
-                'current_page' => $pallets->currentPage(),
-                'last_page' => $pallets->lastPage(),
-                'per_page' => $pallets->perPage(),
-                'total' => $pallets->total(),
-            ],
-            'links' => [
-                'first' => $pallets->url(1),
-                'last' => $pallets->url($pallets->lastPage()),
-                'prev' => $pallets->previousPageUrl(),
-                'next' => $pallets->nextPageUrl(),
-            ],
+            'current_page' => $pallets->currentPage(),
+            'last_page' => $pallets->lastPage(),
+            'per_page' => $pallets->perPage(),
+            'total' => $pallets->total(),
         ], 200);
     }
 
