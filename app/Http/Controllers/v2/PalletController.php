@@ -1185,7 +1185,9 @@ class PalletController extends Controller
     {
         $validated = $request->validate([
             'orderId' => 'nullable|integer|exists:tenant.orders,id',
-            'id' => 'nullable|string', // Filtro por ID con coincidencias
+            'id' => 'nullable|string', // Filtro por ID con coincidencias parciales
+            'ids' => 'nullable|array', // Filtro por múltiples IDs específicos
+            'ids.*' => 'integer', // Cada ID debe ser un entero
             'storeId' => 'nullable|integer|exists:tenant.stores,id',
             'perPage' => 'nullable|integer|min:1|max:100',
             'page' => 'nullable|integer|min:1',
@@ -1193,6 +1195,7 @@ class PalletController extends Controller
 
         $orderId = $validated['orderId'] ?? null;
         $idFilter = $validated['id'] ?? null;
+        $idsFilter = $validated['ids'] ?? null;
         $storeId = $validated['storeId'] ?? null;
         $perPage = $validated['perPage'] ?? 20;
 
@@ -1206,8 +1209,12 @@ class PalletController extends Controller
                 'reception'
             ]);
 
-        // Filtrar por ID si se proporciona (búsqueda por coincidencias)
-        if ($idFilter) {
+        // Filtrar por múltiples IDs específicos (tiene prioridad sobre id)
+        if ($idsFilter && is_array($idsFilter) && !empty($idsFilter)) {
+            $query->whereIn('id', $idsFilter);
+        }
+        // Filtrar por ID si se proporciona (búsqueda por coincidencias parciales)
+        elseif ($idFilter) {
             $query->where('id', 'like', "%{$idFilter}%");
         }
 
