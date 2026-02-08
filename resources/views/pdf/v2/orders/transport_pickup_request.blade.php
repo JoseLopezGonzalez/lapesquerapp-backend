@@ -79,8 +79,6 @@
                         {{ tenantSetting('company.contact.incidents_email') }}</p>
                     <p><span class="font-medium">Contacto para carga:</span>
                         {{ tenantSetting('company.contact.loading_email') }}</p>
-                    <p><span class="font-medium">Contacto para descarga:</span>
-                        {{ tenantSetting('company.contact.unloading_email') }}</p>
                 </div>
             </div>
         </div>
@@ -104,7 +102,6 @@
             <div class="border rounded-lg bg-gray-50 overflow-hidden">
                 <div class="font-bold p-2 bg-gray-800 text-white">DIRECCIÓN DE ENTREGA</div>
                 <div class="p-4">
-                    <p class="font-medium">{{ $entity->customer->name }}</p>
                     {!! nl2br(e($entity->shipping_address)) !!}
                 </div>
             </div>
@@ -113,19 +110,9 @@
 
 
         <div class="border p-4 py-2 rounded-lg bg-gray-50 mb-6 text-[10px]">
-            <div class="grid grid-cols-2 gap-4 divide-x-gray-800">
-                <div>
-                    <p class="font-bold">FECHA DE RECOGIDA PREVISTA</p>
-                    <p>{{ date('d/m/Y', strtotime($entity->load_date)) }}</p>
-                </div>
-                <div>
-                    <p class="font-bold">Nº DE PALLETS PREVISTOS</p>
-                    <p>
-                        {{ $entity->numberOfPallets }}
-                    </p>
-                </div>
-
-
+            <div>
+                <p class="font-bold">FECHA DE RECOGIDA PREVISTA</p>
+                <p>{{ date('d/m/Y', strtotime($entity->load_date)) }}</p>
             </div>
         </div>
 
