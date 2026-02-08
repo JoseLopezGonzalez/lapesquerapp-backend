@@ -1239,6 +1239,55 @@ class PalletController extends Controller
 
         // Formatear respuesta con datos relevantes
         $formattedPallets = $pallets->map(function ($pallet) {
+            // Calcular resumen por producto
+            $productsSummary = [];
+            
+            if ($pallet->boxes && $pallet->boxes->isNotEmpty()) {
+                // Agrupar cajas por producto
+                $boxesByProduct = $pallet->boxes->groupBy(function ($palletBox) {
+                    return $palletBox->box && $palletBox->box->product 
+                        ? $palletBox->box->product->id 
+                        : null;
+                })->filter(function ($boxes, $productId) {
+                    return $productId !== null;
+                });
+                
+                foreach ($boxesByProduct as $productId => $productBoxes) {
+                    $firstBox = $productBoxes->first()->box;
+                    $product = $firstBox->product;
+                    
+                    if (!$product) {
+                        continue;
+                    }
+                    
+                    // Calcular cajas disponibles y usadas
+                    $availableBoxes = $productBoxes->filter(function ($palletBox) {
+                        return $palletBox->box && $palletBox->box->isAvailable;
+                    });
+                    
+                    $availableBoxCount = $availableBoxes->count();
+                    $availableNetWeight = $availableBoxes->sum(function ($palletBox) {
+                        return $palletBox->box->net_weight ?? 0;
+                    });
+                    
+                    $totalBoxCount = $productBoxes->count();
+                    $totalNetWeight = $productBoxes->sum(function ($palletBox) {
+                        return $palletBox->box->net_weight ?? 0;
+                    });
+                    
+                    $productsSummary[] = [
+                        'product' => [
+                            'id' => $product->id,
+                            'name' => $product->name,
+                        ],
+                        'availableBoxCount' => $availableBoxCount,
+                        'availableNetWeight' => $availableNetWeight !== null ? round($availableNetWeight, 3) : 0,
+                        'totalBoxCount' => $totalBoxCount,
+                        'totalNetWeight' => $totalNetWeight !== null ? round($totalNetWeight, 3) : 0,
+                    ];
+                }
+            }
+            
             return [
                 'id' => $pallet->id,
                 'status' => $pallet->status,
@@ -1247,6 +1296,7 @@ class PalletController extends Controller
                     'name' => $pallet->stateArray['name'] ?? null,
                 ],
                 'productsNames' => $pallet->productsNames ?? [],
+                'productsSummary' => $productsSummary,
                 'numberOfBoxes' => $pallet->numberOfBoxes ?? 0,
                 'availableBoxesCount' => $pallet->availableBoxesCount ?? 0,
                 'netWeight' => $pallet->netWeight !== null ? round($pallet->netWeight, 3) : null,
