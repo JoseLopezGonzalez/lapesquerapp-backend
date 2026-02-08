@@ -1296,6 +1296,7 @@ class PalletController extends Controller
                     'name' => $pallet->stateArray['name'] ?? null,
                 ],
                 'productsNames' => $pallet->productsNames ?? [],
+                'lots' => $pallet->lots ?? [],
                 'productsSummary' => $productsSummary,
                 'numberOfBoxes' => $pallet->numberOfBoxes ?? 0,
                 'availableBoxesCount' => $pallet->availableBoxesCount ?? 0,
