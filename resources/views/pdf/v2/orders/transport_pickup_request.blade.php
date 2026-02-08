@@ -89,11 +89,24 @@
         <div class="grid grid-cols-2 gap-4 mb-4">
             <div class="border rounded-lg bg-gray-50 overflow-hidden">
                 <div class="font-bold p-2 bg-gray-800 text-white">DIRECCIÓN DE RECOGIDA</div>
-                <div class="p-4">{!! nl2br(e($entity->shipping_address)) !!}</div>
+                <div class="p-4">
+                    <p class="font-medium">{{ tenantSetting('company.name') }}</p>
+                    <p>{{ tenantSetting('company.address.street') }}</p>
+                    <p>{{ tenantSetting('company.address.postal_code') }} {{ tenantSetting('company.address.city') }}</p>
+                    @if(tenantSetting('company.address.province'))
+                        <p>{{ tenantSetting('company.address.province') }}</p>
+                    @endif
+                    @if(tenantSetting('company.address.country'))
+                        <p>{{ tenantSetting('company.address.country') }}</p>
+                    @endif
+                </div>
             </div>
             <div class="border rounded-lg bg-gray-50 overflow-hidden">
                 <div class="font-bold p-2 bg-gray-800 text-white">DIRECCIÓN DE ENTREGA</div>
-                <div class="p-4">{!! nl2br(e($entity->billing_address)) !!}</div>
+                <div class="p-4">
+                    <p class="font-medium">{{ $entity->customer->name }}</p>
+                    {!! nl2br(e($entity->shipping_address)) !!}
+                </div>
             </div>
         </div>
 
