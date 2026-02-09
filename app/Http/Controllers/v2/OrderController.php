@@ -828,6 +828,138 @@ class OrderController extends Controller
         }
     }
 
+    /**
+     * Vista de producción - Pedidos agrupados por producto
+     * Devuelve los pedidos del día actual agrupados por producto
+     * 
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function productionView()
+    {
+        try {
+            // Filtrar pedidos del día actual (load_date = hoy)
+            $today = Carbon::today();
+            
+            // Obtener pedidos del día actual con sus detalles planificados y palets
+            $orders = Order::whereDate('load_date', $today)
+                ->with([
+                    'plannedProductDetails' => function ($q) {
+                        $q->select(['id', 'order_id', 'product_id', 'quantity', 'boxes']);
+                    },
+                    'plannedProductDetails.product' => function ($q) {
+                        $q->select(['id', 'name']);
+                    },
+                    'pallets' => function ($q) {
+                        $q->select(['id', 'order_id']);
+                    },
+                    'pallets.boxes' => function ($q) {
+                        $q->select(['id', 'pallet_id', 'box_id']);
+                    },
+                    'pallets.boxes.box' => function ($q) {
+                        $q->select(['id', 'article_id', 'net_weight']);
+                    },
+                    'pallets.boxes.box.productionInputs' => function ($q) {
+                        $q->select(['id', 'box_id']);
+                    }
+                ])
+                ->get();
+
+            // Agrupar por producto
+            $productsData = [];
+
+            foreach ($orders as $order) {
+                foreach ($order->plannedProductDetails as $plannedDetail) {
+                    $productId = $plannedDetail->product_id;
+                    $productName = $plannedDetail->product->name ?? 'Producto sin nombre';
+                    
+                    // Inicializar producto si no existe
+                    if (!isset($productsData[$productId])) {
+                        $productsData[$productId] = [
+                            'id' => $productId,
+                            'name' => $productName,
+                            'orders' => []
+                        ];
+                    }
+
+                    // Calcular cantidades completadas desde los palets
+                    $completedQuantity = 0;
+                    $completedBoxes = 0;
+                    $palletIds = [];
+
+                    foreach ($order->pallets as $pallet) {
+                        $palletHasProduct = false;
+                        
+                        foreach ($pallet->boxes as $palletBox) {
+                            if ($palletBox->box && $palletBox->box->article_id == $productId) {
+                                // Solo contar cajas disponibles (no usadas en producción)
+                                // Verificar directamente si tiene productionInputs
+                                $isAvailable = $palletBox->box->productionInputs->isEmpty();
+                                
+                                if ($isAvailable) {
+                                    $completedQuantity += $palletBox->box->net_weight ?? 0;
+                                    $completedBoxes++;
+                                    $palletHasProduct = true;
+                                }
+                            }
+                        }
+                        
+                        // Agregar ID del palet si contiene este producto
+                        if ($palletHasProduct && !in_array($pallet->id, $palletIds)) {
+                            $palletIds[] = $pallet->id;
+                        }
+                    }
+
+                    // Calcular cantidades restantes
+                    $plannedQuantity = (float) $plannedDetail->quantity;
+                    $plannedBoxes = (int) $plannedDetail->boxes;
+                    
+                    $remainingQuantity = $plannedQuantity - $completedQuantity;
+                    $remainingBoxes = $plannedBoxes - $completedBoxes;
+
+                    // Calcular estado según la lógica especificada (basado en cajas)
+                    if ($completedBoxes == $plannedBoxes) {
+                        $status = 'completed';
+                    } elseif ($completedBoxes > $plannedBoxes) {
+                        $status = 'exceeded';
+                    } else {
+                        $status = 'pending';
+                    }
+
+                    // Agregar pedido al producto
+                    $productsData[$productId]['orders'][] = [
+                        'orderId' => $order->id,
+                        'quantity' => $plannedQuantity,
+                        'boxes' => $plannedBoxes,
+                        'completedQuantity' => round($completedQuantity, 2),
+                        'completedBoxes' => $completedBoxes,
+                        'remainingQuantity' => round($remainingQuantity, 2),
+                        'remainingBoxes' => $remainingBoxes,
+                        'palets' => $palletIds,
+                        'status' => $status
+                    ];
+                }
+            }
+
+            // Convertir a array y ordenar alfabéticamente por nombre de producto
+            $result = array_values($productsData);
+            usort($result, function ($a, $b) {
+                return strcmp($a['name'], $b['name']);
+            });
+
+            return response()->json([
+                'data' => $result
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in productionView: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'error' => 'Error processing request: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 
 
 

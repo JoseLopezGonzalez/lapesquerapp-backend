@@ -179,6 +179,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             
             /* Active Order Options */
             Route::get('/active-orders/options', [V2OrderController::class, 'activeOrdersOptions']);
+            
+            /* Production View - Orders grouped by product */
+            Route::get('/orders/production-view', [V2OrderController::class, 'productionView']);
             Route::get('/fishing-gears/options', [FishingGearController::class, 'options']);
             Route::get('/countries/options', [CountryController::class, 'options']);
             Route::get('/payment-terms/options', [V2PaymentTermController::class, 'options']);
