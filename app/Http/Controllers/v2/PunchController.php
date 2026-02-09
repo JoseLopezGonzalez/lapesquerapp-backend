@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\v2\PunchEventResource;
 use App\Models\Employee;
 use App\Models\PunchEvent;
+use App\Sanctum\PersonalAccessToken;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -185,7 +187,9 @@ class PunchController extends Controller
     {
         // Detectar si es un fichaje manual (tiene timestamp y event_type)
         if ($request->has('timestamp') && $request->has('event_type')) {
-            // Es un fichaje manual, redirigir al método correspondiente
+            // Es un fichaje manual, requiere autenticación
+            // Intentar autenticar manualmente si hay token en el header
+            $this->authenticateManualRequest($request);
             return $this->storeManual($request);
         }
 
@@ -1529,6 +1533,35 @@ class PunchController extends Controller
      * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\JsonResponse
      */
+    /**
+     * Autenticar manualmente una request si tiene token Bearer.
+     * Esto es necesario porque la ruta es pública pero los fichajes manuales requieren auth.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return void
+     */
+    private function authenticateManualRequest(Request $request)
+    {
+        $token = $request->bearerToken();
+        
+        if ($token) {
+            // Buscar el token en la base de datos
+            $accessToken = PersonalAccessToken::findToken($token);
+            
+            if ($accessToken) {
+                // Autenticar al usuario asociado al token
+                $user = $accessToken->tokenable;
+                if ($user) {
+                    Auth::guard('sanctum')->setUser($user);
+                    // También establecer el usuario en la request para que $request->user() funcione
+                    $request->setUserResolver(function () use ($user) {
+                        return $user;
+                    });
+                }
+            }
+        }
+    }
+
     public function storeManual(Request $request)
     {
         // Los fichajes manuales requieren autenticación
