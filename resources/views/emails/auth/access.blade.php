@@ -18,10 +18,10 @@ Acceder
 Si abres el correo en otro dispositivo, copia este código y pégalo en la web:
 
 <x-mail::panel>
-<table class="otp-copy-block" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border: 1px solid #e4e4e7; border-radius: 12px;">
 <tr>
-<td class="otp-code">{{ $code }}</td>
-<td class="otp-copy-hint">📋 Copia</td>
+<td style="color: #18181b; font-family: ui-monospace, 'SF Mono', Monaco, monospace; font-size: 28px; font-weight: 600; letter-spacing: 0.2em; padding: 16px 20px 16px 24px;">{{ $code }}</td>
+<td style="color: #71717a; font-size: 13px; padding: 16px 24px 16px 8px; text-align: right; vertical-align: middle;">📋 Copia</td>
 </tr>
 </table>
 </x-mail::panel>

@@ -6,6 +6,12 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
+@php
+$themePath = resource_path('views/vendor/mail/html/themes/default.css');
+@endphp
+@if(file_exists($themePath))
+<style>{{ file_get_contents($themePath) }}</style>
+@endif
 <style>
 @media only screen and (max-width: 600px) {
 .inner-body {
