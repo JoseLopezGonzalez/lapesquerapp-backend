@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 
 class AlgarSeafoodUserSeeder extends Seeder
 {
@@ -17,7 +16,6 @@ class AlgarSeafoodUserSeeder extends Seeder
             ['email' => 'app@algarseafood.pt'],
             [
                 'name' => 'Algarseafood',
-                'password' => Hash::make('algarSEAFOOD2025'),
                 'role' => 'operario',
                 'assigned_store_id' => 1,
                 'company_name' => 'Algar Seafood',

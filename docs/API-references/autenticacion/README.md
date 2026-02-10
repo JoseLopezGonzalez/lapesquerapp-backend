@@ -1,97 +1,84 @@
 # Autenticación
 
-Documentación de endpoints de autenticación y gestión de sesión.
+Documentación de endpoints de autenticación y gestión de sesión. **El acceso es solo por Magic Link u OTP** (no hay login con contraseña).
 
 ## Índice
 
-- [Login](#login)
+- [Magic Link: solicitar](#magic-link-solicitar)
+- [Magic Link: canjear](#magic-link-canjear)
+- [OTP: solicitar](#otp-solicitar)
+- [OTP: canjear](#otp-canjear)
+- [Login con contraseña (obsoleto)](#login-con-contraseña-obsoleto)
 - [Logout](#logout)
 - [Obtener Usuario Actual](#obtener-usuario-actual)
 - [Obtener Información de Tenant](#obtener-información-de-tenant)
 
 ---
 
-## Login
+## Magic Link: solicitar
 
-Iniciar sesión en el sistema y obtener token de autenticación.
+El usuario introduce su email; se envía un enlace por correo. **Throttle:** 5/min.
 
-### Request
+**POST** `/api/v2/auth/magic-link/request`
 
-```http
-POST /api/v2/login
-```
+Headers: `X-Tenant`, `Content-Type: application/json`
 
-#### Headers
-```http
-X-Tenant: {subdomain}
-Content-Type: application/json
-```
+Body: `{ "email": "usuario@example.com" }`
 
-#### Request Body
-```json
-{
-  "email": "usuario@example.com",
-  "password": "contraseña123"
-}
-```
+**200:** `{ "message": "Si el correo está registrado y activo, recibirás un enlace para iniciar sesión." }`  
+**500:** Error de envío o configuración.
 
-#### Campos Requeridos
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| email | string | Email del usuario |
-| password | string | Contraseña del usuario |
+---
 
-### Response Exitosa (200)
+## Magic Link: canjear
 
-```json
-{
-  "access_token": "1|abcdefghijklmnopqrstuvwxyz1234567890",
-  "token_type": "Bearer",
-  "user": {
-    "id": 1,
-    "name": "Juan Pérez",
-    "email": "usuario@example.com",
-    "assignedStoreId": 1,
-    "companyName": "Mi Empresa",
-    "companyLogoUrl": "https://example.com/logo.png",
-    "role": "administrador"
-  }
-}
-```
+Tras el clic en el enlace del correo, el frontend llama a este endpoint con el token. **Throttle:** 10/min.
 
-**Nota:** El campo `role` es un string con el rol del usuario (`tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario`).
+**POST** `/api/v2/auth/magic-link/verify`
 
-### Response Errónea (401) - Credenciales Inválidas
+Body: `{ "token": "..." }`
 
-```json
-{
-  "message": "Las credenciales proporcionadas son inválidas."
-}
-```
+**200:** `{ "access_token": "...", "token_type": "Bearer", "user": { "id", "name", "email", "assignedStoreId", "companyName", "companyLogoUrl", "role" } }`  
+**400:** Enlace no válido o expirado. **403:** Usuario desactivado.
 
-### Response Errónea (403) - Cuenta Desactivada
+---
+
+## OTP: solicitar
+
+El usuario introduce su email; se envía un código de 6 dígitos por correo. **Throttle:** 5/min.
+
+**POST** `/api/v2/auth/otp/request`
+
+Body: `{ "email": "usuario@example.com" }`
+
+**200:** Mismo mensaje que magic link (no se revela si el email existe).
+
+---
+
+## OTP: canjear
+
+El usuario introduce el código recibido por correo. **Throttle:** 10/min.
+
+**POST** `/api/v2/auth/otp/verify`
+
+Body: `{ "email": "usuario@example.com", "code": "123456" }`
+
+**200:** Misma estructura que magic-link/verify (`access_token`, `user`).  
+**400:** Código no válido o expirado. **403:** Usuario desactivado.
+
+---
+
+## Login con contraseña (obsoleto)
+
+**POST** `/api/v2/login` ya no permite acceso con contraseña. Cualquier petición recibe **400** con:
 
 ```json
 {
-  "message": "Su cuenta ha sido desactivada. Contacte con el administrador."
+  "message": "El acceso se realiza mediante enlace o código enviado por correo. Usa \"Enviar enlace\" o \"Enviar código\" en la pantalla de inicio de sesión."
 }
 ```
 
-### Response Errónea (422) - Error de Validación
-
-```json
-{
-  "message": "Error de validación.",
-  "userMessage": "El campo email es obligatorio.",
-  "errors": {
-    "email": ["The email field is required."],
-    "password": ["The password field is required."]
-  }
-}
-```
-
-### Rate Limiting
-Esta ruta está protegida con rate limiting: máximo 5 intentos por minuto.
+No usar este endpoint para iniciar sesión; usar Magic Link u OTP.
 
 ---
 

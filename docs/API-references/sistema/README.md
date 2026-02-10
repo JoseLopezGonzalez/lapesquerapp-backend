@@ -83,15 +83,14 @@ Authorization: Bearer {access_token}
 Content-Type: application/json
 ```
 
-#### Request Body
+#### Request Body (sin campo password; el acceso es por magic link u OTP)
 
 ```json
 {
   "name": "Nuevo Usuario",
   "email": "nuevo@example.com",
-  "password": "contraseña123",
-  "active": true,
-  "role": "administracion"
+  "role": "administracion",
+  "active": true
 }
 ```
 
@@ -101,14 +100,15 @@ Content-Type: application/json
 |-------|------|-------------|
 | name | string | Nombre del usuario |
 | email | string | Email del usuario (único) |
-| password | string | Contraseña (mínimo 8 caracteres) |
-| role | string | Rol del usuario: `tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario` |
+| role | string | Rol: `tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario` |
 
 #### Campos Opcionales
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | active | boolean | Usuario activo (default: true) |
+
+**Nota:** No hay campo `password`. Los usuarios entran por magic link u OTP. Usar el endpoint **POST /api/v2/users/{id}/resend-invitation** para enviarles el enlace de acceso.
 
 #### Response Exitosa (201)
 
@@ -197,13 +197,12 @@ Content-Type: application/json
 |-----------|------|-------------|
 | id | integer | ID del usuario |
 
-#### Request Body
+#### Request Body (sin campo password)
 
 ```json
 {
   "name": "Usuario Actualizado",
   "email": "actualizado@example.com",
-  "password": "nueva_contraseña",
   "active": true,
   "role": "administracion"
 }
@@ -215,11 +214,10 @@ Content-Type: application/json
 |-------|------|-------------|
 | name | string | Nombre del usuario |
 | email | string | Email del usuario (único, excepto el mismo) |
-| password | string | Contraseña (mínimo 8 caracteres) |
 | active | boolean | Usuario activo |
 | role | string | Rol: `tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario` |
 
-**Nota:** Todos los campos son opcionales. Si se proporciona `role`, se actualiza el rol del usuario.
+**Nota:** Todos los campos son opcionales. No hay campo `password`.
 
 #### Response Exitosa (200)
 

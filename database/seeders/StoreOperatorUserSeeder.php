@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 
 class StoreOperatorUserSeeder extends Seeder
 {
@@ -17,7 +16,6 @@ class StoreOperatorUserSeeder extends Seeder
             ['email' => 'store.operator@test.com'],
             [
                 'name' => 'Store Operator Test',
-                'password' => Hash::make('password123'),
                 'role' => 'operario',
                 'assigned_store_id' => 1,
                 'company_name' => 'Tienda de Prueba S.A.',

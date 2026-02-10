@@ -38,3 +38,23 @@ if (! function_exists('tenantSetting')) {
         return $value;
     }
 }
+
+if (! function_exists('magicLinkFrontendUrl')) {
+    /**
+     * URL base del frontend para enlaces de magic link (por tenant).
+     * Se usa en emails: {url}/auth/verify?token=xxx
+     * Si la URL contiene {subdomain}, se reemplaza por el subdominio del tenant actual (ej. brisamar).
+     * Ejemplo en .env: FRONTEND_URL=https://{subdomain}.lapesquerapp.es
+     */
+    function magicLinkFrontendUrl(): string
+    {
+        $url = tenantSetting('company.frontend_url', env('FRONTEND_URL', config('app.frontend_url', '')));
+        $url = (string) $url;
+
+        if (str_contains($url, '{subdomain}') && app()->bound('currentTenant')) {
+            $url = str_replace('{subdomain}', (string) app('currentTenant'), $url);
+        }
+
+        return rtrim($url, '/');
+    }
+}

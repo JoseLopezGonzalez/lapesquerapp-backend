@@ -95,11 +95,13 @@ Accept: application/json
 
 ## 🔐 Autenticación
 
-La API usa Laravel Sanctum para autenticación basada en tokens. 
+La API usa Laravel Sanctum para autenticación basada en tokens. El acceso es **solo por Magic Link u OTP** (no hay login con contraseña).
 
-1. Realiza una petición POST a `/api/v2/login` con email y password
-2. Recibirás un `access_token` en la respuesta
-3. Incluye este token en el header `Authorization: Bearer {access_token}` para todas las peticiones protegidas
+1. El usuario introduce su email; el frontend llama a **POST /api/v2/auth/magic-link/request** o **POST /api/v2/auth/otp/request**.
+2. Tras el clic en el enlace o al canjear el código (**POST /api/v2/auth/magic-link/verify** o **POST /api/v2/auth/otp/verify**), se recibe un `access_token` y `user`.
+3. Incluye el token en el header `Authorization: Bearer {access_token}` y `X-Tenant: {subdomain}` en todas las peticiones protegidas.
+
+Ver [Autenticación](autenticacion/README.md) para el detalle de los endpoints.
 
 ## 📚 Navegación
 

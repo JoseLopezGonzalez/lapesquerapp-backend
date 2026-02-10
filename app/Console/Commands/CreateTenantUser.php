@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Enums\Role;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use App\Models\Tenant;
 use App\Models\User;
 
@@ -14,17 +13,15 @@ class CreateTenantUser extends Command
     protected $signature = 'tenant:create-user 
                             {subdomain : El subdomain del tenant}
                             {email : El email del usuario}
-                            {password : La contraseña del usuario}
                             {--name= : El nombre del usuario (opcional)}
                             {--role= : El nombre del rol a asignar (opcional)}';
 
-    protected $description = 'Crea un usuario en un tenant específico';
+    protected $description = 'Crea un usuario en un tenant (acceso por magic link u OTP; sin contraseña)';
 
     public function handle(): int
     {
         $subdomain = $this->argument('subdomain');
         $email = $this->argument('email');
-        $password = $this->argument('password');
         $name = $this->option('name') ?: explode('@', $email)[0];
         $roleName = $this->option('role');
 
@@ -52,12 +49,6 @@ class CreateTenantUser extends Command
         $existingUser = User::on('tenant')->where('email', $email)->first();
         if ($existingUser) {
             $this->warn("⚠️  El usuario con email {$email} ya existe en este tenant.");
-            if (!$this->confirm('¿Deseas actualizar la contraseña?', false)) {
-                return Command::SUCCESS;
-            }
-            $existingUser->password = Hash::make($password);
-            $existingUser->save();
-            $this->info("✅ Contraseña actualizada para el usuario: {$email}");
             return Command::SUCCESS;
         }
 
@@ -71,7 +62,6 @@ class CreateTenantUser extends Command
             $user->setConnection('tenant');
             $user->name = $name;
             $user->email = $email;
-            $user->password = Hash::make($password);
             $user->role = $roleName ?? Role::Operario->value;
             $user->save();
 

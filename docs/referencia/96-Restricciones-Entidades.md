@@ -494,7 +494,7 @@
 | --------------------------- | --------------- | ------------ | ------------------- | ------------------- |
 | `email` único por tenant | ✅ Implementada | 🔴 CRÍTICO  | Correcto            |                     |
 | `email` formato válido   | ⚠️ Parcial    | 🟠 ALTO      | Validar formato     | dejar por lo pronto |
-| `password` requerido      | ⚠️ Parcial    | 🔴 CRÍTICO  | Validar contraseña | ok                  |
+| ~~`password` requerido~~  | N/A           | —           | Eliminado: acceso por magic link/OTP, sin contraseña | —                  |
 | `name` no vacío          | ⚠️ Parcial    | 🟠 ALTO      | Validar nombre      | ok                  |
 
 ---

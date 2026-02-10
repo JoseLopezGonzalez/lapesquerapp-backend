@@ -45,7 +45,8 @@ Este documento proporciona una referencia completa de todos los modelos Eloquent
 - `Notifiable`
 
 **Fillable**:
-- `name`, `email`, `password`, `active`, `role`, `assigned_store_id`, `company_name`, `company_logo_url`
+- `name`, `email`, `active`, `role`, `assigned_store_id`, `company_name`, `company_logo_url`  
+  (no hay campo `password`; el acceso es por magic link u OTP)
 
 **Atributo**:
 - `role`: string — Rol del usuario (valor de `App\Enums\Role`)

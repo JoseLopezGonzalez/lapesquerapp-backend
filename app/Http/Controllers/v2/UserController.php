@@ -6,11 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\v2\UserResource;
 use App\Enums\Role;
 use App\Models\User;
+use App\Services\MagicLinkService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Exception;
 
 class UserController extends Controller
 {
@@ -68,13 +66,17 @@ class UserController extends Controller
 
     /**
      * Store a newly created resource in storage.
+     * Users have no password; they sign in via magic link or OTP. Use "Reenviar invitación" to send the link.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:tenant.users,email',
-            'password' => 'required|string|min:8',
+            'email' => [
+                'required',
+                'email',
+                Rule::unique(User::class, 'email')->whereNull('deleted_at'),
+            ],
             'role' => ['required', 'string', Rule::in(Role::values())],
             'active' => 'sometimes|boolean',
         ]);
@@ -82,7 +84,6 @@ class UserController extends Controller
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
             'active' => $validated['active'] ?? true,
         ]);
@@ -114,8 +115,11 @@ class UserController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:tenant.users,email,' . $user->id,
-            'password' => 'sometimes|string|min:8',
+            'email' => [
+                'sometimes',
+                'email',
+                Rule::unique(User::class, 'email')->whereNull('deleted_at')->ignore($user->id),
+            ],
             'active' => 'sometimes|boolean',
             'role' => ['sometimes', 'string', Rule::in(Role::values())],
         ]);
@@ -123,7 +127,6 @@ class UserController extends Controller
         $user->update(array_filter([
             'name' => $validated['name'] ?? null,
             'email' => $validated['email'] ?? null,
-            'password' => isset($validated['password']) ? Hash::make($validated['password']) : null,
             'active' => $validated['active'] ?? null,
             'role' => $validated['role'] ?? null,
         ], fn ($v) => $v !== null));
@@ -135,13 +138,48 @@ class UserController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Soft delete the user (sets deleted_at). Revokes all their sessions.
      */
     public function destroy($id)
     {
         $user = User::findOrFail($id);
+        $user->tokens()->delete();
         $user->delete();
         return response()->json(['message' => 'Usuario eliminado correctamente.']);
+    }
+
+    /**
+     * Reenviar invitación: envía un magic link por email al usuario.
+     * Útil para usuarios invitados (sin contraseña) o para enviar un enlace de acceso a cualquier usuario.
+     */
+    public function resendInvitation($id)
+    {
+        $user = User::findOrFail($id);
+
+        if (!$user->active) {
+            return response()->json([
+                'message' => 'No se puede reenviar la invitación a un usuario desactivado.',
+            ], 403);
+        }
+
+        try {
+            $sent = app(MagicLinkService::class)->sendMagicLinkToUser($user);
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json([
+                'message' => 'No se pudo enviar el correo. Compruebe la configuración de email del tenant.',
+            ], 500);
+        }
+
+        if ($sent === null) {
+            return response()->json([
+                'message' => 'Configuración de la aplicación incompleta (URL del frontend). Contacte al administrador.',
+            ], 500);
+        }
+
+        return response()->json([
+            'message' => 'Se ha enviado un enlace de acceso al correo del usuario.',
+        ], 200);
     }
 
     /* options */

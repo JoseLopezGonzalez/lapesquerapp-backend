@@ -107,6 +107,13 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
     Route::post('login', [V2AuthController::class, 'login'])->middleware('throttle:5,1')->name('v2.login');
     Route::post('logout', [V2AuthController::class, 'logout'])->middleware('auth:sanctum')->name('v2.logout');
     Route::get('me', [V2AuthController::class, 'me'])->middleware('auth:sanctum')->name('v2.me');
+
+    // Magic Link y OTP (throttle para evitar abuso)
+    Route::post('auth/magic-link/request', [V2AuthController::class, 'requestMagicLink'])->middleware('throttle:5,1')->name('v2.auth.magic-link.request');
+    Route::post('auth/magic-link/verify', [V2AuthController::class, 'verifyMagicLink'])->middleware('throttle:10,1')->name('v2.auth.magic-link.verify');
+    Route::post('auth/otp/request', [V2AuthController::class, 'requestOtp'])->middleware('throttle:5,1')->name('v2.auth.otp.request');
+    Route::post('auth/otp/verify', [V2AuthController::class, 'verifyOtp'])->middleware('throttle:10,1')->name('v2.auth.otp.verify');
+
     Route::get('/customers/op', [V2CustomerController::class, 'options']);
 
     // Fichajes (público - para dispositivos NFC)
@@ -123,6 +130,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
             /* Controladores de sistema */
             Route::apiResource('sessions', SessionController::class)->only(['index', 'destroy']);
+            Route::post('users/{user}/resend-invitation', [UserController::class, 'resendInvitation'])->name('v2.users.resend-invitation');
             Route::apiResource('users', UserController::class);
             Route::apiResource('activity-logs', ActivityLogController::class);
 

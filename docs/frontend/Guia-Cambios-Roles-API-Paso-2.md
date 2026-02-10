@@ -1,6 +1,8 @@
 # Guía para el Frontend — Cambios de Roles en la API (Paso 2)
 
-Este documento describe los cambios en la API de roles y usuarios para que el frontend se actualice correctamente. El backend ya está desplegado con estos cambios.
+Este documento describe los cambios en la API de **roles** y **usuarios** (rol único por usuario, sin CRUD de roles). El backend ya está desplegado con estos cambios.
+
+> **Documento principal de auth y usuarios:** para login (magic link / OTP), crear usuario sin contraseña y reenviar invitación, usa **`Guia-Frontend-Actualizaciones-Auth-y-Usuarios.md`**.
 
 ---
 
@@ -99,38 +101,29 @@ Usar exactamente estos valores al enviar `role` en requests. Para mostrar en UI,
 
 ### 3.4 Crear usuario — `POST /v2/users`
 
-**Body:**
-
-**Antes:**
-```json
-{
-  "name": "Juan Pérez",
-  "email": "juan@example.com",
-  "password": "password123",
-  "active": true,
-  "role_ids": [1, 2]
-}
-```
+**Body (sin campo `password`; el acceso es por magic link u OTP):**
 
 **Ahora:**
 ```json
 {
   "name": "Juan Pérez",
   "email": "juan@example.com",
-  "password": "password123",
-  "active": true,
-  "role": "administracion"
+  "role": "administracion",
+  "active": true
 }
 ```
 
 **Reglas de validación backend:**
-- `role` es **obligatorio**.
+- `name`, `email`, `role` son **obligatorios**.
 - `role` debe ser uno de: `tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario`.
+- **No** hay campo `password`; los usuarios entran por magic link u OTP. Usar “Reenviar invitación” para enviarles el enlace.
 
 **Qué hacer en frontend:**
-- Eliminar el envío de `role_ids`.
-- Añadir un único campo **`role`** (string).
-- El desplegable de rol debe rellenarse con **`GET /v2/roles/options`** (ver siguiente sección). El **valor** que se envía en el body es el `id` de cada opción (que ya es string).
+- Enviar **`role`** (string), no `role_ids`.
+- **No** incluir campo contraseña en el formulario.
+- El desplegable de rol con **`GET /v2/roles/options`**; el valor enviado es el `id` (string) de cada opción.
+
+> **Auth y usuarios actuales:** ver **`Guia-Frontend-Actualizaciones-Auth-y-Usuarios.md`** para login (magic link/OTP), crear usuario y reenviar invitación.
 
 ---
 
@@ -138,13 +131,11 @@ Usar exactamente estos valores al enviar `role` en requests. Para mostrar en UI,
 
 **Body:**
 
-**Antes:** Se podía enviar `role_ids: number[]` para cambiar los roles.
-
-**Ahora:** Se envía **`role?: string`** (opcional). Si se envía, debe ser uno de los 6 valores. Reemplaza el rol actual del usuario.
+**Ahora:** Se pueden enviar **`name?`**, **`email?`**, **`role?`** (string, uno de los 6 valores), **`active?`**. No hay campo `password`.
 
 **Qué hacer en frontend:**
 - En el formulario de edición, un único select de rol con valor inicial `user.role`.
-- Al guardar, enviar `role` (string) si cambió, no `role_ids`.
+- Al guardar, enviar `role` (string) si cambió. No incluir campo contraseña.
 
 ---
 
@@ -226,21 +217,19 @@ export interface RoleOption {
   name: string;
 }
 
-// Crear usuario
+// Crear usuario (sin password; acceso por magic link u OTP)
 export interface CreateUserPayload {
   name: string;
   email: string;
-  password: string;
-  role: RoleValue;  // antes: role_ids: number[]
+  role: RoleValue;
   active?: boolean;
 }
 
-// Actualizar usuario
+// Actualizar usuario (sin password)
 export interface UpdateUserPayload {
   name?: string;
   email?: string;
-  password?: string;
-  role?: RoleValue;  // antes: role_ids?: number[]
+  role?: RoleValue;
   active?: boolean;
 }
 ```

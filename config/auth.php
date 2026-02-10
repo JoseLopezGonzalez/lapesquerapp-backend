@@ -98,6 +98,7 @@ return [
     |
     */
 
+    // Broker no usado: tabla password_reset_tokens eliminada; acceso por magic link/OTP.
     'passwords' => [
         'users' => [
             'provider' => 'users',

@@ -33,7 +33,6 @@ El modelo `User` representa un **usuario** del sistema con autenticación (Larav
 | `name` | string | NO | Nombre completo |
 | `email` | string | NO | Email (único por tenant) |
 | `email_verified_at` | timestamp | YES | Fecha de verificación del email |
-| `password` | string | NO | Contraseña (hasheada) |
 | `remember_token` | string | YES | Token "recordar sesión" |
 | `active` | boolean | NO | Usuario activo |
 | `role` | string | NO | Rol del usuario (valor de `App\Enums\Role`: tecnico, administrador, direccion, administracion, comercial, operario). Default: `operario` |
@@ -55,10 +54,11 @@ El modelo `User` representa un **usuario** del sistema con autenticación (Larav
 
 ```php
 protected $fillable = [
-    'name', 'email', 'password', 'active', 'role',
+    'name', 'email', 'active', 'role',
     'assigned_store_id', 'company_name', 'company_logo_url',
 ];
 ```
+(No hay campo `password`; el acceso es por magic link u OTP.)
 
 ### Métodos de rol
 
@@ -96,16 +96,16 @@ No existen `roles()`, `assignRole()` ni `removeRole()`; el rol se asigna mediant
 **Validación**:
 - `name`: required, string, max 255
 - `email`: required, email, unique en tenant
-- `password`: required, string, min 8
 - **`role`**: required, string, debe ser uno de `App\Enums\Role::values()`
-- `active`: optional, boolean
+- `active`: optional, boolean  
+
+(No hay campo `password`; los usuarios acceden por magic link u OTP. Usar "Reenviar invitación" para enviarles el enlace.)
 
 **Request body** (ejemplo):
 ```json
 {
   "name": "Juan Pérez",
   "email": "juan@example.com",
-  "password": "password123",
   "role": "administracion",
   "active": true
 }
@@ -124,8 +124,10 @@ No existen `roles()`, `assignRole()` ni `removeRole()`; el rol se asigna mediant
 **Ruta**: `PUT /v2/users/{id}`
 
 **Validación** (todos opcionales):
-- `name`, `email`, `password`, `active`
-- **`role`**: string, uno de `Role::values()`
+- `name`, `email`, `active`
+- **`role`**: string, uno de `Role::values()`  
+
+(No hay campo `password`.)
 
 Si se envía `role`, se actualiza el rol del usuario.
 

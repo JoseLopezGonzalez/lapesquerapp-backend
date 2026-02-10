@@ -18,6 +18,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         $schedule->command('app:clean-old-order-pdfs')->dailyAt('02:00'); // o cada hora: ->hourly()
+        $schedule->command('auth:cleanup-magic-tokens')->dailyAt('03:00');
     }
 
 

@@ -20,10 +20,14 @@ Laravel Sanctum proporciona autenticación por **tokens Bearer** para APIs. Cada
 
 ### Flujo de Autenticación
 
-1. **Login**: Usuario envía credenciales → Recibe token
-2. **Requests**: Cliente incluye token en header `Authorization`
-3. **Validación**: Sanctum valida token y autentica usuario
-4. **Logout**: Token se invalida
+**No hay login con contraseña.** El acceso es solo por **Magic Link** o **OTP** por email:
+
+1. **Solicitar acceso**: El usuario introduce su email; el frontend llama a `POST /v2/auth/magic-link/request` o `POST /v2/auth/otp/request`.
+2. **Canjear**: Tras el clic en el enlace del correo o al introducir el código, el frontend llama a `POST /v2/auth/magic-link/verify` o `POST /v2/auth/otp/verify` y recibe `access_token` y `user`.
+3. **Requests**: El cliente incluye el token en el header `Authorization: Bearer {token}` y `X-Tenant`.
+4. **Logout**: `POST /v2/logout` invalida el token actual.
+
+**Documentación detallada de auth:** ver `docs/frontend/Guia-Frontend-Actualizaciones-Auth-y-Usuarios.md` y `docs/sistema/89-Auth-Contrasenas-Eliminadas.md`.
 
 ---
 
@@ -31,37 +35,19 @@ Laravel Sanctum proporciona autenticación por **tokens Bearer** para APIs. Cada
 
 **Archivo**: `app/Http/Controllers/v2/AuthController.php`
 
-### `login(Request $request)` - Iniciar Sesión
+### `login(Request $request)` — Obsoleto
 
-**Ruta**: `POST /v2/login`
+**Ruta**: `POST /v2/login`  
+**Ya no permite acceso con contraseña.** Cualquier petición devuelve **400** con un mensaje indicando que el acceso es solo por enlace o código (magic link u OTP). No usar este endpoint para iniciar sesión.
 
-**Request**:
-```http
-POST /v2/login
-Content-Type: application/json
-X-Tenant: empresa1
+### Obtener token (Magic Link u OTP)
 
-{
-    "email": "usuario@empresa.com",
-    "password": "contraseña"
-}
-```
+- **Solicitar enlace:** `POST /v2/auth/magic-link/request` con `{ "email": "..." }`.
+- **Canjear enlace:** `POST /v2/auth/magic-link/verify` con `{ "token": "..." }` (el token viene en la URL del correo).
+- **Solicitar código:** `POST /v2/auth/otp/request` con `{ "email": "..." }`.
+- **Canjear código:** `POST /v2/auth/otp/verify` con `{ "email": "...", "code": "123456" }`.
 
-**Validación**:
-```php
-[
-    'email' => 'required|email',
-    'password' => 'required',
-]
-```
-
-**Proceso**:
-1. Busca usuario por email en la base tenant
-2. Verifica contraseña con `Hash::check()`
-3. Crea token con `$user->createToken('auth_token')`
-4. Retorna token y datos del usuario
-
-**Respuesta exitosa** (200):
+**Respuesta exitosa** (200) de verify:
 ```json
 {
     "access_token": "1|xxxxxxxxxxxxx...",
@@ -78,14 +64,7 @@ X-Tenant: empresa1
 }
 ```
 
-El campo `role` es un **string** con el valor del rol del usuario (uno de: `tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario`).
-
-**Respuesta error** (401):
-```json
-{
-    "message": "Las credenciales proporcionadas son inválidas."
-}
-```
+El campo `role` es un **string** (uno de: `tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario`).
 
 ### `logout(Request $request)` - Cerrar Sesión
 
@@ -311,17 +290,7 @@ Elimina un token específico, cerrando la sesión del usuario.
 
 ## 🔐 Seguridad
 
-### Validación de Contraseñas
-
-Las contraseñas se almacenan hasheadas usando `bcrypt`:
-```php
-'password' => Hash::make($password)
-```
-
-La verificación usa `Hash::check()`:
-```php
-Hash::check($plainPassword, $hashedPassword)
-```
+**No se usan contraseñas de usuario.** El acceso es solo por magic link u OTP; no hay almacenamiento ni verificación de contraseña en el backend.
 
 ### Tokens Únicos
 
@@ -344,18 +313,15 @@ Los tokens expiran después de 30 días. El frontend debe manejar la renovación
 ### Flujo Completo de Autenticación
 
 ```bash
-# 1. Login
-curl -X POST https://api.pesquerapp.es/v2/login \
+# 1. Solicitar magic link (o usar OTP: auth/otp/request y auth/otp/verify)
+curl -X POST https://api.pesquerapp.es/api/v2/auth/magic-link/request \
   -H "Content-Type: application/json" \
   -H "X-Tenant: empresa1" \
-  -d '{"email":"admin@empresa.com","password":"secret"}'
+  -d '{"email":"admin@empresa.com"}'
 
-# Respuesta:
-# {
-#   "access_token": "1|abc123...",
-#   "token_type": "Bearer",
-#   "user": {...}
-# }
+# El usuario recibe un correo con un enlace. Al hacer clic, el frontend llama a:
+# POST /api/v2/auth/magic-link/verify con { "token": "..." }
+# y recibe access_token y user.
 
 # 2. Request Autenticada
 curl -X GET https://api.pesquerapp.es/v2/orders \

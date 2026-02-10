@@ -206,10 +206,12 @@ Content-Type: application/json
 
 ### Flujo de Autenticación
 
-1. **Login**: `POST /v2/login` con `email` y `password`
-2. **Respuesta**: Retorna `access_token` y datos del usuario
-3. **Requests subsiguientes**: Incluir `Authorization: Bearer {token}` en cada request
-4. **Logout**: `POST /v2/logout` invalida el token
+**No hay login con contraseña.** El acceso es por **Magic Link** u **OTP** por email:
+
+1. **Solicitar acceso**: `POST /v2/auth/magic-link/request` o `POST /v2/auth/otp/request` con el email.
+2. **Canjear**: Tras el enlace del correo o el código, `POST /v2/auth/magic-link/verify` o `POST /v2/auth/otp/verify` retorna `access_token` y datos del usuario.
+3. **Requests subsiguientes**: Incluir `Authorization: Bearer {token}` y `X-Tenant` en cada request.
+4. **Logout**: `POST /v2/logout` invalida el token.
 
 ---
 
