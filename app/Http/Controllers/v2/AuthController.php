@@ -2,27 +2,21 @@
 
 namespace App\Http\Controllers\v2;
 
-use App\Mail\MagicLinkEmail;
-use App\Mail\OtpEmail;
 use App\Models\MagicLinkToken;
 use App\Models\User;
 use App\Services\MagicLinkService;
-use App\Services\TenantMailConfigService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    private const MAGIC_LINK_EXPIRES_MINUTES = 10;
-
     /**
-     * El acceso ya no es por contraseña. Usar magic link u OTP.
+     * El acceso ya no es por contraseña. Usar un solo botón "Acceder" (magic link + OTP en un email).
      */
     public function login(Request $request)
     {
         return response()->json([
-            'message' => 'El acceso se realiza mediante enlace o código enviado por correo. Usa "Enviar enlace" o "Enviar código" en la pantalla de inicio de sesión.',
+            'message' => 'Usa el botón "Acceder" en la pantalla de inicio de sesión. Recibirás un correo con un enlace y un código.',
         ], 400);
     }
 
@@ -55,23 +49,25 @@ class AuthController extends Controller
         ]);
     }
 
+    /** Mensaje genérico para no revelar si el email existe. */
+    private const REQUEST_ACCESS_MESSAGE = 'Si el correo está registrado y activo, recibirás un correo con un enlace y un código para acceder.';
+
     /**
-     * Solicitar magic link por email.
+     * Solicitar acceso: un solo email con magic link + código OTP (flujo tipo Claude).
+     * El usuario pulsa "Acceder" y puede usar el enlace o el código según el dispositivo.
      */
-    public function requestMagicLink(Request $request)
+    public function requestAccess(Request $request)
     {
         $request->validate(['email' => 'required|email']);
 
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !$user->active) {
-            return response()->json([
-                'message' => 'Si el correo está registrado y activo, recibirás un enlace para iniciar sesión.',
-            ], 200);
+            return response()->json(['message' => self::REQUEST_ACCESS_MESSAGE], 200);
         }
 
         try {
-            $sent = app(MagicLinkService::class)->sendMagicLinkToUser($user);
+            $sent = app(MagicLinkService::class)->sendAccessEmailToUser($user);
         } catch (\Throwable $e) {
             report($e);
             return response()->json([
@@ -79,15 +75,22 @@ class AuthController extends Controller
             ], 500);
         }
 
-        if ($sent === null) {
+        if (!$sent) {
             return response()->json([
                 'message' => 'Configuración de la aplicación incompleta. Contacte al administrador.',
             ], 500);
         }
 
-        return response()->json([
-            'message' => 'Si el correo está registrado y activo, recibirás un enlace para iniciar sesión.',
-        ], 200);
+        return response()->json(['message' => self::REQUEST_ACCESS_MESSAGE], 200);
+    }
+
+    /**
+     * Solicitar magic link por email.
+     * Envía el mismo email unificado (enlace + código) que requestAccess.
+     */
+    public function requestMagicLink(Request $request)
+    {
+        return $this->requestAccess($request);
     }
 
     /**
@@ -125,45 +128,11 @@ class AuthController extends Controller
 
     /**
      * Solicitar código OTP por email.
+     * Envía el mismo email unificado (enlace + código) que requestAccess.
      */
     public function requestOtp(Request $request)
     {
-        $request->validate(['email' => 'required|email']);
-
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user || !$user->active) {
-            return response()->json([
-                'message' => 'Si el correo está registrado y activo, recibirás un código para iniciar sesión.',
-            ], 200);
-        }
-
-        $code = (string) random_int(100000, 999999);
-        $expiresAt = now()->addMinutes(self::MAGIC_LINK_EXPIRES_MINUTES);
-
-        MagicLinkToken::create([
-            'email' => $user->email,
-            'token' => hash('sha256', $code . $user->email . now()->timestamp),
-            'type' => MagicLinkToken::TYPE_OTP,
-            'otp_code' => $code,
-            'expires_at' => $expiresAt,
-        ]);
-
-        try {
-            app(TenantMailConfigService::class)->configureTenantMailer();
-            \Illuminate\Support\Facades\Mail::to($user->email)->send(
-                new OtpEmail($user->email, $code, self::MAGIC_LINK_EXPIRES_MINUTES)
-            );
-        } catch (\Throwable $e) {
-            report($e);
-            return response()->json([
-                'message' => 'No se pudo enviar el correo. Compruebe la configuración de email del tenant.',
-            ], 500);
-        }
-
-        return response()->json([
-            'message' => 'Si el correo está registrado y activo, recibirás un código para iniciar sesión.',
-        ], 200);
+        return $this->requestAccess($request);
     }
 
     /**

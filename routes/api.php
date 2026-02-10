@@ -108,7 +108,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
     Route::post('logout', [V2AuthController::class, 'logout'])->middleware('auth:sanctum')->name('v2.logout');
     Route::get('me', [V2AuthController::class, 'me'])->middleware('auth:sanctum')->name('v2.me');
 
-    // Magic Link y OTP (throttle para evitar abuso)
+    // Acceso por email: un solo botón "Acceder" → un email con magic link + código OTP (throttle para evitar abuso)
+    Route::post('auth/request-access', [V2AuthController::class, 'requestAccess'])->middleware('throttle:5,1')->name('v2.auth.request-access');
     Route::post('auth/magic-link/request', [V2AuthController::class, 'requestMagicLink'])->middleware('throttle:5,1')->name('v2.auth.magic-link.request');
     Route::post('auth/magic-link/verify', [V2AuthController::class, 'verifyMagicLink'])->middleware('throttle:10,1')->name('v2.auth.magic-link.verify');
     Route::post('auth/otp/request', [V2AuthController::class, 'requestOtp'])->middleware('throttle:5,1')->name('v2.auth.otp.request');

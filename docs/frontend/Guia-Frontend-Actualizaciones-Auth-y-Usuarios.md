@@ -4,7 +4,7 @@ Documento único con **todos los cambios de la API** que el frontend debe implem
 
 ---
 
-**No se puede utilizar contraseña** en ningún flujo: ni para iniciar sesión ni al crear o editar usuarios. La API no acepta el campo `password` y `POST /v2/login` con email/password devuelve error. El acceso es únicamente por **enlace mágico** o **código OTP** enviado por correo.
+**No se puede utilizar contraseña** en ningún flujo: ni para iniciar sesión ni al crear o editar usuarios. La API no acepta el campo `password` y `POST /v2/login` con email/password devuelve error. El acceso es únicamente por **un solo correo** que incluye **enlace mágico y código OTP**: el usuario pulsa "Acceder", recibe un email y puede **abrir el enlace** (mismo dispositivo) o **introducir el código** (otro dispositivo).
 
 ---
 
@@ -31,11 +31,12 @@ Documento único con **todos los cambios de la API** que el frontend debe implem
 
 | Método | Ruta | Auth | Descripción |
 |--------|------|------|-------------|
-| POST | `/v2/login` | No | **Obsoleto:** devuelve 400; el acceso es solo por magic link u OTP. |
-| POST | `/v2/auth/magic-link/request` | No | Solicitar magic link por email. |
+| POST | `/v2/login` | No | **Obsoleto:** devuelve 400; usar el botón "Acceder". |
+| POST | **`/v2/auth/request-access`** | No | **Recomendado.** Solicitar acceso: envía un solo email con enlace + código OTP. Body: `{ "email": "..." }`. |
+| POST | `/v2/auth/magic-link/request` | No | Mismo efecto que `request-access`: un email con enlace + código. |
 | POST | `/v2/auth/magic-link/verify` | No | Canjear token del enlace → devuelve access_token y user. |
-| POST | `/v2/auth/otp/request` | No | Solicitar código OTP por email. |
-| POST | `/v2/auth/otp/verify` | No | Canjear código OTP → devuelve access_token y user. |
+| POST | `/v2/auth/otp/request` | No | Mismo efecto que `request-access`: un email con enlace + código. |
+| POST | `/v2/auth/otp/verify` | No | Canjear código OTP (email + code) → devuelve access_token y user. |
 | POST | `/v2/logout` | Bearer | Cerrar sesión. |
 | GET | `/v2/me` | Bearer | Usuario actual. |
 | GET | `/v2/users` | Bearer | Listar usuarios. |
@@ -48,11 +49,17 @@ Documento único con **todos los cambios de la API** que el frontend debe implem
 
 ---
 
-## 3. Autenticación: Magic Link y OTP
+## 3. Autenticación: un solo "Acceder" (enlace + código en un email)
 
-### 3.1 Solicitar Magic Link
+El usuario introduce su email y pulsa **"Acceder"**. La API envía **un único correo** que contiene:
+- Un **enlace** para hacer clic (si está en el mismo dispositivo que el correo).
+- Un **código de 6 dígitos** para pegar en la web (si está en otro dispositivo o prefiere el código).
 
-**POST** `/api/v2/auth/magic-link/request`
+Las rutas `magic-link/request` y `otp/request` siguen existiendo y envían el mismo correo unificado; el frontend puede usar solo **`/v2/auth/request-access`** para simplificar.
+
+### 3.1 Solicitar acceso (recomendado)
+
+**POST** `/api/v2/auth/request-access`
 
 **Headers:** `X-Tenant: {subdomain}`, `Content-Type: application/json`
 
@@ -66,13 +73,15 @@ Documento único con **todos los cambios de la API** que el frontend debe implem
 **Respuesta 200 (siempre la misma, por seguridad):**
 ```json
 {
-  "message": "Si el correo está registrado y activo, recibirás un enlace para iniciar sesión."
+  "message": "Si el correo está registrado y activo, recibirás un correo con un enlace y un código para acceder."
 }
 ```
 
 **Errores:** 500 si falla el envío del correo o la configuración del frontend en backend.
 
 **Throttle:** 5 peticiones por minuto por IP.
+
+**Alternativas (mismo comportamiento):** `POST /v2/auth/magic-link/request` y `POST /v2/auth/otp/request` con el mismo body envían el mismo email con enlace + código.
 
 ---
 
@@ -125,26 +134,7 @@ En la ruta del frontend (p. ej. `/auth/verify`):
 
 ---
 
-### 3.3 Solicitar código OTP
-
-**POST** `/api/v2/auth/otp/request`
-
-**Headers:** `X-Tenant: {subdomain}`, `Content-Type: application/json`
-
-**Body:**
-```json
-{
-  "email": "usuario@ejemplo.com"
-}
-```
-
-**Respuesta 200:** mismo mensaje que en magic link (no se revela si el email existe).
-
-**Throttle:** 5 peticiones por minuto por IP.
-
----
-
-### 3.4 Canjear código OTP
+### 3.3 Canjear código OTP
 
 **POST** `/api/v2/auth/otp/verify`
 
@@ -174,7 +164,7 @@ Cualquier petición a esta ruta (con o sin body) recibe **400** con:
 
 ```json
 {
-  "message": "El acceso se realiza mediante enlace o código enviado por correo. Usa \"Enviar enlace\" o \"Enviar código\" en la pantalla de inicio de sesión."
+  "message": "Usa el botón \"Acceder\" en la pantalla de inicio de sesión. Recibirás un correo con un enlace y un código."
 }
 ```
 
