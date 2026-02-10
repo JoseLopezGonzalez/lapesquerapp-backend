@@ -23,7 +23,7 @@ class AccessEmail extends Mailable
 
         return $this->subject('Accede a ' . ($mailConfigService->getFromName()))
             ->from($mailConfigService->getFromAddress(), $mailConfigService->getFromName())
-            ->markdown('emails.auth.access', [
+            ->view('emails.auth.access-html', [
                 'magicLinkUrl' => $this->magicLinkUrl,
                 'code' => $this->code,
                 'expiresMinutes' => $this->expiresMinutes,
