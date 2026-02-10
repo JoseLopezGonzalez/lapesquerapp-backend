@@ -1,4 +1,4 @@
-# Sistema - Roles (Roles)
+# Sistema - Roles
 
 ## ⚠️ Estado de la API
 - **v1**: Obsoleta (no documentada)
@@ -8,303 +8,105 @@
 
 ## 📋 Visión General
 
-El modelo `Role` representa un **rol de usuario** para el sistema de autorización. Los roles definen los permisos y acceso de los usuarios a diferentes funcionalidades del sistema.
+Los **roles** en PesquerApp están **fijados en código** (enum), no en base de datos. Forman parte del diseño del producto y no son editables por el usuario final.
 
-**Archivo del modelo**: `app/Models/Role.php`
+**Archivo**: `app/Enums/Role.php`
 
-**Autorización**: Los roles se usan con `RoleMiddleware` para controlar el acceso a rutas y funcionalidades.
-
----
-
-## 🗄️ Estructura de Base de Datos
-
-### Tabla: `roles`
-
-**Migración**: `database/migrations/companies/2025_01_11_211806_create_roles_table.php`
-
-**Campos**:
-
-| Campo | Tipo | Nullable | Descripción |
-|-------|------|----------|-------------|
-| `id` | bigint | NO | ID único del rol |
-| `name` | string | NO | Nombre del rol - **UNIQUE** |
-| `description` | string | YES | Descripción del rol |
-| `created_at` | timestamp | NO | Fecha de creación |
-| `updated_at` | timestamp | NO | Fecha de última actualización |
-
-**Índices**:
-- `id` (primary key)
-- `name` (unique)
-
-### Tabla: `role_user`
-
-**Migración**: `database/migrations/companies/2025_01_11_211806_create_role_user_table.php`
-
-**Tabla pivot** para la relación many-to-many entre `users` y `roles`.
-
-**Campos**:
-- `id`: ID único
-- `user_id`: FK a `users` (onDelete: cascade)
-- `role_id`: FK a `roles` (onDelete: cascade)
-- `created_at`: Timestamp
-- `updated_at`: Timestamp
-
-**Índices**:
-- Primary key: `id`
-- Foreign keys a `users` y `roles`
+**Autorización**: Los roles se usan con `RoleMiddleware` para controlar el acceso a rutas. Cada usuario tiene un único rol almacenado en la columna `users.role`.
 
 ---
 
-## 📦 Modelo Eloquent
+## 🗄️ Dónde se guarda el rol
 
-### Fillable Attributes
+El rol del usuario se almacena en la tabla **`users`**, columna **`role`** (string, valores del enum).
 
-```php
-protected $fillable = ['name', 'description'];
-```
-
-### Traits
-
-- `UsesTenantConnection`: Usa conexión tenant (multi-tenant)
-- `HasFactory`: Para testing y seeders
+- **Migración**: `database/migrations/companies/2026_02_10_120000_migrate_roles_to_enum_on_users.php`
+- No existen tablas `roles` ni `role_user`; fueron eliminadas en la migración a roles como enum.
 
 ---
 
-## 🔗 Relaciones
+## 📦 Enum Role
 
-### `users()` - Usuarios con este Rol
-```php
-public function users()
-{
-    return $this->belongsToMany(User::class, 'role_user');
-}
-```
-- Relación muchos-a-muchos con `User`
-- Usuarios que tienen este rol asignado
+**Namespace**: `App\Enums\Role`
 
----
+### Valores (casos del enum)
 
-## 👥 Roles Disponibles
+| Valor (string)   | Etiqueta      | Descripción breve                    |
+|------------------|---------------|--------------------------------------|
+| `tecnico`        | Técnico       | Super-superuser, soporte y configuración |
+| `administrador`  | Administrador | Superuser de la empresa              |
+| `direccion`      | Dirección     | Solo lectura y análisis              |
+| `administracion` | Administración| Administración                       |
+| `comercial`      | Comercial     | Comercial                            |
+| `operario`       | Operario      | Operario                             |
 
-Según `database/seeders/RoleSeeder.php`, los roles predefinidos son:
+### Métodos útiles
 
-### 1. `superuser`
-- **Descripción**: "Superusuario con acceso completo al sistema"
-- **Acceso**: Acceso total, gestión técnica, usuarios, logs, sesiones
-
-### 2. `manager`
-- **Descripción**: "Gerente con permisos de administración"
-- **Acceso**: Gestión y administración
-
-### 3. `admin`
-- **Descripción**: "Administrador con permisos limitados"
-- **Acceso**: Administración de datos
-
-### 4. `store_operator`
-- **Descripción**: "Operador de tienda con acceso a funciones específicas de la tienda asignada"
-- **Acceso**: Operador de almacén (acceso limitado, pensado para restricción por `assigned_store_id`)
+- **`Role::values()`**: Array de strings válidos para validación.
+- **`Role::optionsForApi()`**: Array `[{ "id": "tecnico", "name": "Técnico" }, ...]` para selects en frontend.
+- **`$case->label()`**: Etiqueta legible del caso.
+- **`Role::fromLegacyName(string)`**: Mapeo de nombres antiguos (solo para migración/legacy).
 
 ---
 
-## 📡 Controlador
+## 📡 API
 
-**Archivo**: `app/Http/Controllers/v2/RoleController.php`
+### Único endpoint: Opciones de roles
 
-**Permisos requeridos**: `role:superuser` (solo superusuarios pueden gestionar roles)
+**Ruta**: `GET /v2/roles/options`  
+**Permiso**: `role:tecnico`
 
-### Métodos del Controlador
-
-#### `index(Request $request)` - Listar Roles
-```php
-GET /v2/roles
-```
-
-**⚠️ ERROR CRÍTICO**: El método está mal implementado. Consulta `User` en lugar de `Role`.
-
-**Código actual** (líneas 18-41):
-```php
-$query = User::query(); // ⚠️ ERROR: Debería ser Role::query()
-// ... filtros sobre usuarios ...
-return RoleResource::collection($query->paginate($perPage));
-```
-
-**Problema**: Filtra usuarios pero intenta retornar `RoleResource`, causando error.
-
-**Filtros disponibles** (si se corrigiera):
-- `id`: Buscar por ID (LIKE)
-- `name`: Buscar por nombre (LIKE)
-
-**Orden**: Por nombre ascendente
-
-**Query parameters**: `perPage` (default: 10)
-
-**Respuesta**: Collection paginada de `RoleResource` (NO FUNCIONA)
-
-#### `store(Request $request)` - Crear Rol
-```php
-POST /v2/roles
-```
-
-**Estado**: ⚠️ **NO IMPLEMENTADO** (método vacío)
-
-#### `show($id)` - Mostrar Rol
-```php
-GET /v2/roles/{id}
-```
-
-**Estado**: ⚠️ **NO IMPLEMENTADO** (método vacío)
-
-#### `update(Request $request, $id)` - Actualizar Rol
-```php
-PUT /v2/roles/{id}
-```
-
-**Estado**: ⚠️ **NO IMPLEMENTADO** (método vacío)
-
-#### `destroy($id)` - Eliminar Rol
-```php
-DELETE /v2/roles/{id}
-```
-
-**Estado**: ⚠️ **NO IMPLEMENTADO** (método vacío)
-
-#### `options()` - Opciones para Select
-```php
-GET /v2/roles/options
-```
-
-**Implementado**: ✅
-
-**Respuesta**: Array simple con `id` y `name`
+**Respuesta** (200):
 ```json
 [
-    {
-        "id": 1,
-        "name": "superuser"
-    },
-    ...
+  { "id": "tecnico", "name": "Técnico" },
+  { "id": "administrador", "name": "Administrador" },
+  { "id": "direccion", "name": "Dirección" },
+  { "id": "administracion", "name": "Administración" },
+  { "id": "comercial", "name": "Comercial" },
+  { "id": "operario", "name": "Operario" }
 ]
 ```
 
----
+**Uso**: Lista para desplegables al crear/editar usuarios. El valor a enviar en `user.role` es el `id` (string).
 
-## 📄 API Resource
+### Eliminados (ya no existen)
 
-**Archivo**: `app/Http/Resources/v2/RoleResource.php`
+- `GET /v2/roles` — Listar roles
+- `POST /v2/roles` — Crear rol
+- `GET /v2/roles/{id}` — Mostrar rol
+- `PUT /v2/roles/{id}` — Actualizar rol
+- `DELETE /v2/roles/{id}` — Eliminar rol
 
-**Campos expuestos**:
-```json
-{
-    "id": 1,
-    "name": "superuser"
-}
-```
-
-**Nota**: ⚠️ No incluye `description`, aunque existe en el modelo.
+Los roles no se crean ni modifican desde la API; son fijos en código.
 
 ---
 
-## 🛡️ Uso en Autorización
+## 🛡️ Uso en autorización
 
 ### RoleMiddleware
 
 **Archivo**: `app/Http/Middleware/RoleMiddleware.php`
 
-**Registro**: `app/Http/Kernel.php`
-
 **Uso en rutas**:
 ```php
-Route::middleware(['role:superuser'])->group(function () {
-    // Solo superuser
+Route::middleware(['role:tecnico'])->group(function () {
+    // Solo técnico
 });
 
-Route::middleware(['role:superuser,manager,admin'])->group(function () {
+Route::middleware(['role:tecnico,administrador,administracion'])->group(function () {
     // Cualquiera de estos roles
 });
 ```
 
-Ver `docs/fundamentos/02-Autenticacion-Autorizacion.md` para más detalles.
-
----
-
-## 🔐 Permisos y Autenticación
-
-**Middleware requerido**:
-- `auth:sanctum`: Autenticación requerida
-- `role:superuser`: Solo superusuarios pueden gestionar roles
-
-**Rutas**: Todas bajo `/v2/roles/*`
+El middleware comprueba que `$user->role` esté en la lista de roles indicada.
 
 ---
 
 ## 📝 Seeders
 
-**Archivo**: `database/seeders/RoleSeeder.php`
-
-Crea los 4 roles predefinidos si no existen:
-- `superuser`
-- `manager`
-- `admin`
-- `store_operator`
-
-**Ejecución**: Se ejecuta automáticamente en seeders de tenant.
+**RoleSeeder** (`database/seeders/RoleSeeder.php`): Ya no crea datos; los roles viven en el enum. El seeder se mantiene vacío para no romper la cadena de seeders (TenantDatabaseSeeder, DatabaseSeeder).
 
 ---
 
-## Observaciones Críticas y Mejoras Recomendadas
-
-### ⚠️ ERROR CRÍTICO: index() Consulta Modelo Incorrecto
-
-1. **index() Consulta User en lugar de Role** (`app/Http/Controllers/v2/RoleController.php:20`)
-   - Consulta `User::query()` pero debería ser `Role::query()`
-   - **Líneas**: 20-40
-   - **Problema**: Causará error al intentar retornar `RoleResource` de usuarios
-   - **Recomendación**: Corregir para usar `Role::query()`
-
-### ⚠️ CRUD Completo No Implementado
-
-2. **Métodos Vacíos** (`app/Http/Controllers/v2/RoleController.php`)
-   - `store()`, `show()`, `update()`, `destroy()` están vacíos
-   - **Líneas**: 46-65
-   - **Problema**: No se pueden crear, actualizar ni eliminar roles desde la API
-   - **Recomendación**: Implementar métodos CRUD si se necesita gestión
-
-### ⚠️ RoleResource No Incluye description
-
-3. **description No en Resource** (`app/Http/Resources/v2/RoleResource.php:15-21`)
-   - No incluye campo `description`
-   - **Problema**: Información limitada en respuestas
-   - **Recomendación**: Agregar `description` al resource
-
-### ⚠️ Filtro por ID Usa LIKE
-
-4. **Filtro ID Usa LIKE** (`app/Http/Controllers/v2/RoleController.php:23-26`)
-   - Filtro por ID usa `LIKE` en lugar de igualdad
-   - **Líneas**: 23-26
-   - **Problema**: Comportamiento inesperado para IDs
-   - **Recomendación**: Usar `where('id', $request->id)` o eliminar filtro por ID
-
-### ⚠️ Sin Validación de Rol en Uso
-
-5. **No Valida Uso Antes de Eliminar** (método no implementado)
-   - Si se implementa `destroy()`, debería validar que el rol no esté en uso
-   - **Problema**: Podría eliminar roles con usuarios asignados
-   - **Recomendación**: Validar relaciones antes de eliminar
-
-### ⚠️ Sin Validación de Nombre Único en Store
-
-6. **No Valida Unicidad de Nombre** (método no implementado)
-   - Si se implementa `store()`, debería validar unicidad
-   - **Problema**: Podrían crearse roles duplicados
-   - **Recomendación**: Agregar validación `unique:tenant.roles,name`
-
-### ⚠️ Sin Relaciones Cargadas en Index
-
-7. **No Carga Relaciones** (si se corrige `index()`)
-   - Si se quiere mostrar usuarios con cada rol, necesitaría eager loading
-   - **Recomendación**: Agregar `with('users')` si se necesita
-
----
-
-**Última actualización**: Documentación generada desde código fuente en fecha de generación.
-
+**Última actualización**: Documentación actualizada tras migración a roles como enum (Opción A).

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\Role;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -60,25 +61,25 @@ class CreateTenantUser extends Command
             return Command::SUCCESS;
         }
 
-        // Crear el usuario
+        if ($roleName && !in_array($roleName, Role::values(), true)) {
+            $this->error("❌ Rol inválido: {$roleName}. Valores permitidos: " . implode(', ', Role::values()));
+            return Command::FAILURE;
+        }
+
         try {
             $user = new User();
             $user->setConnection('tenant');
             $user->name = $name;
             $user->email = $email;
             $user->password = Hash::make($password);
+            $user->role = $roleName ?? Role::Operario->value;
             $user->save();
 
             $this->info("✅ Usuario creado exitosamente:");
             $this->line("   - ID: {$user->id}");
             $this->line("   - Nombre: {$user->name}");
             $this->line("   - Email: {$user->email}");
-
-            // Asignar rol si se especifica
-            if ($roleName) {
-                $user->assignRole($roleName);
-                $this->info("✅ Rol '{$roleName}' asignado al usuario");
-            }
+            $this->line("   - Rol: {$user->role}");
 
             return Command::SUCCESS;
         } catch (\Exception $e) {

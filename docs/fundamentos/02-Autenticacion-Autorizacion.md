@@ -73,10 +73,12 @@ X-Tenant: empresa1
         "assignedStoreId": 5,
         "companyName": "Empresa S.L.",
         "companyLogoUrl": "https://...",
-        "roles": ["manager"]
+        "role": "administrador"
     }
 }
 ```
+
+El campo `role` es un **string** con el valor del rol del usuario (uno de: `tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario`).
 
 **Respuesta error** (401):
 ```json
@@ -98,7 +100,7 @@ X-Tenant: empresa1
 
 **Proceso**:
 1. Obtiene usuario autenticado: `$request->user()`
-2. Elimina todos los tokens: `$user->tokens()->delete()`
+2. Elimina el token actual: `$user->currentAccessToken()->delete()`
 
 **Respuesta**:
 ```json
@@ -124,9 +126,17 @@ X-Tenant: empresa1
     "id": 1,
     "name": "Juan Pérez",
     "email": "usuario@empresa.com",
-    // ... todos los campos del usuario
+    "assigned_store_id": 5,
+    "company_name": "Empresa S.L.",
+    "company_logo_url": "https://...",
+    "active": true,
+    "role": "administrador",
+    "created_at": "...",
+    "updated_at": "..."
 }
 ```
+
+El campo `role` es un string (valor del enum); consistente con la respuesta de login.
 
 ---
 
@@ -162,47 +172,24 @@ Sanctum verifica estos guards antes de usar tokens Bearer.
 
 ## 👥 Sistema de Roles
 
-### Modelo Role
+Los roles están **fijados en código** (enum), no en base de datos. Cada usuario tiene **un único rol** en la columna `users.role`.
 
-**Archivo**: `app/Models/Role.php`
+**Archivo**: `app/Enums\Role`
 
-**Tabla**: `roles` (en base tenant)
+### Roles disponibles (valores del enum)
 
-**Campos**:
-- `id`: ID único
-- `name`: Nombre del rol (string, único)
-- `description`: Descripción del rol (opcional)
+| Valor | Descripción breve |
+|-------|-------------------|
+| `tecnico` | Super-superuser, soporte y configuración |
+| `administrador` | Superuser de la empresa |
+| `direccion` | Solo lectura y análisis |
+| `administracion` | Administración |
+| `comercial` | Comercial |
+| `operario` | Operario |
 
-**Relación**:
-```php
-public function users()
-{
-    return $this->belongsToMany(User::class, 'role_user');
-}
-```
+### Rol en el usuario
 
-### Roles Disponibles
-
-1. **`superuser`**: Acceso total, gestión técnica
-2. **`manager`**: Gestión y administración
-3. **`admin`**: Administración de datos
-4. **`store_operator`**: Operador de almacén (acceso limitado)
-
-### Relación Usuario-Rol
-
-**Tabla pivote**: `role_user`
-- `user_id`: FK a `users`
-- `role_id`: FK a `roles`
-
-**Relación en User**:
-```php
-public function roles()
-{
-    return $this->belongsToMany(Role::class, 'role_user');
-}
-```
-
-Un usuario puede tener **múltiples roles**.
+El modelo `User` tiene el atributo **`role`** (string). No existe tabla `roles` ni `role_user`; el rol se guarda directamente en `users.role`.
 
 ---
 
@@ -235,79 +222,34 @@ public function handle(Request $request, Closure $next, ...$roles)
 
 **Uso en rutas**:
 ```php
-Route::middleware(['role:superuser'])->group(function () {
-    // Solo superuser
+Route::middleware(['role:tecnico'])->group(function () {
+    // Solo técnico
 });
 
-Route::middleware(['role:superuser,manager,admin'])->group(function () {
+Route::middleware(['role:tecnico,administrador,administracion'])->group(function () {
     // Cualquiera de estos roles
 });
 ```
+
+Los valores deben coincidir con el enum: `tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario`.
 
 ### Métodos en User Model
 
 **Archivo**: `app/Models/User.php`
 
-#### `hasRole($role)` - Verificar Rol Específico
+#### `hasRole($role)` - Verificar rol
+Comprueba si `$user->role` coincide con el string o con alguno del array.
 ```php
-public function hasRole($role)
-{
-    if (is_array($role)) {
-        return $this->roles->whereIn('name', $role)->isNotEmpty();
-    }
-    return $this->roles->where('name', $role)->isNotEmpty();
-}
+$user->hasRole('tecnico');              // bool
+$user->hasRole(['administrador', 'tecnico']); // bool
 ```
 
-**Uso**:
+#### `hasAnyRole(array $roles)` - Verificar cualquiera de varios roles
 ```php
-if ($user->hasRole('superuser')) {
-    // ...
-}
-
-if ($user->hasRole(['manager', 'admin'])) {
-    // ...
-}
+$user->hasAnyRole(['tecnico', 'administrador']); // bool
 ```
 
-#### `hasAnyRole(array $roles)` - Verificar Cualquier Rol
-```php
-public function hasAnyRole(array $roles)
-{
-    return $this->roles()->whereIn('name', $roles)->exists();
-}
-```
-
-**Uso**:
-```php
-if ($user->hasAnyRole(['superuser', 'manager'])) {
-    // ...
-}
-```
-
-#### `assignRole($roleName)` - Asignar Rol
-```php
-public function assignRole($roleName)
-{
-    $role = Role::where('name', $roleName)->first();
-    
-    if ($role && !$this->hasRole($roleName)) {
-        $this->roles()->attach($role);
-    }
-}
-```
-
-#### `removeRole($roleName)` - Eliminar Rol
-```php
-public function removeRole($roleName)
-{
-    $role = Role::where('name', $roleName)->first();
-    
-    if ($role && $this->hasRole($roleName)) {
-        $this->roles()->detach($role);
-    }
-}
-```
+El rol se asigna editando el atributo `role` del usuario (p. ej. en UserController al crear/actualizar).
 
 ---
 
@@ -315,23 +257,21 @@ public function removeRole($roleName)
 
 ### Estructura de Protección
 
-En `routes/api.php`, las rutas v2 están organizadas por roles:
+En `routes/api.php`, las rutas v2 están organizadas por roles (valores del enum):
 
 ```php
 Route::group(['prefix' => 'v2', 'middleware' => ['tenant']], function () {
-    // Rutas públicas
     Route::post('login', [AuthController::class, 'login']);
     
-    // Rutas protegidas
     Route::middleware(['auth:sanctum'])->group(function () {
-        // Solo superuser
-        Route::middleware(['role:superuser'])->group(function () {
+        // Solo técnico (gestión usuarios, roles/options, etc.)
+        Route::middleware(['role:tecnico'])->group(function () {
             Route::apiResource('users', UserController::class);
-            Route::apiResource('roles', RoleController::class);
+            Route::get('roles/options', [RoleController::class, 'options']);
         });
         
         // Múltiples roles
-        Route::middleware(['role:superuser,manager,admin,store_operator'])->group(function () {
+        Route::middleware(['role:tecnico,administrador,direccion,administracion,comercial,operario'])->group(function () {
             Route::apiResource('orders', OrderController::class);
             // ...
         });
@@ -357,13 +297,13 @@ Route::group(['prefix' => 'v2', 'middleware' => ['tenant']], function () {
 
 ### Listar Sesiones Activas
 
-**Ruta**: `GET /v2/sessions` (requiere `role:superuser`)
+**Ruta**: `GET /v2/sessions` (requiere `role:tecnico`)
 
 Retorna todos los tokens activos del sistema (todos los usuarios).
 
 ### Eliminar Sesión
 
-**Ruta**: `DELETE /v2/sessions/{id}` (requiere `role:superuser`)
+**Ruta**: `DELETE /v2/sessions/{id}` (requiere `role:tecnico`)
 
 Elimina un token específico, cerrando la sesión del usuario.
 
@@ -436,10 +376,10 @@ public function index(Request $request)
 {
     $user = $request->user();
     
-    if ($user->hasRole('superuser')) {
+    if ($user->hasRole('tecnico')) {
         // Acceso completo
         return User::all();
-    } elseif ($user->hasRole('manager')) {
+    } elseif ($user->hasRole('administrador')) {
         // Acceso limitado
         return User::where('store_id', $user->assigned_store_id)->get();
     }
@@ -462,7 +402,7 @@ public function index(Request $request)
 
 **Causa**: Usuario no tiene el rol requerido
 
-**Solución**: Verificar roles del usuario con `$user->roles` o asignar rol apropiado.
+**Solución**: Verificar el rol con `$user->role` o asignar el rol apropiado al usuario.
 
 ### 400 Bad Request - Tenant not specified
 
@@ -524,41 +464,9 @@ public function index(Request $request)
      - Usar API Resource para controlar qué se expone
      - O crear método `toPublicArray()` en User model
 
-### ⚠️ hasAnyRole Usa Query
-
-6. **hasAnyRole Hace Query Directo** (`app/Models/User.php:108-111`)
-   - `hasAnyRole()` usa `exists()` que ejecuta query
-   - **Líneas**: 110
-   - **Problema**: Si roles ya están cargados, hace query innecesaria
-   - **Recomendación**: Optimizar para usar colección si está cargada:
-     ```php
-     if ($this->relationLoaded('roles')) {
-         return $this->roles->whereIn('name', $roles)->isNotEmpty();
-     }
-     return $this->roles()->whereIn('name', $roles)->exists();
-     ```
-
-### ⚠️ RoleMiddleware No Carga Relación
-
-7. **RoleMiddleware No Eager Load Roles** (`app/Http/Middleware/RoleMiddleware.php:23-26`)
-   - `$request->user()` puede no tener roles cargados
-   - **Líneas**: 23-26
-   - **Problema**: Puede causar N+1 queries si se accede múltiples veces
-   - **Recomendación**: Cargar roles en middleware o en `Authenticate` middleware
-
-### ⚠️ Falta de Validación en assignRole
-
-8. **assignRole No Valida Rol Válido** (`app/Models/User.php:84-91`)
-   - Si el rol no existe, simplemente no asigna (silencioso)
-   - **Líneas**: 84-91
-   - **Problema**: Puede ser confuso si se intenta asignar rol inexistente
-   - **Recomendación**: 
-     - Lanzar excepción si rol no existe
-     - O retornar boolean indicando éxito/fallo
-
 ### ⚠️ Expiración de Tokens Fija
 
-9. **Expiración Hardcodeada** (`config/sanctum.php:47`)
+6. **Expiración Hardcodeada** (`config/sanctum.php:47`)
    - 30 días fijos para todos los tokens
    - **Líneas**: 47
    - **Problema**: No permite diferentes tiempos para diferentes tipos de usuarios
@@ -568,12 +476,12 @@ public function index(Request $request)
 
 ### ⚠️ Falta de Refresh Tokens
 
-10. **No Hay Sistema de Refresh Tokens** (`app/Http/Controllers/v2/AuthController.php`)
+7. **No Hay Sistema de Refresh Tokens** (`app/Http/Controllers/v2/AuthController.php`)
     - Solo hay access tokens, no refresh tokens
     - **Problema**: Usuario debe hacer login cada 30 días
     - **Recomendación**: Implementar sistema de refresh tokens si es necesario para UX
 
 ---
 
-**Última actualización**: Documentación generada desde código fuente en fecha de generación.
+**Última actualización**: Documentación actualizada tras migración a roles como enum (user.role).
 

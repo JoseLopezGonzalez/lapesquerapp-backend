@@ -41,7 +41,6 @@ class AuthController extends Controller
         // Crear un token personal para el usuario
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        // Devolver respuesta exitosa con el token y datos básicos del usuario
         return response()->json([
             'access_token' => $token,
             'token_type' => 'Bearer',
@@ -52,7 +51,7 @@ class AuthController extends Controller
                 'assignedStoreId' => $user->assigned_store_id,
                 'companyName' => $user->company_name,
                 'companyLogoUrl' => $user->company_logo_url,
-                'roles' => $user->roles->pluck('name'), // Array de nombres de roles
+                'role' => $user->role,
             ],
         ]);
     }
@@ -71,11 +70,7 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         $user = $request->user();
-        
-        // Asegurar que se cargan los roles
-        $user->load('roles');
-        
-        // Formatear respuesta consistente con login
+
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
@@ -84,7 +79,7 @@ class AuthController extends Controller
             'company_name' => $user->company_name,
             'company_logo_url' => $user->company_logo_url,
             'active' => $user->active,
-            'roles' => $user->roles->pluck('name'), // Array de nombres de roles (consistente con login)
+            'role' => $user->role,
             'created_at' => $user->created_at,
             'updated_at' => $user->updated_at,
         ]);

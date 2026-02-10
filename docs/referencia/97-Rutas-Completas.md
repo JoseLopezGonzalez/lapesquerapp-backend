@@ -14,7 +14,7 @@ Este documento proporciona una referencia completa de todas las rutas de la API 
 - **Prefijo Base**: `/api/v2`
 - **Middleware Global**: `tenant` (identificación de tenant)
 - **Autenticación**: Laravel Sanctum (excepto rutas públicas)
-- **Autorización**: Roles (`superuser`, `manager`, `admin`, `store_operator`)
+- **Autorización**: Roles (`tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario`)
 
 **Convenciones**:
 - Rutas públicas: Sin autenticación
@@ -56,9 +56,9 @@ Todas las rutas siguientes requieren autenticación con Sanctum (`auth:sanctum`)
 
 ---
 
-## 👤 Rutas para Superusuario (Técnico)
+## 👤 Rutas para Técnico
 
-Estas rutas están protegidas por el middleware `role:superuser`.
+Estas rutas están protegidas por el middleware `role:tecnico`.
 
 ### Opciones
 
@@ -86,11 +86,8 @@ Estas rutas están protegidas por el middleware `role:superuser`.
 | `DELETE` | `/api/v2/users/{id}` | `UserController` | `destroy` | Eliminar usuario |
 | `GET` | `/api/v2/activity-logs` | `ActivityLogController` | `index` | Listar logs de actividad |
 | `GET` | `/api/v2/activity-logs/{id}` | `ActivityLogController` | `show` | Mostrar log |
-| `GET` | `/api/v2/roles` | `RoleController` | `index` | Listar roles |
-| `POST` | `/api/v2/roles` | `RoleController` | `store` | Crear rol |
-| `GET` | `/api/v2/roles/{id}` | `RoleController` | `show` | Mostrar rol |
-| `PUT` | `/api/v2/roles/{id}` | `RoleController` | `update` | Actualizar rol |
-| `DELETE` | `/api/v2/roles/{id}` | `RoleController` | `destroy` | Eliminar rol |
+
+**Nota:** No existe CRUD de roles; solo `GET /api/v2/roles/options` (ver tabla Opciones arriba).
 
 ### Extracción de Documentos con IA
 
@@ -102,7 +99,7 @@ Estas rutas están protegidas por el middleware `role:superuser`.
 
 ## 👥 Rutas para Múltiples Roles
 
-Estas rutas son accesibles para roles: `superuser`, `manager`, `admin`, `store_operator`.
+Estas rutas son accesibles para roles: `tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario`.
 
 ### Configuración
 
@@ -184,7 +181,7 @@ Estas rutas son accesibles para roles: `superuser`, `manager`, `admin`, `store_o
 
 | Método | Ruta | Controlador | Método | Descripción | Roles |
 |--------|------|-------------|--------|-------------|-------|
-| `POST` | `/api/v2/pallets/update-state` | `V2PalletController` | `bulkUpdateState` | Actualizar estado masivo de palets | `superuser,manager,admin` |
+| `POST` | `/api/v2/pallets/update-state` | `V2PalletController` | `bulkUpdateState` | Actualizar estado masivo de palets | `tecnico,administrador,administracion` |
 
 ---
 
@@ -298,7 +295,7 @@ Todas las rutas siguientes siguen el patrón RESTful estándar con `apiResource`
 | `GET` | `/api/v2/stores/{id}` | `V2StoreController` | `show` | Mostrar almacén | Todos |
 | `PUT` | `/api/v2/stores/{id}` | `V2StoreController` | `update` | Actualizar almacén | Todos |
 | `DELETE` | `/api/v2/stores/{id}` | `V2StoreController` | `destroy` | Eliminar almacén | Todos |
-| `DELETE` | `/api/v2/stores` | `V2StoreController` | `deleteMultiple` | Eliminar múltiples | `superuser,manager,admin` |
+| `DELETE` | `/api/v2/stores` | `V2StoreController` | `deleteMultiple` | Eliminar múltiples | `tecnico,administrador,administracion` |
 
 ### Términos de Pago
 
@@ -342,7 +339,7 @@ Todas las rutas siguientes siguen el patrón RESTful estándar con `apiResource`
 | `GET` | `/api/v2/pallets/{id}` | `V2PalletController` | `show` | Mostrar palet | Todos |
 | `PUT` | `/api/v2/pallets/{id}` | `V2PalletController` | `update` | Actualizar palet | Todos |
 | `DELETE` | `/api/v2/pallets/{id}` | `V2PalletController` | `destroy` | Eliminar palet | Todos |
-| `DELETE` | `/api/v2/pallets` | `V2PalletController` | `destroyMultiple` | Eliminar múltiples | `superuser,manager,admin` |
+| `DELETE` | `/api/v2/pallets` | `V2PalletController` | `destroyMultiple` | Eliminar múltiples | `tecnico,administrador,administracion` |
 
 ### Clientes
 
@@ -565,23 +562,25 @@ Todas las rutas de Excel retornan archivos Excel para descarga directa.
 
 ### Roles del Sistema
 
-1. **superuser**: Acceso completo, incluyendo gestión de usuarios y sistema
-2. **manager**: Gerencia (actualmente sin rutas específicas)
-3. **admin**: Administración (actualmente sin rutas específicas)
-4. **store_operator**: Operador de almacén, acceso a operaciones diarias
+1. **tecnico**: Acceso completo, gestión de usuarios, sesiones, logs y opciones de roles
+2. **administrador**: Superuser de la empresa
+3. **direccion**: Solo lectura y análisis (sin rutas específicas aún)
+4. **administracion**: Administración
+5. **comercial**: Comercial
+6. **operario**: Operario, acceso a operaciones diarias
 
 ### Middleware de Roles
 
-- `role:superuser`: Solo superusuarios
-- `role:superuser,manager,admin`: Roles administrativos
-- `role:superuser,manager,admin,store_operator`: Todos los roles autenticados
+- `role:tecnico`: Solo técnicos
+- `role:tecnico,administrador,administracion`: Roles administrativos
+- `role:tecnico,administrador,direccion,administracion,comercial,operario`: Todos los roles autenticados
 
 ### Acciones Especiales
 
 Algunas acciones requieren roles específicos:
-- Eliminación masiva de almacenes: `superuser,manager,admin`
-- Eliminación masiva de palets: `superuser,manager,admin`
-- Actualización masiva de estado de palets: `superuser,manager,admin`
+- Eliminación masiva de almacenes: `tecnico,administrador,administracion`
+- Eliminación masiva de palets: `tecnico,administrador,administracion`
+- Actualización masiva de estado de palets: `tecnico,administrador,administracion`
 
 ---
 

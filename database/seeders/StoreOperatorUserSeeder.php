@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
-use App\Models\Role;
 use Illuminate\Support\Facades\Hash;
 
 class StoreOperatorUserSeeder extends Seeder
@@ -14,24 +13,22 @@ class StoreOperatorUserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Crear usuario de prueba con rol store_operator
         $user = User::firstOrCreate(
             ['email' => 'store.operator@test.com'],
             [
                 'name' => 'Store Operator Test',
                 'password' => Hash::make('password123'),
-                'assigned_store_id' => 1, // ID de tienda de prueba
+                'role' => 'operario',
+                'assigned_store_id' => 1,
                 'company_name' => 'Tienda de Prueba S.A.',
                 'company_logo_url' => 'https://via.placeholder.com/150x150/007bff/ffffff?text=LOGO',
             ]
         );
 
-        // Asignar el rol store_operator
-        $role = Role::where('name', 'store_operator')->first();
-        if ($role && !$user->hasRole('store_operator')) {
-            $user->assignRole('store_operator');
+        if ($user->wasRecentlyCreated === false && $user->role !== 'operario') {
+            $user->update(['role' => 'operario']);
         }
 
-        $this->command->info("Usuario store_operator creado: {$user->email}");
+        $this->command->info("Usuario operario creado: {$user->email}");
     }
 }

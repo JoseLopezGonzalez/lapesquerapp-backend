@@ -114,8 +114,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
     // Rutas protegidas por Sanctum
     Route::middleware(['auth:sanctum'])->group(function () {
-        // Rutas para Superusuario (Técnico)
-        Route::middleware(['role:superuser'])->group(function () {
+        // Rutas para Técnico (super-superuser)
+        Route::middleware(['role:tecnico'])->group(function () {
             /* options */
             Route::get('roles/options', [RoleController::class, 'options']);
             Route::get('users/options', [UserController::class, 'options']);
@@ -127,19 +127,18 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::apiResource('sessions', SessionController::class)->only(['index', 'destroy']);
             Route::apiResource('users', UserController::class);
             Route::apiResource('activity-logs', ActivityLogController::class);
-            Route::apiResource('roles', RoleController::class);
 
         });
 
-        // Rutas para Gerencia
-        Route::middleware(['role:manager'])->group(function () {});
+        // Rutas para Dirección
+        Route::middleware(['role:direccion'])->group(function () {});
 
         // Rutas para Administración
-        Route::middleware(['role:admin'])->group(function () {
+        Route::middleware(['role:administracion'])->group(function () {
         });
 
         // Rutas accesibles para múltiples roles
-        Route::middleware(['role:superuser,manager,admin,store_operator'])->group(function () {
+        Route::middleware(['role:tecnico,administrador,direccion,administracion,comercial,operario'])->group(function () {
             /* Options */
             Route::get('settings', [SettingController::class, 'index']);
             Route::put('settings', [SettingController::class, 'update']);
@@ -206,7 +205,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::get('orders/transport-chart-data', [V2OrderController::class, 'transportChartData']);
 
             /* bulkUpdateState - Solo para roles administrativos */
-            Route::post('pallets/update-state', [V2PalletController::class, 'bulkUpdateState'])->name('pallets.bulk_update_state')->middleware(['role:superuser,manager,admin']);
+            Route::post('pallets/update-state', [V2PalletController::class, 'bulkUpdateState'])->name('pallets.bulk_update_state')->middleware(['role:tecnico,administrador,administracion']);
 
             /* Controladores Genericos */
             Route::apiResource('employees', EmployeeController::class);
@@ -248,7 +247,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::delete('product-families', [ProductFamilyController::class, 'destroyMultiple']);
 
             Route::apiResource('stores', V2StoreController::class);
-            Route::delete('stores', [V2StoreController::class, 'deleteMultiple'])->middleware(['role:superuser,manager,admin']); // <-- importante
+            Route::delete('stores', [V2StoreController::class, 'deleteMultiple'])->middleware(['role:tecnico,administrador,administracion']); // <-- importante
 
             Route::apiResource('payment-terms', V2PaymentTermController::class);
             Route::delete('payment-terms', [V2PaymentTermController::class, 'destroyMultiple']);
@@ -261,7 +260,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::apiResource('boxes', BoxesController::class); /* Algo raro en el nombre */
             Route::delete('boxes', [BoxesController::class, 'destroyMultiple']);
             Route::apiResource('pallets', V2PalletController::class);
-            Route::delete('pallets', [V2PalletController::class, 'destroyMultiple'])->middleware(['role:superuser,manager,admin']);
+            Route::delete('pallets', [V2PalletController::class, 'destroyMultiple'])->middleware(['role:tecnico,administrador,administracion']);
             Route::apiResource('customers', V2CustomerController::class);
             Route::delete('customers', [V2CustomerController::class, 'destroyMultiple']);
             Route::get('customers/{customer}/order-history', [V2CustomerController::class, 'getOrderHistory'])->name('customers.order_history');

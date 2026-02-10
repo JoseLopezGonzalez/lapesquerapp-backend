@@ -54,12 +54,12 @@ Content-Type: application/json
     "assignedStoreId": 1,
     "companyName": "Mi Empresa",
     "companyLogoUrl": "https://example.com/logo.png",
-    "roles": ["admin"]
+    "role": "administrador"
   }
 }
 ```
 
-**Nota:** El campo `roles` es un array que puede contener uno o múltiples roles (ej: `["admin"]` o `["admin", "manager"]`).
+**Nota:** El campo `role` es un string con el rol del usuario (`tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario`).
 
 ### Response Errónea (401) - Credenciales Inválidas
 
@@ -157,13 +157,13 @@ Authorization: Bearer {access_token}
   "company_name": "Mi Empresa",
   "company_logo_url": "https://example.com/logo.png",
   "active": true,
-  "roles": ["admin"],
+  "role": "administrador",
   "created_at": "2024-01-01T00:00:00.000000Z",
   "updated_at": "2024-01-01T00:00:00.000000Z"
 }
 ```
 
-**Nota:** El campo `roles` es un array de strings con los nombres de los roles (ej: `["admin"]` o `["admin", "manager"]`). Consistente con el formato del endpoint de login.
+**Nota:** El campo `role` es un string; consistente con el endpoint de login.
 
 ### Response Errónea (401) - No Autenticado
 

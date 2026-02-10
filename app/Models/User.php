@@ -24,6 +24,7 @@ class User extends Authenticatable
         'email',
         'password',
         'active',
+        'role',
         'assigned_store_id',
         'company_name',
         'company_logo_url',
@@ -51,65 +52,34 @@ class User extends Authenticatable
     ];
 
     /**
-     * Relación con los roles del usuario.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
-     */
-    public function roles()
-    {
-        return $this->belongsToMany(Role::class, 'role_user');
-    }
-
-    
-
-    /**
      * Verificar si el usuario tiene un rol específico.
      *
-     * @param string|array $role
+     * @param string|array $role Uno o más valores del enum (string).
      * @return bool
      */
-    public function hasRole($role)
+    public function hasRole($role): bool
     {
+        if ($this->role === null) {
+            return false;
+        }
         if (is_array($role)) {
-            return $this->roles->whereIn('name', $role)->isNotEmpty();
+            return in_array($this->role, $role, true);
         }
-
-        return $this->roles->where('name', $role)->isNotEmpty();
+        return $this->role === $role;
     }
 
     /**
-     * Asignar un rol al usuario.
+     * Verificar si el usuario tiene al menos uno de los roles indicados.
      *
-     * @param string $roleName
-     * @return void
+     * @param array $roles Valores del enum (strings).
+     * @return bool
      */
-    public function assignRole($roleName)
+    public function hasAnyRole(array $roles): bool
     {
-        $role = Role::where('name', $roleName)->first();
-
-        if ($role && !$this->hasRole($roleName)) {
-            $this->roles()->attach($role);
+        if ($this->role === null) {
+            return false;
         }
-    }
-
-    /**
-     * Eliminar un rol del usuario.
-     *
-     * @param string $roleName
-     * @return void
-     */
-    public function removeRole($roleName)
-    {
-        $role = Role::where('name', $roleName)->first();
-
-        if ($role && $this->hasRole($roleName)) {
-            $this->roles()->detach($role);
-        }
-    }
-
-    public function hasAnyRole(array $roles)
-    {
-        return $this->roles()->whereIn('name', $roles)->exists();
+        return in_array($this->role, $roles, true);
     }
 
     /* toasocArray */

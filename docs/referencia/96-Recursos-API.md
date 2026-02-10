@@ -53,26 +53,15 @@ Este documento proporciona una referencia completa de todos los API Resources de
 - `companyLogoUrl`: URL del logo de la compañía
 - `createdAt`: Fecha de creación (ISO 8601)
 - `updatedAt`: Fecha de actualización (ISO 8601)
-- `roles`: Array de roles (si está cargada la relación)
+- `role`: String — Rol del usuario (valor del enum)
 
 **Uso**: Transformación de usuarios en respuestas API
 
 ---
 
-### RoleResource
+### Roles (opciones)
 
-**Archivo**: `app/Http/Resources/v2/RoleResource.php`
-
-**Patrón**: Delegación a modelo
-
-**Campos**: Retorna `$this->toArrayAssoc()` del modelo `Role`
-
-**Estructura esperada**:
-- `id`: ID del rol
-- `name`: Nombre del rol
-- `description`: Descripción del rol
-- `createdAt`: Fecha de creación
-- `updatedAt`: Fecha de actualización
+El endpoint `GET /v2/roles/options` devuelve un array de objetos `{ "id": "tecnico", "name": "Técnico" }` generado desde `App\Enums\Role::optionsForApi()`. No existe RoleResource; los roles son un enum.
 
 ---
 

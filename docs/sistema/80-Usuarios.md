@@ -8,13 +8,11 @@
 
 ## 📋 Visión General
 
-El modelo `User` representa un **usuario** del sistema con autenticación y autorización basada en roles. Los usuarios pertenecen a un tenant específico y pueden tener múltiples roles asignados.
+El modelo `User` representa un **usuario** del sistema con autenticación (Laravel Sanctum) y **un único rol** almacenado en la columna `role`.
 
 **Archivo del modelo**: `app/Models/User.php`
 
-**Autenticación**: Laravel Sanctum (tokens API)
-
-**Autorización**: Sistema de roles (many-to-many con `Role`)
+**Autorización**: El rol se usa con `RoleMiddleware`; los valores posibles están definidos en `App\Enums\Role`.
 
 ---
 
@@ -22,151 +20,52 @@ El modelo `User` representa un **usuario** del sistema con autenticación y auto
 
 ### Tabla: `users`
 
-**Migración base**: `database/migrations/companies/2014_10_12_000000_create_users_table.php`
-
-**Migración adicional**:
-- `2025_09_05_105929_add_store_fields_to_users_table.php` - Agrega `assigned_store_id`, `company_name`, `company_logo_url`
+**Migraciones**:
+- `2014_10_12_000000_create_users_table.php` — Base
+- `2025_09_05_105929_add_store_fields_to_users_table.php` — `assigned_store_id`, `company_name`, `company_logo_url`
+- `2026_02_10_120000_migrate_roles_to_enum_on_users.php` — Columna `role`
 
 **Campos**:
 
 | Campo | Tipo | Nullable | Descripción |
 |-------|------|----------|-------------|
 | `id` | bigint | NO | ID único del usuario |
-| `name` | string | NO | Nombre completo del usuario |
+| `name` | string | NO | Nombre completo |
 | `email` | string | NO | Email (único por tenant) |
 | `email_verified_at` | timestamp | YES | Fecha de verificación del email |
 | `password` | string | NO | Contraseña (hasheada) |
-| `remember_token` | string | YES | Token para "recordar sesión" |
-| `assigned_store_id` | bigint | YES | FK a `stores` - Almacén asignado (agregado después) |
-| `company_name` | string | YES | Nombre de la empresa (agregado después) |
-| `company_logo_url` | string | YES | URL del logo de la empresa (agregado después) |
+| `remember_token` | string | YES | Token "recordar sesión" |
+| `active` | boolean | NO | Usuario activo |
+| `role` | string | NO | Rol del usuario (valor de `App\Enums\Role`: tecnico, administrador, direccion, administracion, comercial, operario). Default: `operario` |
+| `assigned_store_id` | bigint | YES | FK a `stores` — Almacén asignado |
+| `company_name` | string | YES | Nombre de la empresa |
+| `company_logo_url` | string | YES | URL del logo |
 | `created_at` | timestamp | NO | Fecha de creación |
-| `updated_at` | timestamp | NO | Fecha de última actualización |
+| `updated_at` | timestamp | NO | Fecha de actualización |
 
-**Índices**:
-- `id` (primary key)
-- `email` (unique)
+**Índices**: `id` (PK), `email` (unique).
 
-**Nota**: El campo `assigned_store_id` está pensado para restringir acceso de usuarios con rol `store_operator` a un almacén específico.
-
-### Tabla: `role_user`
-
-**Migración**: `database/migrations/companies/2025_01_11_211806_create_role_user_table.php`
-
-**Tabla pivot** para la relación many-to-many entre `users` y `roles`.
-
-**Campos**:
-- `role_id`: FK a `roles`
-- `user_id`: FK a `users`
-
-**Índices**:
-- Primary key compuesta: (`role_id`, `user_id`)
+**Nota**: `assigned_store_id` está pensado para restringir acceso de usuarios con rol `operario` a un almacén concreto (cuando se implemente).
 
 ---
 
 ## 📦 Modelo Eloquent
 
-### Fillable Attributes
+### Fillable
 
 ```php
 protected $fillable = [
-    'name',
-    'email',
-    'password',
-    'assigned_store_id',
-    'company_name',
-    'company_logo_url',
+    'name', 'email', 'password', 'active', 'role',
+    'assigned_store_id', 'company_name', 'company_logo_url',
 ];
 ```
 
-### Hidden Attributes
+### Métodos de rol
 
-```php
-protected $hidden = [
-    'password',
-    'remember_token',
-];
-```
+- **`hasRole($role)`**: `$role` puede ser string o array de strings. Comprueba si `$this->role` coincide.
+- **`hasAnyRole(array $roles)`**: Comprueba si `$this->role` está en el array.
 
-### Casts
-
-```php
-protected $casts = [
-    'email_verified_at' => 'datetime',
-    'password' => 'hashed', // Auto-hashing en Laravel 10+
-];
-```
-
-### Traits
-
-- `UsesTenantConnection`: Usa conexión tenant (multi-tenant)
-- `HasApiTokens` (Sanctum): Para autenticación API
-- `HasFactory`: Para testing y seeders
-- `Notifiable`: Para notificaciones
-
----
-
-## 🔗 Relaciones
-
-### 1. `roles()` - Roles del Usuario
-```php
-public function roles()
-{
-    return $this->belongsToMany(Role::class, 'role_user');
-}
-```
-- Relación muchos-a-muchos con `Role`
-- Un usuario puede tener múltiples roles
-
-### 2. `activityLogs()` - Logs de Actividad
-```php
-public function activityLogs()
-{
-    return $this->hasMany(ActivityLog::class);
-}
-```
-- Relación uno-a-muchos con `ActivityLog`
-- Historial de acciones del usuario
-
----
-
-## 🔢 Métodos Helper
-
-### `hasRole($role)` - Verificar Rol
-
-Verifica si el usuario tiene un rol específico.
-
-```php
-// Rol único
-$user->hasRole('admin'); // bool
-
-// Múltiples roles (al menos uno)
-$user->hasRole(['admin', 'manager']); // bool
-```
-
-### `hasAnyRole(array $roles)` - Verificar Cualquier Rol
-
-Verifica si el usuario tiene al menos uno de los roles especificados.
-
-```php
-$user->hasAnyRole(['admin', 'manager']); // bool
-```
-
-### `assignRole($roleName)` - Asignar Rol
-
-Asigna un rol al usuario por nombre.
-
-```php
-$user->assignRole('admin');
-```
-
-### `removeRole($roleName)` - Quitar Rol
-
-Elimina un rol del usuario por nombre.
-
-```php
-$user->removeRole('admin');
-```
+No existen `roles()`, `assignRole()` ni `removeRole()`; el rol se asigna mediante el atributo `role`.
 
 ---
 
@@ -174,123 +73,75 @@ $user->removeRole('admin');
 
 **Archivo**: `app/Http/Controllers/v2/UserController.php`
 
-**Permisos requeridos**: `role:superuser` (solo superusuarios pueden gestionar usuarios)
+**Permisos**: Rutas de usuarios requieren `role:tecnico`.
 
-### Métodos del Controlador
+### `index(Request $request)` — Listar usuarios
 
-#### `index(Request $request)` - Listar Usuarios
-```php
-GET /v2/users
-```
+**Ruta**: `GET /v2/users`
 
-**Filtros disponibles** (query parameters):
-- `id`: Buscar por ID (LIKE)
-- `name`: Buscar por nombre (LIKE)
-- `email`: Buscar por email (LIKE)
-- `roles`: Filtrar por roles (array de nombres)
-- `created_at[start]`: Fecha inicio creación
-- `created_at[end]`: Fecha fin creación
+**Filtros** (query):
+- `id`, `name`, `email`: búsqueda (LIKE)
+- **`role`**: filtrar por rol (string, un valor del enum)
+- `created_at[start]`, `created_at[end]`: rango de fechas
 
-**Ordenamiento**:
-- `sort`: Campo de orden (default: `created_at`)
-- `direction`: Dirección (default: `desc`)
+**Orden**: `sort` (default: `created_at`), `direction` (default: `desc`).  
+**Paginación**: `perPage` (default: 10).
 
-**Query parameters**: `perPage` (default: 10)
+**Respuesta**: Collection paginada de `UserResource`.
 
-**Respuesta**: Collection paginada de `UserResource`
+### `store(Request $request)` — Crear usuario
 
-#### `store(Request $request)` - Crear Usuario
-```php
-POST /v2/users
-```
+**Ruta**: `POST /v2/users`
 
 **Validación**:
-```php
-[
-    'name' => 'required|string|max:255',
-    'email' => 'required|email|unique:tenant.users,email',
-    'password' => 'required|string|min:8',
-    'role_ids' => 'required|array|min:1',
-    'role_ids.*' => 'integer|exists:tenant.roles,id',
-]
-```
+- `name`: required, string, max 255
+- `email`: required, email, unique en tenant
+- `password`: required, string, min 8
+- **`role`**: required, string, debe ser uno de `App\Enums\Role::values()`
+- `active`: optional, boolean
 
-**Request body**:
+**Request body** (ejemplo):
 ```json
 {
-    "name": "Juan Pérez",
-    "email": "juan@example.com",
-    "password": "password123",
-    "role_ids": [1, 2]
+  "name": "Juan Pérez",
+  "email": "juan@example.com",
+  "password": "password123",
+  "role": "administracion",
+  "active": true
 }
 ```
 
-**Comportamiento**:
-- Crea el usuario con contraseña hasheada
-- Asigna los roles especificados (múltiples roles permitidos)
-- Usa transacción DB para garantizar consistencia
-- Usa `sync()` para asignar roles (reemplaza todos)
+**Respuesta** (201): `message` + `data` (UserResource con `role`).
 
-**Respuesta** (201):
-```json
-{
-    "message": "Usuario creado correctamente.",
-    "data": {
-        "id": 1,
-        "name": "Juan Pérez",
-        "email": "juan@example.com",
-        "roles": ["admin", "manager"],
-        ...
-    }
-}
-```
+### `show($id)` — Mostrar usuario
 
-#### `show($id)` - Mostrar Usuario
-```php
-GET /v2/users/{id}
-```
+**Ruta**: `GET /v2/users/{id}`
 
-**Eager Loading**: `roles`
+**Respuesta**: `UserResource` (incluye `role`).
 
-**Respuesta**: `UserResource` con formato consistente
+### `update(Request $request, $id)` — Actualizar usuario
 
-#### `update(Request $request, $id)` - Actualizar Usuario
-```php
-PUT /v2/users/{id}
-```
+**Ruta**: `PUT /v2/users/{id}`
 
-**Validación**:
-```php
-[
-    'name' => 'sometimes|string|max:255',
-    'email' => 'sometimes|email|unique:tenant.users,email,{id}',
-    'password' => 'nullable|string|min:8',
-    'role_ids' => 'sometimes|array|min:1',
-    'role_ids.*' => 'integer|exists:tenant.roles,id',
-]
-```
+**Validación** (todos opcionales):
+- `name`, `email`, `password`, `active`
+- **`role`**: string, uno de `Role::values()`
 
-**Comportamiento**:
-- Actualiza solo los campos proporcionados
-- Si se proporciona `password`, se hashea automáticamente
-- Si se proporciona `role_ids` (array de IDs), sincroniza roles (reemplaza todos los roles actuales)
-- Si no se proporciona `role_ids`, se mantienen los roles existentes
+Si se envía `role`, se actualiza el rol del usuario.
 
-**Respuesta**: `UserResource` con formato consistente
+**Respuesta**: `UserResource`.
 
-#### `destroy($id)` - Eliminar Usuario
-```php
-DELETE /v2/users/{id}
-```
+### `destroy($id)` — Eliminar usuario
 
-**Advertencia**: ⚠️ No valida si el usuario tiene datos asociados
+**Ruta**: `DELETE /v2/users/{id}`
 
-#### `options()` - Opciones para Select
-```php
-GET /v2/users/options
-```
+**Advertencia**: No comprueba datos asociados (logs, etc.).
 
-**Respuesta**: Array simple con `id` y `name`
+### `options()` — Opciones para select
+
+**Ruta**: `GET /v2/users/options`
+
+**Respuesta**: Array `[{ "id", "name" }, ...]`.
 
 ---
 
@@ -298,147 +149,33 @@ GET /v2/users/options
 
 **Archivo**: `app/Http/Resources/v2/UserResource.php`
 
-**Campos expuestos**:
+**Campos**:
 ```json
 {
-    "id": 1,
-    "name": "Juan Pérez",
-    "email": "juan@example.com",
-    "roles": ["admin", "manager"],
-    "created_at": "2025-01-15 10:00:00",
-    "updated_at": "2025-01-15 10:00:00"
+  "id": 1,
+  "name": "Juan Pérez",
+  "email": "juan@example.com",
+  "role": "administracion",
+  "created_at": "2025-01-15 10:00:00",
+  "updated_at": "2025-01-15 10:00:00"
 }
 ```
 
-**Notas**:
-- No incluye `password`, `assigned_store_id`, `company_name`, `company_logo_url`
-- Solo incluye nombres de roles, no objetos completos
+`role` es un **string** (valor del enum), no un array.
 
 ---
 
-## 🔐 Permisos y Autenticación
+## 🔐 Permisos
 
-**Middleware requerido**:
-- `auth:sanctum`: Autenticación requerida
-- `role:superuser`: Solo superusuarios pueden gestionar usuarios
-
-**Rutas**: Todas bajo `/v2/users/*`
-
-**Autenticación**: Ver `docs/fundamentos/02-Autenticacion-Autorizacion.md` para detalles sobre login/logout.
+- **Middleware**: `auth:sanctum`, `role:tecnico` para gestión de usuarios.
+- Ver `docs/fundamentos/02-Autenticacion-Autorizacion.md` para login y roles.
 
 ---
 
-## 🏪 Almacén Asignado (assigned_store_id)
+## 🏪 Almacén asignado (assigned_store_id)
 
-El campo `assigned_store_id` está pensado para restringir el acceso de usuarios con rol `store_operator` a un almacén específico.
-
-**Estado**: Campo existe pero **no hay restricciones implementadas** en el código actual.
-
-### Funcionalidades Pendientes
-
-Las siguientes restricciones están planificadas pero **no implementadas aún**:
-
-#### Restricciones para Store Operator
-
-**Objetivo**: Limitar el acceso de usuarios con rol `store_operator` solo a su almacén asignado.
-
-**Operaciones Permitidas** (cuando esté implementado):
-- ✅ Ver su almacén asignado
-- ✅ Ver palets de su almacén
-- ✅ Crear palets en su almacén
-- ✅ Actualizar palets de su almacén
-- ✅ Asignar posiciones dentro de su almacén
-- ✅ Cambiar estados de palets de su almacén
-
-**Operaciones Restringidas** (cuando esté implementado):
-- ❌ Ver otros almacenes
-- ❌ Ver palets de otros almacenes
-- ❌ Mover palets entre almacenes
-- ❌ Crear/eliminar almacenes
-- ❌ Acceder a estadísticas globales
-- ❌ Operaciones masivas
-
-#### Implementaciones Planificadas
-
-1. **Middleware de Filtrado**: `FilterByAssignedStore` para filtrar automáticamente consultas
-2. **Modificaciones en StoreController**: Filtrar almacenes por `assigned_store_id`
-3. **Modificaciones en PalletController**: Filtrar palets por almacén asignado
-4. **Scopes en Modelos**: Métodos helper para filtrar por almacén asignado
-5. **Validaciones**: Verificar permisos en cada operación
-
-**Referencia**: Información completa en `docs/store_operator_restrictions.md` (a ser eliminado después de integrar esta información).
+Pensado para restringir a usuarios con rol `operario` a un almacén. Las restricciones por almacén están planificadas pero no implementadas aún.
 
 ---
 
-## Observaciones Críticas y Mejoras Recomendadas
-
-### ⚠️ UserResource No Incluye Todos los Campos
-
-1. **Campos Faltantes en Resource** (`app/Http/Resources/v2/UserResource.php:15-25`)
-   - No incluye `assigned_store_id`, `company_name`, `company_logo_url`
-   - Solo incluye nombres de roles, no IDs
-   - **Problema**: Información limitada en respuestas
-   - **Recomendación**: Agregar campos si se necesitan
-
-### ⚠️ Show No Usa Resource
-
-2. **show() No Usa UserResource** (`app/Http/Controllers/v2/UserController.php:122-126`)
-   - Retorna JSON directo en lugar de usar Resource
-   - **Líneas**: 122-126
-   - **Problema**: Inconsistencia con otros métodos
-   - **Recomendación**: Usar `UserResource`
-
-### ⚠️ Update No Usa Resource
-
-3. **update() No Usa UserResource** (`app/Http/Controllers/v2/UserController.php:153`)
-   - Retorna JSON directo en lugar de usar Resource
-   - **Problema**: Inconsistencia
-   - **Recomendación**: Usar `UserResource`
-
-### ⚠️ Sin Validación de assigned_store_id
-
-4. **assigned_store_id No Se Valida** (`app/Http/Controllers/v2/UserController.php`)
-   - Campo en fillable pero no se valida ni guarda en store/update
-   - **Problema**: Campo no se puede usar
-   - **Recomendación**: Agregar validación y guardado si se necesita
-
-### ⚠️ Eliminación Sin Validaciones
-
-5. **No Valida Uso Antes de Eliminar** (`app/Http/Controllers/v2/UserController.php:159-164`)
-   - No valida si el usuario tiene datos asociados (logs, etc.)
-   - **Problema**: Puede eliminar usuarios con historial
-   - **Recomendación**: Validar o usar soft deletes
-
-### ⚠️ Sin Relación Definida con Store
-
-6. **No Hay Relación store()** (`app/Models/User.php`)
-   - Campo `assigned_store_id` existe pero no hay relación
-   - **Problema**: No se puede acceder fácilmente al almacén
-   - **Recomendación**: Agregar relación `belongsTo(Store::class, 'assigned_store_id')`
-
-### ⚠️ Filtro por ID Usa LIKE
-
-7. **Filtro ID Usa LIKE** (`app/Http/Controllers/v2/UserController.php:25-28`)
-   - Filtro por ID usa `LIKE` en lugar de igualdad
-   - **Líneas**: 25-28
-   - **Problema**: Comportamiento inesperado para IDs
-   - **Recomendación**: Usar `where('id', $request->id)`
-
-### ✅ Roles Actualizado
-
-8. **Manejo Consistente de Múltiples Roles** (`app/Http/Controllers/v2/UserController.php`)
-   - `store()` usa `role_ids` (array de IDs) ✅
-   - `update()` usa `role_ids` (array de IDs) ✅
-   - Ambos endpoints ahora soportan múltiples roles consistentemente
-
-### ⚠️ Sin Validación de Email Único en Update
-
-9. **Validación Email Única Incompleta** (`app/Http/Controllers/v2/UserController.php:137`)
-   - Validación `unique:tenant.users,email,{id}` puede tener problemas
-   - **Problema**: Si se usa `{id}` literal en lugar de variable
-   - **Recomendación**: Verificar que funcione correctamente
-
----
-
-**Última actualización**: Documentación generada desde código fuente en fecha de generación.
-
+**Última actualización**: Documentación actualizada tras migración a roles como enum (columna `users.role`).

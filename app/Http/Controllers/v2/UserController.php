@@ -4,12 +4,12 @@ namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\v2\UserResource;
+use App\Enums\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Exception;
 
 class UserController extends Controller
@@ -39,12 +39,9 @@ class UserController extends Controller
             $query->where('email', 'like', "%{$text}%");
         }
 
-        // Filtros por rol
-        if ($request->has('roles')) {
-            $roles = $request->roles;
-            $query->whereHas('roles', function ($q) use ($roles) {
-                $q->whereIn('name', $roles);
-            });
+        // Filtro por rol
+        if ($request->has('role')) {
+            $query->where('role', $request->role);
         }
 
         // Filtros por fecha de creación
@@ -63,9 +60,6 @@ class UserController extends Controller
         // Ordenar por nombre o fecha de creación
         $query->orderBy($request->input('sort', 'created_at'), $request->input('direction', 'desc'));
 
-        // Cargar roles para la respuesta
-        $query->with('roles');
-
         // Paginación
         $perPage = $request->input('perPage', 10);
 
@@ -77,52 +71,26 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        // Validar la solicitud
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:tenant.users,email',
             'password' => 'required|string|min:8',
-            'role_ids' => 'required|array|min:1',
-            'role_ids.*' => 'integer|exists:tenant.roles,id',
+            'role' => ['required', 'string', Rule::in(Role::values())],
             'active' => 'sometimes|boolean',
         ]);
 
-        // Usar una transacción para asegurar que ambas operaciones se completen exitosamente
-        DB::beginTransaction();
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'role' => $validated['role'],
+            'active' => $validated['active'] ?? true,
+        ]);
 
-        try {
-            // Crear el usuario
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'active' => $validated['active'] ?? true,
-            ]);
-
-            // Asignar roles al usuario (múltiples roles)
-            $user->roles()->sync($validated['role_ids']);
-
-            // Confirmar la transacción
-            DB::commit();
-
-            // Cargar roles para la respuesta
-            $user->load('roles');
-
-            // Responder con éxito y código 201 (Created)
-            return response()->json([
-                'message' => 'Usuario creado correctamente.',
-                'data' => new UserResource($user),
-            ], 201);
-        } catch (Exception $e) {
-            // Revertir la transacción en caso de error
-            DB::rollBack();
-
-            // Devolver un error interno del servidor
-            return response()->json([
-                'message' => 'Error al crear el usuario.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'message' => 'Usuario creado correctamente.',
+            'data' => new UserResource($user),
+        ], 201);
     }
 
     /**
@@ -130,7 +98,7 @@ class UserController extends Controller
      */
     public function show($id)
     {
-        $user = User::with('roles')->findOrFail($id);
+        $user = User::findOrFail($id);
         return response()->json([
             'message' => 'Usuario obtenido correctamente.',
             'data' => new UserResource($user),
@@ -149,8 +117,7 @@ class UserController extends Controller
             'email' => 'sometimes|email|unique:tenant.users,email,' . $user->id,
             'password' => 'sometimes|string|min:8',
             'active' => 'sometimes|boolean',
-            'role_ids' => 'sometimes|array|min:1',
-            'role_ids.*' => 'integer|exists:tenant.roles,id',
+            'role' => ['sometimes', 'string', Rule::in(Role::values())],
         ]);
 
         $user->update(array_filter([
@@ -158,15 +125,8 @@ class UserController extends Controller
             'email' => $validated['email'] ?? null,
             'password' => isset($validated['password']) ? Hash::make($validated['password']) : null,
             'active' => $validated['active'] ?? null,
-        ]));
-
-        // Asignar roles (múltiples roles)
-        if (isset($validated['role_ids'])) {
-            $user->roles()->sync($validated['role_ids']);
-        }
-
-        // Cargar roles para la respuesta
-        $user->load('roles');
+            'role' => $validated['role'] ?? null,
+        ], fn ($v) => $v !== null));
 
         return response()->json([
             'message' => 'Usuario actualizado correctamente.',

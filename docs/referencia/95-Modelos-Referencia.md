@@ -45,34 +45,27 @@ Este documento proporciona una referencia completa de todos los modelos Eloquent
 - `Notifiable`
 
 **Fillable**:
-- `name`, `email`, `password`, `assigned_store_id`, `company_name`, `company_logo_url`
+- `name`, `email`, `password`, `active`, `role`, `assigned_store_id`, `company_name`, `company_logo_url`
+
+**Atributo**:
+- `role`: string — Rol del usuario (valor de `App\Enums\Role`)
 
 **Relaciones**:
-- `roles()`: BelongsToMany → `Role`
 - `activityLogs()`: HasMany → `ActivityLog`
 
 **Métodos Especiales**:
-- `hasRole($role)`: Verifica si tiene un rol
-- `assignRole($roleName)`: Asigna un rol
-- `removeRole($roleName)`: Quita un rol
+- `hasRole($role)`: Verifica si tiene el rol (string o array de strings)
+- `hasAnyRole(array $roles)`: Verifica si tiene alguno de los roles
 
 **Documentación Completa**: [Sistema - Usuarios](../sistema/80-Usuarios.md)
 
 ---
 
-### Role
+### Role (enum, no modelo)
 
-**Archivo**: `app/Models/Role.php`
+**Archivo**: `app/Enums/Role.php`
 
-**Traits**:
-- `UsesTenantConnection`
-- `HasFactory`
-
-**Fillable**:
-- `name`, `description`
-
-**Relaciones**:
-- `users()`: BelongsToMany → `User`
+Los roles están fijados en código (enum). No existe modelo `Role` ni tabla `roles`. Valores: `tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario`. Ver [Sistema - Roles](../sistema/81-Roles.md).
 
 **Documentación Completa**: [Sistema - Roles](../sistema/81-Roles.md)
 

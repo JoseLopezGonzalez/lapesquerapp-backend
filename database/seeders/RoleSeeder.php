@@ -3,39 +3,14 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\Role;
 
 class RoleSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Los roles están fijos en código (App\Enums\Role). Ya no se siembran en BD.
      */
     public function run(): void
     {
-        $roles = [
-            [
-                'name' => 'superuser',
-                'description' => 'Superusuario con acceso completo al sistema'
-            ],
-            [
-                'name' => 'manager',
-                'description' => 'Gerente con permisos de administración'
-            ],
-            [
-                'name' => 'admin',
-                'description' => 'Administrador con permisos limitados'
-            ],
-            [
-                'name' => 'store_operator',
-                'description' => 'Operador de tienda con acceso a funciones específicas de la tienda asignada'
-            ]
-        ];
-
-        foreach ($roles as $role) {
-            Role::firstOrCreate(
-                ['name' => $role['name']],
-                $role
-            );
-        }
+        // No-op: roles definidos como enum
     }
 }
