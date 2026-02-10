@@ -17,8 +17,8 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $query = Product::query();
-        /* Add family relations */
-        $query->with(['family.category', 'family']);
+        /* Add family and species relations (species.fishingGear for toArrayAssoc) */
+        $query->with(['family.category', 'family', 'species.fishingGear', 'captureZone']);
 
         if ($request->has('id')) {
             $query->where('id', $request->id);
@@ -160,7 +160,7 @@ class ProductController extends Controller
             $productId = $product->id;
         });
 
-        $product = Product::with(['species', 'captureZone', 'family.category'])->find($productId);
+        $product = Product::with(['species.fishingGear', 'captureZone', 'family.category'])->find($productId);
 
         return response()->json([
             'message' => 'Producto creado con éxito',
@@ -180,7 +180,7 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        $product = Product::with(['species', 'captureZone', 'family.category', 'family'])->findOrFail($id);
+        $product = Product::with(['species.fishingGear', 'captureZone', 'family.category', 'family'])->findOrFail($id);
 
         return response()->json([
             'message' => 'Producto obtenido con éxito',
@@ -296,7 +296,7 @@ class ProductController extends Controller
             $product->update($updateData);
         });
 
-        $updated = Product::with(['species', 'captureZone', 'family.category', 'family'])->find($id);
+        $updated = Product::with(['species.fishingGear', 'captureZone', 'family.category', 'family'])->find($id);
 
         return response()->json([
             'message' => 'Producto actualizado con éxito',

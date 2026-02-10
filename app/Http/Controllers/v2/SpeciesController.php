@@ -51,6 +51,7 @@ class SpeciesController extends Controller
         $query->orderBy('name', 'asc');
 
         $perPage = request()->input('perPage', 10); // Default a 10 si no se proporciona
+        $query->with('fishingGear');
         return SpeciesResource::collection($query->paginate($perPage));
 
     }
@@ -91,6 +92,7 @@ class SpeciesController extends Controller
      */
     public function show(Species $species)
     {
+        $species->load('fishingGear');
         return response()->json([
             'data' => new SpeciesResource($species),
         ]);

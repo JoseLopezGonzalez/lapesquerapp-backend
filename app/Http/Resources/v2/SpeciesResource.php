@@ -20,7 +20,7 @@ class SpeciesResource extends JsonResource
             'scientificName' => $this->scientific_name,
             'fao' => $this->fao,
             'image' => $this->image,
-            'fishingGear' => $this->fishingGear->toArrayAssoc(),
+            'fishingGear' => $this->fishingGear?->toArrayAssoc(),
         ];
     }
 }
