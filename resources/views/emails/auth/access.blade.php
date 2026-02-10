@@ -1,17 +1,32 @@
 <x-mail::message>
 # Accede a tu cuenta
 
-Has solicitado iniciar sesión. Puedes hacerlo de dos formas:
+Has solicitado iniciar sesión. Elige la opción que te vaya mejor:
 
-**Opción 1 — Haz clic en el enlace** (si estás en el mismo dispositivo donde recibes el correo):
+## Enlace rápido
+
+Si estás en el mismo dispositivo donde recibes el correo, haz clic en el botón:
 
 <x-mail::button :url="$magicLinkUrl" color="primary">
 Acceder
 </x-mail::button>
 
-**Opción 2 — Introduce este código** (si abres el correo en otro dispositivo o prefieres pegar el código en la web):
+---
 
-**{{ $code }}**
+## Código de acceso
+
+Si abres el correo en otro dispositivo, copia este código y pégalo en la web:
+
+<x-mail::panel>
+<table class="otp-copy-block" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+<tr>
+<td class="otp-code">{{ $code }}</td>
+<td class="otp-copy-hint">📋 Copia</td>
+</tr>
+</table>
+</x-mail::panel>
+
+---
 
 El enlace y el código son válidos durante **{{ $expiresMinutes }} minutos**. No los compartas con nadie.
 

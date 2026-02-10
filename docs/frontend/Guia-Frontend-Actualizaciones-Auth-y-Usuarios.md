@@ -4,66 +4,60 @@ Documento único con **todos los cambios de la API** que el frontend debe implem
 
 ---
 
-**No se puede utilizar contraseña** en ningún flujo: ni para iniciar sesión ni al crear o editar usuarios. La API no acepta el campo `password` y `POST /v2/login` con email/password devuelve error. El acceso es únicamente por **un solo correo** que incluye **enlace mágico y código OTP**: el usuario pulsa "Acceder", recibe un email y puede **abrir el enlace** (mismo dispositivo) o **introducir el código** (otro dispositivo).
+**No se puede utilizar contraseña** en ningún flujo: ni para iniciar sesión ni al crear o editar usuarios. La API no acepta el campo `password` y `POST /v2/login` con email/password devuelve error. El acceso es únicamente por **enlace mágico** o **código OTP** enviado por correo.
 
 ---
 
-**Base URL API:** `/api/v2`  
+**Base URL API:** `/api/v2`
 **Header obligatorio en todas las peticiones:** `X-Tenant: {subdominio}` (ej. `brisamar`, `pymcolora`, `test`).
 
 ---
 
 ## 1. Resumen de cambios
 
-| Área | Qué ha cambiado |
-|------|------------------|
-| **Login** | **Ya no hay login con contraseña.** `POST /v2/login` devuelve **400** con un mensaje indicando que el acceso es solo por enlace o código. No enviar email/password. |
-| **Auth** | **Única forma de acceso:** solicitar/canjear **Magic Link** o solicitar/canjear **OTP** por email. El usuario introduce su email y recibe un enlace o un código de 6 dígitos. |
-| **Pantalla de login** | Solo debe ofrecer: “Enviar enlace” y/o “Enviar código” (campo email). Ruta `/auth/verify?token=xxx` para cuando el usuario hace clic en el enlace del correo. **Quitar** la opción “Entrar con contraseña”. |
-| **Crear usuario** | **No existe el campo `password`.** Al crear usuario solo se envían name, email, role, active. El usuario entra siempre por magic link u OTP; usar “Reenviar invitación” para enviarle el enlace. |
-| **Reenviar invitación** | Endpoint `POST /v2/users/{id}/resend-invitation` para enviar un magic link a un usuario desde el panel de administración. |
-| **Eliminar usuario** | `DELETE /v2/users/{id}` (soft delete en backend). No cambia la forma de llamar al API. |
-| **Usuario y roles** | Cada usuario tiene **`role`** (string), no `roles` (array). Valores: `tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario`. |
+| Área                          | Qué ha cambiado                                                                                                                                                                                                             |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Login**                | **Ya no hay login con contraseña.** `POST /v2/login` devuelve **400** con un mensaje indicando que el acceso es solo por enlace o código. No enviar email/password.                                          |
+| **Auth**                 | **Única forma de acceso:** solicitar/canjear **Magic Link** o solicitar/canjear **OTP** por email. El usuario introduce su email y recibe un enlace o un código de 6 dígitos.                           |
+| **Pantalla de login**    | Solo debe ofrecer: “Enviar enlace” y/o “Enviar código” (campo email). Ruta `/auth/verify?token=xxx` para cuando el usuario hace clic en el enlace del correo. **Quitar** la opción “Entrar con contraseña”. |
+| **Crear usuario**        | **No existe el campo `password`.** Al crear usuario solo se envían name, email, role, active. El usuario entra siempre por magic link u OTP; usar “Reenviar invitación” para enviarle el enlace.                 |
+| **Reenviar invitación** | Endpoint `POST /v2/users/{id}/resend-invitation` para enviar un magic link a un usuario desde el panel de administración.                                                                                                 |
+| **Eliminar usuario**     | `DELETE /v2/users/{id}` (soft delete en backend). No cambia la forma de llamar al API.                                                                                                                                     |
+| **Usuario y roles**      | Cada usuario tiene**`role`** (string), no `roles` (array). Valores: `tecnico`, `administrador`, `direccion`, `administracion`, `comercial`, `operario`.                                                |
 
 ---
 
 ## 2. Tabla de endpoints (auth y usuarios)
 
-| Método | Ruta | Auth | Descripción |
-|--------|------|------|-------------|
-| POST | `/v2/login` | No | **Obsoleto:** devuelve 400; usar el botón "Acceder". |
-| POST | **`/v2/auth/request-access`** | No | **Recomendado.** Solicitar acceso: envía un solo email con enlace + código OTP. Body: `{ "email": "..." }`. |
-| POST | `/v2/auth/magic-link/request` | No | Mismo efecto que `request-access`: un email con enlace + código. |
-| POST | `/v2/auth/magic-link/verify` | No | Canjear token del enlace → devuelve access_token y user. |
-| POST | `/v2/auth/otp/request` | No | Mismo efecto que `request-access`: un email con enlace + código. |
-| POST | `/v2/auth/otp/verify` | No | Canjear código OTP (email + code) → devuelve access_token y user. |
-| POST | `/v2/logout` | Bearer | Cerrar sesión. |
-| GET | `/v2/me` | Bearer | Usuario actual. |
-| GET | `/v2/users` | Bearer | Listar usuarios. |
-| POST | `/v2/users` | Bearer | Crear usuario (sin campo password). |
-| GET | `/v2/users/{id}` | Bearer | Ver usuario. |
-| PUT | `/v2/users/{id}` | Bearer | Actualizar usuario. |
-| DELETE | `/v2/users/{id}` | Bearer | Eliminar usuario (soft delete). |
-| **POST** | **`/v2/users/{id}/resend-invitation`** | **Bearer** | **Reenviar magic link al usuario.** |
-| GET | `/v2/roles/options` | Bearer | Opciones para el select de rol. |
+| Método        | Ruta                                           | Auth             | Descripción                                                              |
+| -------------- | ---------------------------------------------- | ---------------- | ------------------------------------------------------------------------- |
+| POST           | `/v2/login`                                  | No               | **Obsoleto:** devuelve 400; el acceso es solo por magic link u OTP. |
+| POST           | `/v2/auth/magic-link/request`                | No               | Solicitar magic link por email.                                           |
+| POST           | `/v2/auth/magic-link/verify`                 | No               | Canjear token del enlace → devuelve access_token y user.                 |
+| POST           | `/v2/auth/otp/request`                       | No               | Solicitar código OTP por email.                                          |
+| POST           | `/v2/auth/otp/verify`                        | No               | Canjear código OTP → devuelve access_token y user.                      |
+| POST           | `/v2/logout`                                 | Bearer           | Cerrar sesión.                                                           |
+| GET            | `/v2/me`                                     | Bearer           | Usuario actual.                                                           |
+| GET            | `/v2/users`                                  | Bearer           | Listar usuarios.                                                          |
+| POST           | `/v2/users`                                  | Bearer           | Crear usuario (sin campo password).                                       |
+| GET            | `/v2/users/{id}`                             | Bearer           | Ver usuario.                                                              |
+| PUT            | `/v2/users/{id}`                             | Bearer           | Actualizar usuario.                                                       |
+| DELETE         | `/v2/users/{id}`                             | Bearer           | Eliminar usuario (soft delete).                                           |
+| **POST** | **`/v2/users/{id}/resend-invitation`** | **Bearer** | **Reenviar magic link al usuario.**                                 |
+| GET            | `/v2/roles/options`                          | Bearer           | Opciones para el select de rol.                                           |
 
 ---
 
-## 3. Autenticación: un solo "Acceder" (enlace + código en un email)
+## 3. Autenticación: Magic Link y OTP
 
-El usuario introduce su email y pulsa **"Acceder"**. La API envía **un único correo** que contiene:
-- Un **enlace** para hacer clic (si está en el mismo dispositivo que el correo).
-- Un **código de 6 dígitos** para pegar en la web (si está en otro dispositivo o prefiere el código).
+### 3.1 Solicitar Magic Link
 
-Las rutas `magic-link/request` y `otp/request` siguen existiendo y envían el mismo correo unificado; el frontend puede usar solo **`/v2/auth/request-access`** para simplificar.
-
-### 3.1 Solicitar acceso (recomendado)
-
-**POST** `/api/v2/auth/request-access`
+**POST** `/api/v2/auth/magic-link/request`
 
 **Headers:** `X-Tenant: {subdomain}`, `Content-Type: application/json`
 
 **Body:**
+
 ```json
 {
   "email": "usuario@ejemplo.com"
@@ -71,17 +65,16 @@ Las rutas `magic-link/request` y `otp/request` siguen existiendo y envían el mi
 ```
 
 **Respuesta 200 (siempre la misma, por seguridad):**
+
 ```json
 {
-  "message": "Si el correo está registrado y activo, recibirás un correo con un enlace y un código para acceder."
+  "message": "Si el correo está registrado y activo, recibirás un enlace para iniciar sesión."
 }
 ```
 
 **Errores:** 500 si falla el envío del correo o la configuración del frontend en backend.
 
 **Throttle:** 5 peticiones por minuto por IP.
-
-**Alternativas (mismo comportamiento):** `POST /v2/auth/magic-link/request` y `POST /v2/auth/otp/request` con el mismo body envían el mismo email con enlace + código.
 
 ---
 
@@ -101,6 +94,7 @@ En la ruta del frontend (p. ej. `/auth/verify`):
 **Headers:** `X-Tenant: {subdomain}`, `Content-Type: application/json`
 
 **Body:**
+
 ```json
 {
   "token": "el_token_recibido_en_el_enlace"
@@ -108,6 +102,7 @@ En la ruta del frontend (p. ej. `/auth/verify`):
 ```
 
 **Respuesta 200:** misma estructura que el login con contraseña:
+
 ```json
 {
   "access_token": "...",
@@ -127,6 +122,7 @@ En la ruta del frontend (p. ej. `/auth/verify`):
 **Qué hacer:** guardar `access_token` y `user` (localStorage/sessionStorage o store), luego redirigir al dashboard.
 
 **Errores:**
+
 - **400:** enlace no válido o expirado. Mostrar mensaje y opción “Solicitar nuevo enlace”.
 - **403:** usuario desactivado.
 
@@ -134,13 +130,34 @@ En la ruta del frontend (p. ej. `/auth/verify`):
 
 ---
 
-### 3.3 Canjear código OTP
+### 3.3 Solicitar código OTP
+
+**POST** `/api/v2/auth/otp/request`
+
+**Headers:** `X-Tenant: {subdomain}`, `Content-Type: application/json`
+
+**Body:**
+
+```json
+{
+  "email": "usuario@ejemplo.com"
+}
+```
+
+**Respuesta 200:** mismo mensaje que en magic link (no se revela si el email existe).
+
+**Throttle:** 5 peticiones por minuto por IP.
+
+---
+
+### 3.4 Canjear código OTP
 
 **POST** `/api/v2/auth/otp/verify`
 
 **Headers:** `X-Tenant: {subdomain}`, `Content-Type: application/json`
 
 **Body:**
+
 ```json
 {
   "email": "usuario@ejemplo.com",
@@ -164,7 +181,7 @@ Cualquier petición a esta ruta (con o sin body) recibe **400** con:
 
 ```json
 {
-  "message": "Usa el botón \"Acceder\" en la pantalla de inicio de sesión. Recibirás un correo con un enlace y un código."
+  "message": "El acceso se realiza mediante enlace o código enviado por correo. Usa \"Enviar enlace\" o \"Enviar código\" en la pantalla de inicio de sesión."
 }
 ```
 
@@ -179,6 +196,7 @@ Cualquier petición a esta ruta (con o sin body) recibe **400** con:
 **POST** `/api/v2/users`
 
 **Body:** no hay campo `password`. Campos obligatorios: name, email, role. Opcional: active.
+
 ```json
 {
   "name": "Juan Pérez",
@@ -191,6 +209,7 @@ Cualquier petición a esta ruta (con o sin body) recibe **400** con:
 Todos los usuarios entran por **magic link** u **OTP**. Tras crear el usuario, el admin puede usar “Reenviar invitación” para enviarle el enlace de acceso por correo.
 
 **Qué hacer en frontend:**
+
 - En el formulario de “Crear usuario” **no** incluir campo contraseña.
 - Opcionalmente, tras crear, mostrar botón o aviso “Reenviar invitación” para enviar el magic link al correo del usuario.
 
@@ -205,6 +224,7 @@ Todos los usuarios entran por **magic link** u **OTP**. Tras crear el usuario, e
 **Body:** ninguno.
 
 **Respuesta 200:**
+
 ```json
 {
   "message": "Se ha enviado un enlace de acceso al correo del usuario."
@@ -212,11 +232,13 @@ Todos los usuarios entran por **magic link** u **OTP**. Tras crear el usuario, e
 ```
 
 **Errores:**
+
 - **403:** usuario desactivado.
 - **404:** usuario no existe o está eliminado.
 - **500:** fallo al enviar el correo o configuración del backend.
 
 **Qué hacer en frontend:**
+
 - En la **ficha** del usuario o en la **lista** de usuarios, añadir un botón **“Reenviar invitación”** (o “Enviar enlace de acceso”).
 - Al hacer clic: `POST /api/v2/users/{id}/resend-invitation` con el `id` del usuario.
 - Mostrar el mensaje de éxito o el error según la respuesta.
@@ -329,13 +351,13 @@ export interface CreateUserPayload {
 
 ## 9. Throttle (límites de peticiones)
 
-| Endpoint | Límite |
-|----------|--------|
-| `POST /v2/login` | 5 por minuto por IP |
-| `POST /v2/auth/magic-link/request` | 5 por minuto por IP |
-| `POST /v2/auth/magic-link/verify` | 10 por minuto por IP |
-| `POST /v2/auth/otp/request` | 5 por minuto por IP |
-| `POST /v2/auth/otp/verify` | 10 por minuto por IP |
+| Endpoint                             | Límite              |
+| ------------------------------------ | -------------------- |
+| `POST /v2/login`                   | 5 por minuto por IP  |
+| `POST /v2/auth/magic-link/request` | 5 por minuto por IP  |
+| `POST /v2/auth/magic-link/verify`  | 10 por minuto por IP |
+| `POST /v2/auth/otp/request`        | 5 por minuto por IP  |
+| `POST /v2/auth/otp/verify`         | 10 por minuto por IP |
 
 Si se supera el límite, la API devolverá **429 Too Many Requests**. Mostrar un mensaje tipo “Demasiados intentos; espera un momento antes de volver a intentar.”
 
