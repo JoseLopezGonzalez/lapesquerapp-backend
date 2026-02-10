@@ -112,34 +112,21 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
     // Fichajes (público - para dispositivos NFC)
     Route::post('punches', [PunchController::class, 'store'])->name('v2.punches.store');
 
-    // Rutas protegidas por Sanctum
-    Route::middleware(['auth:sanctum'])->group(function () {
-        // Rutas para Técnico (super-superuser)
-        Route::middleware(['role:tecnico'])->group(function () {
-            /* options */
+    // Rutas protegidas por Sanctum — por ahora todas accesibles para todos los roles (luego: policies y restricciones)
+        Route::middleware(['auth:sanctum', 'role:tecnico,administrador,direccion,administracion,comercial,operario'])->group(function () {
+            /* Options (sistema) */
             Route::get('roles/options', [RoleController::class, 'options']);
             Route::get('users/options', [UserController::class, 'options']);
 
             /* Descargas */
             Route::get('orders_report', [OrdersReportController::class, 'exportToExcel'])->name('export.orders');
 
-            /* Controladores */
+            /* Controladores de sistema */
             Route::apiResource('sessions', SessionController::class)->only(['index', 'destroy']);
             Route::apiResource('users', UserController::class);
             Route::apiResource('activity-logs', ActivityLogController::class);
 
-        });
-
-        // Rutas para Dirección
-        Route::middleware(['role:direccion'])->group(function () {});
-
-        // Rutas para Administración
-        Route::middleware(['role:administracion'])->group(function () {
-        });
-
-        // Rutas accesibles para múltiples roles
-        Route::middleware(['role:tecnico,administrador,direccion,administracion,comercial,operario'])->group(function () {
-            /* Options */
+            /* Options (catálogos y resto) */
             Route::get('settings', [SettingController::class, 'index']);
             Route::put('settings', [SettingController::class, 'update']);
 
@@ -204,8 +191,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             /* orders/transport-chart-data */
             Route::get('orders/transport-chart-data', [V2OrderController::class, 'transportChartData']);
 
-            /* bulkUpdateState - Solo para roles administrativos */
-            Route::post('pallets/update-state', [V2PalletController::class, 'bulkUpdateState'])->name('pallets.bulk_update_state')->middleware(['role:tecnico,administrador,administracion']);
+            /* bulkUpdateState */
+            Route::post('pallets/update-state', [V2PalletController::class, 'bulkUpdateState'])->name('pallets.bulk_update_state');
 
             /* Controladores Genericos */
             Route::apiResource('employees', EmployeeController::class);
@@ -247,7 +234,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::delete('product-families', [ProductFamilyController::class, 'destroyMultiple']);
 
             Route::apiResource('stores', V2StoreController::class);
-            Route::delete('stores', [V2StoreController::class, 'deleteMultiple'])->middleware(['role:tecnico,administrador,administracion']); // <-- importante
+            Route::delete('stores', [V2StoreController::class, 'deleteMultiple']);
 
             Route::apiResource('payment-terms', V2PaymentTermController::class);
             Route::delete('payment-terms', [V2PaymentTermController::class, 'destroyMultiple']);
@@ -260,7 +247,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::apiResource('boxes', BoxesController::class); /* Algo raro en el nombre */
             Route::delete('boxes', [BoxesController::class, 'destroyMultiple']);
             Route::apiResource('pallets', V2PalletController::class);
-            Route::delete('pallets', [V2PalletController::class, 'destroyMultiple'])->middleware(['role:tecnico,administrador,administracion']);
+            Route::delete('pallets', [V2PalletController::class, 'destroyMultiple']);
             Route::apiResource('customers', V2CustomerController::class);
             Route::delete('customers', [V2CustomerController::class, 'destroyMultiple']);
             Route::get('customers/{customer}/order-history', [V2CustomerController::class, 'getOrderHistory'])->name('customers.order_history');
@@ -382,9 +369,6 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::post('orders/{orderId}/send-standard-documents', [OrderDocumentController::class, 'sendStandardDocumentation']);
         });
     });
-});
-
-
 
 
 
