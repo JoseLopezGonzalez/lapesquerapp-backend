@@ -22,6 +22,7 @@ class Species extends Model
             'scientificName' => $this->scientific_name,
             'fao' => $this->fao,
             'image' => $this->image,
+            'fishingGear' => $this->fishingGear?->toArrayAssoc(),
         ];
     }
 
