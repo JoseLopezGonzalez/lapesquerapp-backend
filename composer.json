@@ -12,6 +12,7 @@
         "barryvdh/laravel-dompdf": "^2.1",
         "barryvdh/laravel-snappy": "^1.0",
         "beganovich/snappdf": "^4.0",
+        "fedeisas/laravel-mail-css-inliner": "^5.4",
         "google/cloud-document-ai": "^2.1",
         "guzzlehttp/guzzle": "^7.9",
         "jenssegers/agent": "^2.6",
