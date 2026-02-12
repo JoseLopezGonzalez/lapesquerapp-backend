@@ -10,10 +10,11 @@ class TenantDatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Seed roles first
+        // Orden: de lo general a lo específico (guía Sail + arquitectura actual)
         $this->call(RoleSeeder::class);
-        
-        // Create test store operator user
+        $this->call(UsersSeeder::class);
+        $this->call(FAOZonesSeeder::class);
+        $this->call(CalibersSeeder::class);
         $this->call(StoreOperatorUserSeeder::class);
 
         $companyConfig = config('company');

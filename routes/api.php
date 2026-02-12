@@ -69,6 +69,19 @@ use App\Http\Controllers\v2\ProductionOutputConsumptionController;
 }); */
 
 
+/*
+|--------------------------------------------------------------------------
+| Health check (para verificación Sail / frontend)
+|--------------------------------------------------------------------------
+*/
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'app' => config('app.name'),
+        'env' => config('app.env'),
+    ], 200);
+})->name('api.health');
+
 Route::get('/test-cors', function (Request $request) {
     return response()->json(['message' => 'CORS funciona correctamente!'], 200)
         ->header('Access-Control-Allow-Origin', $request->header('Origin'))

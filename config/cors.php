@@ -23,12 +23,14 @@ return [
 
     // Permitir varios orígenes (especifica los dominios)
     'allowed_origins' => [
-        'http://localhost:3000', // Origen local (por ejemplo, frontend en desarrollo)
-        'https://*.congeladosbrisamar.es', // Origen de producción
+        'http://localhost:3000', // Next.js desarrollo (guía Sail)
+        'http://localhost:3001',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:3001',
         'http://localhost:5173',
+        'https://*.congeladosbrisamar.es', // Origen de producción
         'https://lapesquerapp.es',
         'https://*.lapesquerapp.es', // permite todos los subdominios
-        /* 'https://brisamar.lapesquerapp.es', */
         'http://brisamar.localhost:3000',
         'http://test.localhost:3000',
         'http://pymcolorao.localhost:3000',

@@ -71,4 +71,4 @@ Para información detallada de cada problema:
 **Archivos modificados**: 
 - Eliminado: `app/Models/Article.php`, `app/Models/ArticleCategory.php`
 - Actualizado: `app/Models/Product.php`, `app/Http/Controllers/v2/ProductController.php`, y múltiples exports
-- Ver: `docs/PLAN-ELIMINACION-ARTICLE.md` para detalles completos
+- Ver: `docs/referencia/PLAN-ELIMINACION-ARTICLE.md` para detalles completos

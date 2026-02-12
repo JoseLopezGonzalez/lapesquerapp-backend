@@ -70,6 +70,31 @@ Para más detalles, ver [`docs/fundamentos/03-Configuracion-Entorno.md`](docs/fu
 
 ---
 
+## 🐳 Desarrollo con Docker Sail
+
+Para un entorno local reproducible con MySQL, Redis y Mailpit:
+
+```bash
+# 1. Usar variables de entorno para Sail
+cp .env.sail.example .env
+php artisan key:generate
+
+# 2. Levantar contenedores
+./vendor/bin/sail up -d
+
+# 3. Migraciones (central + tenants)
+php artisan migrate
+php artisan tenants:migrate --seed   # requiere al menos un tenant activo con BD creada
+```
+
+- **Backend:** http://localhost  
+- **Mailpit:** http://localhost:8025  
+- **Health API:** `GET /api/health`  
+
+Si el frontend (Next.js) usa Sanctum con cookies, configurar **`withCredentials: true`** en axios/fetch. Ver [Guía Entorno Desarrollo](docs/00_%20POR%20IMPLEMENTAR/guia-entorno-desarrollo-pesquerapp.md) y [Plan Sail](docs/instrucciones/IMPLEMENTATION_PLAN_DOCKER_SAIL.md).
+
+---
+
 ## 🚀 Despliegue
 
 El proyecto está preparado para desplegarse en Coolify. Ver sección de despliegue en [`docs/fundamentos/03-Configuracion-Entorno.md`](docs/fundamentos/03-Configuracion-Entorno.md).

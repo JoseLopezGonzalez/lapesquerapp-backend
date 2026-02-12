@@ -15,9 +15,9 @@ return new class extends Migration
             return;
         }
 
-        // Fix invalid datetime values before adding foreign key
-        \DB::statement("UPDATE boxes SET created_at = NOW() WHERE created_at = '0000-00-00 00:00:00' OR created_at IS NULL");
-        \DB::statement("UPDATE boxes SET updated_at = NOW() WHERE updated_at = '0000-00-00 00:00:00' OR updated_at IS NULL");
+        // Fix invalid datetime values before adding foreign key (MySQL 8 strict mode no acepta '0000-00-00')
+        \DB::statement("UPDATE boxes SET created_at = NOW() WHERE created_at IS NULL OR created_at < '1970-01-01'");
+        \DB::statement("UPDATE boxes SET updated_at = NOW() WHERE updated_at IS NULL OR updated_at < '1970-01-01'");
 
         // Get the actual foreign key name using SQL
         $foreignKeys = \DB::select("

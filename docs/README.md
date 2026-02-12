@@ -24,6 +24,29 @@ Documentación esencial para entender la arquitectura del sistema:
 
 ---
 
+### 📁 [Instrucciones](./instrucciones/)
+Despliegue y entorno de desarrollo:
+- **[deploy-desarrollo.md](./instrucciones/deploy-desarrollo.md)**: Deploy con Docker Sail (resumen y scripts)
+- **[deploy-desarrollo-guiado.md](./instrucciones/deploy-desarrollo-guiado.md)**: Guía paso a paso (primera vez)
+- **[instalar-docker-wsl.md](./instrucciones/instalar-docker-wsl.md)**: Instalar Docker y Docker Compose en WSL
+- **[IMPLEMENTATION_PLAN_DOCKER_SAIL.md](./instrucciones/IMPLEMENTATION_PLAN_DOCKER_SAIL.md)**: Plan de implementación Sail
+- **[EXECUTION_CHECKLIST.md](./instrucciones/EXECUTION_CHECKLIST.md)**: Checklist de ejecución por bloques
+- **[FINAL_VALIDATION_REPORT.md](./instrucciones/FINAL_VALIDATION_REPORT.md)**: Informe de validación final
+
+---
+
+### 📁 [Frontend](./frontend/)
+Guías para integración frontend (auth, roles, configuración):
+- **Guia-Auth-Magic-Link-OTP.md**, **Guia-Cambios-Roles-API-Paso-2.md**
+- **SETTINGS-EMAIL-CONFIGURATION.md**, **SETTINGS-EMAIL-RESUMEN.md**
+
+---
+
+### 📁 [API References](./API-references/)
+Referencia por módulo de la API (README por área): autenticación, catalogos, pedidos, inventario, produccion, recepciones-despachos, utilidades, estadísticas, productos. Ver [README](./API-references/README.md).
+
+---
+
 ### 📁 [Producción](./produccion/)
 Módulo de gestión de producción pesquera (el más complejo del sistema):
 
@@ -74,9 +97,9 @@ Catálogos y maestros de datos:
 - **[46-Transportes.md](./catalogos/46-Transportes.md)**: Gestión de transportes (Transports)
 - **[47-Vendedores.md](./catalogos/47-Vendedores.md)**: Gestión de vendedores (Salespeople)
 - **[48-Terminos-Pago.md](./catalogos/48-Terminos-Pago.md)**: Términos de pago (PaymentTerms)
-- **[49-Incoterms.md](./catalogos/49-Incoterms.md)**: Incoterms
-- **[50-Paises.md](./catalogos/50-Paises.md)**: Países (Countries)
-- **[51-Artemania-Pesquera.md](./catalogos/51-Artemania-Pesquera.md)**: Artes de pesca (FishingGears)
+- **[49-Paises.md](./catalogos/49-Paises.md)**: Países (Countries)
+- **[50-Incoterms.md](./catalogos/50-Incoterms.md)**: Incoterms
+- **[51-Arte-Pesquera.md](./catalogos/51-Arte-Pesquera.md)**: Artes de pesca (FishingGears)
 - **[52-Impuestos.md](./catalogos/52-Impuestos.md)**: Impuestos (Taxes)
 - **[53-Procesos.md](./catalogos/53-Procesos.md)**: Procesos (Processes)
 
@@ -110,6 +133,7 @@ Servicios y utilidades transversales:
 - **[90-Generacion-PDF.md](./utilidades/90-Generacion-PDF.md)**: Sistema de generación de documentos PDF
 - **[91-Exportacion-Excel.md](./utilidades/91-Exportacion-Excel.md)**: Sistema de exportación a Excel
 - **[92-Extraccion-Documentos-AI.md](./utilidades/92-Extraccion-Documentos-AI.md)**: Extracción de datos con IA (Azure Document AI)
+- **[93-Plan-Integracion-Tesseract-OCR.md](./utilidades/93-Plan-Integracion-Tesseract-OCR.md)**: Plan de integración Tesseract OCR
 
 ---
 
@@ -117,9 +141,20 @@ Servicios y utilidades transversales:
 Documentación de referencia técnica:
 - **[95-Modelos-Referencia.md](./referencia/95-Modelos-Referencia.md)**: Referencia completa de todos los modelos Eloquent
 - **[96-Recursos-API.md](./referencia/96-Recursos-API.md)**: Referencia de todos los recursos de API (API Resources)
+- **[96-Restricciones-Entidades.md](./referencia/96-Restricciones-Entidades.md)**: Restricciones de entidades
 - **[97-Rutas-Completas.md](./referencia/97-Rutas-Completas.md)**: Lista completa de todas las rutas v2
 - **[98-Errores-Comunes.md](./referencia/98-Errores-Comunes.md)**: Errores comunes y soluciones (59 problemas documentados)
 - **[99-Glosario.md](./referencia/99-Glosario.md)**: Glosario de términos técnicos y de negocio
+- **[100-Rendimiento-Endpoints.md](./referencia/100-Rendimiento-Endpoints.md)**, **[101-Plan-Mejoras-GET-orders-id.md](./referencia/101-Plan-Mejoras-GET-orders-id.md)**, **[102-Plan-Mejoras-GET-orders-active.md](./referencia/102-Plan-Mejoras-GET-orders-active.md)**: Planes de mejora
+- **[ANALISIS-API-FRONTEND-BACKEND.md](./referencia/ANALISIS-API-FRONTEND-BACKEND.md)**: Análisis API frontend-backend
+- **[PLAN-ELIMINACION-ARTICLE.md](./referencia/PLAN-ELIMINACION-ARTICLE.md)**: Plan eliminación Article (referenciado en PROBLEMAS-CRITICOS)
+
+---
+
+### 📁 Por implementar ([00_ POR IMPLEMENTAR](./00_%20POR%20IMPLEMENTAR/))
+Documentación pendiente de implementar:
+- **guia-entorno-desarrollo-pesquerapp.md**: Guía completa entorno desarrollo
+- **IMPORTANTE/resumen-problema-solucion-productos-variantes.md**: Resumen productos/variantes
 
 ---
 
@@ -150,12 +185,12 @@ Para ver todos los problemas detallados (59 en total), consultar [`referencia/98
 
 ## 🔍 Cómo Usar Esta Documentación
 
-1. **Para desarrolladores nuevos**: Comienza por los archivos en [Fundamentos](./fundamentos/)
-2. **Para trabajar en un módulo específico**: Navega a la carpeta correspondiente
-3. **Para frontend (Production Tree)**: Consulta [Producción > Frontend](./produccion/frontend/)
-4. **Para entender problemas**: Revisa la sección "Observaciones Críticas" al final de cada archivo
-5. **Para referencia rápida**: Usa los archivos en [Referencia](./referencia/)
-6. **Para ejemplos de respuestas**: Consulta [Ejemplos](./ejemplos/)
+1. **Para desarrolladores nuevos**: Comienza por [Fundamentos](./fundamentos/) y [Instrucciones](./instrucciones/) (deploy con Sail).
+2. **Para trabajar en un módulo específico**: Navega a la carpeta correspondiente o a [API References](./API-references/).
+3. **Para frontend (Production Tree)**: Consulta [Producción > Frontend](./produccion/frontend/); para auth/roles/email, [Frontend](./frontend/).
+4. **Para entender problemas**: Revisa [PROBLEMAS-CRITICOS.md](./PROBLEMAS-CRITICOS.md) y la sección "Observaciones Críticas" al final de cada archivo.
+5. **Para referencia rápida**: Usa los archivos en [Referencia](./referencia/).
+6. **Para ejemplos de respuestas**: Consulta [Ejemplos](./ejemplos/).
 
 ---
 
