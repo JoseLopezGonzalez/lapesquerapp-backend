@@ -73,7 +73,7 @@ El proyecto es **multi-tenant**. Para tener datos de desarrollo necesitas al men
 
 - Si es la primera vez y no hay tenants, tendrás que dar de alta un tenant (subdominio, nombre de BD, etc.) según el flujo de tu aplicación o con un seeder/comando propio, crear su BD en MySQL y después ejecutar `tenants:migrate --seed`.
 
-El `--seed` ejecuta en cada tenant: usuarios de prueba, zonas FAO, calibres y operario de tienda (ver [FINAL_VALIDATION_REPORT.md](./FINAL_VALIDATION_REPORT.md)).
+El `--seed` ejecuta en cada tenant los catálogos del menú y usuarios: **Categorías y Familias** (productos), **Zonas de Captura**, **Artes de Pesca**, **Especies**, **Países**, **Formas de Pago**, **Incoterms**, **Transportes**, **Comerciales**, **Zonas FAO**, **Usuarios** y operario de tienda. No se siembra la tabla `calibers` por defecto (no es entidad del menú). **Nota:** Los roles están en `users.role`, no hay tabla `roles`.
 
 ---
 
@@ -117,6 +117,14 @@ En la BD central hay un tenant de desarrollo creado por `deploy-dev.sh` / `inser
 | **Nombre** | Desarrollo       |
 | **Base de datos** | pesquerapp_dev |
 
+**Importante:** Los usuarios, zonas FAO, calibres y settings están en la **base de datos del tenant** (`pesquerapp_dev`), no en la central (`pesquerapp`). Si no ves datos (usuarios, etc.), comprueba que estés mirando la BD `pesquerapp_dev` y, si está vacía, ejecuta el seed del tenant:
+
+```bash
+./vendor/bin/sail artisan tenants:seed --class=TenantDatabaseSeeder
+```
+
+Para comprobar usuarios en el tenant: en MySQL abre la BD **pesquerapp_dev** (no `pesquerapp`) y ejecuta `SELECT id, name, email FROM users;`.
+
 El frontend debe enviar en **todas** las peticiones a la API la cabecera:
 
 ```http
@@ -135,6 +143,10 @@ Los seeders crean estos usuarios en el tenant `dev` (emails “inventados”):
 | operator1@pesquerapp.com … operator5@pesquerapp.com | Operador Prueba 1…5 | Operario |
 | store.operator@test.com | Store Operator Test | Operario |
 
+**Resumen:** En el login del frontend introduce cualquiera de esos emails (por ejemplo **admin@pesquerapp.com**). El correo llegará a Mailpit (http://localhost:8025), donde puedes ver el magic link o el código OTP.
+
+**Si el frontend muestra "Cuentas deshabilitadas / suscripción caducada":** El endpoint `GET /api/v2/public/tenant/dev` devuelve `active: false` si el tenant no está activo en la BD central. El script `deploy-dev.sh` y `insert-tenant-dev.sql` dejan el tenant `dev` con `active = 1`. Si ya tenías el tenant creado antes con `active = 0`, ejecuta de nuevo `./vendor/bin/sail mysql < insert-tenant-dev.sql` (el `UPDATE` del script lo reactiva) o en MySQL: `UPDATE pesquerapp.tenants SET active = 1 WHERE subdomain = 'dev';`. Opcionalmente el frontend puede hacer un bypass en desarrollo (subdominio `dev` + host localhost) para no bloquear el login; a largo plazo es mejor que el backend devuelva `active: true` para dev.
+
 ### Cómo probar Magic Link / OTP con emails inventados
 
 En desarrollo **no se envían correos a internet**: todos van al contenedor **Mailpit**.
@@ -149,6 +161,8 @@ En desarrollo **no se envían correos a internet**: todos van al contenedor **Ma
 Así la autenticación OTP/magic link funciona en local aunque el email sea inventado: solo tienes que mirar el correo en Mailpit.
 
 En el backend, en `.env`, debe estar **`FRONTEND_URL=http://localhost:3000`** (o el puerto donde corra tu frontend) para que el enlace del magic link apunte a tu app.
+
+**Si aparece "No se pudo enviar el correo. Compruebe la configuración de email del tenant":** En local, si el tenant no tiene configuración de email (`company.mail.*`), el backend usa la configuración por defecto de Laravel (`.env`: Mailpit). Comprueba que en `.env` tengas `MAIL_MAILER=smtp`, `MAIL_HOST=mailpit`, `MAIL_PORT=1025` y `MAIL_FROM_ADDRESS` (ej. `noreply@pesquerapp.local`). No hace falta configurar email por tenant en desarrollo.
 
 ---
 

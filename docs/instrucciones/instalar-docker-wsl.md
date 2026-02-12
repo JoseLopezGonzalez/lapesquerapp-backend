@@ -85,6 +85,22 @@ Luego ejecuta el deploy:
 
 ---
 
+## Si Sail dice "Docker is not running" pero ya arrancaste el servicio
+
+Sail comprueba con `docker info`. Si ese comando falla por **permisos** (no por que el servicio esté parado), verás "Docker is not running".
+
+1. Prueba: `docker info` (o `sudo docker info`).
+2. Si solo funciona con `sudo`, añade tu usuario al grupo docker y recarga el grupo:
+   ```bash
+   sudo usermod -aG docker $USER
+   newgrp docker
+   ```
+3. Vuelve a ejecutar Sail (sin sudo).
+
+Si usas **Docker Desktop** en Windows (WSL2), no uses `sudo service docker start` en WSL: arranca Docker Desktop en Windows y activa la integración WSL en su configuración.
+
+---
+
 ## Si Sail dice "docker-compose: command not found"
 
 Instala Docker Compose y el wrapper para Sail:

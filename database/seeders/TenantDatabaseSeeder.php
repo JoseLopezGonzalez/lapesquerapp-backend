@@ -10,11 +10,23 @@ class TenantDatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Orden: de lo general a lo específico (guía Sail + arquitectura actual)
+        // Orden: entidades del menú (catálogos) y luego usuarios. Sin Calibers (no es entidad del menú).
         $this->call(RoleSeeder::class);
         $this->call(UsersSeeder::class);
+        // Productos: Categorías, Familias, Zonas de Captura, Artes de Pesca, Especies
+        $this->call(ProductCategorySeeder::class);
+        $this->call(ProductFamilySeeder::class);
+        $this->call(CaptureZonesSeeder::class);
+        $this->call(FishingGearSeeder::class);
+        $this->call(SpeciesSeeder::class);
+        // Clientes / Pedidos: Países, Formas de Pago, Incoterms, Transportes, Comerciales
+        $this->call(CountriesSeeder::class);
+        $this->call(PaymentTermsSeeder::class);
+        $this->call(IncotermsSeeder::class);
+        $this->call(TransportsSeeder::class);
+        $this->call(SalespeopleSeeder::class);
+        // FAO zones (producción/recepciones) y operario de tienda
         $this->call(FAOZonesSeeder::class);
-        $this->call(CalibersSeeder::class);
         $this->call(StoreOperatorUserSeeder::class);
 
         $companyConfig = config('company');

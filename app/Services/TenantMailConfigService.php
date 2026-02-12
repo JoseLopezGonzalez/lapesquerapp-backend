@@ -10,13 +10,19 @@ class TenantMailConfigService
     /**
      * Configura el mailer de Laravel con los valores del tenant.
      * Valida que la configuración esté completa antes de configurar.
+     * En local/testing, si el tenant no tiene mail configurado, se usa la config por defecto (.env, ej. Mailpit).
      *
-     * @throws MailConfigurationException Si la configuración está incompleta
+     * @throws MailConfigurationException Si la configuración está incompleta (y no estamos en local sin config)
      */
     public function configureTenantMailer(): void
     {
         // Obtener configuración del tenant
         $mailHost = $this->getTenantSetting('company.mail.host');
+
+        // En desarrollo: si el tenant no tiene mail configurado, usar la config por defecto (Mailpit desde .env)
+        if (app()->environment('local', 'testing') && empty($mailHost)) {
+            return;
+        }
         $mailPort = $this->getTenantSetting('company.mail.port');
         $mailEncryption = $this->getTenantSetting('company.mail.encryption');
         $mailUsername = $this->getTenantSetting('company.mail.username');
@@ -95,6 +101,7 @@ class TenantMailConfigService
 
     /**
      * Obtiene el email remitente configurado del tenant.
+     * En local/testing sin config del tenant, usa config('mail.from.address') (ej. .env).
      *
      * @return string
      * @throws MailConfigurationException
@@ -102,7 +109,11 @@ class TenantMailConfigService
     public function getFromAddress(): string
     {
         $fromAddress = $this->getTenantSetting('company.mail.from_address');
-        
+
+        if (empty($fromAddress) && app()->environment('local', 'testing')) {
+            return (string) config('mail.from.address', 'noreply@pesquerapp.local');
+        }
+
         if (empty($fromAddress)) {
             throw new MailConfigurationException('El email remitente no está configurado');
         }
@@ -112,15 +123,18 @@ class TenantMailConfigService
 
     /**
      * Obtiene el nombre remitente configurado del tenant.
+     * En local/testing sin config del tenant, usa config('mail.from.name') o nombre de empresa.
      *
      * @return string
      */
     public function getFromName(): string
     {
         $fromName = $this->getTenantSetting('company.mail.from_name');
-        
+
         if (empty($fromName)) {
-            // Fallback al nombre de la empresa
+            if (app()->environment('local', 'testing')) {
+                return (string) config('mail.from.name', $this->getTenantSetting('company.name', 'PesquerApp'));
+            }
             return $this->getTenantSetting('company.name', 'PesquerApp');
         }
 
