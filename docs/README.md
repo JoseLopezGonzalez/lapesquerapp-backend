@@ -32,6 +32,7 @@ Documentación esencial para entender la arquitectura del sistema:
 Despliegue y entorno de desarrollo:
 - **[deploy-desarrollo.md](./21-instrucciones/deploy-desarrollo.md)**: Deploy con Docker Sail (resumen y scripts)
 - **[deploy-desarrollo-guiado.md](./21-instrucciones/deploy-desarrollo-guiado.md)**: Guía paso a paso (primera vez)
+- **[actualizacion-seeders-migraciones.md](./21-instrucciones/actualizacion-seeders-migraciones.md)**: Qué hacer cuando cambias seeders o migraciones (análisis de implementación)
 - **[guia-completa-entorno-sail-windows.md](./21-instrucciones/guia-completa-entorno-sail-windows.md)**: Guía completa Sail + Windows/WSL (seeders, frontend, troubleshooting)
 - **[instalar-docker-wsl.md](./21-instrucciones/instalar-docker-wsl.md)**: Instalar Docker y Docker Compose en WSL
 - **[IMPLEMENTATION_PLAN_DOCKER_SAIL.md](./21-instrucciones/IMPLEMENTATION_PLAN_DOCKER_SAIL.md)**: Plan de implementación Sail

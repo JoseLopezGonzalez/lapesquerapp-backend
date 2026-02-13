@@ -231,12 +231,24 @@ php artisan key:generate
 | Conectar a MySQL | `./vendor/bin/sail mysql` |
 | Recrear BD central y migrar | `./vendor/bin/sail artisan migrate:fresh` |
 | Migrar y sembrar tenants | `./vendor/bin/sail artisan tenants:migrate --seed` |
+| **Actualizar seeders** (borra datos tenant) | `./vendor/bin/sail artisan tenants:migrate --fresh --seed` |
 | Health (con tenant) | `curl -H "X-Tenant: dev" http://localhost:8000/api/health` |
+
+---
+
+## ¿Cambiaste seeders o migraciones?
+
+Si has modificado seeders o migraciones después de desplegar, consulta **[Actualización de seeders y migraciones](./actualizacion-seeders-migraciones.md)** para saber qué comando ejecutar. En resumen:
+
+- **Seeders cambiados** → `tenants:migrate --fresh --seed` (recomendado)
+- **Migraciones tenant** → `tenants:migrate` (o `--fresh --seed` si hay conflictos)
+- **Migraciones central** → `migrate`
 
 ---
 
 ## Referencias
 
+- [Actualización de seeders y migraciones](./actualizacion-seeders-migraciones.md) — Qué hacer cuando cambias seeders o migraciones
 - [Plan de implementación Sail](./IMPLEMENTATION_PLAN_DOCKER_SAIL.md)
 - [Informe de validación final](./FINAL_VALIDATION_REPORT.md)
 - [Guía completa entorno Sail (Windows/WSL)](./guia-completa-entorno-sail-windows.md)
