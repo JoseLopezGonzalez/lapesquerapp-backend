@@ -4,22 +4,38 @@ namespace Database\Seeders;
 
 use App\Models\Salesperson;
 use Illuminate\Database\Seeder;
+use Faker\Factory as Faker;
 
 /**
- * Comerciales / Vendedores (menú). Datos de desarrollo.
+ * Comerciales / vendedores de desarrollo — entorno tipo producción.
+ * Inspirado en patrones reales: name (nombre o nombre completo), emails (varios con ";").
+ * Solo añade los que no existan (firstOrCreate por nombre).
  */
 class SalespeopleSeeder extends Seeder
 {
     public function run(): void
     {
-        $salespeople = [
-            ['name' => 'Comercial Demo', 'emails' => 'comercial@demo.local'],
+        $faker = Faker::create('es_ES');
+        $faker->seed(5200);
+
+        $names = [
+            'Vicente',
+            'María',
+            'Carlos García',
+            'Ana',
+            'Luis Fernández',
+            'Elena',
         ];
 
-        foreach ($salespeople as $data) {
+        foreach ($names as $name) {
+            $emails = $faker->unique()->safeEmail() . ';';
+            if ($faker->boolean(30)) {
+                $emails .= ' CC:' . $faker->safeEmail() . ';';
+            }
+
             Salesperson::firstOrCreate(
-                ['name' => $data['name']],
-                ['emails' => $data['emails'] ?? null]
+                ['name' => $name],
+                ['emails' => $emails]
             );
         }
     }

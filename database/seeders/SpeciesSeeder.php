@@ -24,6 +24,8 @@ class SpeciesSeeder extends Seeder
 
         $species = [
             ['name' => 'Pulpo', 'scientific_name' => 'Octopus vulgaris', 'fao' => 'OCT', 'fishing_gear_id' => $gearId],
+            ['name' => 'Pulpo común', 'scientific_name' => 'Octopus Vulgaris', 'fao' => 'OCC', 'fishing_gear_id' => $gearId],
+            ['name' => 'Caballa', 'scientific_name' => 'Scomber colias', 'fao' => 'MAS', 'fishing_gear_id' => $gearId],
             ['name' => 'Calamar', 'scientific_name' => 'Loligo vulgaris', 'fao' => 'SQU', 'fishing_gear_id' => $gearId],
             ['name' => 'Sepia', 'scientific_name' => 'Sepia officinalis', 'fao' => 'SQU', 'fishing_gear_id' => $gearId],
             ['name' => 'Merluza', 'scientific_name' => 'Merluccius merluccius', 'fao' => 'HKE', 'fishing_gear_id' => $gearId],

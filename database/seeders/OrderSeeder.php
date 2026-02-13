@@ -18,13 +18,10 @@ use Faker\Factory as Faker;
  */
 class OrderSeeder extends Seeder
 {
+    private const TARGET_ORDER_COUNT = 20;
+
     public function run(): void
     {
-        if (Order::count() > 0) {
-            $this->command->info('OrderSeeder: Ya existen pedidos. Omitiendo creación.');
-            return;
-        }
-
         $faker = Faker::create('es_ES');
 
         $customers = Customer::all();
@@ -43,12 +40,15 @@ class OrderSeeder extends Seeder
             return;
         }
 
+        $toCreate = max(0, self::TARGET_ORDER_COUNT - Order::count());
+        if ($toCreate === 0) {
+            return;
+        }
+
         $today = now()->startOfDay();
         $statuses = [Order::STATUS_PENDING, Order::STATUS_FINISHED, Order::STATUS_INCIDENT];
-        // Variantes buyer_reference extraídas del backup Brisamar: '-', 'Cliente NºX', 'REF-####'
         $buyerRefVariants = ['-', 'Cliente Nº127', 'Cliente Nº217', 'REF-' . $faker->numerify('####')];
 
-        // Instancias activas: hoy y próximos 3 días
         $activeDates = [
             $today,
             $today->copy()->addDay(),
@@ -56,7 +56,11 @@ class OrderSeeder extends Seeder
             $today->copy()->addDays(3),
         ];
 
+        $created = 0;
         foreach ($activeDates as $loadDate) {
+            if ($created >= $toCreate) {
+                break;
+            }
             $entryDate = $loadDate->copy()->subDays($faker->numberBetween(0, 2));
             Order::create([
                 'customer_id' => $customers->random()->id,
@@ -75,10 +79,10 @@ class OrderSeeder extends Seeder
                 'buyer_reference' => $faker->randomElement($buyerRefVariants),
                 'incoterm_id' => $incoterm?->id,
             ]);
+            $created++;
         }
 
-        // Histórico: últimos 7 días (misma variedad buyer_reference)
-        for ($i = 0; $i < 8; $i++) {
+        for ($i = 0; $i < 8 && $created < $toCreate; $i++) {
             $loadDate = $today->copy()->subDays($i);
             $entryDate = $loadDate->copy()->subDays($faker->numberBetween(0, 2));
             Order::create([
@@ -86,6 +90,9 @@ class OrderSeeder extends Seeder
                 'payment_term_id' => PaymentTerm::inRandomOrder()->first()->id,
                 'billing_address' => $faker->address(),
                 'shipping_address' => $faker->address(),
+                'transportation_notes' => null,
+                'production_notes' => null,
+                'accounting_notes' => null,
                 'salesperson_id' => Salesperson::inRandomOrder()->first()->id,
                 'emails' => json_encode([$faker->companyEmail()]),
                 'transport_id' => Transport::inRandomOrder()->first()->id,
@@ -95,6 +102,7 @@ class OrderSeeder extends Seeder
                 'buyer_reference' => $faker->randomElement($buyerRefVariants),
                 'incoterm_id' => Incoterm::inRandomOrder()->first()?->id,
             ]);
+            $created++;
         }
     }
 }

@@ -27,7 +27,10 @@ class ProductCategorySeeder extends Seeder
         ];
 
         foreach ($categories as $category) {
-            ProductCategory::create($category);
+            ProductCategory::firstOrCreate(
+                ['name' => $category['name']],
+                $category
+            );
         }
     }
 }

@@ -73,7 +73,10 @@ class ProductFamilySeeder extends Seeder
         ];
 
         foreach ($families as $family) {
-            ProductFamily::create($family);
+            ProductFamily::firstOrCreate(
+                ['name' => $family['name']],
+                $family
+            );
         }
     }
 }

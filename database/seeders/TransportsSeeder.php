@@ -4,25 +4,42 @@ namespace Database\Seeders;
 
 use App\Models\Transport;
 use Illuminate\Database\Seeder;
+use Faker\Factory as Faker;
 
 /**
- * Transportes (menú). Datos de desarrollo.
+ * Transportes de desarrollo — entorno tipo producción.
+ * Inspirado en patrones reales: name (empresa S.L./S.L.U.), vat_number (B + 8 dígitos),
+ * address (multilínea), emails (cadena con ";").
+ * Solo añade los que no existan (firstOrCreate por nombre).
  */
 class TransportsSeeder extends Seeder
 {
     public function run(): void
     {
-        $transports = [
-            ['name' => 'Transporte Demo S.L.', 'vat_number' => 'B12345678', 'address' => 'Calle Ejemplo 1', 'emails' => 'transporte@demo.local'],
+        $faker = Faker::create('es_ES');
+        $faker->seed(5300);
+
+        $companyNames = [
+            'Transportes Marítimos del Sur S.L.',
+            'Logística Costa S.L.U.',
+            'Frío Express Andalucía S.L.',
+            'Carga y Distribución S.L.U.',
+            'Transmediterráneo S.L.',
         ];
 
-        foreach ($transports as $data) {
+        foreach ($companyNames as $name) {
+            $address = implode("\n", [
+                $faker->streetAddress(),
+                $faker->postcode() . ' ' . $faker->city() . ' (' . $faker->randomElement(['Huelva', 'Sevilla', 'Cádiz', 'Málaga', 'Córdoba', 'Granada', 'Almería', 'Valencia', 'A Coruña']) . ')',
+            ]);
+            $emails = $faker->unique()->companyEmail() . ';';
+
             Transport::firstOrCreate(
-                ['name' => $data['name']],
+                ['name' => $name],
                 [
-                    'vat_number' => $data['vat_number'] ?? null,
-                    'address' => $data['address'] ?? null,
-                    'emails' => $data['emails'] ?? null,
+                    'vat_number' => 'B' . $faker->unique()->numerify('########'),
+                    'address' => $address,
+                    'emails' => $emails,
                 ]
             );
         }
