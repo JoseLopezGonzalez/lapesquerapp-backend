@@ -1,5 +1,9 @@
 # Documentación Técnica del Backend - API v2
 
+**Índice alternativo por número (estructura estándar):** [00-OVERVIEW.md](./00-OVERVIEW.md) — acceso por 01-SETUP-LOCAL, 02-ENVIRONMENT-VARIABLES, … 15-MULTI-TENANT-SPECIFICS, 11-DEPLOYMENT/, 12-TROUBLESHOOTING/.
+
+---
+
 ## ⚠️ ADVERTENCIA IMPORTANTE
 
 Esta documentación cubre **EXCLUSIVAMENTE la API v2**, que es la versión activa y actual del sistema.
@@ -191,6 +195,7 @@ Para ver todos los problemas detallados (59 en total), consultar [`referencia/98
 4. **Para entender problemas**: Revisa [PROBLEMAS-CRITICOS.md](./PROBLEMAS-CRITICOS.md) y la sección "Observaciones Críticas" al final de cada archivo.
 5. **Para referencia rápida**: Usa los archivos en [Referencia](./referencia/).
 6. **Para ejemplos de respuestas**: Consulta [Ejemplos](./ejemplos/).
+7. **Para agentes IA (Cursor)** — Sistema de memoria de trabajo: **`.ai_standards/`** en la raíz del proyecto (README y QUICK_START_GUIDE).
 
 ---
 

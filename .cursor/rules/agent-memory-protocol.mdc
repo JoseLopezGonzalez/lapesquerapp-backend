@@ -1,0 +1,24 @@
+---
+description: Usar el Sistema de Memoria de Trabajo en tareas complejas o multi-paso
+alwaysApply: true
+---
+
+# Protocolo de Memoria para Agentes IA
+
+Este proyecto usa el **Sistema de Memoria de Trabajo** para tareas complejas o multi-paso.
+
+## Cuándo aplicarlo
+
+- El usuario pide aplicar "protocolo de memoria", "AGENT_MEMORY_SYSTEM" o "memoria de trabajo".
+- La tarea implica varias fases (análisis → planificación → ejecución) o muchos archivos.
+- El usuario referencia `@.ai_standards/` o `AGENT_MEMORY_SYSTEM.md`.
+
+## Qué hacer
+
+1. **Cargar** y seguir: `.ai_standards/AGENT_MEMORY_SYSTEM.md`
+2. **Crear** carpeta de sesión: `.ai_work_context/[TIMESTAMP]/` con subcarpetas `00_working/`, `01_analysis/`, `02_planning/`, `03_execution/`, `04_logs/`, `05_outputs/`
+3. **Documentar** en cada fase (análisis en 01_, plan en 02_, ejecución en 03_, timeline en 04_)
+4. **Decisiones críticas** (ambigüedades, trade-offs, negocio): pausar, guardar en `00_working/decisions_pending.md` y preguntar con opciones
+5. **Al finalizar**: borrar `00_working/`, generar `05_outputs/FINAL_REPORT.md` y entregar la carpeta de sesión
+
+Coletilla para prompts: `.ai_standards/COLETILLA_PROTOCOLO_MEMORIA.md`

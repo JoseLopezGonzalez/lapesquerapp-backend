@@ -40,7 +40,8 @@ La documentación incluye:
 
 **📋 Resumen de problemas críticos**: Ver [`docs/PROBLEMAS-CRITICOS.md`](docs/PROBLEMAS-CRITICOS.md) para los 25 problemas más críticos.
 
-Ver [`docs/README.md`](docs/README.md) para el índice completo.
+- **Índice estándar (00-15):** [`docs/00-OVERVIEW.md`](docs/00-OVERVIEW.md)
+- **Índice por dominio:** [`docs/README.md`](docs/README.md)
 
 ---
 

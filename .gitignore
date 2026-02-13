@@ -17,3 +17,6 @@ yarn-error.log
 /.idea
 /.vscode
 vendor/
+
+# Memoria de trabajo de agentes IA (sesiones temporales)
+.ai_work_context/
