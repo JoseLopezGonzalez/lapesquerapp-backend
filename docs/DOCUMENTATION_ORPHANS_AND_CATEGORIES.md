@@ -9,9 +9,9 @@
 
 | Documento / Carpeta | Tema | Opción 1 | Opción 2 |
 |--------------------|------|----------|----------|
-| docs/00_ POR IMPLEMENTAR/ | Guías y resúmenes pendientes de integrar | Mover contenido a **docs/instrucciones/** y **docs/01-SETUP-LOCAL** (ampliar) | Mantener carpeta pero renombrar a `docs/PENDING-INTEGRATION/` y añadir README que enlace a 01-SETUP e instrucciones |
-| docs/por-hacer/ | Backlog, revisiones pendientes | **Mantener** como backlog (fuera árbol 00–16) | Mover 01-Revision-Validaciones a docs/pedidos/ o referencia/ si es referencia técnica |
-| docs/prompts/ | Prompts de agentes IA (auditoría, seeder) | **Mantener** en docs/prompts/ (no es parte del árbol operativo 00–16) | Mover a .ai_standards/ si se unifica documentación para agentes |
+| docs/00_ POR IMPLEMENTAR/ | Guías y resúmenes pendientes de integrar | Mover contenido a **docs/21-instrucciones/** y **docs/01-SETUP-LOCAL** (ampliar) | Mantener carpeta pero renombrar a `docs/PENDING-INTEGRATION/` y añadir README que enlace a 01-SETUP e instrucciones |
+| docs/34-por-hacer/ | Backlog, revisiones pendientes | **Mantener** como backlog (fuera árbol 00–16) | Mover 01-Revision-Validaciones a docs/22-pedidos/ o referencia/ si es referencia técnica |
+| docs/35-prompts/ | Prompts de agentes IA (auditoría, seeder) | **Mantener** en docs/35-prompts/ (no es parte del árbol operativo 00–16) | Mover a .ai_standards/ si se unifica documentación para agentes |
 | .ai_standards/ | Memoria de trabajo, protocolo IA | **Mantener** en raíz (estándares de trabajo con IA) | No incluir en estructura canónica de documentación técnica |
 | docs/GAPS_ANALYSIS.md, DOCUMENTATION_TODO_FLOW.md, DOCUMENTATION_AUDIT_REPORT.md, CURRENT_STATE_SNAPSHOT.md | Artefactos de auditoría | **Mantener** en docs/; opcional subcarpeta docs/audit/ | Dejar en raíz docs/ para visibilidad |
 

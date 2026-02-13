@@ -135,7 +135,7 @@ class ExampleTest extends TestCase
 }
 ```
 
-Para tests de API v2: usar `$this->get('/api/v2/...')` o `$this->post(...)` con headers (p. ej. `X-Tenant`, `Authorization`) según [08-API-REST.md](./08-API-REST.md) y [fundamentos/02-Autenticacion-Autorizacion.md](./fundamentos/02-Autenticacion-Autorizacion.md).
+Para tests de API v2: usar `$this->get('/api/v2/...')` o `$this->post(...)` con headers (p. ej. `X-Tenant`, `Authorization`) según [08-API-REST.md](./08-API-REST.md) y [fundamentos/02-Autenticacion-Autorizacion.md](./20-fundamentos/02-Autenticacion-Autorizacion.md).
 
 ---
 

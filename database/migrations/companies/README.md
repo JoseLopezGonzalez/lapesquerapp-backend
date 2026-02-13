@@ -265,6 +265,6 @@ php artisan config:show database.connections
 
 ---
 
-**Última actualización**: Agosto 2025  
+**Última actualización**: Febrero 2026  
 **Versión**: 1.0  
 **Autor**: Sistema de Migraciones Multi-Tenant

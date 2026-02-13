@@ -17,7 +17,7 @@ audience: Backend Engineers, DevOps
 
 - **Canal principal:** Laravel usa el canal configurado en `config/logging.php` (por defecto `stack` → `daily` en `storage/logs/laravel.log`).
 - **Nivel:** Controlado por `LOG_LEVEL` en `.env` (debug, info, warning, error, critical).
-- **Logs de actividad:** El módulo de actividad (logs de usuario/entidad) está documentado en [sistema/83-Logs-Actividad.md](./sistema/83-Logs-Actividad.md).
+- **Logs de actividad:** El módulo de actividad (logs de usuario/entidad) está documentado en [sistema/83-Logs-Actividad.md](./28-sistema/83-Logs-Actividad.md).
 - **Producción:** Evitar `LOG_LEVEL=debug` en producción; usar `info` o `warning` para reducir volumen y datos sensibles.
 
 **Ubicación típica:** `storage/logs/laravel.log` (rotación diaria si se usa el driver `daily`).
@@ -26,8 +26,8 @@ audience: Backend Engineers, DevOps
 
 ## Métricas y rendimiento
 
-- **Análisis de endpoints:** Rendimiento y planes de mejora de endpoints concretos en [referencia/100-Rendimiento-Endpoints.md](./referencia/100-Rendimiento-Endpoints.md).
-- **Planes de mejora:** [referencia/101-Plan-Mejoras-GET-orders-id.md](./referencia/101-Plan-Mejoras-GET-orders-id.md), [referencia/102-Plan-Mejoras-GET-orders-active.md](./referencia/102-Plan-Mejoras-GET-orders-active.md).
+- **Análisis de endpoints:** Rendimiento y planes de mejora de endpoints concretos en [referencia/100-Rendimiento-Endpoints.md](./30-referencia/100-Rendimiento-Endpoints.md).
+- **Planes de mejora:** [referencia/101-Plan-Mejoras-GET-orders-id.md](./30-referencia/101-Plan-Mejoras-GET-orders-id.md), [referencia/102-Plan-Mejoras-GET-orders-active.md](./30-referencia/102-Plan-Mejoras-GET-orders-active.md).
 - **Métricas externas:** Si se usa un APM o métricas (New Relic, Datadog, Prometheus, etc.), documentar en este apartado la integración y dashboards relevantes.
 
 ---
@@ -44,5 +44,5 @@ audience: Backend Engineers, DevOps
 
 - [12-TROUBLESHOOTING/COMMON-ERRORS.md](./12-TROUBLESHOOTING/COMMON-ERRORS.md) — Errores comunes.
 - [12-TROUBLESHOOTING/PERFORMANCE-ISSUES.md](./12-TROUBLESHOOTING/PERFORMANCE-ISSUES.md) — Problemas de rendimiento.
-- [sistema/83-Logs-Actividad.md](./sistema/83-Logs-Actividad.md) — Logs de actividad de la aplicación.
-- [referencia/100-Rendimiento-Endpoints.md](./referencia/100-Rendimiento-Endpoints.md) — Análisis de rendimiento de endpoints.
+- [sistema/83-Logs-Actividad.md](./28-sistema/83-Logs-Actividad.md) — Logs de actividad de la aplicación.
+- [referencia/100-Rendimiento-Endpoints.md](./30-referencia/100-Rendimiento-Endpoints.md) — Análisis de rendimiento de endpoints.

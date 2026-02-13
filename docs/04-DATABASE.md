@@ -15,16 +15,16 @@ audience: Backend Engineers, Architects
 
 ## Contenido principal
 
-- **[referencia/95-Modelos-Referencia.md](./referencia/95-Modelos-Referencia.md)** — Referencia de modelos Eloquent.
-- **[referencia/96-Restricciones-Entidades.md](./referencia/96-Restricciones-Entidades.md)** — Restricciones entre entidades.
+- **[referencia/95-Modelos-Referencia.md](./30-referencia/95-Modelos-Referencia.md)** — Referencia de modelos Eloquent.
+- **[referencia/96-Restricciones-Entidades.md](./30-referencia/96-Restricciones-Entidades.md)** — Restricciones entre entidades.
 - **[database/migrations/](../database/migrations/)** — Migraciones (incl. `database/migrations/companies/` para tenant).
 - **[database/migrations/companies/README.md](../database/migrations/companies/README.md)** — Documentación de migraciones por empresa/tenant.
 
 Módulos que describen entidades y flujos de datos:
 
-- [inventario/](./inventario/) — Almacenes, palets, cajas.
-- [catalogos/](./catalogos/) — Productos, clientes, proveedores, etc.
-- [produccion/](./produccion/) — Lotes, procesos, entradas, salidas.
+- [inventario/](./23-inventario/) — Almacenes, palets, cajas.
+- [catalogos/](./24-catalogos/) — Productos, clientes, proveedores, etc.
+- [produccion/](./25-produccion/) — Lotes, procesos, entradas, salidas.
 
 ---
 

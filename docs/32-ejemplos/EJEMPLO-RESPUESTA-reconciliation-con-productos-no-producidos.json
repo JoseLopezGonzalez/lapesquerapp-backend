@@ -1,0 +1,127 @@
+{
+  "products": [
+    {
+      "product": {
+        "id": 104,
+        "name": "Pulpo Fresco Rizado"
+      },
+      "produced": {
+        "weight": 100.0,
+        "boxes": 20
+      },
+      "inSales": {
+        "weight": 50.0,
+        "boxes": 10
+      },
+      "inStock": {
+        "weight": 50.0,
+        "boxes": 10
+      },
+      "reprocessed": {
+        "weight": 0.0,
+        "boxes": 0
+      },
+      "balance": {
+        "weight": 0.0,
+        "percentage": 0.0
+      },
+      "status": "ok",
+      "message": "Todo contabilizado correctamente"
+    },
+    {
+      "product": {
+        "id": 105,
+        "name": "Pulpo Fresco Entero"
+      },
+      "produced": {
+        "weight": 0.0,
+        "boxes": 0
+      },
+      "inSales": {
+        "weight": 30.0,
+        "boxes": 6
+      },
+      "inStock": {
+        "weight": 0.0,
+        "boxes": 0
+      },
+      "reprocessed": {
+        "weight": 0.0,
+        "boxes": 0
+      },
+      "balance": {
+        "weight": -30.0,
+        "percentage": -100.0
+      },
+      "status": "error",
+      "message": "Producto no registrado como producido pero existe en venta/stock/reprocesado (30kg)"
+    },
+    {
+      "product": {
+        "id": 106,
+        "name": "Pulpo Cocido"
+      },
+      "produced": {
+        "weight": 0.0,
+        "boxes": 0
+      },
+      "inSales": {
+        "weight": 0.0,
+        "boxes": 0
+      },
+      "inStock": {
+        "weight": 25.0,
+        "boxes": 5
+      },
+      "reprocessed": {
+        "weight": 0.0,
+        "boxes": 0
+      },
+      "balance": {
+        "weight": -25.0,
+        "percentage": -100.0
+      },
+      "status": "error",
+      "message": "Producto no registrado como producido pero existe en venta/stock/reprocesado (25kg)"
+    },
+    {
+      "product": {
+        "id": 107,
+        "name": "Pulpo Re-procesado"
+      },
+      "produced": {
+        "weight": 0.0,
+        "boxes": 0
+      },
+      "inSales": {
+        "weight": 0.0,
+        "boxes": 0
+      },
+      "inStock": {
+        "weight": 0.0,
+        "boxes": 0
+      },
+      "reprocessed": {
+        "weight": 15.0,
+        "boxes": 3
+      },
+      "balance": {
+        "weight": -15.0,
+        "percentage": -100.0
+      },
+      "status": "error",
+      "message": "Producto no registrado como producido pero existe en venta/stock/reprocesado (15kg)"
+    }
+  ],
+  "summary": {
+    "totalProducts": 4,
+    "productsOk": 1,
+    "productsWarning": 0,
+    "productsError": 3,
+    "totalProducedWeight": 100.0,
+    "totalContabilizedWeight": 120.0,
+    "totalBalanceWeight": -20.0,
+    "overallStatus": "error"
+  }
+}
+

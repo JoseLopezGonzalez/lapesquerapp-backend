@@ -22,14 +22,14 @@ audience: Backend Engineers, Frontend Engineers
 
 ## Contenido principal
 
-- **[API-references/README.md](./API-references/README.md)** — Índice por módulo (autenticación, catálogos, pedidos, inventario, producción, recepciones-despachos, utilidades, estadísticas, productos, sistema).
-- **[referencia/97-Rutas-Completas.md](./referencia/97-Rutas-Completas.md)** — Lista completa de rutas v2.
-- **[referencia/96-Recursos-API.md](./referencia/96-Recursos-API.md)** — Recursos API (transformación de modelos a JSON).
-- **[referencia/96-Restricciones-Entidades.md](./referencia/96-Restricciones-Entidades.md)** — Restricciones entre entidades.
+- **[API-references/README.md](./31-api-references/README.md)** — Índice por módulo (autenticación, catálogos, pedidos, inventario, producción, recepciones-despachos, utilidades, estadísticas, productos, sistema).
+- **[referencia/97-Rutas-Completas.md](./30-referencia/97-Rutas-Completas.md)** — Lista completa de rutas v2.
+- **[referencia/96-Recursos-API.md](./30-referencia/96-Recursos-API.md)** — Recursos API (transformación de modelos a JSON).
+- **[referencia/96-Restricciones-Entidades.md](./30-referencia/96-Restricciones-Entidades.md)** — Restricciones entre entidades.
 
 Autenticación:
 
-- [fundamentos/02-Autenticacion-Autorizacion.md](./fundamentos/02-Autenticacion-Autorizacion.md) — Sanctum, magic link, OTP, roles.
+- [fundamentos/02-Autenticacion-Autorizacion.md](./20-fundamentos/02-Autenticacion-Autorizacion.md) — Sanctum, magic link, OTP, roles.
 
 ---
 

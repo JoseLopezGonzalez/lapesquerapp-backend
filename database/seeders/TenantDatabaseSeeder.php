@@ -25,9 +25,18 @@ class TenantDatabaseSeeder extends Seeder
         $this->call(IncotermsSeeder::class);
         $this->call(TransportsSeeder::class);
         $this->call(SalespeopleSeeder::class);
+        $this->call(TaxSeeder::class);
         // FAO zones (producción/recepciones) y operario de tienda
         $this->call(FAOZonesSeeder::class);
         $this->call(StoreOperatorUserSeeder::class);
+        // Entidades operativas (pedidos, productos, cajas, palés)
+        $this->call(CustomerSeeder::class);
+        $this->call(ProductSeeder::class);
+        $this->call(OrderSeeder::class);
+        $this->call(OrderPlannedProductDetailSeeder::class);
+        $this->call(BoxSeeder::class);
+        $this->call(PalletSeeder::class);
+        $this->call(OrderPalletSeeder::class);
 
         $companyConfig = config('company');
 

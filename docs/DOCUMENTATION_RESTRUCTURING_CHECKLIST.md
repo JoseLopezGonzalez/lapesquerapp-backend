@@ -9,9 +9,9 @@ Checklist ejecutable derivada de [DOCUMENTATION_MAPPING_MATRIX.md](./DOCUMENTATI
 
 ## ACCIONES PREVIAS (antes de cualquier movimiento)
 
-- [ ] Hacer backup de carpeta `docs/` completa (p. ej. `cp -r docs docs-backup-YYYY-MM-DD`)
+- [x] Hacer backup de carpeta `docs/` completa — *hecho por el usuario*
 - [ ] Crear rama git: `docs/restructure-audit-2026`
-- [ ] Validar que no hay procesos/CI dependiendo de rutas concretas a archivos en `docs/00_ POR IMPLEMENTAR` o `docs/recepciones-despachos/67-*`
+- [ ] Validar que no hay procesos/CI dependiendo de rutas concretas a archivos en `docs/00_ POR IMPLEMENTAR` o `docs/26-recepciones-despachos/67-*`
 
 ---
 
@@ -19,27 +19,17 @@ Checklist ejecutable derivada de [DOCUMENTATION_MAPPING_MATRIX.md](./DOCUMENTATI
 
 ### Integración de contenido “por implementar”
 
-- [ ] **Revisar** `docs/00_ POR IMPLEMENTAR/guia-entorno-desarrollo-pesquerapp.md`
-  - Motivo: Evitar carpeta huérfana; contenido solapa con instrucciones y 01-SETUP.
-  - Opción A: Fusionar contenido útil en `docs/01-SETUP-LOCAL.md` o en `docs/instrucciones/deploy-desarrollo-guiado.md`.
-  - Opción B: Mover a `docs/instrucciones/` y enlazar desde 01-SETUP-LOCAL.
-  - Riesgo: MEDIO (enlaces internos). Validar: `grep -r "00_ POR IMPLEMENTAR" docs/`
+- [x] **Revisar** `docs/00_ POR IMPLEMENTAR/guia-entorno-desarrollo-pesquerapp.md` — **Hecho:** Movido a `docs/21-instrucciones/guia-completa-entorno-sail-windows.md`; enlaces actualizados.
 
-- [ ] **Revisar** `docs/00_ POR IMPLEMENTAR/IMPORTANTE/resumen-problema-solucion-productos-variantes.md`
-  - Motivo: Integrar en catalogos o por-hacer.
-  - Opción A: Mover a `docs/catalogos/` (p. ej. `54-Productos-Variantes-GS1.md`) o a `docs/por-hacer/`.
-  - Riesgo: BAJO.
+- [x] **Revisar** `docs/00_ POR IMPLEMENTAR/IMPORTANTE/resumen-problema-solucion-productos-variantes.md` — **Hecho:** Movido a `docs/24-catalogos/54-Productos-Variantes-GS1-Resumen.md`.
 
 ### Deprecación / revisión
 
-- [ ] **Confirmar** si API v1 sigue en uso. Si **no**:
-  - Añadir banner de deprecación en `docs/recepciones-despachos/67-Guia-Backend-v1-Recepcion-Lineas-Palet-Automatico.md` **o** mover a `docs/13-POSTMORTEMS/` como histórico.
-  - Riesgo: BAJO.
+- [x] **Confirmar** si API v1 sigue en uso. **Hecho:** Banner de deprecación añadido en 67-Guia-Backend-v1 (API v1 eliminada 2025-01-27).
 
 ### Actualización sin movimiento
 
-- [ ] **Actualizar** `database/migrations/companies/README.md` (última mod. 2025-08).
-  - Verificar vigencia de migraciones por tenant y actualizar fechas/ejemplos si aplica.
+- [x] **Actualizar** `database/migrations/companies/README.md` — **Hecho:** Última actualización a Febrero 2026.
 
 ---
 
@@ -53,7 +43,7 @@ Checklist ejecutable derivada de [DOCUMENTATION_MAPPING_MATRIX.md](./DOCUMENTATI
 ### Contenido por completar (opcional)
 
 - [ ] Ampliar **docs/09-TESTING.md** y **docs/10-OBSERVABILITY-MONITORING.md** (enlaces, ejemplos, comandos).
-- [ ] Revisar **docs/11-DEPLOYMENT/** (11b STAGING, 11d ROLLBACK, 11e RUNBOOK) y completar desde `docs/instrucciones/` si aplica.
+- [ ] Revisar **docs/11-DEPLOYMENT/** (11b STAGING, 11d ROLLBACK, 11e RUNBOOK) y completar desde `docs/21-instrucciones/` si aplica.
 
 ### Nueva categoría (solo si hay contenido)
 

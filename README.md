@@ -67,7 +67,7 @@ php artisan migrate
 php artisan serve
 ```
 
-Para más detalles, ver [`docs/fundamentos/03-Configuracion-Entorno.md`](docs/fundamentos/03-Configuracion-Entorno.md).
+Para más detalles, ver [`docs/20-fundamentos/03-Configuracion-Entorno.md`](docs/20-fundamentos/03-Configuracion-Entorno.md).
 
 ---
 
@@ -92,13 +92,13 @@ php artisan tenants:migrate --seed   # requiere al menos un tenant activo con BD
 - **Mailpit:** http://localhost:8025  
 - **Health API:** `GET /api/health`  
 
-Si el frontend (Next.js) usa Sanctum con cookies, configurar **`withCredentials: true`** en axios/fetch. Ver [Guía Entorno Desarrollo](docs/00_%20POR%20IMPLEMENTAR/guia-entorno-desarrollo-pesquerapp.md) y [Plan Sail](docs/instrucciones/IMPLEMENTATION_PLAN_DOCKER_SAIL.md).
+Si el frontend (Next.js) usa Sanctum con cookies, configurar **`withCredentials: true`** en axios/fetch. Ver [Guía completa entorno Sail](docs/21-instrucciones/guia-completa-entorno-sail-windows.md) y [Plan Sail](docs/21-instrucciones/IMPLEMENTATION_PLAN_DOCKER_SAIL.md).
 
 ---
 
 ## 🚀 Despliegue
 
-El proyecto está preparado para desplegarse en Coolify. Ver sección de despliegue en [`docs/fundamentos/03-Configuracion-Entorno.md`](docs/fundamentos/03-Configuracion-Entorno.md).
+El proyecto está preparado para desplegarse en Coolify. Ver sección de despliegue en [`docs/20-fundamentos/03-Configuracion-Entorno.md`](docs/20-fundamentos/03-Configuracion-Entorno.md).
 
 ---
 

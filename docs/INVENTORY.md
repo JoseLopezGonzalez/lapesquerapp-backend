@@ -48,23 +48,23 @@ Documentación principal. Estructura actual:
 
 - **docs/README.md** — Índice general documentación API v2
 - **docs/PROBLEMAS-CRITICOS.md** — Resumen ejecutivo 25 problemas críticos
-- **docs/prompts/** — Prompts de agente (auditoría documentación)
+- **docs/35-prompts/** — Prompts de agente (auditoría documentación)
 - **docs/00_ POR IMPLEMENTAR/** — Guías y resúmenes pendientes de integrar
-- **docs/fundamentos/** — Introducción, arquitectura multi-tenant, auth, configuración
-- **docs/instrucciones/** — Deploy desarrollo, Docker Sail, WSL, validación
-- **docs/frontend/** — Guías frontend (auth, roles, email)
-- **docs/API-references/** — README por módulo (autenticación, catálogos, pedidos, etc.)
-- **docs/produccion/** — Módulo producción (general, lotes, procesos, entradas/salidas, frontend, análisis, cambios)
-- **docs/pedidos/** — Pedidos general, detalles, documentos, incidentes, estadísticas
-- **docs/inventario/** — Almacenes, palets, cajas, estadísticas stock
-- **docs/catalogos/** — Productos, categorías, especies, zonas, clientes, proveedores, etc.
-- **docs/recepciones-despachos/** — Recepciones materia prima, despachos cebo, liquidación proveedores
-- **docs/etiquetas/** — Sistema etiquetas
-- **docs/sistema/** — Usuarios, roles, sesiones, logs, configuración, control horario, auth
-- **docs/utilidades/** — PDF, Excel, extracción IA, plan Tesseract OCR
-- **docs/referencia/** — Modelos, recursos API, rutas, errores, glosario, planes mejora
-- **docs/por-hacer/** — To-do y revisiones pendientes
-- **docs/ejemplos/** — Ejemplos respuestas JSON (process-tree, pallet, production-record)
+- **docs/20-fundamentos/** — Introducción, arquitectura multi-tenant, auth, configuración
+- **docs/21-instrucciones/** — Deploy desarrollo, Docker Sail, WSL, validación
+- **docs/33-frontend/** — Guías frontend (auth, roles, email)
+- **docs/31-api-references/** — README por módulo (autenticación, catálogos, pedidos, etc.)
+- **docs/25-produccion/** — Módulo producción (general, lotes, procesos, entradas/salidas, frontend, análisis, cambios)
+- **docs/22-pedidos/** — Pedidos general, detalles, documentos, incidentes, estadísticas
+- **docs/23-inventario/** — Almacenes, palets, cajas, estadísticas stock
+- **docs/24-catalogos/** — Productos, categorías, especies, zonas, clientes, proveedores, etc.
+- **docs/26-recepciones-despachos/** — Recepciones materia prima, despachos cebo, liquidación proveedores
+- **docs/27-etiquetas/** — Sistema etiquetas
+- **docs/28-sistema/** — Usuarios, roles, sesiones, logs, configuración, control horario, auth
+- **docs/29-utilidades/** — PDF, Excel, extracción IA, plan Tesseract OCR
+- **docs/30-referencia/** — Modelos, recursos API, rutas, errores, glosario, planes mejora
+- **docs/34-por-hacer/** — To-do y revisiones pendientes
+- **docs/32-ejemplos/** — Ejemplos respuestas JSON (process-tree, pallet, production-record)
 
 ### .ai_standards/
 
@@ -114,7 +114,7 @@ Criterios usados para **Estado**:
 | ------------------------- | ---------------- | ----------------- | ----------- | --------------------------- | ------------------------- | --------- |
 | Documentación Técnica API v2 | docs/README.md   | 2026-02-13        | Actualizado | índice, API v2, módulos     | Todas las carpetas docs/  | Todos     |
 | Problemas Críticos        | docs/PROBLEMAS-CRITICOS.md | 2026-02-13 | Actualizado | problemas, resumen, 25 críticos | referencia/98-Errores-Comunes.md | Backend, Arquitectura |
-| Prompt Auditoría Doc      | docs/prompts/PESQUERAPP_DOCUMENTATION_AUDIT_PROMPT.md | 2026-02-13 | Actualizado | auditoría, fases, estándares | — | Agente / Mantenedor |
+| Prompt Auditoría Doc      | docs/35-prompts/PESQUERAPP_DOCUMENTATION_AUDIT_PROMPT.md | 2026-02-13 | Actualizado | auditoría, fases, estándares | — | Agente / Mantenedor |
 
 ### docs/00_ POR IMPLEMENTAR
 
@@ -127,36 +127,36 @@ Criterios usados para **Estado**:
 
 | Título / Nombre           | Ubicación | Fecha última mod. | Estado      | Palabras clave     | Dependencias | Audiencia |
 | ------------------------- | --------- | ----------------- | ----------- | ------------------ | ------------ | --------- |
-| Introducción             | docs/fundamentos/00-Introduccion.md | 2026-02-10 | Actualizado | arquitectura, visión | — | Todos |
-| Arquitectura Multi-Tenant | docs/fundamentos/01-Arquitectura-Multi-Tenant.md | 2025-12-01 | Actualizado | multi-tenant, middleware, BD | 00-Introduccion | Backend, Arquitectura |
-| Autenticación y Autorización | docs/fundamentos/02-Autenticacion-Autorizacion.md | 2026-02-10 | Actualizado | Sanctum, roles, magic link, OTP | sistema/81-Roles | Backend, Frontend |
-| Configuración Entorno    | docs/fundamentos/03-Configuracion-Entorno.md | 2025-12-01 | Actualizado | .env, variables, conexiones | 01-Arquitectura | Backend, DevOps |
+| Introducción             | docs/20-fundamentos/00-Introduccion.md | 2026-02-10 | Actualizado | arquitectura, visión | — | Todos |
+| Arquitectura Multi-Tenant | docs/20-fundamentos/01-Arquitectura-Multi-Tenant.md | 2025-12-01 | Actualizado | multi-tenant, middleware, BD | 00-Introduccion | Backend, Arquitectura |
+| Autenticación y Autorización | docs/20-fundamentos/02-Autenticacion-Autorizacion.md | 2026-02-10 | Actualizado | Sanctum, roles, magic link, OTP | sistema/81-Roles | Backend, Frontend |
+| Configuración Entorno    | docs/20-fundamentos/03-Configuracion-Entorno.md | 2025-12-01 | Actualizado | .env, variables, conexiones | 01-Arquitectura | Backend, DevOps |
 
 ### docs/instrucciones
 
 | Título / Nombre           | Ubicación | Fecha última mod. | Estado      | Palabras clave     | Dependencias | Audiencia |
 | ------------------------- | --------- | ----------------- | ----------- | ------------------ | ------------ | --------- |
-| Deploy desarrollo        | docs/instrucciones/deploy-desarrollo.md | 2026-02-13 | Actualizado | Sail, Docker, deploy | deploy-desarrollo-guiado | DevOps |
-| Deploy desarrollo guiado | docs/instrucciones/deploy-desarrollo-guiado.md | 2026-02-12 | Actualizado | paso a paso, primera vez | Sail, .env | DevOps |
-| Instalar Docker WSL       | docs/instrucciones/instalar-docker-wsl.md | 2026-02-13 | Actualizado | WSL, Docker, Ubuntu | — | DevOps |
-| Plan Docker Sail         | docs/instrucciones/IMPLEMENTATION_PLAN_DOCKER_SAIL.md | 2026-02-13 | Actualizado | plan, implementación | EXECUTION_CHECKLIST | DevOps |
-| Checklist ejecución      | docs/instrucciones/EXECUTION_CHECKLIST.md | 2026-02-12 | Actualizado | checklist, bloques | IMPLEMENTATION_PLAN | DevOps |
-| Informe validación final | docs/instrucciones/FINAL_VALIDATION_REPORT.md | 2026-02-13 | Actualizado | validación, Sail, servicios | deploy-* | DevOps |
+| Deploy desarrollo        | docs/21-instrucciones/deploy-desarrollo.md | 2026-02-13 | Actualizado | Sail, Docker, deploy | deploy-desarrollo-guiado | DevOps |
+| Deploy desarrollo guiado | docs/21-instrucciones/deploy-desarrollo-guiado.md | 2026-02-12 | Actualizado | paso a paso, primera vez | Sail, .env | DevOps |
+| Instalar Docker WSL       | docs/21-instrucciones/instalar-docker-wsl.md | 2026-02-13 | Actualizado | WSL, Docker, Ubuntu | — | DevOps |
+| Plan Docker Sail         | docs/21-instrucciones/IMPLEMENTATION_PLAN_DOCKER_SAIL.md | 2026-02-13 | Actualizado | plan, implementación | EXECUTION_CHECKLIST | DevOps |
+| Checklist ejecución      | docs/21-instrucciones/EXECUTION_CHECKLIST.md | 2026-02-12 | Actualizado | checklist, bloques | IMPLEMENTATION_PLAN | DevOps |
+| Informe validación final | docs/21-instrucciones/FINAL_VALIDATION_REPORT.md | 2026-02-13 | Actualizado | validación, Sail, servicios | deploy-* | DevOps |
 
 ### docs/frontend
 
 | Título / Nombre           | Ubicación | Fecha última mod. | Estado      | Palabras clave     | Dependencias | Audiencia |
 | ------------------------- | --------- | ----------------- | ----------- | ------------------ | ------------ | --------- |
-| Guía Auth Magic Link OTP | docs/frontend/Guia-Auth-Magic-Link-OTP.md | 2026-02-10 | Actualizado | auth, magic link, OTP | fundamentos/02, sistema/87 | Frontend |
-| Guía Cambios Roles API   | docs/frontend/Guia-Cambios-Roles-API-Paso-2.md | 2026-02-10 | Actualizado | roles, API paso 2 | sistema/81-Roles | Frontend |
-| Settings Email configuración | docs/frontend/SETTINGS-EMAIL-CONFIGURATION.md | 2026-01-23 | Actualizado | email, settings | SETTINGS-EMAIL-RESUMEN | Frontend |
-| Settings Email resumen   | docs/frontend/SETTINGS-EMAIL-RESUMEN.md | 2026-01-23 | Actualizado | email, resumen | — | Frontend |
+| Guía Auth Magic Link OTP | docs/33-frontend/Guia-Auth-Magic-Link-OTP.md | 2026-02-10 | Actualizado | auth, magic link, OTP | fundamentos/02, sistema/87 | Frontend |
+| Guía Cambios Roles API   | docs/33-frontend/Guia-Cambios-Roles-API-Paso-2.md | 2026-02-10 | Actualizado | roles, API paso 2 | sistema/81-Roles | Frontend |
+| Settings Email configuración | docs/33-frontend/SETTINGS-EMAIL-CONFIGURATION.md | 2026-01-23 | Actualizado | email, settings | SETTINGS-EMAIL-RESUMEN | Frontend |
+| Settings Email resumen   | docs/33-frontend/SETTINGS-EMAIL-RESUMEN.md | 2026-01-23 | Actualizado | email, resumen | — | Frontend |
 
 ### docs/API-references
 
 Todos los archivos son README.md por módulo. Fechas: 2026-02-10 (autenticación, sistema), 2026-01-17 (pedidos, recepciones-despachos, inventario, produccion, produccion-costos), 2026-01-16 (utilidades, productos, estadísticas, catalogos).
 
-| Título / Nombre     | Ubicación (bajo docs/API-references/) | Fecha última mod. | Estado      | Palabras clave | Dependencias | Audiencia |
+| Título / Nombre     | Ubicación (bajo docs/31-api-references/) | Fecha última mod. | Estado      | Palabras clave | Dependencias | Audiencia |
 | ------------------- | -------------------------------------- | ----------------- | ----------- | -------------- | ------------ | --------- |
 | API References      | README.md                               | 2026-02-10        | Actualizado | índice módulos | Módulos abajo | Backend, Frontend |
 | Autenticación       | autenticacion/README.md                 | 2026-02-10        | Actualizado | auth, endpoints | fundamentos/02 | Backend |
@@ -182,96 +182,96 @@ Documentación muy extensa. Resumen por subcarpeta:
 
 | Título (representativo) | Ubicación (ej.) | Fecha última mod. | Estado      | Audiencia |
 | ----------------------- | ----------------- | ----------------- | ----------- | ---------- |
-| Producción General      | docs/produccion/10-Produccion-General.md | 2026-01-16 | Actualizado | Backend, Arquitectura |
-| Producción Lotes        | docs/produccion/11-Produccion-Lotes.md   | 2025-12-04 | Actualizado | Backend |
-| Producción Procesos     | docs/produccion/12-Produccion-Procesos.md | 2025-12-04 | Actualizado | Backend |
-| … (resto archivos)      | docs/produccion/*, frontend/, analisis/, cambios/ | 2025-12-01–2025-12-05 | Actualizado / Incompleto (planes) | Backend, Frontend |
+| Producción General      | docs/25-produccion/10-Produccion-General.md | 2026-01-16 | Actualizado | Backend, Arquitectura |
+| Producción Lotes        | docs/25-produccion/11-Produccion-Lotes.md   | 2025-12-04 | Actualizado | Backend |
+| Producción Procesos     | docs/25-produccion/12-Produccion-Procesos.md | 2025-12-04 | Actualizado | Backend |
+| … (resto archivos)      | docs/25-produccion/*, frontend/, analisis/, cambios/ | 2025-12-01–2025-12-05 | Actualizado / Incompleto (planes) | Backend, Frontend |
 
 ### docs/pedidos
 
 | Título (representativo) | Ubicación (ej.) | Fecha última mod. | Estado   | Audiencia |
 | ----------------------- | ----------------- | ----------------- | -------- | ---------- |
-| Pedidos General / Detalles / Documentos / Incidentes / Estadísticas | docs/pedidos/20-24*.md | 2025-12-01 | Actualizado | Backend |
+| Pedidos General / Detalles / Documentos / Incidentes / Estadísticas | docs/22-pedidos/20-24*.md | 2025-12-01 | Actualizado | Backend |
 
 ### docs/inventario
 
 | Título (representativo) | Ubicación (ej.) | Fecha última mod. | Estado   | Audiencia |
 | ----------------------- | ----------------- | ----------------- | -------- | ---------- |
-| Almacenes, Palets, Palets Estados Fijos, Cajas, Estadísticas Stock | docs/inventario/30-33*.md, 31-Palets-Estados-Fijos.md | 2025-12-01–2025-12-16 | Actualizado | Backend |
+| Almacenes, Palets, Palets Estados Fijos, Cajas, Estadísticas Stock | docs/23-inventario/30-33*.md, 31-Palets-Estados-Fijos.md | 2025-12-01–2025-12-16 | Actualizado | Backend |
 
 ### docs/catalogos
 
 | Título (representativo) | Ubicación (ej.) | Fecha última mod. | Estado   | Audiencia |
 | ----------------------- | ----------------- | ----------------- | -------- | ---------- |
-| Productos, Categorías, Especies, Zonas, Clientes, Proveedores, etc. (40–53) | docs/catalogos/*.md | 2025-12-01–2026-01-27 | Actualizado | Backend |
+| Productos, Categorías, Especies, Zonas, Clientes, Proveedores, etc. (40–53) | docs/24-catalogos/*.md | 2025-12-01–2026-01-27 | Actualizado | Backend |
 
 ### docs/recepciones-despachos
 
 | Título (representativo) | Ubicación (ej.) | Fecha última mod. | Estado   | Audiencia |
 | ----------------------- | ----------------- | ----------------- | -------- | ---------- |
-| Recepciones materia prima, Despachos cebo, Liquidación proveedores, guías frontend/backend | docs/recepciones-despachos/*.md | 2025-12-08–2026-01-12 | Actualizado | Backend, Frontend |
+| Recepciones materia prima, Despachos cebo, Liquidación proveedores, guías frontend/backend | docs/26-recepciones-despachos/*.md | 2025-12-08–2026-01-12 | Actualizado | Backend, Frontend |
 
 ### docs/etiquetas
 
 | Título | Ubicación | Fecha última mod. | Estado   | Audiencia |
 | ------ | --------- | ----------------- | -------- | ---------- |
-| Etiquetas | docs/etiquetas/70-Etiquetas.md | 2025-12-01 | Actualizado | Backend |
+| Etiquetas | docs/27-etiquetas/70-Etiquetas.md | 2025-12-01 | Actualizado | Backend |
 
 ### docs/sistema
 
 | Título / Nombre           | Ubicación | Fecha última mod. | Estado      | Palabras clave     | Audiencia |
 | ------------------------- | --------- | ----------------- | ----------- | ------------------ | --------- |
-| Usuarios                  | docs/sistema/80-Usuarios.md | 2026-02-10 | Actualizado | users | Backend |
-| Roles                     | docs/sistema/81-Roles.md | 2026-02-10 | Actualizado | roles, permisos | Backend |
-| Roles Plan Migración Enum | docs/sistema/81-Roles-Plan-Migracion-Enum.md | 2026-02-10 | Incompleto | enum, plan | Backend |
-| Roles Pasos 2 y 3         | docs/sistema/82-Roles-Pasos-2-y-3-Pendientes.md | 2026-02-10 | Incompleto | pendientes | Backend |
-| Sesiones                  | docs/sistema/82-Sesiones.md | 2026-01-16 | Actualizado | sesiones | Backend |
-| Logs Actividad            | docs/sistema/83-Logs-Actividad.md | 2025-12-01 | Actualizado | logs | Backend |
-| Configuración             | docs/sistema/84-Configuracion.md | 2025-12-01 | Actualizado | settings | Backend |
-| Control Horario           | docs/sistema/85-Control-Horario.md | 2026-01-15 | Actualizado | control horario | Backend |
-| Control Horario Frontend  | docs/sistema/86-Control-Horario-FRONTEND.md | 2026-01-15 | Actualizado | frontend | Frontend |
-| Plan Auth Magic Link OTP  | docs/sistema/87-Plan-Auth-Magic-Link-OTP.md | 2026-02-10 | Incompleto | plan, auth | Backend |
-| Auth Tokens Reenvío       | docs/sistema/88-Auth-Limpieza-Tokens-Reenvio-Invitacion.md | 2026-02-10 | Actualizado | tokens, invitación | Backend |
-| Auth Contraseñas Eliminadas | docs/sistema/89-Auth-Contrasenas-Eliminadas.md | 2026-02-10 | Actualizado | contraseñas | Backend |
-| Análisis Sin Rastro Password | docs/sistema/90-Analisis-Sin-Rastro-Password.md | 2026-02-10 | Incompleto | análisis | Backend |
+| Usuarios                  | docs/28-sistema/80-Usuarios.md | 2026-02-10 | Actualizado | users | Backend |
+| Roles                     | docs/28-sistema/81-Roles.md | 2026-02-10 | Actualizado | roles, permisos | Backend |
+| Roles Plan Migración Enum | docs/28-sistema/81-Roles-Plan-Migracion-Enum.md | 2026-02-10 | Incompleto | enum, plan | Backend |
+| Roles Pasos 2 y 3         | docs/28-sistema/82-Roles-Pasos-2-y-3-Pendientes.md | 2026-02-10 | Incompleto | pendientes | Backend |
+| Sesiones                  | docs/28-sistema/82-Sesiones.md | 2026-01-16 | Actualizado | sesiones | Backend |
+| Logs Actividad            | docs/28-sistema/83-Logs-Actividad.md | 2025-12-01 | Actualizado | logs | Backend |
+| Configuración             | docs/28-sistema/84-Configuracion.md | 2025-12-01 | Actualizado | settings | Backend |
+| Control Horario           | docs/28-sistema/85-Control-Horario.md | 2026-01-15 | Actualizado | control horario | Backend |
+| Control Horario Frontend  | docs/28-sistema/86-Control-Horario-FRONTEND.md | 2026-01-15 | Actualizado | frontend | Frontend |
+| Plan Auth Magic Link OTP  | docs/28-sistema/87-Plan-Auth-Magic-Link-OTP.md | 2026-02-10 | Incompleto | plan, auth | Backend |
+| Auth Tokens Reenvío       | docs/28-sistema/88-Auth-Limpieza-Tokens-Reenvio-Invitacion.md | 2026-02-10 | Actualizado | tokens, invitación | Backend |
+| Auth Contraseñas Eliminadas | docs/28-sistema/89-Auth-Contrasenas-Eliminadas.md | 2026-02-10 | Actualizado | contraseñas | Backend |
+| Análisis Sin Rastro Password | docs/28-sistema/90-Analisis-Sin-Rastro-Password.md | 2026-02-10 | Incompleto | análisis | Backend |
 
 ### docs/utilidades
 
 | Título / Nombre           | Ubicación | Fecha última mod. | Estado   | Audiencia |
 | ------------------------- | --------- | ----------------- | -------- | ---------- |
-| Generación PDF            | docs/utilidades/90-Generacion-PDF.md | 2025-12-01 | Actualizado | Backend |
-| Exportación Excel         | docs/utilidades/91-Exportacion-Excel.md | 2025-12-01 | Actualizado | Backend |
-| Extracción Documentos AI  | docs/utilidades/92-Extraccion-Documentos-AI.md | 2025-12-01 | Actualizado | Backend |
-| Plan Tesseract OCR        | docs/utilidades/93-Plan-Integracion-Tesseract-OCR.md | 2026-02-03 | Incompleto | Backend |
+| Generación PDF            | docs/29-utilidades/90-Generacion-PDF.md | 2025-12-01 | Actualizado | Backend |
+| Exportación Excel         | docs/29-utilidades/91-Exportacion-Excel.md | 2025-12-01 | Actualizado | Backend |
+| Extracción Documentos AI  | docs/29-utilidades/92-Extraccion-Documentos-AI.md | 2025-12-01 | Actualizado | Backend |
+| Plan Tesseract OCR        | docs/29-utilidades/93-Plan-Integracion-Tesseract-OCR.md | 2026-02-03 | Incompleto | Backend |
 
 ### docs/referencia
 
 | Título / Nombre           | Ubicación | Fecha última mod. | Estado      | Audiencia |
 | ------------------------- | --------- | ----------------- | ----------- | ---------- |
-| Modelos Referencia        | docs/referencia/95-Modelos-Referencia.md | 2026-02-10 | Actualizado | Backend |
-| Recursos API              | docs/referencia/96-Recursos-API.md | 2026-02-10 | Actualizado | Backend |
-| Restricciones Entidades   | docs/referencia/96-Restricciones-Entidades.md | 2026-02-10 | Actualizado | Backend |
-| Rutas Completas           | docs/referencia/97-Rutas-Completas.md | 2026-02-10 | Actualizado | Backend |
-| Errores Comunes           | docs/referencia/98-Errores-Comunes.md | 2026-01-16 | Actualizado | Backend |
-| Glosario                  | docs/referencia/99-Glosario.md | 2025-12-01 | Actualizado | Todos |
-| Rendimiento Endpoints     | docs/referencia/100-Rendimiento-Endpoints.md | 2026-02-07 | Actualizado | Backend |
-| Plan Mejoras GET orders   | docs/referencia/101-102-*.md | 2026-02-07 | Incompleto | Backend |
-| Análisis API Frontend-Backend | docs/referencia/ANALISIS-API-FRONTEND-BACKEND.md | 2026-01-17 | Actualizado | Backend, Frontend |
-| Plan Eliminación Article  | docs/referencia/PLAN-ELIMINACION-ARTICLE.md | 2026-01-16 | Incompleto | Backend |
+| Modelos Referencia        | docs/30-referencia/95-Modelos-Referencia.md | 2026-02-10 | Actualizado | Backend |
+| Recursos API              | docs/30-referencia/96-Recursos-API.md | 2026-02-10 | Actualizado | Backend |
+| Restricciones Entidades   | docs/30-referencia/96-Restricciones-Entidades.md | 2026-02-10 | Actualizado | Backend |
+| Rutas Completas           | docs/30-referencia/97-Rutas-Completas.md | 2026-02-10 | Actualizado | Backend |
+| Errores Comunes           | docs/30-referencia/98-Errores-Comunes.md | 2026-01-16 | Actualizado | Backend |
+| Glosario                  | docs/30-referencia/99-Glosario.md | 2025-12-01 | Actualizado | Todos |
+| Rendimiento Endpoints     | docs/30-referencia/100-Rendimiento-Endpoints.md | 2026-02-07 | Actualizado | Backend |
+| Plan Mejoras GET orders   | docs/30-referencia/101-102-*.md | 2026-02-07 | Incompleto | Backend |
+| Análisis API Frontend-Backend | docs/30-referencia/ANALISIS-API-FRONTEND-BACKEND.md | 2026-01-17 | Actualizado | Backend, Frontend |
+| Plan Eliminación Article  | docs/30-referencia/PLAN-ELIMINACION-ARTICLE.md | 2026-01-16 | Incompleto | Backend |
 
 ### docs/por-hacer
 
 | Título / Nombre           | Ubicación | Fecha última mod. | Estado     | Audiencia |
 | ------------------------- | --------- | ----------------- | ---------- | ---------- |
-| Por Hacer (To Do)         | docs/por-hacer/README.md | 2026-01-21 | Incompleto | Backend |
-| Revisión Validaciones Cliente/Pedido | docs/por-hacer/01-Revision-Validaciones-Cliente-Pedido.md | 2026-01-21 | Incompleto | Backend |
+| Por Hacer (To Do)         | docs/34-por-hacer/README.md | 2026-01-21 | Incompleto | Backend |
+| Revisión Validaciones Cliente/Pedido | docs/34-por-hacer/01-Revision-Validaciones-Cliente-Pedido.md | 2026-01-21 | Incompleto | Backend |
 
 ### docs/ejemplos
 
 | Título / Nombre           | Ubicación | Fecha última mod. | Estado   | Audiencia |
 | ------------------------- | --------- | ----------------- | -------- | ---------- |
-| README ejemplos           | docs/ejemplos/README.md | 2025-12-05 | Actualizado | Backend, Frontend |
-| EJEMPLO-RESPUESTA-*       | docs/ejemplos/EJEMPLO-RESPUESTA-*.md | 2025-12-04–2025-12-05 | Actualizado | Backend, Frontend |
+| README ejemplos           | docs/32-ejemplos/README.md | 2025-12-05 | Actualizado | Backend, Frontend |
+| EJEMPLO-RESPUESTA-*       | docs/32-ejemplos/EJEMPLO-RESPUESTA-*.md | 2025-12-04–2025-12-05 | Actualizado | Backend, Frontend |
 
 ---
 

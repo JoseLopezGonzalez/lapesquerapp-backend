@@ -3,7 +3,7 @@
 **FASE 3 — Auditoría de documentación PesquerApp Backend**  
 **Fecha:** 2026-02-13
 
-**Estructura objetivo de referencia:** Sección 4 del [PESQUERAPP_DOCUMENTATION_AUDIT_PROMPT.md](./prompts/PESQUERAPP_DOCUMENTATION_AUDIT_PROMPT.md) (RAÍZ + docs/00–16).
+**Estructura objetivo de referencia:** Sección 4 del [PESQUERAPP_DOCUMENTATION_AUDIT_PROMPT.md](./35-prompts/PESQUERAPP_DOCUMENTATION_AUDIT_PROMPT.md) (RAÍZ + docs/00–16).
 
 ---
 
@@ -37,13 +37,13 @@
 
 | Ubicación actual | Equivalente en estructura objetivo | Acción | Justificación |
 |------------------|------------------------------------|--------|----------------|
-| docs/fundamentos/ | 01-SETUP, 02-ENV, 03-ARCHITECTURE, 15-MULTI-TENANT (contenido) | MANTENER | 01, 02, 03, 15 enlazan aquí; no duplicar. |
-| docs/instrucciones/ | 01-SETUP-LOCAL, 11-DEPLOYMENT (contenido) | MANTENER | 01-SETUP y 11a enlazan aquí. |
-| docs/API-references/ | 08-API-REST (contenido) | MANTENER | 08-API-REST enlaza aquí. |
-| docs/referencia/ | 04-DATABASE, 08-API-REST, 12-TROUBLESHOOTING (contenido) | MANTENER | 04, 08, 12 y 00-OVERVIEW enlazan aquí. |
-| docs/produccion/, pedidos/, inventario/, catalogos/, recepciones-despachos/, sistema/, utilidades/, etiquetas/, frontend/ | Contenido de referencia por módulo | MANTENER | Documentación detallada; 00-OVERVIEW y README enlazan. |
-| docs/ejemplos/ | 08-API-REST, producción (ejemplos) | MANTENER | Referencia de ejemplos JSON. |
-| docs/por-hacer/ | Backlog / tareas | MANTENER | No forma parte del árbol 00–16; mantener como backlog. |
+| docs/20-fundamentos/ | 01-SETUP, 02-ENV, 03-ARCHITECTURE, 15-MULTI-TENANT (contenido) | MANTENER | 01, 02, 03, 15 enlazan aquí; no duplicar. |
+| docs/21-instrucciones/ | 01-SETUP-LOCAL, 11-DEPLOYMENT (contenido) | MANTENER | 01-SETUP y 11a enlazan aquí. |
+| docs/31-api-references/ | 08-API-REST (contenido) | MANTENER | 08-API-REST enlaza aquí. |
+| docs/30-referencia/ | 04-DATABASE, 08-API-REST, 12-TROUBLESHOOTING (contenido) | MANTENER | 04, 08, 12 y 00-OVERVIEW enlazan aquí. |
+| docs/25-produccion/, pedidos/, inventario/, catalogos/, recepciones-despachos/, sistema/, utilidades/, etiquetas/, frontend/ | Contenido de referencia por módulo | MANTENER | Documentación detallada; 00-OVERVIEW y README enlazan. |
+| docs/32-ejemplos/ | 08-API-REST, producción (ejemplos) | MANTENER | Referencia de ejemplos JSON. |
+| docs/34-por-hacer/ | Backlog / tareas | MANTENER | No forma parte del árbol 00–16; mantener como backlog. |
 
 ---
 
@@ -51,9 +51,9 @@
 
 | Documento actual | Ubicación actual | Mapeo propuesto | Acción | Justificación | Riesgo |
 |------------------|------------------|-----------------|--------|---------------|--------|
-| docs/00_ POR IMPLEMENTAR/guia-entorno-desarrollo-pesquerapp.md | docs/00_ POR IMPLEMENTAR/ | docs/01-SETUP-LOCAL.md (ampliar) o docs/instrucciones/ | FUSIONAR o MOVER | Evitar carpeta “por implementar”; integrar en setup o instrucciones. | MEDIO (enlaces) |
-| docs/00_ POR IMPLEMENTAR/IMPORTANTE/resumen-problema-solucion-productos-variantes.md | docs/00_ POR IMPLEMENTAR/ | docs/catalogos/ o docs/por-hacer/ | MOVER | Contenido de productos/variantes; catalogos o backlog. | BAJO |
-| docs/recepciones-despachos/67-Guia-Backend-v1-Recepcion-Lineas-Palet-Automatico.md | docs/recepciones-despachos/ | docs/13-POSTMORTEMS/ (si v1 obsoleto) o añadir banner | DEPRECAR / REVISAR | Mención API v1; si v1 no existe, archivar o marcar deprecado. | BAJO |
+| docs/00_ POR IMPLEMENTAR/guia-entorno-desarrollo-pesquerapp.md | docs/00_ POR IMPLEMENTAR/ | docs/01-SETUP-LOCAL.md (ampliar) o docs/21-instrucciones/ | FUSIONAR o MOVER | Evitar carpeta “por implementar”; integrar en setup o instrucciones. | MEDIO (enlaces) |
+| docs/00_ POR IMPLEMENTAR/IMPORTANTE/resumen-problema-solucion-productos-variantes.md | docs/00_ POR IMPLEMENTAR/ | docs/24-catalogos/ o docs/34-por-hacer/ | MOVER | Contenido de productos/variantes; catalogos o backlog. | BAJO |
+| docs/26-recepciones-despachos/67-Guia-Backend-v1-Recepcion-Lineas-Palet-Automatico.md | docs/26-recepciones-despachos/ | docs/13-POSTMORTEMS/ (si v1 obsoleto) o añadir banner | DEPRECAR / REVISAR | Mención API v1; si v1 no existe, archivar o marcar deprecado. | BAJO |
 | database/migrations/companies/README.md | database/ | MANTENER (actualizar) | ACTUALIZAR | Contenido vigente; última mod. 2025-08. | BAJO |
 
 ---

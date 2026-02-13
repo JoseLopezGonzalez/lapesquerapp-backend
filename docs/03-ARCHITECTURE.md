@@ -15,9 +15,9 @@ audience: Backend Engineers, Architects
 
 ## Contenido principal
 
-- **[fundamentos/00-Introduccion.md](./fundamentos/00-Introduccion.md)** — Visión general del proyecto, arquitectura y principios.
-- **[fundamentos/01-Arquitectura-Multi-Tenant.md](./fundamentos/01-Arquitectura-Multi-Tenant.md)** — Sistema multi-tenant, middleware, conexiones de base de datos por tenant.
-- **[fundamentos/02-Autenticacion-Autorizacion.md](./fundamentos/02-Autenticacion-Autorizacion.md)** — Laravel Sanctum, roles, permisos, sesiones, magic link, OTP.
+- **[fundamentos/00-Introduccion.md](./20-fundamentos/00-Introduccion.md)** — Visión general del proyecto, arquitectura y principios.
+- **[fundamentos/01-Arquitectura-Multi-Tenant.md](./20-fundamentos/01-Arquitectura-Multi-Tenant.md)** — Sistema multi-tenant, middleware, conexiones de base de datos por tenant.
+- **[fundamentos/02-Autenticacion-Autorizacion.md](./20-fundamentos/02-Autenticacion-Autorizacion.md)** — Laravel Sanctum, roles, permisos, sesiones, magic link, OTP.
 
 ---
 

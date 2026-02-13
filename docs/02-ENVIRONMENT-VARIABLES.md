@@ -15,7 +15,7 @@ audience: Backend Engineers, DevOps
 
 ## Contenido principal
 
-- **[fundamentos/03-Configuracion-Entorno.md](./fundamentos/03-Configuracion-Entorno.md)** — Configuración del entorno, variables de entorno y conexiones (BD, Redis, mail, etc.).
+- **[fundamentos/03-Configuracion-Entorno.md](./20-fundamentos/03-Configuracion-Entorno.md)** — Configuración del entorno, variables de entorno y conexiones (BD, Redis, mail, etc.).
 
 En la raíz del proyecto:
 
