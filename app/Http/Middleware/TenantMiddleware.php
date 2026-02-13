@@ -50,11 +50,13 @@ class TenantMiddleware
         DB::purge('tenant');
         DB::reconnect('tenant');
 
-        // Opcional: log para depurar
-        Log::info('🔁 Conexión cambiada dinámicamente a tenant', [
-            'subdomain' => $subdomain,
-            'database' => $tenant->database,
-        ]);
+        // Log solo en debug para evitar I/O y volumen en producción
+        if (config('app.debug')) {
+            Log::info('🔁 Conexión cambiada dinámicamente a tenant', [
+                'subdomain' => $subdomain,
+                'database' => $tenant->database,
+            ]);
+        }
 
         return $next($request);
     }
