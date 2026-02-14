@@ -4,6 +4,8 @@ namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\DestroyMultipleOrdersRequest;
+use App\Http\Requests\v2\OrderTransportChartRequest;
+use App\Http\Requests\v2\SalesBySalespersonRequest;
 use App\Http\Requests\v2\StoreOrderRequest;
 use App\Http\Requests\v2\UpdateOrderRequest;
 use App\Http\Requests\v2\UpdateOrderStatusRequest;
@@ -49,6 +51,7 @@ class OrderController extends Controller
 
         try {
             $order = OrderStoreService::store($request->validated());
+            $order = OrderDetailService::getOrderForDetail((string) $order->id);
             return response()->json([
                 'message' => 'Pedido creado correctamente.',
                 'data' => new OrderDetailsResource($order),
@@ -93,6 +96,7 @@ class OrderController extends Controller
 
         try {
             $order = OrderUpdateService::update($order, $request->validated());
+            $order = OrderDetailService::getOrderForDetail((string) $order->id);
             return response()->json([
                 'message' => 'Pedido actualizado correctamente.',
                 'data' => new OrderDetailsResource($order),
@@ -218,11 +222,7 @@ class OrderController extends Controller
             }
         }
 
-        // Recargar relaciones después de actualizar (species.fishingGear para toArrayAssoc del producto)
-        $order->load([
-            'pallets.boxes.box.productionInputs',
-            'pallets.boxes.box.product.species.fishingGear',
-        ]);
+        $order = OrderDetailService::getOrderForDetail((string) $order->id);
 
         return response()->json([
             'message' => 'Estado del pedido actualizado correctamente.',
@@ -233,16 +233,12 @@ class OrderController extends Controller
 
 
 
-    public function salesBySalesperson(Request $request)
+    public function salesBySalesperson(SalesBySalespersonRequest $request)
     {
         $this->authorize('viewAny', Order::class);
 
         try {
-            $validated = $request->validate([
-                'dateFrom' => 'required|date',
-                'dateTo' => 'required|date',
-            ]);
-
+            $validated = $request->validated();
             $data = OrderStatisticsService::getSalesBySalesperson(
                 $validated['dateFrom'],
                 $validated['dateTo']
@@ -265,16 +261,12 @@ class OrderController extends Controller
 
 
 
-    public function transportChartData(Request $request)
+    public function transportChartData(OrderTransportChartRequest $request)
     {
         $this->authorize('viewAny', Order::class);
 
         try {
-            $validated = $request->validate([
-                'dateFrom' => 'required|date',
-                'dateTo' => 'required|date|after_or_equal:dateFrom',
-            ]);
-
+            $validated = $request->validated();
             $result = OrderStatisticsService::getTransportChartData(
                 $validated['dateFrom'],
                 $validated['dateTo']

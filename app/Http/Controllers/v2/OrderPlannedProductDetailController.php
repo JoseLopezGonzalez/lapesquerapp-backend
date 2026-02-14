@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\StoreOrderPlannedProductDetailRequest;
+use App\Http\Requests\v2\UpdateOrderPlannedProductDetailRequest;
 use App\Http\Resources\v2\OrderPlannedProductDetailResource;
+use App\Models\Order;
 use App\Models\OrderPlannedProductDetail;
 use Illuminate\Http\Request;
 
@@ -14,22 +17,20 @@ class OrderPlannedProductDetailController extends Controller
      */
     public function index(Request $request)
     {
+        $this->authorize('viewAny', Order::class);
+
         $query = OrderPlannedProductDetail::with(['product', 'tax', 'order']);
 
-        // Filtro por orderId
         if ($request->has('orderId')) {
             $query->where('order_id', $request->orderId);
         }
 
-        // Filtro por productId
         if ($request->has('productId')) {
             $query->where('product_id', $request->productId);
         }
 
-        // Ordenar por ID descendente
         $query->orderBy('id', 'desc');
 
-        // Paginación
         $perPage = $request->input('perPage', 15);
         $details = $query->paginate($perPage);
 
@@ -48,26 +49,21 @@ class OrderPlannedProductDetailController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreOrderPlannedProductDetailRequest $request)
     {
-        $request->validate([
-            "orderId" => 'required|integer|exists:tenant.orders,id',
-            "boxes" => 'required|integer',
-            "product.id" => 'required|integer|exists:tenant.products,id',
-            "quantity" => 'required|numeric',
-            "tax.id" => 'required|integer|exists:tenant.taxes,id',
-            'unitPrice' => 'required|numeric',
-        ]);
+        $order = Order::findOrFail($request->validated('orderId'));
+        $this->authorize('update', $order);
 
+        $validated = $request->validated();
         $orderPlannedProductDetail = OrderPlannedProductDetail::create([
-            'order_id' => $request->orderId,
-            'product_id' => $request->product['id'],
-            'tax_id' => $request->tax['id'],
-            'quantity' => $request->quantity,
-            'boxes' => $request->boxes,
-            'unit_price' => $request->unitPrice,
-            'line_base' => $request->unitPrice * $request->quantity,
-            'line_total' => $request->unitPrice * $request->quantity,
+            'order_id' => $validated['orderId'],
+            'product_id' => $validated['product']['id'],
+            'tax_id' => $validated['tax']['id'],
+            'quantity' => $validated['quantity'],
+            'boxes' => $validated['boxes'],
+            'unit_price' => $validated['unitPrice'],
+            'line_base' => $validated['unitPrice'] * $validated['quantity'],
+            'line_total' => $validated['unitPrice'] * $validated['quantity'],
         ]);
 
         return response()->json([
@@ -82,6 +78,8 @@ class OrderPlannedProductDetailController extends Controller
     public function show(string $id)
     {
         $detail = OrderPlannedProductDetail::with(['product', 'tax', 'order'])->findOrFail($id);
+        $this->authorize('view', $detail->order);
+
         return response()->json([
             'data' => new OrderPlannedProductDetailResource($detail),
         ]);
@@ -98,26 +96,20 @@ class OrderPlannedProductDetailController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(UpdateOrderPlannedProductDetailRequest $request, string $id)
     {
-
-        $request->validate([
-            "boxes" => 'required|integer',
-            "product.id" => 'required|integer|exists:tenant.products,id',
-            "quantity" => 'required|numeric',
-            "tax.id" => 'required|integer|exists:tenant.taxes,id',
-            'unitPrice' => 'required|numeric',
-        ]);
-
         $orderPlannedProductDetail = OrderPlannedProductDetail::findOrFail($id);
+        $this->authorize('update', $orderPlannedProductDetail->order);
+
+        $validated = $request->validated();
         $orderPlannedProductDetail->update([
-            'product_id' => $request->product['id'],
-            'tax_id' => $request->tax['id'],
-            'quantity' => $request->quantity,
-            'boxes' => $request->boxes,
-            'unit_price' => $request->unitPrice,
-            'line_base' => $request->unitPrice * $request->quantity,
-            'line_total' => $request->unitPrice * $request->quantity,
+            'product_id' => $validated['product']['id'],
+            'tax_id' => $validated['tax']['id'],
+            'quantity' => $validated['quantity'],
+            'boxes' => $validated['boxes'],
+            'unit_price' => $validated['unitPrice'],
+            'line_base' => $validated['unitPrice'] * $validated['quantity'],
+            'line_total' => $validated['unitPrice'] * $validated['quantity'],
         ]);
 
         return response()->json([
@@ -132,7 +124,10 @@ class OrderPlannedProductDetailController extends Controller
     public function destroy(string $id)
     {
         $orderPlannedProductDetail = OrderPlannedProductDetail::findOrFail($id);
+        $this->authorize('update', $orderPlannedProductDetail->order);
+
         $orderPlannedProductDetail->delete();
+
         return response()->json(['message' => 'Linea eliminada correctamente'], 200);
     }
 

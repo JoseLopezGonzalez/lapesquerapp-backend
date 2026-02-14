@@ -3,8 +3,12 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\OrderRankingStatsRequest;
+use App\Http\Requests\v2\OrderSalesChartDataRequest;
+use App\Http\Requests\v2\OrderTotalAmountStatsRequest;
+use App\Http\Requests\v2\OrderTotalNetWeightStatsRequest;
+use App\Models\Order;
 use App\Services\v2\OrderStatisticsService;
-use Illuminate\Http\Request;
 
 class OrderStatisticsController extends Controller
 {
@@ -28,14 +32,11 @@ class OrderStatisticsController extends Controller
      *   }
      * }
      */
-    public function totalNetWeightStats(Request $request)
+    public function totalNetWeightStats(OrderTotalNetWeightStatsRequest $request)
     {
-        $validated = $request->validate([
-            'dateFrom' => 'required|date',
-            'dateTo' => 'required|date',
-            'speciesId' => 'nullable|integer|exists:tenant.species,id',
-        ]);
+        $this->authorize('viewAny', Order::class);
 
+        $validated = $request->validated();
         $result = OrderStatisticsService::getNetWeightStatsComparedToLastYear(
             $validated['dateFrom'],
             $validated['dateTo'],
@@ -72,8 +73,10 @@ class OrderStatisticsController extends Controller
      *   }
      * }
      */
-    public function totalAmountStats(Request $request)
+    public function totalAmountStats(OrderTotalAmountStatsRequest $request)
     {
+        $this->authorize('viewAny', Order::class);
+
         // Aumentar límites para consultas pesadas
         $limits = config('exports.operations.statistics');
         if ($limits) {
@@ -81,12 +84,7 @@ class OrderStatisticsController extends Controller
             set_time_limit($limits['max_execution_time']);
         }
 
-        $validated = $request->validate([
-            'dateFrom' => 'required|date',
-            'dateTo' => 'required|date',
-            'speciesId' => 'nullable|integer|exists:tenant.species,id',
-        ]);
-
+        $validated = $request->validated();
         $stats = OrderStatisticsService::getAmountStatsComparedToLastYear(
             $validated['dateFrom'],
             $validated['dateTo'],
@@ -128,8 +126,10 @@ class OrderStatisticsController extends Controller
      * @return \Illuminate\Http\JsonResponse
      */
 
-    public function orderRankingStats(Request $request)
+    public function orderRankingStats(OrderRankingStatsRequest $request)
     {
+        $this->authorize('viewAny', Order::class);
+
         // Aumentar límites para consultas pesadas
         $limits = config('exports.operations.statistics');
         if ($limits) {
@@ -137,14 +137,7 @@ class OrderStatisticsController extends Controller
             set_time_limit($limits['max_execution_time']);
         }
 
-        $validated = $request->validate([
-            'groupBy' => 'required|in:client,country,product',
-            'valueType' => 'required|in:totalAmount,totalQuantity',
-            'dateFrom' => 'required|date',
-            'dateTo' => 'required|date',
-            'speciesId' => 'nullable|integer|exists:tenant.species,id',
-        ]);
-
+        $validated = $request->validated();
         $results = OrderStatisticsService::getOrderRankingStats(
             $validated['groupBy'],
             $validated['valueType'],
@@ -181,18 +174,11 @@ class OrderStatisticsController extends Controller
      * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function salesChartData(Request $request)
+    public function salesChartData(OrderSalesChartDataRequest $request)
     {
-        $validated = $request->validate([
-            'dateFrom' => 'required|date',
-            'dateTo' => 'required|date',
-            'speciesId' => 'nullable|integer|exists:tenant.species,id',
-            'familyId' => 'nullable|integer|exists:tenant.product_families,id',
-            'categoryId' => 'nullable|integer|exists:tenant.product_categories,id',
-            'valueType' => 'required|in:amount,quantity',
-            'groupBy' => 'nullable|in:day,week,month',
-        ]);
+        $this->authorize('viewAny', Order::class);
 
+        $validated = $request->validated();
         $dateFrom = $validated['dateFrom'] . ' 00:00:00';
         $dateTo = $validated['dateTo'] . ' 23:59:59';
         $valueType = $validated['valueType'];

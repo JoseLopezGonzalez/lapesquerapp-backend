@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\StoreIncidentRequest;
+use App\Http\Requests\v2\UpdateIncidentRequest;
 use App\Models\Incident;
 use App\Models\Order;
 use Illuminate\Http\Request;
@@ -12,6 +14,7 @@ class IncidentController extends Controller
     public function show($orderId)
     {
         $order = Order::with('incident')->findOrFail($orderId);
+        $this->authorize('view', $order);
 
         if (!$order->incident) {
             return response()->json([
@@ -23,9 +26,10 @@ class IncidentController extends Controller
         return response()->json($order->incident);
     }
 
-    public function store(Request $request, $orderId)
+    public function store(StoreIncidentRequest $request, $orderId)
     {
         $order = Order::with('incident')->findOrFail($orderId);
+        $this->authorize('update', $order);
 
         if ($order->incident) {
             return response()->json([
@@ -34,10 +38,7 @@ class IncidentController extends Controller
             ], 400);
         }
 
-        $validated = $request->validate([
-            'description' => 'required|string',
-        ]);
-
+        $validated = $request->validated();
         $incident = Incident::create([
             'order_id' => $order->id,
             'description' => $validated['description'],
@@ -49,9 +50,10 @@ class IncidentController extends Controller
         return response()->json($incident->toArrayAssoc(), 201);
     }
 
-    public function update(Request $request, $orderId)
+    public function update(UpdateIncidentRequest $request, $orderId)
     {
         $order = Order::with('incident')->findOrFail($orderId);
+        $this->authorize('update', $order);
 
         $incident = $order->incident;
 
@@ -62,11 +64,7 @@ class IncidentController extends Controller
             ], 404);
         }
 
-        $validated = $request->validate([
-            'resolution_type' => 'required|in:returned,partially_returned,compensated',
-            'resolution_notes' => 'nullable|string',
-        ]);
-
+        $validated = $request->validated();
         $incident->update([
             'status' => 'resolved',
             'resolution_type' => $validated['resolution_type'],
@@ -80,6 +78,7 @@ class IncidentController extends Controller
     public function destroy($orderId)
     {
         $order = Order::with('incident')->findOrFail($orderId);
+        $this->authorize('update', $order);
 
         $incident = $order->incident;
 
@@ -91,12 +90,8 @@ class IncidentController extends Controller
         }
 
         $incident->delete();
-
-        // Finalizar el pedido y marcar palets como enviados
         $order->finalizeAfterIncident();
 
-        /* return response()->noContent(); */
-        /* return mensaje satisfactorio */
         return response()->json(['message' => 'Incident deleted'], 200);
     }
 }

@@ -82,7 +82,9 @@ class OrderExport implements FromQuery, WithHeadings, WithMapping
             $query->where('incoterm_id', $this->filters['incoterm']);
         }
 
-        return $query->orderBy('load_date', 'desc');
+        return $query->with(['customer', 'salesperson', 'transport', 'incoterm'])
+            ->withTotals()
+            ->orderBy('load_date', 'desc');
     }
 
     public function map($order): array

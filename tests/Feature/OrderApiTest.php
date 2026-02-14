@@ -35,12 +35,13 @@ class OrderApiTest extends TestCase
             'active' => true,
         ]);
 
-        $country = Country::create(['name' => 'España']);
-        $paymentTerm = PaymentTerm::create(['name' => 'Contado']);
-        $transport = Transport::create([
-            'name' => 'T', 'vat_number' => 'B1', 'address' => 'A', 'emails' => 't@t.com',
-        ]);
-        $salesperson = \App\Models\Salesperson::create(['name' => 'S']);
+        $country = Country::firstOrCreate(['name' => 'España']);
+        $paymentTerm = PaymentTerm::firstOrCreate(['name' => 'Contado']);
+        $transport = Transport::firstOrCreate(
+            ['name' => 'Transport OrderApiTest'],
+            ['vat_number' => 'B' . uniqid(), 'address' => 'A', 'emails' => 't@t.com']
+        );
+        $salesperson = \App\Models\Salesperson::firstOrCreate(['name' => 'S']);
         $customer = Customer::create([
             'name' => 'C', 'vat_number' => 'B2', 'payment_term_id' => $paymentTerm->id,
             'billing_address' => 'B', 'shipping_address' => 'S', 'salesperson_id' => $salesperson->id,
@@ -71,6 +72,6 @@ class OrderApiTest extends TestCase
 
         $response->assertStatus(201);
         $response->assertJsonStructure(['message', 'data' => ['id', 'status']]);
-        $this->assertDatabaseHas('orders', ['status' => 'pending']);
+        $this->assertDatabaseHas('orders', ['status' => 'pending'], 'tenant');
     }
 }

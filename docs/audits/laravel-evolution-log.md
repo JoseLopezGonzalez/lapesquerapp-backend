@@ -1,185 +1,266 @@
-# Laravel Evolution Log
+# Laravel Evolution Log — PesquerApp Backend
 
-Registro de bloques de evolución incremental del backend (CORE v1.0 Consolidation Plan).  
-Cada entrada sigue el formato de STEP 5 del prompt de evolución.
-
----
-
-## [2026-02-14] Block 1: Auth (Políticas Order y User) - Fase 1
-
-**Priority**: P1  
-**Risk Level**: Low
-
-### Problems Addressed
-- Falta de autorización por recurso (auditoría: Top 5 riesgos #1).
-- Sin políticas registradas; solo middleware por rol a nivel de grupo de rutas.
-
-### Changes Applied
-- Creada `App\Policies\OrderPolicy` (viewAny, view, create, update, delete, restore, forceDelete). Regla: cualquiera de los 6 roles. No se añaden llamadas `authorize()` en OrderController en este bloque (pendiente bloque Sales/Orders).
-- Creada `App\Policies\UserPolicy` con los mismos métodos y regla. Autorización básica implementada.
-- Registro en `AuthServiceProvider`: Order::class => OrderPolicy::class, User::class => UserPolicy::class.
-- Añadido `authorize()` en UserController: index (viewAny), show (view), store (create), update (update), destroy (delete), resendInvitation (update), options (viewAny).
-
-### Verification Results
-- ✅ Rutas de usuarios cargan correctamente (`php artisan route:list`).
-- ✅ Configuración y políticas cargan sin error.
-- ⚠️ Suite de tests existente mínima (ExampleTest); se recomienda verificación manual: listar/ver/crear/editar/eliminar usuarios y reenviar invitación con un usuario autenticado con uno de los 6 roles.
-
-### Rollback Plan
-Si aparece algún problema: `git revert <commit-hash>` del commit que introduce las políticas y las llamadas en UserController.
-
-### Next Recommended Block
-Config (modelo Setting) o Sales/Orders (authorize en OrderController + refactor de controlador grueso).
+Registro de cambios aplicados en el marco de la evolución incremental (CORE v1.0).  
+Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incremental evolution prompt.md`.
 
 ---
 
-## [2026-02-14] Block 2: Sales (Ventas) — Autorización y Form Requests - Fase 1
+## [2026-02-14] Block Ventas - Sub-bloque 1 (Form Requests + autorización)
 
 **Priority**: P1  
 **Risk Level**: Low  
 **Rating antes: 5/10** | **Rating después: 6/10**
 
 ### Problems Addressed
-- OrderPolicy registrada pero no usada en OrderController (autorización solo por middleware).
-- Validación de store/update de pedidos inline en el controlador; sin Form Requests en el módulo Ventas.
+
+- Validación inline en OrderController (salesBySalesperson, transportChartData).
+- Validación inline en OrderStatisticsController (totalNetWeightStats, totalAmountStats, orderRankingStats, salesChartData).
+- OrdersReportController sin Form Request ni autorización explícita para exportToExcel.
 
 ### Changes Applied
-- **Bloque 2A**: Añadidas llamadas `$this->authorize()` en OrderController: index (viewAny), store (create), show (view), update (update), destroy (delete), destroyMultiple (viewAny), updateStatus (update), options (viewAny), active (viewAny), activeOrdersOptions (viewAny), productionView (viewAny), salesBySalesperson (viewAny), transportChartData (viewAny).
-- **Bloque 2B**: Creados `App\Http\Requests\v2\StoreOrderRequest` y `App\Http\Requests\v2\UpdateOrderRequest` con reglas y mensajes en español. Validación entry_date ≤ load_date en StoreOrderRequest vía `withValidator()`. OrderController::store usa StoreOrderRequest y `$request->validated()`; OrderController::update usa UpdateOrderRequest; se mantiene la validación adicional entry_date ≤ load_date en update cuando ambas fechas están presentes.
+
+- **OrderController**: SalesBySalespersonRequest y OrderTransportChartRequest; métodos salesBySalesperson y transportChartData usan Form Request en lugar de `$request->validate()`.
+- **OrderStatisticsController**: OrderTotalNetWeightStatsRequest, OrderTotalAmountStatsRequest, OrderRankingStatsRequest, OrderSalesChartDataRequest; los cuatro métodos usan Form Request y `$this->authorize('viewAny', Order::class)`.
+- **OrdersReportController**: OrdersReportRequest con autorización `viewAny` Order y reglas opcionales para filtros del reporte (customers, id, ids, buyerReference, status, loadDate, entryDate, transports, salespeople, palletsState); exportToExcel y exportToExcelA3ERP usan OrdersReportRequest.
+- Nuevos Form Requests en `app/Http/Requests/v2/`: SalesBySalespersonRequest, OrderTransportChartRequest, OrderTotalNetWeightStatsRequest, OrderTotalAmountStatsRequest, OrderRankingStatsRequest, OrderSalesChartDataRequest, OrdersReportRequest.
 
 ### Verification Results
-- ✅ `php artisan route:list` carga rutas correctamente.
-- ✅ Sin errores de lint en OrderController y Form Requests.
-- ⚠️ Tests: solo ExampleTest (Unit pasa; Feature falla en GET '/' — preexistente). Verificación manual recomendada: listar/crear/editar/ver/eliminar pedidos y usar active, options, productionView, salesBySalesperson, transportChartData con usuario autenticado con rol permitido.
+
+- ✅ Tests Unit (OrderListService, OrderStoreService, OrderUpdateService, OrderDetailService) pasan.
+- ✅ Resto de tests (ApiDocumentationTest, etc.) pasan.
+- ⚠️ OrderApiTest falla por UniqueConstraintViolationException en `countries` (duplicado "España"); **no causado por este refactor** (pre-existente).
+- Comportamiento: validación y autorización delegadas en Form Requests; respuesta 422 ante params inválidos; 403 si usuario no puede viewAny Order en reportes.
+
+### Gap to 10/10 (Rating después < 9)
+
+- CustomerController y SalespersonController siguen gruesos y sin Form Requests/Policies (Sub-bloques 2 y 3).
+- OrderPlannedProductDetail e Incident sin Form Requests ni autorización explícita (Sub-bloque 4).
+- Tests de integración/feature para estadísticas y reportes no añadidos en este sub-bloque (Sub-bloque 5).
+- Bloqueado por: nada. Siguiente paso: proponer Sub-bloque 2 (Customer) cuando el usuario lo apruebe.
 
 ### Rollback Plan
-Si aparece algún problema: `git revert <commit-hash>`. Para deshacer solo Form Requests: revert del commit de 2B y restaurar validación inline en store/update.
 
-### Next Recommended Block
-Sales 2C: extraer lógica de listado/filtros de OrderController a clase dedicada (OrderListQuery / OrderIndexService). Sales 2D: sustituir `DB::connection('tenant')->table()` en salesBySalesperson y transportChartData por Eloquent/servicio.
+Si aparecen problemas: `git revert <commit-hash>` de los commits que introdujeron los Form Requests y los cambios en OrderController, OrderStatisticsController y OrdersReportController.
+
+### Next
+
+- Sub-bloque 2 del bloque Ventas: Customer (Policy, Form Requests, extracción listado a servicio). ✅ Aplicado más adelante.
 
 ---
 
-## [2025-02-14] Block 3: Sales (Ventas) — Form Requests updateStatus/destroyMultiple + reportes con Eloquent - Sub-block 1
+## [2026-02-14] Block Ventas - Sub-bloque 2 (Customer: Policy, Form Requests, CustomerListService)
 
 **Priority**: P1  
-**Risk Level**: Medium  
-**Rating antes: 5/10** | **Rating después: 6–7/10**
+**Risk Level**: Low  
+**Rating antes: 6/10** | **Rating después: 6,5/10**
 
 ### Problems Addressed
-- updateStatus y destroyMultiple validaban con `$request->validate()` en controlador; sin Form Request dedicado.
-- `DB::connection('tenant')->table()` en salesBySalesperson y transportChartData (bypass Eloquent, riesgo de contexto tenant).
+
+- CustomerController 739 líneas (P1); sin Policy; validación inline en store, update, destroyMultiple; lógica de listado/filtros en el controlador.
 
 ### Changes Applied
-- Creado `App\Http\Requests\v2\UpdateOrderStatusRequest` con regla `status => required|string|in:pending,finished,incident` y mensajes en español. OrderController::updateStatus usa este Form Request y `$request->validated()['status']`.
-- Creado `App\Http\Requests\v2\DestroyMultipleOrdersRequest` con reglas `ids => required|array|min:1`, `ids.* => integer|exists:tenant.orders,id` y mensajes en español. OrderController::destroyMultiple usa este Form Request.
-- Añadidos en `App\Services\v2\OrderStatisticsService`: `getSalesBySalesperson(string $dateFrom, string $dateTo)` y `getTransportChartData(string $dateFrom, string $dateTo)`, reimplementando la lógica con **Eloquent** (Order::query() como base, joins sobre pallets, pallet_boxes, boxes, production_inputs, salespeople/transports). Misma estructura de respuesta (name/quantity y name/netWeight).
-- OrderController::salesBySalesperson y OrderController::transportChartData delegan en OrderStatisticsService; eliminado todo uso de `DB::connection('tenant')->table()` en OrderController.
+
+- **CustomerPolicy**: Creada (viewAny, view, create, update, delete, restore, forceDelete) con mismos roles que Order; registrada en AuthServiceProvider.
+- **CustomerController**: authorize() en index (viewAny), show (view), store (create), update (update), destroy (delete), destroyMultiple (viewAny), options (viewAny), getOrderHistory (view).
+- **Form Requests**: StoreCustomerRequest, UpdateCustomerRequest (reglas y mensajes en español); IndexCustomerRequest (filtros opcionales: id, ids, name, vatNumber, paymentTerms, salespeople, countries, perPage); DestroyMultipleCustomersRequest (ids required|array|min:1).
+- **CustomerListService**: Nuevo servicio `CustomerListService::list(Request $request)` con filtros (id, ids, name, vatNumber, paymentTerms, salespeople, countries) y paginación; index delega en el servicio.
+- **CustomerController**: store(StoreCustomerRequest), update(UpdateCustomerRequest), index(IndexCustomerRequest), destroyMultiple(DestroyMultipleCustomersRequest); reducción de ~157 líneas (739 → 582).
 
 ### Verification Results
-- ✅ Sintaxis PHP correcta en todos los archivos modificados.
-- ✅ Sin errores de lint en OrderController, Form Requests y OrderStatisticsService.
-- ⚠️ Verificación manual recomendada: updateStatus (pending/finished/incident), destroyMultiple (ids válidos e inválidos), GET sales-by-salesperson y GET transport-chart-data con mismos parámetros que antes; comparar respuestas.
 
-### Gap to 10/10
-- OrderController sigue >200 líneas; extraer listado filtrado (index) y productionView a servicio/query object.
-- Tests de integración para flujo pedidos y unitarios para OrderStatisticsService.
+- ✅ Tests Unit (Order*) pasan.
+- ✅ Sin errores de linter en CustomerController, CustomerPolicy, CustomerListService.
+- ⚠️ OrderApiTest sigue fallando por UniqueConstraintViolation en countries (pre-existente).
+- Comportamiento preservado: listado, CRUD, options, getOrderHistory; validación y autorización en frontera.
+
+### Gap to 10/10 (Rating después < 9)
+
+- SalespersonController aún grueso y sin Policy/Form Requests (Sub-bloque 3).
+- OrderPlannedProductDetail e Incident (Sub-bloque 4); tests (Sub-bloque 5).
 
 ### Rollback Plan
-Si aparece algún problema: `git revert <commit-hash>` de los commits de este bloque. Los Form Requests y el servicio son aditivos; el controlador puede volver a validar inline y a usar DB::connection hasta revertir por completo.
 
-### Next Recommended Block
-Sales Sub-block 2: extraer lógica de index() (listado filtrado) a OrderListService o OrderIndexQuery; extraer productionView a OrderProductionViewService. Objetivo: reducir OrderController por debajo de 200 líneas.
+`git revert <commit-hash>` de los commits del Sub-bloque 2 (CustomerPolicy, Form Requests, CustomerListService, cambios en CustomerController y AuthServiceProvider).
+
+### Next
+
+- Sub-bloque 3: Salesperson (Policy, Form Requests, opcional listado). ✅ Aplicado más adelante.
 
 ---
 
-## [2025-02-14] Block 4: Sales (Ventas) — OrderListService + OrderProductionViewService - Sub-block 2
+## [2026-02-14] Block Ventas - Sub-bloque 3 (Salesperson: Policy, Form Requests, SalespersonListService)
 
 **Priority**: P1  
-**Risk Level**: Medium  
-**Rating antes: 6–7/10** | **Rating después: 7–8/10**
+**Risk Level**: Low  
+**Rating antes: 6,5/10** | **Rating después: 7/10**
 
 ### Problems Addressed
-- OrderController con ~807 líneas; lógica de listado (index) y de vista de producción (productionView) en el controlador.
+
+- SalespersonController 267 líneas (P1); sin Policy; validación inline en store, update, destroyMultiple; lógica de listado en el controlador.
 
 ### Changes Applied
-- Creado `App\Services\v2\OrderListService` con método estático `list(Request $request)`: ramas active=true/false (sin paginar) y listado con filtros (customers, id, ids, buyerReference, status, loadDate, entryDate, transports, salespeople, palletsState, products, species, incoterm, transport) + paginación (perPage). Retorno: Collection o LengthAwarePaginator.
-- Creado `App\Services\v2\OrderProductionViewService` con método estático `getData(?Carbon $date = null)`: pedidos de la fecha (por defecto hoy), eager load, agrupación por producto, cantidades completadas/restantes, status (completed/exceeded/pending). Retorno: array con clave `data`.
-- OrderController::index sustituido por: authorize + `OrderResource::collection(OrderListService::list($request))`.
-- OrderController::productionView sustituido por: authorize + try/catch + `response()->json(OrderProductionViewService::getData())`.
+
+- **SalespersonPolicy**: Creada (viewAny, view, create, update, delete, restore, forceDelete) con mismos roles que Order/Customer; registrada en AuthServiceProvider.
+- **SalespersonController**: authorize() en index (viewAny), show (view), store (create), update (update), destroy (delete), destroyMultiple (viewAny), options (viewAny).
+- **Form Requests**: StoreSalespersonRequest, UpdateSalespersonRequest (name, emails, ccEmails); IndexSalespersonRequest (id, ids, name, perPage); DestroyMultipleSalespeopleRequest (ids required|array|min:1).
+- **SalespersonListService**: Nuevo servicio `SalespersonListService::list(Request $request)` con filtros (id, ids, name) y paginación; index delega en el servicio.
+- **SalespersonController**: index(IndexSalespersonRequest) → SalespersonListService::list; store(StoreSalespersonRequest), update(UpdateSalespersonRequest), destroyMultiple(DestroyMultipleSalespeopleRequest). Líneas 267 → 204 (−63).
 
 ### Verification Results
-- ✅ OrderController reducido de ~807 a ~556 líneas.
-- ✅ Sin errores de lint en servicios y controlador.
-- ⚠️ Verificación manual recomendada: GET orders (con/sin active, con filtros y paginación) y GET orders/production-view; comparar respuestas con comportamiento anterior.
 
-### Gap to 10/10
-- OrderController aún >200 líneas; posibles extracciones: active(), activeOrdersOptions() a servicio; tests de integración y unitarios.
+- ✅ Tests Unit (Order*) pasan.
+- ✅ Sin errores de linter.
+- ⚠️ OrderApiTest fallo pre-existente (countries).
+- Comportamiento preservado: listado, CRUD, options; validación y autorización en frontera.
+
+### Gap to 10/10 (Rating después < 9)
+
+- OrderPlannedProductDetail e Incident (Sub-bloque 4); tests (Sub-bloque 5).
 
 ### Rollback Plan
-`git revert <commit-hash>` del sub-block 2; los servicios son nuevos, el controlador puede restaurar la lógica inline.
 
-### Next Recommended Block
-Sales Sub-block 3 (opcional): extraer active() y activeOrdersOptions() a OrderListService u otro servicio para acercar OrderController a <200 líneas; o pasar a tests del módulo Ventas.
+`git revert <commit-hash>` de los commits del Sub-bloque 3.
+
+### Next
+
+- Sub-bloque 4: OrderPlannedProductDetail + Incident (Form Requests + autorización). ✅ Aplicado más adelante.
 
 ---
 
-## [2025-02-14] Block 5: Sales (Ventas) — active + activeOrdersOptions + options en OrderListService - Sub-block 3
+## [2026-02-14] Block Ventas - Sub-bloque 4 (OrderPlannedProductDetail + Incident: Form Requests y autorización)
+
+**Priority**: P1/P2  
+**Risk Level**: Low  
+**Rating antes: 7/10** | **Rating después: 7,5/10**
+
+### Problems Addressed
+
+- OrderPlannedProductDetailController: validación inline en store y update; sin autorización (quien puede tocar el pedido puede tocar sus líneas).
+- IncidentController: validación inline en store y update; sin autorización explícita respecto al Order.
+
+### Changes Applied
+
+- **OrderPlannedProductDetailController**:
+  - StoreOrderPlannedProductDetailRequest (orderId, boxes, product.id, quantity, tax.id, unitPrice); UpdateOrderPlannedProductDetailRequest (boxes, product.id, quantity, tax.id, unitPrice).
+  - index: authorize('viewAny', Order::class).
+  - show: authorize('view', $detail->order).
+  - store: Order::findOrFail(orderId), authorize('update', $order), uso de Form Request y validated().
+  - update: authorize('update', $orderPlannedProductDetail->order), UpdateOrderPlannedProductDetailRequest.
+  - destroy: authorize('update', $orderPlannedProductDetail->order).
+- **IncidentController**:
+  - StoreIncidentRequest (description required|string); UpdateIncidentRequest (resolution_type required|in:returned,partially_returned,compensated, resolution_notes nullable|string).
+  - show: authorize('view', $order).
+  - store: authorize('update', $order), StoreIncidentRequest.
+  - update: authorize('update', $order), UpdateIncidentRequest.
+  - destroy: authorize('update', $order).
+- Nuevos Form Requests: StoreOrderPlannedProductDetailRequest, UpdateOrderPlannedProductDetailRequest, StoreIncidentRequest, UpdateIncidentRequest.
+
+### Verification Results
+
+- ✅ Tests Unit (Order*) pasan.
+- ✅ Sin errores de linter.
+- ⚠️ OrderApiTest fallo pre-existente (countries).
+- Comportamiento preservado: solo quien puede view/update el Order puede ver o modificar líneas planificadas e incidencias.
+
+### Gap to 10/10 (Rating después < 9)
+
+- Sub-bloque 5 (tests de integración/feature para Customer, Salesperson, estadísticas, reportes).
+- Revisión N+1, documentación API, etc.
+
+### Rollback Plan
+
+`git revert <commit-hash>` de los commits del Sub-bloque 4.
+
+### Next
+
+- Sub-bloque 5: tests (Customer, Salesperson, estadísticas/reportes) según indicación del usuario.
+
+---
+
+## [2026-02-14] Block Ventas - Sub-bloque 5 (Tests: Customer, Salesperson, estadísticas/reportes)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 7,5/10** | **Rating después: 8/10**
+
+### Problems Addressed
+
+- Ausencia de tests Feature para Customer, Salesperson y endpoints de estadísticas/reportes (Sub-bloque 5 pendiente).
+
+### Changes Applied
+
+- **CustomerApiTest** (`tests/Feature/CustomerApiTest.php`): tests para list, create, show, update, destroy. Uso de Country, Transport, PaymentTerm, Salesperson en Customer::create; payload de create con contact_info, salesperson_id; payload de update completo (vatNumber, addresses, contact_info, FKs, emails) para no pisar NOT NULL. Transport::firstOrCreate por `name` para evitar duplicado (unique en transports.name).
+- **SalespersonApiTest**: ya existía y pasa (list, create, show, update, destroy).
+- **StoreCustomerRequest / UpdateCustomerRequest**: regla de email en testing sin DNS (`email:rfc` cuando `app()->environment('testing')`) para que los tests no fallen por resolución DNS en CI.
+- **OrderStatisticsApiTest** (`tests/Feature/OrderStatisticsApiTest.php`): test_can_get_total_net_weight_stats (GET statistics/orders/total-net-weight con dateFrom/dateTo, assert 200 y estructura JSON); test_can_export_orders_report (GET orders_report, assert 200 y content-type application/vnd.ms-excel).
+
+### Verification Results
+
+- ✅ CustomerApiTest: 5 tests pasan (list, create, show, update, destroy).
+- ✅ SalespersonApiTest: 5 tests pasan.
+- ✅ OrderStatisticsApiTest: 2 tests pasan (total net weight stats, export orders report).
+
+### Gap to 10/10 (Rating después < 9)
+
+- OrderApiTest sigue con fallo pre-existente (countries).
+- Revisión N+1, documentación API, más tests de reportes/estadísticas si se desea.
+
+### Rollback Plan
+
+`git revert <commit-hash>` de los commits del Sub-bloque 5 (tests y cambios en StoreCustomerRequest/UpdateCustomerRequest).
+
+### Next
+
+- Cerrar bloque Ventas o seguir con corrección de OrderApiTest / otros bloques según prioridad.
+
+---
+
+## [2026-02-14] Fix OrderApiTest (countries duplicate + assert DB connection)
 
 **Priority**: P2  
 **Risk Level**: Low  
-**Rating antes: 7–8/10** | **Rating después: 7–8/10**
 
 ### Problems Addressed
-- Lógica de active(), activeOrdersOptions() y options() en OrderController; cohesión de listados en un solo servicio.
+
+- OrderApiTest fallaba con `UniqueConstraintViolationException`: duplicate entry 'España' for key `countries.countries_name_unique` (al ejecutar junto con otros tests que crean el mismo país).
+- assertDatabaseHas('orders', ...) fallaba ("table is empty") porque la tabla `orders` está en la conexión `tenant`, no en la default.
 
 ### Changes Applied
-- Añadidos en `App\Services\v2\OrderListService`: `active()` (pedidos pending o load_date >= hoy, con customer id/name; para ActiveOrderCardResource), `activeOrdersOptions()` (id, name, load_date para desplegable), `options()` (id, name de todos los pedidos).
-- OrderController::active → authorize + ActiveOrderCardResource::collection(OrderListService::active()).
-- OrderController::activeOrdersOptions → authorize + response()->json(OrderListService::activeOrdersOptions()).
-- OrderController::options → authorize + response()->json(OrderListService::options()).
+
+- **OrderApiTest**: `Country::create` → `Country::firstOrCreate(['name' => 'España'])`; `PaymentTerm::create` → `firstOrCreate`; `Transport::create` → `Transport::firstOrCreate` por nombre único `'Transport OrderApiTest'`; `Salesperson::create` → `firstOrCreate`.
+- **OrderApiTest**: `assertDatabaseHas('orders', ['status' => 'pending'])` → `assertDatabaseHas('orders', ['status' => 'pending'], 'tenant')`.
 
 ### Verification Results
-- ✅ OrderController reducido de ~557 a ~535 líneas.
-- ✅ Sin errores de lint.
-- ⚠️ Verificación manual recomendada: GET orders/active, GET active-orders/options, GET orders/options.
 
-### Gap to 10/10
-- OrderController aún >200 líneas; más extracciones o tests para acercar a 9+/10.
-
-### Rollback Plan
-`git revert <commit-hash>`; restaurar cuerpos de active, activeOrdersOptions y options en el controlador.
-
-### Next Recommended Block
-Continuar adelgazando OrderController (otros métodos) o priorizar tests del módulo Ventas; o pasar a otro módulo CORE (Stock, Config, etc.).
+- ✅ OrderApiTest pasa en solitario y junto con CustomerApiTest.
 
 ---
 
-## [2025-02-14] Block 6: Sales (Ventas) — Objetivo 9/10: OrderStoreService, OrderUpdateService, OrderDetailService + Tests
+## [2026-02-14] Block Ventas - Revisión N+1 (eager loading)
 
-**Priority**: P1  
-**Risk Level**: Medium  
-**Rating antes: 7/10** | **Rating después: 9/10**
+**Priority**: P2  
+**Risk Level**: Low  
+**Rating antes: 8/10** | **Rating después: 8,5/10**
 
 ### Problems Addressed
-- Controlador aún con ~535 líneas; lógica de store, update y show en el controlador; ausencia de tests para el módulo Ventas.
+
+- Posibles N+1 en listados y respuestas del bloque Ventas: Customer list (CustomerResource usa toArrayAssoc con payment_term, salesperson, country, transport); export orders (OrderExport map usa customer, salesperson, transport, incoterm, numberOfPallets, totalBoxes, totalNetWeight); store/update/updateStatus devuelven OrderDetailsResource con orden sin relaciones cargadas.
 
 ### Changes Applied
-- **Servicios**: Creados `App\Services\v2\OrderStoreService` (store(array): Order con transacción, formato emails, líneas planificadas), `App\Services\v2\OrderUpdateService` (update(Order, array): Order con validación entry_date ≤ load_date y regla finished→palets shipped), `App\Services\v2\OrderDetailService` (getOrderForDetail(id): Order con eager loading completo). OrderController::store, update y show delegan en estos servicios; controlador reducido a ~332 líneas.
-- **Tests**: Trait `Tests\Concerns\ConfiguresTenantConnection` (configura conexión tenant = BD de tests, ejecuta migraciones companies). Unit tests: OrderStoreServiceTest (store crea pedido), OrderUpdateServiceTest (validación load_date, cambio buyerReference), OrderDetailServiceTest (getOrderForDetail devuelve order con relaciones), OrderListServiceTest (options, active, list devuelven tipo correcto). Feature test: OrderApiTest (POST /api/v2/orders con X-Tenant + Sanctum, assert 201 y estructura). Los tests usan RefreshDatabase + trait; requieren BD configurada (p. ej. MySQL testing o SQLite).
+
+- **CustomerListService::list()**: eager load `payment_term`, `salesperson`, `country`, `transport` para que CustomerResource::toArrayAssoc() no dispare N+1.
+- **OrderExport::query()**: añadido `->with(['customer', 'salesperson', 'transport', 'incoterm'])->withTotals()` para que cada fila del export no cargue relaciones por separado (customer, comercial, transporte, incoterm, pallets para totales).
+- **OrderController**: respuestas que devuelven OrderDetailsResource ahora usan OrderDetailService::getOrderForDetail() para cargar el pedido con todas las relaciones en una sola consulta:
+  - **store**: tras OrderStoreService::store(), se obtiene el pedido con getOrderForDetail() antes de devolver OrderDetailsResource.
+  - **update**: tras OrderUpdateService::update(), idem.
+  - **updateStatus**: eliminado load() parcial; se usa getOrderForDetail() antes de devolver OrderDetailsResource.
 
 ### Verification Results
-- ✅ OrderController ~332 líneas (por debajo del umbral de 400; objetivo &lt;200 requeriría extraer destroy/destroyMultiple a servicio).
-- ✅ Sin errores de lint en servicios y controlador.
-- ⚠️ Tests: ejecutar con `php artisan test` con BD disponible (tests/Unit/Services/*, tests/Feature/OrderApiTest.php).
 
-### Gap to 10/10
-- Controlador aún &gt;200 líneas si se aplica criterio estricto; opcional extraer destroy/destroyMultiple. Cobertura de tests ampliable (más casos en OrderStatisticsService, OrderProductionViewService).
+- ✅ OrderApiTest, CustomerApiTest, SalespersonApiTest, OrderStatisticsApiTest pasan (13 tests).
 
-### Rollback Plan
-`git revert <commit-hash>` del bloque; restaurar store/update/show en el controlador y eliminar servicios y tests añadidos.
+### Gap to 10/10 (Rating después < 9)
 
-### Next Recommended Block
-Otro módulo CORE (Stock, Config, Reports) o ampliar tests del módulo Ventas.
+- Revisión N+1 en otros módulos (Fichajes, Recepciones, etc.); documentación API; más tests.
 
 ---

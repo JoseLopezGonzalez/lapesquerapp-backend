@@ -3,37 +3,24 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\DestroyMultipleSalespeopleRequest;
+use App\Http\Requests\v2\IndexSalespersonRequest;
+use App\Http\Requests\v2\StoreSalespersonRequest;
+use App\Http\Requests\v2\UpdateSalespersonRequest;
 use App\Http\Resources\v2\SalespersonResource;
 use App\Models\Salesperson;
-use Illuminate\Http\Request;
+use App\Services\v2\SalespersonListService;
 
 class SalespersonController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(IndexSalespersonRequest $request)
     {
-        $query = Salesperson::query();
+        $this->authorize('viewAny', Salesperson::class);
 
-        if ($request->has('id')) {
-            $query->where('id', $request->id);
-        }
-
-        if ($request->has('ids')) {
-            $query->whereIn('id', $request->ids);
-        }
-
-        /* mame like */
-        if ($request->has('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
-        }
-
-        $query->orderBy('name', 'asc');
-
-        $perPage = $request->input('perPage', 10);
-        return SalespersonResource::collection($query->paginate($perPage));
-
+        return SalespersonResource::collection(SalespersonListService::list($request));
     }
 
     /**
@@ -47,45 +34,21 @@ class SalespersonController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreSalespersonRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'emails' => 'nullable|array',
-            'emails.*' => 'string|email:rfc,dns|distinct',
-            'ccEmails' => 'nullable|array',
-            'ccEmails.*' => 'string|email:rfc,dns|distinct',
-        ], [
-            'name.required' => 'El nombre del comercial es obligatorio.',
-            'name.string' => 'El nombre del comercial debe ser texto.',
-            'name.max' => 'El nombre del comercial no puede tener más de 255 caracteres.',
-            'emails.array' => 'Los emails deben ser una lista.',
-            'emails.*.string' => 'Cada email debe ser texto.',
-            'emails.*.email' => 'Uno o más emails no son válidos.',
-            'emails.*.distinct' => 'No puede haber emails duplicados.',
-            'ccEmails.array' => 'Los emails en copia deben ser una lista.',
-            'ccEmails.*.string' => 'Cada email en copia debe ser texto.',
-            'ccEmails.*.email' => 'Uno o más emails en copia no son válidos.',
-            'ccEmails.*.distinct' => 'No puede haber emails en copia duplicados.',
-        ]);
+        $this->authorize('create', Salesperson::class);
 
-        // Combinar emails y ccEmails en un único string con ; y salto de línea
+        $validated = $request->validated();
+
         $allEmails = [];
-
         foreach ($validated['emails'] ?? [] as $email) {
             $allEmails[] = trim($email);
         }
-
         foreach ($validated['ccEmails'] ?? [] as $ccEmail) {
             $allEmails[] = 'CC:' . trim($ccEmail);
         }
-
-        // Convertir a string con salto de línea y punto y coma final
-        $validated['emails'] = count($allEmails) > 0
-            ? implode(";\n", $allEmails) . ';'
-            : null;
-
-        unset($validated['ccEmails']); // ya están incluidos
+        $validated['emails'] = count($allEmails) > 0 ? implode(";\n", $allEmails) . ';' : null;
+        unset($validated['ccEmails']);
 
         $salesperson = Salesperson::create($validated);
 
@@ -105,6 +68,7 @@ class SalespersonController extends Controller
     public function show(string $id)
     {
         $salesperson = Salesperson::findOrFail($id);
+        $this->authorize('view', $salesperson);
 
         return response()->json([
             'message' => 'Comercial obtenido con éxito',
@@ -124,44 +88,21 @@ class SalespersonController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(UpdateSalespersonRequest $request, string $id)
     {
         $salesperson = Salesperson::findOrFail($id);
+        $this->authorize('update', $salesperson);
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'emails' => 'nullable|array',
-            'emails.*' => 'string|email:rfc,dns|distinct',
-            'ccEmails' => 'nullable|array',
-            'ccEmails.*' => 'string|email:rfc,dns|distinct',
-        ], [
-            'name.required' => 'El nombre del comercial es obligatorio.',
-            'name.string' => 'El nombre del comercial debe ser texto.',
-            'name.max' => 'El nombre del comercial no puede tener más de 255 caracteres.',
-            'emails.array' => 'Los emails deben ser una lista.',
-            'emails.*.string' => 'Cada email debe ser texto.',
-            'emails.*.email' => 'Uno o más emails no son válidos.',
-            'emails.*.distinct' => 'No puede haber emails duplicados.',
-            'ccEmails.array' => 'Los emails en copia deben ser una lista.',
-            'ccEmails.*.string' => 'Cada email en copia debe ser texto.',
-            'ccEmails.*.email' => 'Uno o más emails en copia no son válidos.',
-            'ccEmails.*.distinct' => 'No puede haber emails en copia duplicados.',
-        ]);
+        $validated = $request->validated();
 
         $allEmails = [];
-
         foreach ($validated['emails'] ?? [] as $email) {
             $allEmails[] = trim($email);
         }
-
         foreach ($validated['ccEmails'] ?? [] as $ccEmail) {
             $allEmails[] = 'CC:' . trim($ccEmail);
         }
-
-        $validated['emails'] = count($allEmails) > 0
-            ? implode(";\n", $allEmails) . ';'
-            : null;
-
+        $validated['emails'] = count($allEmails) > 0 ? implode(";\n", $allEmails) . ';' : null;
         unset($validated['ccEmails']);
 
         $salesperson->update($validated);
@@ -178,7 +119,8 @@ class SalespersonController extends Controller
      */
     public function destroy(Salesperson $salesperson)
     {
-        // Validar si el comercial está en uso antes de eliminar
+        $this->authorize('delete', $salesperson);
+
         $usedInCustomers = $salesperson->customers()->exists();
         $usedInOrders = $salesperson->orders()->exists();
 
@@ -202,18 +144,11 @@ class SalespersonController extends Controller
 
 
 
-    public function destroyMultiple(Request $request)
+    public function destroyMultiple(DestroyMultipleSalespeopleRequest $request)
     {
-        $validated = $request->validate([
-            'ids' => 'required|array|min:1',
-            'ids.*' => 'integer|exists:tenant.salespeople,id',
-        ], [
-            'ids.required' => 'Debe proporcionar al menos un ID válido para eliminar.',
-            'ids.min' => 'Debe proporcionar al menos un ID válido para eliminar.',
-            'ids.*.integer' => 'Los IDs deben ser números enteros.',
-            'ids.*.exists' => 'Uno o más IDs no existen.',
-        ]);
+        $this->authorize('viewAny', Salesperson::class);
 
+        $validated = $request->validated();
         $salespeople = Salesperson::whereIn('id', $validated['ids'])->get();
         
         // Validar si alguno de los comerciales está en uso
@@ -257,6 +192,8 @@ class SalespersonController extends Controller
 
     public function options()
     {
+        $this->authorize('viewAny', Salesperson::class);
+
         $salespeople = Salesperson::select('id', 'name')
             ->orderBy('name')
             ->get();

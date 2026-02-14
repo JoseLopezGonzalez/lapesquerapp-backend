@@ -1,0 +1,56 @@
+<?php
+
+namespace App\Services\v2;
+
+use App\Models\Customer;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\Request;
+
+class CustomerListService
+{
+    /**
+     * Lista clientes con filtros y paginación.
+     *
+     * @param  Request  $request  Request con query params ya validados (IndexCustomerRequest)
+     * @return LengthAwarePaginator
+     */
+    public static function list(Request $request): LengthAwarePaginator
+    {
+        $query = Customer::query()
+            ->with(['payment_term', 'salesperson', 'country', 'transport']);
+
+        if ($request->filled('id')) {
+            $query->where('id', $request->input('id'));
+        }
+
+        if ($request->filled('ids')) {
+            $query->whereIn('id', $request->input('ids'));
+        }
+
+        if ($request->filled('name')) {
+            $query->where('name', 'like', '%' . $request->input('name') . '%');
+        }
+
+        if ($request->filled('vatNumber')) {
+            $query->where('vat_number', $request->input('vatNumber'));
+        }
+
+        if ($request->filled('paymentTerms')) {
+            $query->whereIn('payment_term_id', $request->input('paymentTerms'));
+        }
+
+        if ($request->filled('salespeople')) {
+            $query->whereIn('salesperson_id', $request->input('salespeople'));
+        }
+
+        if ($request->filled('countries')) {
+            $query->whereIn('country_id', $request->input('countries'));
+        }
+
+        $query->orderBy('name', 'asc');
+
+        $perPage = $request->input('perPage', 10);
+
+        return $query->paginate($perPage);
+    }
+}
