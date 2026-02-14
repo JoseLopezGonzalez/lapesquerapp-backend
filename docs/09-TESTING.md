@@ -32,7 +32,7 @@ Desarrolladores backend.
 
 ## Inventario de tests
 
-**Total: 33+ tests** (ejecuta `php artisan test` para ver el resultado actual).
+**Total: 80+ tests** (ejecuta `php artisan test` para ver el resultado actual).
 
 | Archivo | Tests | Descripción |
 |--------|-------|-------------|
@@ -45,10 +45,12 @@ Desarrolladores backend.
 | `tests/Feature/OrderApiTest.php` | 1 | `test_can_create_order_via_api_with_tenant_and_auth` — POST /api/v2/orders con tenant + Sanctum. |
 | `tests/Feature/CustomerApiTest.php` | 5 | list, create, show, update, destroy customer. |
 | `tests/Feature/LabelApiTest.php` | 10 | list, options, create, show, update, destroy, duplicate, validación. |
-| `tests/Feature/StockBlockApiTest.php` | 11 | Bloque Inventario/Stock: list receptions/pallets/stores, stock stats, reception/dispatch chart data (422/200), show store, auth 401. |
+| `tests/Feature/StockBlockApiTest.php` | 29 | Bloque Inventario/Stock: list receptions/pallets/stores, stock stats, reception/dispatch chart data, show store, auth 401, store/show reception. |
+| `tests/Feature/ProductosBlockApiTest.php` | 24 | Bloque Productos: list/options/store/show/update/destroy/destroyMultiple para product-categories, product-families y products; reglas de negocio (destroy bloqueado cuando categoría tiene familias, familia tiene productos, producto en uso en cajas); auth 401. |
+| `tests/Feature/AuthBlockApiTest.php` | 21 | Bloque Auth: requestAccess (422/200), me (401/200), logout, verifyMagicLink/verifyOtp (400), users list/store/show/update/destroy (401, 403 al eliminarse a sí mismo, 200 al eliminar otro como admin), sessions index (401, 200 con rol permitido, 403 operario), sessions destroy (200 propia sesión), activity-logs index (401, 200 con rol permitido, 403 operario). |
 | `tests/Feature/ApiDocumentationTest.php` | 4 | Scribe, OpenAPI, header X-Tenant, esquema de autenticación. |
 
-**Tests que requieren base de datos:** OrderStoreServiceTest, OrderUpdateServiceTest, OrderDetailServiceTest, OrderListServiceTest, OrderApiTest, CustomerApiTest, LabelApiTest y StockBlockApiTest usan el trait `ConfiguresTenantConnection` y necesitan MySQL (o BD configurada) y migraciones de `database/migrations/companies` aplicadas en la BD de testing.
+**Tests que requieren base de datos:** OrderStoreServiceTest, OrderUpdateServiceTest, OrderDetailServiceTest, OrderListServiceTest, OrderApiTest, CustomerApiTest, LabelApiTest, StockBlockApiTest, ProductosBlockApiTest y AuthBlockApiTest usan el trait `ConfiguresTenantConnection` y necesitan MySQL (o BD configurada) y migraciones de `database/migrations/companies` aplicadas en la BD de testing.
 
 ---
 

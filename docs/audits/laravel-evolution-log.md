@@ -5,6 +5,208 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2025-02-14] Block Auth - Sub-bloque 1 (Session tenant fix, Form Requests, UserListService)
+
+**Priority**: P0 + P1  
+**Risk Level**: Low  
+**Rating antes: 5/10** | **Rating después: 7/10**
+
+### Problems Addressed
+
+- SessionController usaba `Laravel\Sanctum\PersonalAccessToken` (conexión por defecto) → riesgo P0 de aislamiento multi-tenant (listar/revocar sesiones de otro tenant).
+- Auth y User sin Form Requests; validación inline.
+- UserController con lógica de listado en el controlador; Session y ActivityLog sin validación de filtros.
+
+### Changes Applied
+
+- **SessionController**: Uso de `App\Sanctum\PersonalAccessToken` en index() y destroy() para que las queries usen la conexión tenant. Eliminado import erróneo `App\Models\PersonalAccessToken`. IndexSessionRequest para validar user_id y per_page.
+- **Form Requests Auth**: RequestAccessRequest (email), VerifyMagicLinkRequest (token), VerifyOtpRequest (email, code). Usados en requestAccess, requestMagicLink, requestOtp, verifyMagicLink, verifyOtp.
+- **Form Requests User**: StoreUserRequest, UpdateUserRequest, IndexUserRequest (autorización create/update/viewAny). UserController: index(IndexUserRequest), store(StoreUserRequest), update(UpdateUserRequest).
+- **UserListService** (app/Services/v2/): list(Request) con filtros id, name, email, role, created_at y paginación; applyFilters estático. UserController::index delega en UserListService.
+- **ActivityLogController**: IndexActivityLogRequest para validar filtros (users, dates, per_page, etc.).
+- **No aplicado (por decisión usuario)**: Unificar me() y tokenResponse con UserResource para no tocar contrato con frontend.
+
+### Verification Results
+
+- ✅ ProductosBlockApiTest, StockBlockApiTest, CustomerApiTest, OrderApiTest (59 tests) pasan.
+- ✅ Contrato API preservado.
+
+### Gap to 10/10 (Rating después < 9)
+
+- SessionPolicy y ActivityLogPolicy (quién puede listar/revocar sesiones y ver logs).
+- Refinamiento de UserPolicy (p. ej. solo administrador elimina).
+- Tests Feature para Auth (requestAccess, verifyMagicLink, verifyOtp, me, logout), User CRUD y Session.
+- Unificar me/tokenResponse con UserResource cuando el frontend lo permita.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Sub-bloque 2 Auth: SessionPolicy, ActivityLogPolicy, refinamiento UserPolicy, tests Feature Auth/User/Session. O siguiente módulo CORE.
+
+---
+
+## [2025-02-14] Block Auth - Sub-bloque 2 (SessionPolicy, ActivityLogPolicy, UserPolicy refinada, tests Feature)
+
+**Priority**: P1 + P2  
+**Risk Level**: Low  
+**Rating antes: 7/10** | **Rating después: 9/10**
+
+### Problems Addressed
+
+- Session y ActivityLog sin Policy; cualquier rol podía listar/revocar sesiones y ver logs.
+- UserPolicy permitía eliminar cualquier usuario (incluido a sí mismo); sin restricción por rol para delete.
+- Handler no convertía AuthorizationException en 403 (devolvía 500).
+- Sin tests Feature para flujos Auth, User, Session y ActivityLog.
+
+### Changes Applied
+
+- **SessionPolicy**: viewAny solo administrador, tecnico, direccion; delete: propio token siempre, o administrador/tecnico para cualquier token. Registrada para `App\Sanctum\PersonalAccessToken`. SessionController: authorize('viewAny', PersonalAccessToken::class) en index, authorize('delete', $token) en destroy.
+- **ActivityLogPolicy**: viewAny solo administrador, tecnico, direccion. Registrada para ActivityLog. ActivityLogController: authorize('viewAny', ActivityLog::class) en index.
+- **UserPolicy**: delete solo administrador y tecnico; usuario no puede eliminarse a sí mismo. Resto de métodos sin cambio (todos los roles pueden viewAny, view, create, update).
+- **AuthServiceProvider**: registradas ActivityLogPolicy y SessionPolicy (PersonalAccessToken => SessionPolicy).
+- **Handler**: manejo de AuthorizationException → respuesta JSON 403 con userMessage "No tienes permisos para realizar esta acción."
+- **AuthBlockApiTest** (tests/Feature/AuthBlockApiTest.php): 21 tests con tenant + Sanctum. Auth: requestAccess (422 sin email, 200 con email), me (401 sin token, 200 con token), logout, verifyMagicLink/verifyOtp (400 token/código inválido). Users: list (401, 200 paginado), store, show, update, destroy (403 al eliminarse a sí mismo, 200 al eliminar otro como admin). Sessions: index (401, 200 rol permitido, 403 operario), destroy (200 propia sesión). Activity logs: index (401, 200 rol permitido, 403 operario). Documentación: docs/09-TESTING.md actualizado con AuthBlockApiTest.
+
+### Verification Results
+
+- ✅ AuthBlockApiTest: 21 tests, 59 assertions, OK.
+- ✅ ProductosBlockApiTest, StockBlockApiTest, CustomerApiTest, OrderApiTest (59 tests) pasan.
+- ✅ Contrato API preservado.
+
+### Gap to 10/10 (Rating después < 9)
+
+- Tests unitarios opcionales para SessionPolicy, ActivityLogPolicy, UserPolicy. Unificar me/tokenResponse con UserResource cuando el frontend lo permita. Bloque Auth en 9/10.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Siguiente módulo CORE o tests unitarios para políticas Auth.
+
+---
+
+## [2025-02-14] Block Productos - Sub-bloque 1 (Product: Form Requests, Policy, ProductListService, modelo isInUse)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 4/10** | **Rating después: 7/10**
+
+### Problems Addressed
+
+- ProductController 441 líneas (P1); validación inline con Validator::make en store/update; sin Form Requests ni Policies para Product.
+- Lógica de listado (filtros) y de “producto en uso” embebida en el controlador.
+
+### Changes Applied
+
+- **Form Requests**: StoreProductRequest, UpdateProductRequest, DestroyMultipleProductsRequest (normalización snake→camel y GTINs vacíos→null en prepareForValidation; reglas y mensajes en español; authorize con create/update/viewAny). UpdateProductRequest incluye getUpdateData() para construir array de actualización.
+- **ProductPolicy**: viewAny, view, create, update, delete (roles permitidos vía Role::values()). Registrada en AuthServiceProvider.
+- **ProductListService** (app/Services/v2/): list(Request) con filtros (id, ids, name, species, captureZones, categories, families, articleGtin, boxGtin, palletGtin) y paginación; applyFilters estático.
+- **Product (modelo)**: deletionBlockedBy(): array (boxes, orders, production); isInUse(): bool. Usado en destroy y destroyMultiple para mensajes y comprobación.
+- **ProductController**: index → authorize + ProductListService::list; store/update/destroy/destroyMultiple/options usan Form Requests y authorize(). Controlador reducido a **182 líneas** (<200).
+
+### Verification Results
+
+- ✅ Tests/Feature/StockBlockApiTest (29 tests) pasan.
+- ✅ Contrato API preservado (mismos endpoints, cuerpos y códigos).
+
+### Gap to 10/10 (Rating después < 9)
+
+- ProductCategory y ProductFamily sin Form Requests ni Policies; ProductFamilyController 232 líneas (Sub-bloque 2).
+- Tests de integración para CRUD Product (list, store, update, destroy, destroyMultiple, options).
+- Bloqueado por: nada.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Sub-bloque 2 del bloque Productos: ProductCategory y ProductFamily (Form Requests, Policies, refactor). O tests de integración para Product.
+
+---
+
+## [2025-02-14] Block Productos - Sub-bloque 2 (ProductCategory + ProductFamily: Form Requests, Policies, ListServices)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 7/10** | **Rating después: 8/10**
+
+### Problems Addressed
+
+- ProductCategoryController y ProductFamilyController sin Form Requests ni Policies; validación inline; ProductFamilyController 232 líneas (P1).
+- Lógica de listado y de eliminación (canBeDeleted) repetida en controladores.
+
+### Changes Applied
+
+- **Form Requests ProductCategory**: StoreProductCategoryRequest, UpdateProductCategoryRequest, DestroyMultipleProductCategoriesRequest (autorización create/update/viewAny). Registro en rutas vía type-hint en controller.
+- **Form Requests ProductFamily**: StoreProductFamilyRequest, UpdateProductFamilyRequest, DestroyMultipleProductFamiliesRequest; UpdateProductFamilyRequest con getUpdateData() (categoryId → category_id).
+- **ProductCategoryPolicy** y **ProductFamilyPolicy**: viewAny, view, create, update, delete (Role::values()). Registradas en AuthServiceProvider.
+- **ProductCategoryListService** y **ProductFamilyListService** (app/Services/v2/): list(Request) con filtros (id, ids, name, active; Family además categoryId) y paginación.
+- **ProductCategory** y **ProductFamily** (modelos): canBeDeleted() (category: sin familias; family: sin productos). Usado en destroy y destroyMultiple.
+- **ProductCategoryController**: 105 líneas; **ProductFamilyController**: 121 líneas (ambos <200). index → authorize + ListService::list; store/update/destroy/destroyMultiple/options con Form Requests y authorize().
+
+### Verification Results
+
+- ✅ Tests/Feature/StockBlockApiTest (29 tests) pasan.
+- ✅ Contrato API preservado.
+
+### Gap to 10/10 (Rating después < 9)
+
+- Tests de integración para CRUD de Product, ProductCategory y ProductFamily. Bloque Productos estructuralmente completo (Form Requests, Policies, controladores delgados).
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Tests de integración para el bloque Productos; o siguiente módulo CORE.
+
+---
+
+## [2025-02-14] Block Productos - Tests de integración (ProductosBlockApiTest)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 8/10** | **Rating después: 9/10**
+
+### Problems Addressed
+
+- Bloque Productos sin tests de integración; regresión no detectada automáticamente en CRUD y reglas de negocio (destroy bloqueado).
+
+### Changes Applied
+
+- **ProductosBlockApiTest** (tests/Feature/ProductosBlockApiTest.php): 24 tests con tenant + Sanctum. Seed de catálogo (FishingGear, CaptureZones, Species, ProductCategory, ProductFamily) cuando se necesitan productos.
+- **ProductCategory**: list, options, store, show, update, destroy (éxito), destroy 400 cuando tiene familias, destroyMultiple.
+- **ProductFamily**: list, options, store, show, update, destroy (éxito), destroy 400 cuando tiene productos.
+- **Product**: list, options, store, show, update, destroy (éxito), destroy 400 cuando está en uso (Box), destroyMultiple.
+- **Auth**: test_productos_endpoints_require_auth (401 sin token).
+- Documentación: docs/09-TESTING.md actualizado con ProductosBlockApiTest en el inventario.
+
+### Verification Results
+
+- ✅ ProductosBlockApiTest: 24 tests, 95 assertions, OK.
+- ✅ StockBlockApiTest sigue pasando (29 tests).
+
+### Gap to 10/10 (Rating después < 9)
+
+- Tests unitarios opcionales para ProductListService, ProductCategoryListService, ProductFamilyListService y Policies. Bloque Productos en 9/10: estructura + tests de integración completos.
+
+### Rollback Plan
+
+Eliminar o revertir tests/Feature/ProductosBlockApiTest.php y entrada en 09-TESTING.md.
+
+### Next
+
+- Siguiente módulo CORE; o tests unitarios para servicios del bloque Productos.
+
+---
+
 ## [2026-02-14] Block Recepciones de materia prima - Sub-bloque 1 (Form Requests bulk + RawMaterialReceptionBulkService)
 
 **Priority**: P1  

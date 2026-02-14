@@ -23,6 +23,11 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\Box::class => \App\Policies\BoxPolicy::class,
         \App\Models\CeboDispatch::class => \App\Policies\CeboDispatchPolicy::class,
         \App\Models\Store::class => \App\Policies\StorePolicy::class,
+        \App\Models\Product::class => \App\Policies\ProductPolicy::class,
+        \App\Models\ProductCategory::class => \App\Policies\ProductCategoryPolicy::class,
+        \App\Models\ProductFamily::class => \App\Policies\ProductFamilyPolicy::class,
+        \App\Models\ActivityLog::class => \App\Policies\ActivityLogPolicy::class,
+        \App\Sanctum\PersonalAccessToken::class => \App\Policies\SessionPolicy::class,
     ];
 
     /**

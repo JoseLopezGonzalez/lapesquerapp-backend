@@ -32,6 +32,14 @@ class ProductFamily extends Model
         return $this->hasMany(Product::class, 'family_id');
     }
 
+    /**
+     * Indica si la familia puede eliminarse (no tiene productos asociados).
+     */
+    public function canBeDeleted(): bool
+    {
+        return $this->products()->count() === 0;
+    }
+
     public function toArrayAssoc()
     {
         return [

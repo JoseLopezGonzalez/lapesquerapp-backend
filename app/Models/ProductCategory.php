@@ -31,6 +31,14 @@ class ProductCategory extends Model
         return $this->hasManyThrough(Product::class, ProductFamily::class, 'category_id', 'family_id');
     }
 
+    /**
+     * Indica si la categoría puede eliminarse (no tiene familias asociadas).
+     */
+    public function canBeDeleted(): bool
+    {
+        return $this->families()->count() === 0;
+    }
+
     public function toArrayAssoc()
     {
         return [

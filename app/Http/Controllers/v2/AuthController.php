@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\v2;
 
+use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\RequestAccessRequest;
+use App\Http\Requests\v2\VerifyMagicLinkRequest;
+use App\Http\Requests\v2\VerifyOtpRequest;
 use App\Models\MagicLinkToken;
 use App\Models\User;
 use App\Services\MagicLinkService;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
 
 class AuthController extends Controller
 {
@@ -56,10 +59,8 @@ class AuthController extends Controller
      * Solicitar acceso: un solo email con magic link + código OTP (flujo tipo Claude).
      * El usuario pulsa "Acceder" y puede usar el enlace o el código según el dispositivo.
      */
-    public function requestAccess(Request $request)
+    public function requestAccess(RequestAccessRequest $request)
     {
-        $request->validate(['email' => 'required|email']);
-
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !$user->active) {
@@ -88,7 +89,7 @@ class AuthController extends Controller
      * Solicitar magic link por email.
      * Envía el mismo email unificado (enlace + código) que requestAccess.
      */
-    public function requestMagicLink(Request $request)
+    public function requestMagicLink(RequestAccessRequest $request)
     {
         return $this->requestAccess($request);
     }
@@ -96,10 +97,8 @@ class AuthController extends Controller
     /**
      * Canjear token de magic link e iniciar sesión.
      */
-    public function verifyMagicLink(Request $request)
+    public function verifyMagicLink(VerifyMagicLinkRequest $request)
     {
-        $request->validate(['token' => 'required|string']);
-
         $hashedToken = hash('sha256', $request->token);
 
         $record = MagicLinkToken::valid()
@@ -130,7 +129,7 @@ class AuthController extends Controller
      * Solicitar código OTP por email.
      * Envía el mismo email unificado (enlace + código) que requestAccess.
      */
-    public function requestOtp(Request $request)
+    public function requestOtp(RequestAccessRequest $request)
     {
         return $this->requestAccess($request);
     }
@@ -138,13 +137,8 @@ class AuthController extends Controller
     /**
      * Canjear código OTP e iniciar sesión.
      */
-    public function verifyOtp(Request $request)
+    public function verifyOtp(VerifyOtpRequest $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'code' => 'required|string|size:6',
-        ]);
-
         $record = MagicLinkToken::valid()
             ->otp()
             ->where('email', $request->email)

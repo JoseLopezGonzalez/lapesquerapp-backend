@@ -3,11 +3,11 @@
 namespace App\Policies;
 
 use App\Enums\Role;
-use App\Models\Box;
+use App\Models\ProductFamily;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class BoxPolicy
+class ProductFamilyPolicy
 {
     use HandlesAuthorization;
 
@@ -17,7 +17,7 @@ class BoxPolicy
     }
 
     /**
-     * Determine if the user can view any boxes.
+     * Determine if the user can view any product families.
      */
     public function viewAny(User $user): bool
     {
@@ -25,15 +25,15 @@ class BoxPolicy
     }
 
     /**
-     * Determine if the user can view the box.
+     * Determine if the user can view the product family.
      */
-    public function view(User $user, Box $box): bool
+    public function view(User $user, ProductFamily $productFamily): bool
     {
         return $user->hasAnyRole($this->allowedRoles());
     }
 
     /**
-     * Determine if the user can create boxes.
+     * Determine if the user can create product families.
      */
     public function create(User $user): bool
     {
@@ -41,17 +41,17 @@ class BoxPolicy
     }
 
     /**
-     * Determine if the user can update the box.
+     * Determine if the user can update the product family.
      */
-    public function update(User $user, Box $box): bool
+    public function update(User $user, ProductFamily $productFamily): bool
     {
         return $user->hasAnyRole($this->allowedRoles());
     }
 
     /**
-     * Determine if the user can delete the box.
+     * Determine if the user can delete the product family.
      */
-    public function delete(User $user, Box $box): bool
+    public function delete(User $user, ProductFamily $productFamily): bool
     {
         return $user->hasAnyRole($this->allowedRoles());
     }

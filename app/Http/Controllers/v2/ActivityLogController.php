@@ -3,15 +3,16 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\IndexActivityLogRequest;
 use App\Http\Resources\v2\ActivityLogResource;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 
 class ActivityLogController extends Controller
 {
-    public function index(Request $request)
+    public function index(IndexActivityLogRequest $request)
     {
-        // Obtener los registros de actividad desde la base de datos
+        $this->authorize('viewAny', ActivityLog::class);
 
         $query = ActivityLog::query();
 

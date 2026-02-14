@@ -337,9 +337,10 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 ### A.1 Auth + Roles/Permisos
 | Tipo | Detalle |
 |------|---------|
-| **Entidades** | User, Role, Session, MagicLinkToken |
-| **Controladores** | AuthController, RoleController, UserController, SessionController |
-| **Rutas clave** | login, logout, me, request-access, magic-link, otp, users, roles, sessions |
+| **Entidades** | User, Role, Session, MagicLinkToken, ActivityLog |
+| **Controladores** | AuthController, RoleController, UserController, SessionController, ActivityLogController |
+| **Rutas clave** | login, logout, me, request-access, magic-link, otp, users, roles, sessions, activity-logs |
+| **Evolution log** | Sub-bloque 1: Session tenant fix, Form Requests Auth/User, UserListService, IndexSession/ActivityLog. Sub-bloque 2: SessionPolicy, ActivityLogPolicy, UserPolicy refinada (delete), Handler AuthorizationException→403, AuthBlockApiTest 21 tests. **Rating actual: 9/10** |
 
 ### A.2 Ventas (Pedidos / Sales)
 | Tipo | Detalle |
@@ -347,7 +348,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | Order, OrderPlannedProductDetail, Incident, Customer, Salesperson |
 | **Controladores** | OrderController, OrderPlannedProductDetailController, IncidentController, OrdersReportController, OrderStatisticsController, CustomerController, SalespersonController |
 | **Rutas clave** | orders, order-planned-product-details, orders/{id}/incident, customers, salespeople, orders_report, statistics/orders/* |
-| **Evolution log** | Sub-bloques 1–5 aplicados; Rating ~8,5/10 |
+| **Evolution log** | Sub-bloques 1–5 aplicados; **Rating actual: 8,5/10** |
 
 ### A.3 Inventario / Stock
 | Tipo | Detalle |
@@ -355,7 +356,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | Store, Pallet, Box, PalletBox, StoredPallet, StoredBox |
 | **Controladores** | StoreController, PalletController, BoxesController, StockStatisticsController |
 | **Rutas clave** | stores, pallets, boxes, statistics/stock/*, assign-to-position, move-to-store, link-order |
-| **Evolution log** | Sub-bloques 1–3 aplicados; Rating ~6,5/10 |
+| **Evolution log** | Sub-bloques 1–5 aplicados; **Rating actual: 8/10** |
 
 ### A.4 Recepciones de Materia Prima
 | Tipo | Detalle |
@@ -363,6 +364,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | RawMaterialReception, RawMaterialReceptionProduct |
 | **Controladores** | RawMaterialReceptionController, RawMaterialReceptionStatisticsController |
 | **Rutas clave** | raw-material-receptions, reception-chart-data, facilcom-xls, a3erp-xls, bulk-update-declared-data |
+| **Evolution log** | Form Requests bulk, WriteService, BulkService, controlador &lt;200 líneas; tests integración + edge cases; **Rating actual: 9/10** |
 
 ### A.5 Despachos de Cebo
 | Tipo | Detalle |
@@ -370,6 +372,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | CeboDispatch, CeboDispatchProduct, Cebo |
 | **Controladores** | CeboDispatchController, CeboDispatchStatisticsController |
 | **Rutas clave** | cebo-dispatches, dispatch-chart-data, facilcom-xlsx, a3erp-xlsx |
+| **Evolution log** | Tests integración CRUD + fix authorize update; **Rating actual: 7/10** |
 
 ### A.6 Producción
 | Tipo | Detalle |
@@ -385,6 +388,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | Product, ProductCategory, ProductFamily, Species, CaptureZone |
 | **Controladores** | ProductController, ProductCategoryController, ProductFamilyController, SpeciesController, CaptureZoneController |
 | **Rutas clave** | products, product-categories, product-families, species, capture-zones |
+| **Evolution log** | Sub-bloques 1–2: Form Requests, Policies, ProductListService, ProductCategoryListService, ProductFamilyListService, controladores &lt;200 líneas. Tests: ProductosBlockApiTest 24 tests. **Rating actual: 9/10** |
 
 ### A.8 Catálogos transaccionales
 | Tipo | Detalle |
@@ -406,7 +410,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | Label |
 | **Controladores** | LabelController |
 | **Rutas clave** | labels, labels/options, labels/{id}/duplicate |
-| **Evolution log** | Sub-bloques 1–2 aplicados; Rating ~8/10 |
+| **Evolution log** | Sub-bloques 1–2 aplicados; **Rating actual: 8/10** |
 
 ### A.11 Fichajes
 | Tipo | Detalle |
@@ -433,6 +437,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | User, Role, ActivityLog |
 | **Controladores** | UserController, RoleController, ActivityLogController |
 | **Rutas clave** | users, roles/options, activity-logs |
+| **Nota** | Cubierto por el bloque Auth (A.1); mismo evolution log y **Rating actual: 9/10**. |
 
 ---
 
@@ -468,4 +473,27 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 
 ---
 
-*Fuente: análisis de rutas, modelos, controladores, `docs/audits/laravel-evolution-log.md` y documentación en `docs/`. Última revisión: 2025-02-14.*
+*Fuente: análisis de rutas, modelos, controladores, `docs/audits/laravel-evolution-log.md` y documentación en `docs/`. Última revisión: 2026-02-14.*
+
+---
+
+## Resumen de valoraciones actuales (Evolution log)
+
+| Bloque | Rating actual | Notas |
+|--------|----------------|--------|
+| **A.1** Auth + Roles/Permisos | **9/10** | Sub-bloques 1–2: Session tenant fix, Form Requests, UserListService, SessionPolicy, ActivityLogPolicy, UserPolicy refinada, AuthBlockApiTest 21 tests |
+| **A.2** Ventas | **8,5/10** | Sub-bloques 1–5; N+1 revisado |
+| **A.3** Inventario / Stock | **8/10** | Policies, Form Requests, tests feature |
+| **A.4** Recepciones de Materia Prima | **9/10** | WriteService, BulkService, 23 tests (incl. edge cases) |
+| **A.5** Despachos de Cebo | **7/10** | Tests CRUD + fix authorize |
+| **A.6** Producción | — | Sin entrada en evolution log |
+| **A.7** Productos | **9/10** | Sub-bloques 1–2: Form Requests, Policies, ListServices, ProductosBlockApiTest 24 tests |
+| **A.8** Catálogos transaccionales | — | Sin entrada en evolution log |
+| **A.9** Proveedores + Liquidaciones | — | Sin entrada en evolution log |
+| **A.10** Etiquetas | **8/10** | Form Requests, Policy, tests Feature |
+| **A.11** Fichajes | — | Sin entrada en evolution log |
+| **A.12** Estadísticas e informes | — | Sin entrada en evolution log |
+| **A.13** Configuración por tenant | — | Sin entrada en evolution log |
+| **A.14** Sistema | **9/10** | Mismo bloque que A.1 Auth (users, roles, activity-logs) |
+| **A.15** Documentos (PDF/Excel) | — | Sin entrada en evolution log |
+| **A.16** Tenants | — | Sin entrada en evolution log |

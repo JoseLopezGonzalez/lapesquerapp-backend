@@ -3,87 +3,32 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\IndexUserRequest;
+use App\Http\Requests\v2\StoreUserRequest;
+use App\Http\Requests\v2\UpdateUserRequest;
 use App\Http\Resources\v2\UserResource;
-use App\Enums\Role;
 use App\Models\User;
 use App\Services\MagicLinkService;
+use App\Services\v2\UserListService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(IndexUserRequest $request)
     {
-        $this->authorize('viewAny', User::class);
-
-        $query = User::query();
-
-        // Filtros por ID
-        if ($request->has('id')) {
-            $text = $request->id;
-            $query->where('id', 'like', "%{$text}%");
-        }
-
-        // Filtros por nombre
-        if ($request->has('name')) {
-            $text = $request->name;
-            $query->where('name', 'like', "%{$text}%");
-        }
-
-        // Filtros por email
-        if ($request->has('email')) {
-            $text = $request->email;
-            $query->where('email', 'like', "%{$text}%");
-        }
-
-        // Filtro por rol
-        if ($request->has('role')) {
-            $query->where('role', $request->role);
-        }
-
-        // Filtros por fecha de creación
-        if ($request->has('created_at')) {
-            $createdAt = $request->input('created_at');
-            if (isset($createdAt['start'])) {
-                $startDate = date('Y-m-d 00:00:00', strtotime($createdAt['start']));
-                $query->where('created_at', '>=', $startDate);
-            }
-            if (isset($createdAt['end'])) {
-                $endDate = date('Y-m-d 23:59:59', strtotime($createdAt['end']));
-                $query->where('created_at', '<=', $endDate);
-            }
-        }
-
-        // Ordenar por nombre o fecha de creación
-        $query->orderBy($request->input('sort', 'created_at'), $request->input('direction', 'desc'));
-
-        // Paginación
-        $perPage = $request->input('perPage', 10);
-
-        return UserResource::collection($query->paginate($perPage));
+        return UserResource::collection(UserListService::list($request));
     }
 
     /**
      * Store a newly created resource in storage.
      * Users have no password; they sign in via magic link or OTP. Use "Reenviar invitación" to send the link.
      */
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
-        $this->authorize('create', User::class);
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => [
-                'required',
-                'email',
-                Rule::unique(User::class, 'email')->whereNull('deleted_at'),
-            ],
-            'role' => ['required', 'string', Rule::in(Role::values())],
-            'active' => 'sometimes|boolean',
-        ]);
+        $validated = $request->validated();
 
         $user = User::create([
             'name' => $validated['name'],
@@ -115,21 +60,10 @@ class UserController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id)
+    public function update(UpdateUserRequest $request, $id)
     {
         $user = User::findOrFail($id);
-        $this->authorize('update', $user);
-
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'email' => [
-                'sometimes',
-                'email',
-                Rule::unique(User::class, 'email')->whereNull('deleted_at')->ignore($user->id),
-            ],
-            'active' => 'sometimes|boolean',
-            'role' => ['sometimes', 'string', Rule::in(Role::values())],
-        ]);
+        $validated = $request->validated();
 
         $user->update(array_filter([
             'name' => $validated['name'] ?? null,

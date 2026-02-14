@@ -11,6 +11,9 @@ use App\Models\Species;
 use App\Models\CaptureZone;
 
 use App\Models\ProductFamily;
+use App\Models\Box;
+use App\Models\OrderPlannedProductDetail;
+use App\Models\ProductionOutput;
 use Illuminate\Validation\ValidationException;
 
 class Product extends Model
@@ -75,6 +78,29 @@ class Product extends Model
     public function rawMaterials()
     {
         return $this->has(RawMaterial::class, 'id');
+    }
+
+    /**
+     * Indica si el producto está en uso y en qué entidades (bloquea eliminación).
+     *
+     * @return array{boxes: bool, orders: bool, production: bool}
+     */
+    public function deletionBlockedBy(): array
+    {
+        return [
+            'boxes' => Box::where('article_id', $this->id)->exists(),
+            'orders' => OrderPlannedProductDetail::where('product_id', $this->id)->exists(),
+            'production' => ProductionOutput::where('product_id', $this->id)->exists(),
+        ];
+    }
+
+    /**
+     * Comprueba si el producto está en uso (no puede eliminarse).
+     */
+    public function isInUse(): bool
+    {
+        $blocked = $this->deletionBlockedBy();
+        return $blocked['boxes'] || $blocked['orders'] || $blocked['production'];
     }
 
     /**
