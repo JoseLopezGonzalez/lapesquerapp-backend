@@ -57,6 +57,8 @@ Reference document: `docs/00_CORE_CONSOLIDATION_PLAN.md`
 * Each block must include a verification plan.
 * Always maintain multi-tenant isolation and safety.
 
+**Controller rule (mandatory):** Controllers MUST be thin: receive request → validate (Form Request) → authorize (Policy) → call Service/Action → return response. No business logic, no complex queries, no aggregation logic, no DB::connection() in controllers. If a controller method does more than orchestration, extract to Service or Action. Controllers > 200 lines are P1 blockers and MUST be addressed.
+
 ---
 
 ## Evolution Priority Matrix (Aligned with CORE Plan)
@@ -140,11 +142,13 @@ When analyzing and evolving each module, explicitly consider whether Laravel’s
 
 **When proposing changes (STEP 2):**
 
+- Controllers MUST be thin: orchestrate only. Extract listados, reportes, filtros, agregaciones, `DB::connection()` logic to Services or Actions.
 - Prefer introducing or correcting these components over leaving logic in controllers or inline.
 - Preserve behavior: structural moves only unless P0/P1 explicitly require logic fixes.
 - Multi-tenant: Jobs and any tenant-scoped logic must receive and use tenant context correctly.
+- Prefer Eloquent over `DB::connection('tenant')->table()` for consistency and tenant context.
 
-Do not force a pattern where the audit or project identity deliberately omits it; document the choice.
+Do not force a pattern where the audit or project identity deliberately omits it; document the choice. But controller thinning and Form Request coverage are non-negotiable for 9/10.
 
 ---
 
@@ -159,6 +163,7 @@ During module analysis, actively search for:
 * Inconsistent error handling patterns
 * Monster methods (>50 lines)
 * **Structural components**: Missing or misplaced use of Services, Actions, Jobs, Events, Listeners, Form Requests, Policies; logic in controllers that belongs in application layer or events; validation/authorization not at HTTP boundary or not centralized in Policies
+* **Controllers > 200 lines** or containing business logic, complex queries, or `DB::connection()` → MUST be thinned
 
 ### Phase 2 Issues (Business Logic)
 
@@ -183,6 +188,23 @@ During module analysis, actively search for:
 * No TTL defined
 
 Flag these explicitly in Step 0 and Step 1 Analysis.
+
+---
+
+## Iterative Improvement — Until 10 or Blocked
+
+**Rule:** Do NOT consider a module "done" and move to the next one until:
+- **Rating después ≥ 9**, OR
+- You are **blocked** (need user input, business logic clarification, product decision, or architectural choice the user must make)
+
+If Rating después < 9 and there are improvements you CAN implement without user input:
+1. Document the **Gap to 10/10** in the log
+2. Propose the **next sub-block** of improvements (controller thinning, Form Requests, Eloquent migration, tests, etc.)
+3. Ask: *"¿Continuamos con el siguiente sub-block para este módulo?"*
+4. If user approves → execute STEP 2→3→4→5 again for that sub-block
+5. Repeat until 9+/10 or blocked
+
+You stop only when: the module reaches 9+/10, or the remaining work requires user decisions (e.g. "¿qué roles pueden cancelar pedidos?", "¿documentamos la API con OpenAPI?").
 
 ---
 
@@ -230,14 +252,17 @@ Document:
 
 ### STEP 2 -- Proposed Changes (NO CODE YET)
 
+**Completeness rule:** Propose ALL improvements identified in STEP 1 that you can implement without user input (no business logic clarification, no product decisions). Group them into implementable sub-blocks if there are many. Do NOT arbitrarily limit to 2–3 improvements when 6+ are identified; cover the full gap toward 10/10.
+
 Present:
 
-* Improvements to apply
+* Improvements to apply (full list for this sub-block)
 * Expected impact
 * Risk assessment (Low/Medium/High/Critical)
 * Verification strategy
 * Rollback plan
 * Breaking change analysis (if any)
+* If Rating después will still be < 9: what remains for the next sub-block (Gap to 10)
 
 **STOP and request approval.**
 
@@ -290,11 +315,13 @@ For Medium/High/Critical: Require extended manual testing.
 
 Append summary to: `docs/audits/laravel-evolution-log.md`
 
+If **Rating después < 9**: you MUST add a **"Gap to 10/10"** section listing what remains (tests, controller thinning, Form Requests, DB→Eloquent, policies, N+1, etc.) and whether you can continue with the next sub-block or need user input. Then offer to continue: *"¿Continuamos con el siguiente sub-bloque de mejoras para este módulo?"*
+
 Use this format:
 
 ```markdown
 ---
-## [YYYY-MM-DD] Block X: [Module Name] - [Phase Y]
+## [YYYY-MM-DD] Block X: [Module Name] - [Phase Y] (Sub-block N si aplica)
 
 **Priority**: P0/P1/P2/P3
 **Risk Level**: Low/Medium/High/Critical
@@ -313,11 +340,18 @@ Use this format:
 - ✅ Manual flow verified
 - ⚠️ Minor performance impact detected (acceptable)
 
+### Gap to 10/10 (obligatorio si Rating después < 9)
+- Restante 1 (ej: tests de integración)
+- Restante 2 (ej: extraer listados a OrderListService)
+- Restante 3 (ej: sustituir DB::connection por Eloquent)
+- Bloqueado por: [nada | decisión de negocio | X]
+
 ### Rollback Plan
 If issues appear: `git revert [commit-hash]`
 
-### Next Recommended Block
-Based on dependencies: Block Y
+### Next
+- Si Gap pendiente y no bloqueado: Sub-block N+1 del mismo módulo
+- Si módulo en 9+/10: Siguiente módulo recomendado
 ---
 ```
 
@@ -385,23 +419,29 @@ This log serves as:
 
 ---
 
-## Areas You May Improve (When Appropriate)
+## Areas to Improve (Mandatory When Detected)
 
-Guided by the **Laravel Structural Components** section and the audit findings:
+Guided by the **Laravel Structural Components** section and the audit findings, you MUST address these when present in a module (they are part of the path to 9–10/10):
 
-* Controller thickness (delegate to Services/Actions)
-* Form Request usage (validation and authorization at HTTP boundary)
-* Policy alignment (per-model/action authorization; no duplicated rules)
-* Action/Service extraction (application logic out of controllers)
+**P1 — Must fix before considering module complete:**
+* **Controller thickness**: Controllers > 200 lines → extract to Services/Actions; controller only orchestrates
+* Form Request for every endpoint that accepts input (Store, Update, updateStatus, destroyMultiple, etc.)
+* Policy alignment (per-model/action; no "any role can do everything")
+* `DB::connection('tenant')` in controllers → replace with Eloquent models or a service that uses them
+* N+1 queries in main flows → eager loading
+* Missing transactions in critical operations
+
+**P2 — Include in improvement plan:**
+* Action/Service extraction (listados, reportes, agregaciones fuera del controller)
 * Transaction handling (critical operations wrapped in DB transactions)
-* Event/Listener usage (side effects and decoupling; correct sync/async)
+* Event/Listener usage (side effects and decoupling)
 * Job usage (async work with tenant context, retries, idempotency)
 * Serialization consistency (API Resources, DTOs where adopted)
-* Naming clarity
-* Eloquent query optimization
-* Structural cohesion
+* Naming clarity, structural cohesion
 
-**Do not force patterns unnecessarily.** Respect the project's identity. Improve clarity, safety, and maintainability.
+**Tests:** Strong test coverage is required for 9–10. Include integration tests (tenant + auth + flows) and unit tests for services in your improvement plan; implement when feasible.
+
+**Do not force patterns where the project deliberately omits them** — but do not leave controllers thick, Form Requests missing, or DB::connection in controllers when moving toward 9/10.
 
 ---
 
@@ -418,9 +458,11 @@ Guided by the **Laravel Structural Components** section and the audit findings:
    * Execute STEP 1: Analysis with **Rating antes: X/10** and priority classification
    * Execute STEP 2: Present proposed changes
    * Wait for approval
-8. After approval, proceed with STEP 3, 4, and 5 (log must include **Rating antes** and **Rating después**)
+8. After approval, proceed with STEP 3, 4, and 5 (log must include **Rating antes**, **Rating después** and **Gap to 10/10** if < 9)
+9. If Rating después < 9 and there is a Gap to 10/10 you can implement → propose next sub-block and ask *"¿Continuamos con el siguiente sub-block?"* (do not switch module until 9+/10 or blocked)
+10. Only when module reaches 9+/10 or is blocked → ask user for next module
 
-**Do NOT start arbitrarily.Do NOT assume which block to work on.Always ask the user for direction on which module to tackle next.**
+**Do NOT start arbitrarily. Do NOT assume which block to work on. Always ask the user for direction on which module to tackle next. Do NOT leave a module at 6/10 and move on without proposing the next sub-block.**
 
 ---
 

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\StoreOrderRequest;
+use App\Http\Requests\v2\UpdateOrderRequest;
 use App\Http\Resources\v2\ActiveOrderCardResource;
 use App\Http\Resources\v2\OrderDetailsResource;
 use App\Http\Resources\v2\OrderResource;
@@ -21,6 +23,8 @@ class OrderController extends Controller
      */
     public function index(Request $request)
     {
+        $this->authorize('viewAny', Order::class);
+
         if ($request->has('active')) {
             if ($request->active == 'true') {
                 /* where status is pending or loaddate>= today at the end of the day */
@@ -173,93 +177,11 @@ class OrderController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreOrderRequest $request)
     {
-        $validated = $request->validate([
-            'customer' => 'required|integer|exists:tenant.customers,id',
-            'entryDate' => 'required|date',
-            'loadDate' => 'required|date',
-            'salesperson' => 'nullable|integer|exists:tenant.salespeople,id',
-            'payment' => 'nullable|integer|exists:tenant.payment_terms,id',
-            'incoterm' => 'nullable|integer|exists:tenant.incoterms,id',
-            'buyerReference' => 'nullable|string',
-            'transport' => 'nullable|integer|exists:tenant.transports,id',
-            'truckPlate' => 'nullable|string',
-            'trailerPlate' => 'nullable|string',
-            'temperature' => 'nullable|string',
-            'billingAddress' => 'nullable|string',
-            'shippingAddress' => 'nullable|string',
-            'transportationNotes' => 'nullable|string',
-            'productionNotes' => 'nullable|string',
-            'accountingNotes' => 'nullable|string',
-            'emails' => 'nullable|array',
-            'emails.*' => 'string|email:rfc,dns|distinct',
-            'ccEmails' => 'nullable|array',
-            'ccEmails.*' => 'string|email:rfc,dns|distinct',
-            'plannedProducts' => 'nullable|array',
-            'plannedProducts.*.product' => 'required|integer|exists:tenant.products,id',
-            'plannedProducts.*.quantity' => 'required|numeric',
-            'plannedProducts.*.boxes' => 'required|integer',
-            'plannedProducts.*.unitPrice' => 'required|numeric',
-            'plannedProducts.*.tax' => 'required|integer|exists:tenant.taxes,id',
-        ], [
-            'customer.required' => 'El cliente es obligatorio.',
-            'customer.integer' => 'El cliente debe ser un número entero.',
-            'customer.exists' => 'El cliente seleccionado no existe.',
-            'entryDate.required' => 'La fecha de entrada es obligatoria.',
-            'entryDate.date' => 'La fecha de entrada debe ser una fecha válida.',
-            'loadDate.required' => 'La fecha de carga es obligatoria.',
-            'loadDate.date' => 'La fecha de carga debe ser una fecha válida.',
-            'salesperson.integer' => 'El comercial debe ser un número entero.',
-            'salesperson.exists' => 'El comercial seleccionado no existe.',
-            'payment.integer' => 'El término de pago debe ser un número entero.',
-            'payment.exists' => 'El término de pago seleccionado no existe.',
-            'incoterm.integer' => 'El incoterm debe ser un número entero.',
-            'incoterm.exists' => 'El incoterm seleccionado no existe.',
-            'buyerReference.string' => 'La referencia del comprador debe ser texto.',
-            'transport.integer' => 'El transporte debe ser un número entero.',
-            'transport.exists' => 'El transporte seleccionado no existe.',
-            'truckPlate.string' => 'La matrícula del camión debe ser texto.',
-            'trailerPlate.string' => 'La matrícula del remolque debe ser texto.',
-            'temperature.string' => 'La temperatura debe ser texto.',
-            'billingAddress.string' => 'La dirección de facturación debe ser texto.',
-            'shippingAddress.string' => 'La dirección de envío debe ser texto.',
-            'transportationNotes.string' => 'Las notas de transporte deben ser texto.',
-            'productionNotes.string' => 'Las notas de producción deben ser texto.',
-            'accountingNotes.string' => 'Las notas contables deben ser texto.',
-            'emails.array' => 'Los emails deben ser una lista.',
-            'emails.*.string' => 'Cada email debe ser texto.',
-            'emails.*.email' => 'Uno o más emails no son válidos.',
-            'emails.*.distinct' => 'No puede haber emails duplicados.',
-            'ccEmails.array' => 'Los emails en copia deben ser una lista.',
-            'ccEmails.*.string' => 'Cada email en copia debe ser texto.',
-            'ccEmails.*.email' => 'Uno o más emails en copia no son válidos.',
-            'ccEmails.*.distinct' => 'No puede haber emails en copia duplicados.',
-            'plannedProducts.array' => 'Los productos planificados deben ser una lista.',
-            'plannedProducts.*.product.required' => 'El producto es obligatorio en cada línea.',
-            'plannedProducts.*.product.integer' => 'El producto debe ser un número entero.',
-            'plannedProducts.*.product.exists' => 'Uno o más productos seleccionados no existen.',
-            'plannedProducts.*.quantity.required' => 'La cantidad es obligatoria en cada línea.',
-            'plannedProducts.*.quantity.numeric' => 'La cantidad debe ser un número.',
-            'plannedProducts.*.boxes.required' => 'El número de cajas es obligatorio en cada línea.',
-            'plannedProducts.*.boxes.integer' => 'El número de cajas debe ser un número entero.',
-            'plannedProducts.*.unitPrice.required' => 'El precio unitario es obligatorio en cada línea.',
-            'plannedProducts.*.unitPrice.numeric' => 'El precio unitario debe ser un número.',
-            'plannedProducts.*.tax.required' => 'El impuesto es obligatorio en cada línea.',
-            'plannedProducts.*.tax.integer' => 'El impuesto debe ser un número entero.',
-            'plannedProducts.*.tax.exists' => 'Uno o más impuestos seleccionados no existen.',
-        ]);
+        $this->authorize('create', Order::class);
 
-        // Validar entry_date ≤ load_date
-        if ($validated['entryDate'] > $validated['loadDate']) {
-            return response()->json([
-                'message' => 'Error de validación',
-                'errors' => [
-                    'loadDate' => ['La fecha de carga debe ser mayor o igual a la fecha de entrada.']
-                ],
-                'userMessage' => 'La fecha de carga debe ser mayor o igual a la fecha de entrada.'
-            ], 422);
-        }
+        $validated = $request->validated();
 
         // Formatear emails
         $allEmails = [];
@@ -392,6 +314,8 @@ class OrderController extends Controller
             'pallets.boxes.box.product.family.category' => fn ($q) => $q->select(['id', 'name']),
         ])->findOrFail($id);
 
+        $this->authorize('view', $order);
+
         return new OrderDetailsResource($order);
     }
 
@@ -406,70 +330,21 @@ class OrderController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(UpdateOrderRequest $request, string $id)
     {
-        $validated = $request->validate([
-            'buyerReference' => 'sometimes|nullable|string',
-            'payment' => 'sometimes|integer|exists:tenant.payment_terms,id',
-            'billingAddress' => 'sometimes|string',
-            'shippingAddress' => 'sometimes|string',
-            'transportationNotes' => 'sometimes|nullable|string',
-            'productionNotes' => 'sometimes|nullable|string',
-            'accountingNotes' => 'sometimes|nullable|string',
-            'salesperson' => 'sometimes|integer|exists:tenant.salespeople,id',
-            'emails' => 'sometimes|nullable|array',
-            'emails.*' => 'string|email:rfc,dns|distinct',
-            'ccEmails' => 'sometimes|nullable|array',
-            'ccEmails.*' => 'string|email:rfc,dns|distinct',
-            'transport' => 'sometimes|integer|exists:tenant.transports,id',
-            'entryDate' => 'sometimes|date',
-            'loadDate' => 'sometimes|date',
-            'status' => 'sometimes|string|in:pending,finished,incident',
-            'incoterm' => 'sometimes|integer|exists:tenant.incoterms,id',
-            'truckPlate' => 'sometimes|nullable|string',
-            'trailerPlate' => 'sometimes|nullable|string',
-            'temperature' => 'sometimes|nullable|numeric',
-        ], [
-            'buyerReference.string' => 'La referencia del comprador debe ser texto.',
-            'payment.integer' => 'El término de pago debe ser un número entero.',
-            'payment.exists' => 'El término de pago seleccionado no existe.',
-            'billingAddress.string' => 'La dirección de facturación debe ser texto.',
-            'shippingAddress.string' => 'La dirección de envío debe ser texto.',
-            'transportationNotes.string' => 'Las notas de transporte deben ser texto.',
-            'productionNotes.string' => 'Las notas de producción deben ser texto.',
-            'accountingNotes.string' => 'Las notas contables deben ser texto.',
-            'salesperson.integer' => 'El comercial debe ser un número entero.',
-            'salesperson.exists' => 'El comercial seleccionado no existe.',
-            'emails.array' => 'Los emails deben ser una lista.',
-            'emails.*.string' => 'Cada email debe ser texto.',
-            'emails.*.email' => 'Uno o más emails no son válidos.',
-            'emails.*.distinct' => 'No puede haber emails duplicados.',
-            'ccEmails.array' => 'Los emails en copia deben ser una lista.',
-            'ccEmails.*.string' => 'Cada email en copia debe ser texto.',
-            'ccEmails.*.email' => 'Uno o más emails en copia no son válidos.',
-            'ccEmails.*.distinct' => 'No puede haber emails en copia duplicados.',
-            'transport.integer' => 'El transporte debe ser un número entero.',
-            'transport.exists' => 'El transporte seleccionado no existe.',
-            'entryDate.date' => 'La fecha de entrada debe ser una fecha válida.',
-            'loadDate.date' => 'La fecha de carga debe ser una fecha válida.',
-            'status.string' => 'El estado debe ser texto.',
-            'status.in' => 'El estado del pedido no es válido. Valores permitidos: pending, finished, incident.',
-            'incoterm.integer' => 'El incoterm debe ser un número entero.',
-            'incoterm.exists' => 'El incoterm seleccionado no existe.',
-            'truckPlate.string' => 'La matrícula del camión debe ser texto.',
-            'trailerPlate.string' => 'La matrícula del remolque debe ser texto.',
-            'temperature.numeric' => 'La temperatura debe ser un número.',
-        ]);
-
         $order = Order::with([
             'pallets.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
             'pallets.boxes.box.product', // Cargar product para los cálculos
         ])->findOrFail($id);
 
+        $this->authorize('update', $order);
+
+        $validated = $request->validated();
+
         // Validar entry_date ≤ load_date si ambas fechas están presentes
         $entryDate = $request->has('entryDate') ? $validated['entryDate'] : $order->entry_date;
         $loadDate = $request->has('loadDate') ? $validated['loadDate'] : $order->load_date;
-        
+
         if ($entryDate && $loadDate && $entryDate > $loadDate) {
             return response()->json([
                 'message' => 'Error de validación',
@@ -578,6 +453,8 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
 
+        $this->authorize('delete', $order);
+
         // Validar si el pedido está en uso antes de eliminar
         $usedInPallets = $order->pallets()->exists();
 
@@ -595,6 +472,8 @@ class OrderController extends Controller
 
     public function destroyMultiple(Request $request)
     {
+        $this->authorize('viewAny', Order::class);
+
         $validated = $request->validate([
             'ids' => 'required|array|min:1',
             'ids.*' => 'integer|exists:tenant.orders,id',
@@ -641,6 +520,8 @@ class OrderController extends Controller
     /* Options */
     public function options()
     {
+        $this->authorize('viewAny', Order::class);
+
         $order = Order::select('id', 'id as name')
             ->orderBy('id')
             ->get();
@@ -655,6 +536,8 @@ class OrderController extends Controller
      */
     public function active()
     {
+        $this->authorize('viewAny', Order::class);
+
         $orders = Order::select('id', 'status', 'load_date', 'customer_id')
             ->with(['customer' => fn ($q) => $q->select('id', 'name')])
             ->where(function ($query) {
@@ -670,6 +553,8 @@ class OrderController extends Controller
     /* Active Orders Options */
     public function activeOrdersOptions()
     {
+        $this->authorize('viewAny', Order::class);
+
         $orders = Order::where('status', 'pending')
             ->orWhereDate('load_date', '>=', now())
             ->select('id', 'id as name', 'load_date') // 👈 Aquí añado la fecha
@@ -695,7 +580,9 @@ class OrderController extends Controller
             'pallets.boxes.box.productionInputs',
             'pallets.boxes.box.product',
         ])->findOrFail($id);
-        
+
+        $this->authorize('update', $order);
+
         $previousStatus = $order->status;
         $order->status = $request->status;
         $order->save();
@@ -724,6 +611,8 @@ class OrderController extends Controller
 
     public function salesBySalesperson(Request $request)
     {
+        $this->authorize('viewAny', Order::class);
+
         try {
             $validated = Validator::make($request->all(), [
                 'dateFrom' => 'required|date',
@@ -781,6 +670,8 @@ class OrderController extends Controller
 
     public function transportChartData(Request $request)
     {
+        $this->authorize('viewAny', Order::class);
+
         try {
             $request->validate([
                 'dateFrom' => 'required|date',
@@ -838,6 +729,8 @@ class OrderController extends Controller
      */
     public function productionView()
     {
+        $this->authorize('viewAny', Order::class);
+
         try {
             // Filtrar pedidos del día actual (load_date = hoy)
             $today = Carbon::today();
