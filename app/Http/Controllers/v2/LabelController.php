@@ -1,32 +1,29 @@
 <?php
+
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\DuplicateLabelRequest;
+use App\Http\Requests\v2\StoreLabelRequest;
+use App\Http\Requests\v2\UpdateLabelRequest;
 use App\Http\Resources\v2\LabelResource;
 use App\Models\Label;
-use Illuminate\Http\Request;
 
 class LabelController extends Controller
 {
     public function index()
     {
+        $this->authorize('viewAny', Label::class);
+
         return LabelResource::collection(Label::orderBy('name')->get());
     }
 
-    public function store(Request $request)
+    public function store(StoreLabelRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:tenant.labels,name',
-            'format' => 'nullable|array',
-        ], [
-            'name.required' => 'El nombre de la etiqueta es obligatorio.',
-            'name.string' => 'El nombre de la etiqueta debe ser texto.',
-            'name.max' => 'El nombre de la etiqueta no puede tener más de 255 caracteres.',
-            'name.unique' => 'Ya existe una etiqueta con este nombre.',
-            'format.array' => 'El formato debe ser un objeto o array.',
-        ]);
+        $this->authorize('create', Label::class);
 
-        $label = Label::create($validated);
+        $label = Label::create($request->validated());
+
         return response()->json([
             'message' => 'Etiqueta creada correctamente.',
             'data' => new LabelResource($label),
@@ -35,25 +32,19 @@ class LabelController extends Controller
 
     public function show(Label $label)
     {
+        $this->authorize('view', $label);
+
         return response()->json([
             'data' => new LabelResource($label),
         ]);
     }
 
-    public function update(Request $request, Label $label)
+    public function update(UpdateLabelRequest $request, Label $label)
     {
-        $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255|unique:tenant.labels,name,' . $label->id,
-            'format' => 'nullable|array',
-        ], [
-            'name.required' => 'El nombre de la etiqueta es obligatorio.',
-            'name.string' => 'El nombre de la etiqueta debe ser texto.',
-            'name.max' => 'El nombre de la etiqueta no puede tener más de 255 caracteres.',
-            'name.unique' => 'Ya existe una etiqueta con este nombre.',
-            'format.array' => 'El formato debe ser un objeto o array.',
-        ]);
+        $this->authorize('update', $label);
 
-        $label->update($validated);
+        $label->update($request->validated());
+
         return response()->json([
             'message' => 'Etiqueta actualizada correctamente.',
             'data' => new LabelResource($label),
@@ -62,32 +53,23 @@ class LabelController extends Controller
 
     public function destroy(Label $label)
     {
-        $label->delete();
-        /* Devolver mensaje satisfactorio o error */
-        return response()->json([
-            'message' => 'Etiqueta eliminada correctamente.'
-        ], 200);
+        $this->authorize('delete', $label);
 
+        $label->delete();
+
+        return response()->json([
+            'message' => 'Etiqueta eliminada correctamente.',
+        ], 200);
     }
 
-    public function duplicate(Request $request, Label $label)
+    public function duplicate(DuplicateLabelRequest $request, Label $label)
     {
-        // Si no se proporciona un nombre, usar el nombre original con " (Copia)"
-        $defaultName = $label->name . ' (Copia)';
-        
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255|unique:tenant.labels,name',
-        ], [
-            'name.string' => 'El nombre de la etiqueta debe ser texto.',
-            'name.max' => 'El nombre de la etiqueta no puede tener más de 255 caracteres.',
-            'name.unique' => 'Ya existe una etiqueta con este nombre.',
-        ]);
+        $this->authorize('create', Label::class);
 
-        $newName = $validated['name'] ?? $defaultName;
-        
-        // Validar que el nombre por defecto no exista ya
+        $defaultName = $label->name . ' (Copia)';
+        $newName = $request->validated()['name'] ?? $defaultName;
+
         if ($newName === $defaultName && Label::where('name', $newName)->exists()) {
-            // Si el nombre por defecto ya existe, buscar uno disponible
             $counter = 1;
             do {
                 $newName = $label->name . ' (Copia ' . $counter . ')';
@@ -95,7 +77,6 @@ class LabelController extends Controller
             } while (Label::where('name', $newName)->exists() && $counter < 100);
         }
 
-        // Crear nueva etiqueta con el mismo formato
         $duplicatedLabel = Label::create([
             'name' => $newName,
             'format' => $label->format,
@@ -107,25 +88,17 @@ class LabelController extends Controller
         ], 201);
     }
 
-    /* Labels options */
     public function options()
     {
+        $this->authorize('viewAny', Label::class);
+
         $labels = Label::orderBy('name')->get();
+
         return response()->json(
-            $labels->map(function ($label) {
-                return [
-                    'id' => $label->id,
-                    'name' => $label->name,
-                ];
-            }),
+            $labels->map(fn ($label) => [
+                'id' => $label->id,
+                'name' => $label->name,
+            ]),
         );
     }
-
-    /* Destroy by id */
-    /* public function destroy($id)
-    {
-        $label = Label::findOrFail($id);
-        $label->delete();
-        return response()->noContent();
-    } */
 }

@@ -32,7 +32,7 @@ Desarrolladores backend.
 
 ## Inventario de tests
 
-**Total: 12 tests** en **5 archivos** (ejecuta `php artisan test` para ver el resultado actual).
+**Total: 22+ tests** (ejecuta `php artisan test` para ver el resultado actual).
 
 | Archivo | Tests | Descripción |
 |--------|-------|-------------|
@@ -43,9 +43,11 @@ Desarrolladores backend.
 | `tests/Unit/Services/OrderListServiceTest.php` | 4 | options, active, list (con y sin active). |
 | **Feature** | | |
 | `tests/Feature/OrderApiTest.php` | 1 | `test_can_create_order_via_api_with_tenant_and_auth` — POST /api/v2/orders con tenant + Sanctum. |
+| `tests/Feature/CustomerApiTest.php` | 5 | list, create, show, update, destroy customer. |
+| `tests/Feature/LabelApiTest.php` | 10 | list, options, create, show, update, destroy, duplicate, validación. |
 | `tests/Feature/ApiDocumentationTest.php` | 4 | Scribe, OpenAPI, header X-Tenant, esquema de autenticación. |
 
-**Tests que requieren base de datos:** OrderStoreServiceTest, OrderUpdateServiceTest, OrderDetailServiceTest, OrderListServiceTest y OrderApiTest usan el trait `ConfiguresTenantConnection` y necesitan MySQL (o BD configurada) y migraciones de `database/migrations/companies` aplicadas en la BD de testing.
+**Tests que requieren base de datos:** OrderStoreServiceTest, OrderUpdateServiceTest, OrderDetailServiceTest, OrderListServiceTest, OrderApiTest, CustomerApiTest y LabelApiTest usan el trait `ConfiguresTenantConnection` y necesitan MySQL (o BD configurada) y migraciones de `database/migrations/companies` aplicadas en la BD de testing.
 
 ---
 

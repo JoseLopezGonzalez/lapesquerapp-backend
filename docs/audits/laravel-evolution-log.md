@@ -264,3 +264,91 @@ Si aparecen problemas: `git revert <commit-hash>` de los commits que introdujero
 - Revisión N+1 en otros módulos (Fichajes, Recepciones, etc.); documentación API; más tests.
 
 ---
+
+## [2025-02-14] Block Etiquetas (Labels) - Sub-bloque 1
+
+**Priority**: P2  
+**Risk Level**: Low  
+**Rating antes: 5/10** | **Rating después: 7/10**
+
+### Problems Addressed
+
+- LabelController sin Form Requests (validación inline).
+- Label sin Policy registrada ni authorize() en controller.
+- Modelo Label sin HasFactory (dificulta tests).
+- Código comentado en LabelController (método destroy alternativo).
+
+### Changes Applied
+
+- **Form Requests**: StoreLabelRequest, UpdateLabelRequest, DuplicateLabelRequest con reglas y mensajes en español.
+- **LabelPolicy**: Creada (viewAny, view, create, update, delete); registrada en AuthServiceProvider.
+- **LabelController**: store(StoreLabelRequest), update(UpdateLabelRequest), duplicate(DuplicateLabelRequest); authorize() en index, show, store, update, destroy, duplicate, options.
+- **Modelo Label**: HasFactory añadido; LabelFactory creada.
+- **Limpieza**: Eliminado código comentado (destroy alternativo).
+
+### Verification Results
+
+- ✅ Rutas labels registradas correctamente.
+- ✅ Tests Unit existentes (Order*) pasan.
+- Comportamiento preservado: CRUD, options, duplicate; validación y autorización en frontera HTTP.
+
+### Gap to 10/10 (Rating después < 9)
+
+- Tests de integración/feature para Label API (requiere ConfiguresTenantConnection).
+- Paginación en index/options si el volumen de etiquetas crece.
+- Bloqueado por: nada.
+
+### Rollback Plan
+
+`git revert <commit-hash>` — cambios reversibles sin migraciones.
+
+### Next
+
+- Tests Feature para Label CRUD/duplicate (sub-bloque 2) o siguiente módulo según prioridad del usuario.
+
+---
+
+## [2025-02-14] Block Etiquetas - Sub-bloque 2 (Tests Feature)
+
+**Priority**: P2  
+**Risk Level**: Low  
+**Rating antes: 7/10** | **Rating después: 8/10**
+
+### Problems Addressed
+
+- Ausencia de tests automatizados para el módulo Label.
+
+### Changes Applied
+
+- **LabelApiTest**: 10 tests Feature en `tests/Feature/LabelApiTest.php`:
+  - test_can_list_labels
+  - test_can_get_labels_options
+  - test_can_create_label
+  - test_can_show_label
+  - test_can_update_label
+  - test_can_destroy_label
+  - test_can_duplicate_label
+  - test_duplicate_with_custom_name
+  - test_validation_rejects_duplicate_name_on_store
+  - test_validation_requires_name_on_store
+
+### Verification Results
+
+- ✅ Los 10 tests pasan (41 assertions).
+- ✅ Usa ConfiguresTenantConnection; tenant + auth + CRUD + duplicate + validación cubiertos.
+
+### Gap to 10/10 (Rating después < 9)
+
+- Paginación en index/options si el volumen crece.
+- (Opcional) Test de Policy (403 sin auth o con rol no permitido).
+- Bloqueado por: nada.
+
+### Rollback Plan
+
+Eliminar `tests/Feature/LabelApiTest.php`.
+
+### Next
+
+- Módulo Etiquetas en 8/10; siguiente módulo según prioridad del usuario.
+
+---

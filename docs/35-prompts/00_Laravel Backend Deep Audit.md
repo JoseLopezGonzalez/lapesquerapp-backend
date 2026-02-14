@@ -153,11 +153,3 @@ Generate all audit documents in **Spanish** (matching project documentation lang
 ---
 
 Confirm once all documents are generated.
-
-[ ]
-
-WYSIWYG <Alt+Ctrl+7>Instant Rendering <Alt+Ctrl+8>Split View <Alt+Ctrl+9>
-
-Outline
-
-DesktopTabletMobile/Wechat
