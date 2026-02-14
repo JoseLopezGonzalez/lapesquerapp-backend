@@ -30,6 +30,7 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",
+        "knuckleswtf/scribe": "^5.7",
         "laravel/pint": "^1.0",
         "laravel/sail": "^1.18",
         "mockery/mockery": "^1.4.4",
@@ -45,7 +46,8 @@
         },
         "files": [
             "app/Helpers/tenant_helpers.php",
-            "app/Support/helpers.php"
+            "app/Support/helpers.php",
+            "app/Support/mbstring_polyfill.php"
         ]
     },
     "autoload-dev": {

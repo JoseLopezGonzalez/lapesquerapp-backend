@@ -9,10 +9,24 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * @group Products
+ * Gestión de productos (familias, especies, zonas de captura).
+ */
 class ProductController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Listar productos
+     *
+     * Lista paginada de productos con filtros opcionales por id, nombre, especie, categoría, familia, GTIN, etc.
+     *
+     * @queryParam id integer ID del producto. No-example
+     * @queryParam ids array Lista de IDs. No-example
+     * @queryParam name string Filtrar por nombre (parcial). No-example
+     * @queryParam species array IDs de especies. No-example
+     * @queryParam categories array IDs de categorías. No-example
+     * @queryParam families array IDs de familias. No-example
+     * @queryParam perPage integer Elementos por página. Example: 14
      */
     public function index(Request $request)
     {

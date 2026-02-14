@@ -4,6 +4,21 @@ namespace App\Http\Requests\v2;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * @bodyParam customer integer required ID del cliente (tenant). Example: 1
+ * @bodyParam entryDate string required Fecha de entrada (Y-m-d). Example: 2025-02-14
+ * @bodyParam loadDate string required Fecha de carga (Y-m-d). Example: 2025-02-15
+ * @bodyParam salesperson integer ID del comercial. No-example
+ * @bodyParam payment integer ID de condición de pago. No-example
+ * @bodyParam incoterm integer ID de incoterm. No-example
+ * @bodyParam buyerReference string Referencia del comprador. No-example
+ * @bodyParam plannedProducts array Líneas planificadas. No-example
+ * @bodyParam plannedProducts.*.product integer required ID del producto. Example: 1
+ * @bodyParam plannedProducts.*.quantity number required Cantidad. Example: 100
+ * @bodyParam plannedProducts.*.boxes integer required Número de cajas. Example: 10
+ * @bodyParam plannedProducts.*.unitPrice number required Precio unitario. Example: 5.50
+ * @bodyParam plannedProducts.*.tax integer required ID del impuesto. Example: 1
+ */
 class StoreOrderRequest extends FormRequest
 {
     /**

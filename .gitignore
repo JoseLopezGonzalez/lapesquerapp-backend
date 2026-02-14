@@ -20,3 +20,8 @@ vendor/
 
 # Memoria de trabajo de agentes IA (sesiones temporales)
 .ai_work_context/
+
+# Scribe (cache/temporal)
+/.scribe/
+# Documentación API generada (solo local/CI; no desplegar en producción)
+/public/docs/

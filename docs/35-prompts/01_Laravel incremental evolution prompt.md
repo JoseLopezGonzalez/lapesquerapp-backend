@@ -194,12 +194,13 @@ Flag these explicitly in Step 0 and Step 1 Analysis.
 ## Iterative Improvement — Until 10 or Blocked
 
 **Rule:** Do NOT consider a module "done" and move to the next one until:
-- **Rating después ≥ 9**, OR
-- You are **blocked** (need user input, business logic clarification, product decision, or architectural choice the user must make)
+- **Rating después ≥ 9** for the block as a whole, AND
+- **All entities in scope** (from STEP 0a) have been evaluated and improved where needed
+- OR you are **blocked** (need user input, business logic clarification, product decision, or architectural choice the user must make)
 
 If Rating después < 9 and there are improvements you CAN implement without user input:
 1. Document the **Gap to 10/10** in the log
-2. Propose the **next sub-block** of improvements (controller thinning, Form Requests, Eloquent migration, tests, etc.)
+2. Propose the **next sub-block** of improvements (controller thinning, Form Requests, Eloquent migration, tests, **or next entity in scope** — e.g. if sub-block 1 was Orders, sub-block 2 can be Customers/Products/Salespeople models, resources, policies)
 3. Ask: *"¿Continuamos con el siguiente sub-block para este módulo?"*
 4. If user approves → execute STEP 2→3→4→5 again for that sub-block
 5. Repeat until 9+/10 or blocked
@@ -211,6 +212,29 @@ You stop only when: the module reaches 9+/10, or the remaining work requires use
 ## Adaptive Block Workflow
 
 For each module/block:
+
+### STEP 0a -- Block Scope & Entity Mapping (MANDATORY, FIRST)
+
+When the user selects a block (e.g. "Ventas", "Stock", "Productos"), **before any analysis or refactor**:
+
+1. **Map all entities** that form part of that block:
+   - **Primary entities** (e.g. Order, Sale for Ventas)
+   - **Related entities** used by the block (e.g. Customer, Product, Salesperson, Pallet, Box for Ventas)
+   - Do NOT assume the block = one controller; trace routes, relationships, imports, and usage
+
+2. **List all related artifacts** per entity:
+   - Controllers, Models, API Resources, Form Requests, Policies
+   - Services, Actions, Jobs, Events
+   - **Tests** (existing: unit, integration, feature; and gaps: what should exist for this entity/flows)
+   - Migrations (if relevant for the analysis)
+
+3. **Present scope to user**:
+   - "Bloque [X] incluye: **Entidades** [list], **Artefactos** [summary by type]. ¿Confirmas o hay que añadir/quitar algo?"
+   - Wait for confirmation or adjustment before proceeding
+
+4. **Scope rule:** The improvement plan (STEP 1, 2, etc.) MUST cover ALL entities and artifacts in scope. You may phase them (sub-block 1: entity A; sub-block 2: entity B) but nothing in scope may be ignored without explicit justification. A block is not complete until all entities in scope have been evaluated and improved where needed.
+
+---
 
 ### STEP 0 -- Document Current Business Behavior (CRITICAL FOR PHASE 2)
 
@@ -236,23 +260,28 @@ Ask: "Does current code behavior match documented business rules?"
 
 ### STEP 1 -- Analysis
 
-Document:
+Document for **all entities and artifacts in scope** (from STEP 0a):
 
-* What this module currently does
-* **Rating antes: X/10** (with brief justification; see "Quality Rating" section)
+* What this module currently does (globally and per primary entity)
+* **Per entity or artifact group**: state, structural quality, improvement opportunities (controllers, models, resources, Form Requests, policies, services, **tests** — existing coverage and gaps per entity/flow)
+* **Rating antes: X/10** (with brief justification; see "Quality Rating" section) — for the block as a whole
 * Architectural quality
 * Risks identified
 * **Usage of Laravel structural components** in this module (Services, Actions, Jobs, Events, Listeners, Form Requests, Policies): what is present, what is missing or misused (see section "Laravel Structural Components")
-* Improvement opportunities
+* Improvement opportunities (must cover all entities in scope; phase into sub-blocks if needed)
 * Alignment with audit document
 * Priority level (P0/P1/P2/P3)
 * Technical debt found (reference detection checklist above)
+
+**Scope coverage check:** If the scope includes entities B, C, D besides A, the analysis and improvement plan must address B, C, D as well. Do NOT focus only on the main controller/entity.
 
 ---
 
 ### STEP 2 -- Proposed Changes (NO CODE YET)
 
 **Completeness rule:** Propose ALL improvements identified in STEP 1 that you can implement without user input (no business logic clarification, no product decisions). Group them into implementable sub-blocks if there are many. Do NOT arbitrarily limit to 2–3 improvements when 6+ are identified; cover the full gap toward 10/10.
+
+**Scope rule:** The improvements must cover ALL entities in scope (from STEP 0a). If the block includes Orders, Customers, Products, Salespeople, etc., the plan must address each (models, resources, policies, Form Requests, controller thickness, **tests per entity/flow**, etc.), even if phased across sub-blocks. Do NOT focus only on the main controller.
 
 Present:
 
@@ -315,7 +344,7 @@ For Medium/High/Critical: Require extended manual testing.
 
 Append summary to: `docs/audits/laravel-evolution-log.md`
 
-If **Rating después < 9**: you MUST add a **"Gap to 10/10"** section listing what remains (tests, controller thinning, Form Requests, DB→Eloquent, policies, N+1, etc.) and whether you can continue with the next sub-block or need user input. Then offer to continue: *"¿Continuamos con el siguiente sub-bloque de mejoras para este módulo?"*
+If **Rating después < 9**: you MUST add a **"Gap to 10/10"** section listing what remains: tests, controller thinning, Form Requests, DB→Eloquent, policies, N+1, **and any entities/artifacts in scope not yet addressed** (e.g. "Customer model/Resource", "Product in Sales context"). Indicate whether you can continue with the next sub-block or need user input. Then offer to continue: *"¿Continuamos con el siguiente sub-bloque de mejoras para este módulo?"*
 
 Use this format:
 
@@ -439,7 +468,7 @@ Guided by the **Laravel Structural Components** section and the audit findings, 
 * Serialization consistency (API Resources, DTOs where adopted)
 * Naming clarity, structural cohesion
 
-**Tests:** Strong test coverage is required for 9–10. Include integration tests (tenant + auth + flows) and unit tests for services in your improvement plan; implement when feasible.
+**Tests:** Strong test coverage is required for 9–10. For each block, analyze and plan tests for **all entities in scope**: integration tests (tenant + auth + flows: create, update, list, state changes) and unit tests for services. Include in the improvement plan; implement when feasible. Do not leave the block without having evaluated test gaps per entity and planned (or implemented) coverage.
 
 **Do not force patterns where the project deliberately omits them** — but do not leave controllers thick, Form Requests missing, or DB::connection in controllers when moving toward 9/10.
 
@@ -454,8 +483,9 @@ Guided by the **Laravel Structural Components** section and the audit findings, 
 5. Map them to CORE modules (Auth, Products, Customers, Sales, Stock, Reports, Config)
 6. **Ask the user which module/block they want to address first**
 7. Once the user specifies the block:
+   * Execute **STEP 0a**: Block Scope & Entity Mapping — identify all entities and artifacts, present to user, **wait for confirmation**
    * Execute STEP 0: Document current business behavior
-   * Execute STEP 1: Analysis with **Rating antes: X/10** and priority classification
+   * Execute STEP 1: Analysis (covering **all entities in scope**) with **Rating antes: X/10** and priority classification
    * Execute STEP 2: Present proposed changes
    * Wait for approval
 8. After approval, proceed with STEP 3, 4, and 5 (log must include **Rating antes**, **Rating después** and **Gap to 10/10** if < 9)

@@ -37,7 +37,8 @@ return [
         'tenant' => [
             'driver' => 'mysql',
             'url' => env('DATABASE_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
+            // En testing fuera de Sail, si DB_HOST es "mysql" (host Docker) no resuelve en el host → usar 127.0.0.1
+            'host' => (env('APP_ENV') === 'testing' && ! env('LARAVEL_SAIL', false) && env('DB_HOST') === 'mysql') ? '127.0.0.1' : env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
             'database' => '', // se rellenará dinámicamente en tiempo de ejecución
             'username' => env('DB_USERNAME', 'forge'),
@@ -49,9 +50,12 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
+            'options' => extension_loaded('pdo_mysql') ? array_filter(array_merge(
+                [1002 => (int) env('DB_CONNECT_TIMEOUT', 10)], // 1002 = PDO::MYSQL_ATTR_CONNECT_TIMEOUT (segundos)
+                array_filter([
+                    PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                ])
+            )) : [],
         ],
         'sqlite' => [
             'driver' => 'sqlite',
@@ -64,7 +68,8 @@ return [
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DATABASE_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
+            // En testing fuera de Sail, si DB_HOST es "mysql" (host Docker) no resuelve en el host → usar 127.0.0.1
+            'host' => (env('APP_ENV') === 'testing' && ! env('LARAVEL_SAIL', false) && env('DB_HOST') === 'mysql') ? '127.0.0.1' : env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
             'database' => env('DB_DATABASE', 'forge'),
             'username' => env('DB_USERNAME', 'forge'),
@@ -76,9 +81,12 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
+            'options' => extension_loaded('pdo_mysql') ? array_filter(array_merge(
+                [1002 => (int) env('DB_CONNECT_TIMEOUT', 10)], // 1002 = PDO::MYSQL_ATTR_CONNECT_TIMEOUT (segundos)
+                array_filter([
+                    PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                ])
+            )) : [],
         ],
 
         'pgsql' => [

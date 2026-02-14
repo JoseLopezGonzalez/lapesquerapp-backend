@@ -3,7 +3,9 @@
 namespace App\Services\v2;
 
 use App\Models\Order;
+use App\Models\Pallet;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class OrderStatisticsService
 {
@@ -293,7 +295,78 @@ class OrderStatisticsService
         ])->values();
     }
 
+    /**
+     * Ventas por comercial: peso neto de cajas disponibles agrupado por salesperson en rango entry_date.
+     * Sustituye la consulta raw de OrderController::salesBySalesperson usando Eloquent (conexión tenant vía Order).
+     *
+     * @param string $dateFrom Fecha inicio (Y-m-d)
+     * @param string $dateTo   Fecha fin (Y-m-d)
+     * @return Collection<int, array{name: string, quantity: float}>
+     */
+    public static function getSalesBySalesperson(string $dateFrom, string $dateTo): Collection
+    {
+        $dateFrom = $dateFrom . ' 00:00:00';
+        $dateTo = $dateTo . ' 23:59:59';
 
+        $results = Order::query()
+            ->join('pallets', 'pallets.order_id', '=', 'orders.id')
+            ->join('pallet_boxes', 'pallet_boxes.pallet_id', '=', 'pallets.id')
+            ->join('boxes', 'boxes.id', '=', 'pallet_boxes.box_id')
+            ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
+            ->leftJoin('salespeople', 'salespeople.id', '=', 'orders.salesperson_id')
+            ->whereBetween('orders.entry_date', [$dateFrom, $dateTo])
+            ->whereNull('production_inputs.id')
+            ->whereIn('pallets.status', [
+                Pallet::STATE_REGISTERED,
+                Pallet::STATE_STORED,
+                Pallet::STATE_SHIPPED,
+            ])
+            ->selectRaw('COALESCE(salespeople.name, "Sin comercial") as name, SUM(boxes.net_weight) as quantity')
+            ->groupBy('salespeople.id', 'salespeople.name')
+            ->get();
+
+        return $results->map(fn($item) => [
+            'name' => $item->name,
+            'quantity' => round((float) $item->quantity, 2),
+        ])->values();
+    }
+
+    /**
+     * Datos para gráfico por transportista: peso neto de cajas disponibles agrupado por transport en rango load_date.
+     * Sustituye la consulta raw de OrderController::transportChartData usando Eloquent (conexión tenant vía Order).
+     *
+     * @param string $dateFrom Fecha inicio (Y-m-d)
+     * @param string $dateTo   Fecha fin (Y-m-d)
+     * @return Collection<int, array{name: string, netWeight: float}>
+     */
+    public static function getTransportChartData(string $dateFrom, string $dateTo): Collection
+    {
+        $from = $dateFrom . ' 00:00:00';
+        $to = $dateTo . ' 23:59:59';
+
+        $results = Order::query()
+            ->join('transports', 'transports.id', '=', 'orders.transport_id')
+            ->join('pallets', 'pallets.order_id', '=', 'orders.id')
+            ->join('pallet_boxes', 'pallet_boxes.pallet_id', '=', 'pallets.id')
+            ->join('boxes', 'boxes.id', '=', 'pallet_boxes.box_id')
+            ->leftJoin('production_inputs', 'production_inputs.box_id', '=', 'boxes.id')
+            ->whereBetween('orders.load_date', [$from, $to])
+            ->whereNotNull('orders.transport_id')
+            ->whereNull('production_inputs.id')
+            ->whereIn('pallets.status', [
+                Pallet::STATE_REGISTERED,
+                Pallet::STATE_STORED,
+                Pallet::STATE_SHIPPED,
+            ])
+            ->selectRaw('transports.name, SUM(boxes.net_weight) as netWeight')
+            ->groupBy('transports.id', 'transports.name')
+            ->get();
+
+        return $results->map(fn($item) => [
+            'name' => $item->name ?? 'Sin transportista',
+            'netWeight' => round((float) $item->netWeight, 2),
+        ])->values();
+    }
 
 
 
