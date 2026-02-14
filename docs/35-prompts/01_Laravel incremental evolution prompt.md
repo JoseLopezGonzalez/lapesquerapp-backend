@@ -92,6 +92,30 @@ Always start with P0, require approval to move to next priority.
 
 ---
 
+## Laravel Structural Components (Evaluation & Application)
+
+When analyzing and evolving each module, explicitly consider whether Laravel’s structural building blocks are used correctly. Use the audit’s **Laravel Structural Components** findings (and `structural-components-usage.md` if present) as input. For each block:
+
+**Evaluate:**
+
+- **Services / Application layer**: Application/use-case logic in the right place; clear boundaries vs controllers and models; single responsibility.
+- **Actions**: Single-purpose invokables where they add clarity; avoid anemic or oversized services.
+- **Jobs**: Queued work with correct tenant context; retries and idempotency where needed; no critical logic only in sync execution.
+- **Events & Listeners**: Side effects decoupled via events; no duplicate business logic in listeners; sync vs async chosen consciously.
+- **Form Requests**: Validation and authorization at the HTTP boundary for relevant endpoints; reuse and consistency.
+- **Policies / Gates**: Authorization per model/action; alignment with API and UI; no duplicated or bypassed rules.
+- **Other**: Middleware, API Resources, DTOs, Observers — use consistently where the project already adopts them.
+
+**When proposing changes (STEP 2):**
+
+- Prefer introducing or correcting these components over leaving logic in controllers or inline.
+- Preserve behavior: structural moves only unless P0/P1 explicitly require logic fixes.
+- Multi-tenant: Jobs and any tenant-scoped logic must receive and use tenant context correctly.
+
+Do not force a pattern where the audit or project identity deliberately omits it; document the choice.
+
+---
+
 ## Technical Debt Detection (Aligned with CORE Plan Phases)
 
 During module analysis, actively search for:
@@ -102,6 +126,7 @@ During module analysis, actively search for:
 * Duplicated validation logic
 * Inconsistent error handling patterns
 * Monster methods (>50 lines)
+* **Structural components**: Missing or misplaced use of Services, Actions, Jobs, Events, Listeners, Form Requests, Policies; logic in controllers that belongs in application layer or events; validation/authorization not at HTTP boundary or not centralized in Policies
 
 ### Phase 2 Issues (Business Logic)
 
@@ -162,6 +187,7 @@ Document:
 * What this module currently does
 * Architectural quality
 * Risks identified
+* **Usage of Laravel structural components** in this module (Services, Actions, Jobs, Events, Listeners, Form Requests, Policies): what is present, what is missing or misused (see section "Laravel Structural Components")
 * Improvement opportunities
 * Alignment with audit document
 * Priority level (P0/P1/P2/P3)
@@ -326,13 +352,16 @@ This log serves as:
 
 ## Areas You May Improve (When Appropriate)
 
-* Controller thickness
-* FormRequest usage
-* Policy alignment
-* Action/Service extraction
-* Transaction handling
-* Event/Job separation
-* Serialization consistency
+Guided by the **Laravel Structural Components** section and the audit findings:
+
+* Controller thickness (delegate to Services/Actions)
+* Form Request usage (validation and authorization at HTTP boundary)
+* Policy alignment (per-model/action authorization; no duplicated rules)
+* Action/Service extraction (application logic out of controllers)
+* Transaction handling (critical operations wrapped in DB transactions)
+* Event/Listener usage (side effects and decoupling; correct sync/async)
+* Job usage (async work with tenant context, retries, idempotency)
+* Serialization consistency (API Resources, DTOs where adopted)
 * Naming clarity
 * Eloquent query optimization
 * Structural cohesion
@@ -343,17 +372,18 @@ This log serves as:
 
 ## First Action (Based on Audit Document)
 
-1. Read `docs/audits/laravel-backend-global-audit.md`
+1. Read `docs/audits/laravel-backend-global-audit.md` (and `docs/audits/findings/structural-components-usage.md` if present)
 2. Extract **Top 5 Systemic Risks** identified
 3. Extract **Top 5 High-Impact Improvements** identified
-4. Map them to CORE modules (Auth, Products, Customers, Sales, Stock, Reports, Config)
-5. **Ask the user which module/block they want to address first**
-6. Once the user specifies the block:
+4. Use the audit’s **Laravel Structural Components** section (and the findings above) when planning improvements per module
+5. Map them to CORE modules (Auth, Products, Customers, Sales, Stock, Reports, Config)
+6. **Ask the user which module/block they want to address first**
+7. Once the user specifies the block:
    * Execute STEP 0: Document current business behavior
    * Execute STEP 1: Analysis with priority classification
    * Execute STEP 2: Present proposed changes
    * Wait for approval
-7. After approval, proceed with STEP 3, 4, and 5
+8. After approval, proceed with STEP 3, 4, and 5
 
 **Do NOT start arbitrarily.Do NOT assume which block to work on.Always ask the user for direction on which module to tackle next.**
 

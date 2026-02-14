@@ -17,6 +17,8 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
+        $this->authorize('viewAny', User::class);
+
         $query = User::query();
 
         // Filtros por ID
@@ -70,6 +72,8 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', User::class);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => [
@@ -100,6 +104,8 @@ class UserController extends Controller
     public function show($id)
     {
         $user = User::findOrFail($id);
+        $this->authorize('view', $user);
+
         return response()->json([
             'message' => 'Usuario obtenido correctamente.',
             'data' => new UserResource($user),
@@ -112,6 +118,7 @@ class UserController extends Controller
     public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
+        $this->authorize('update', $user);
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
@@ -143,6 +150,8 @@ class UserController extends Controller
     public function destroy($id)
     {
         $user = User::findOrFail($id);
+        $this->authorize('delete', $user);
+
         $user->tokens()->delete();
         $user->delete();
         return response()->json(['message' => 'Usuario eliminado correctamente.']);
@@ -155,6 +164,7 @@ class UserController extends Controller
     public function resendInvitation($id)
     {
         $user = User::findOrFail($id);
+        $this->authorize('update', $user);
 
         if (!$user->active) {
             return response()->json([
@@ -185,6 +195,8 @@ class UserController extends Controller
     /* options */
     public function options()
     {
+        $this->authorize('viewAny', User::class);
+
         $users = User::select('id', 'name')->get();
         return response()->json($users);
     }

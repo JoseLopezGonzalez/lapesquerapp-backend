@@ -52,13 +52,31 @@ Priority areas given the multi-tenant nature:
 
 ---
 
+## Laravel Structural Components (Evaluation Required)
+
+You must explicitly evaluate whether the project uses Laravel’s structural building blocks correctly and consistently. Assess presence, coherence, and alignment with Laravel/docs and community best practices. Include this evaluation in the main audit document and, if useful, in a supporting finding.
+
+**Components to evaluate:**
+
+- **Services / Application layer**: Where application/use-case logic lives; boundaries vs controllers and models; single responsibility and reusability.
+- **Actions** (if present): Single-purpose invokables; correct use vs oversized or anemic services.
+- **Jobs**: Use of queues; tenant context in multi-tenant jobs; retries, idempotency, and failure handling.
+- **Events & Listeners**: Decoupling of side effects; avoidance of duplicate logic; sync vs async listeners; event naming and payload design.
+- **Form Requests**: Validation at HTTP boundary; reuse and authorization; consistency across API endpoints.
+- **Policies / Gates**: Authorization per model/action; consistency with API and UI; avoidance of duplicated rules.
+- **Other** (as discovered): Middleware, API Resources, DTOs, Observers — note usage and any structural gaps.
+
+Focus on systemic patterns (e.g. “authorization is mostly in controllers” or “domain logic is well isolated in services”), not line-level nitpicking. If a component is intentionally unused, state it and briefly justify.
+
+---
+
 ## Pre-Audit Validation
 
 Before starting the full audit:
 
 1. Confirm project structure is accessible
 2. List discovered key architectural components
-3. Identify apparent architectural patterns (Repo? Service layer? Domain model?)
+3. Identify apparent architectural patterns (Repo? Service layer? Actions? Jobs/Events? Form Requests? Policies? Domain model?)
 4. Ask for clarification on ambiguous patterns BEFORE deep analysis
 5. Wait for confirmation to proceed with full audit
 
@@ -74,6 +92,7 @@ Before starting the full audit:
 - `domain-model-review.md`
 - `integration-patterns.md`
 - `security-concerns.md`
+- `structural-components-usage.md` (optional; use if findings warrant a dedicated document)
 
 ### Main Audit Document Must Include:
 
@@ -84,13 +103,14 @@ Before starting the full audit:
 5. Alignment with Professional Laravel Practices
 6. OOP Evaluation (SRP, coupling, cohesion, responsibilities)
 7. API & Serialization Design Review
-8. Domain Logic Distribution Analysis
-9. Transactional Integrity & Side Effects Handling
-10. Testing & Maintainability Overview
-11. Performance & Scalability Signals
-12. Security & Authorization Observations
-13. Improvement Opportunities (Prioritized but flexible)
-14. Suggested Evolution Path (phased, adaptive)
+8. **Laravel Structural Components Usage** (Services, Actions, Jobs, Events, Listeners, Form Requests, Policies — presence, correctness, consistency)
+9. Domain Logic Distribution Analysis
+10. Transactional Integrity & Side Effects Handling
+11. Testing & Maintainability Overview
+12. Performance & Scalability Signals
+13. Security & Authorization Observations
+14. Improvement Opportunities (Prioritized but flexible)
+15. Suggested Evolution Path (phased, adaptive)
 
 You must think independently. Do not rigidly apply predefined patterns
 if the project intentionally follows another coherent approach.
