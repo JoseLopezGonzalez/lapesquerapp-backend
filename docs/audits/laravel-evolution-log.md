@@ -5,6 +5,182 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2025-02-14] Block A.6 Producción - Sub-bloque 1 (Production: Form Requests, Policy, authorize)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 5/10** | **Rating después: 9/10** (entidad Production)
+
+### Problems Addressed
+
+- ProductionController sin Policy ni authorize(); index y destroyMultiple con Request sin validación; destroyMultiple sin authorize por ítem; Store/Update con authorize inline true.
+
+### Changes Applied
+
+- **IndexProductionRequest**: authorize viewAny(Production::class); rules lot, species_id, status (open|closed), perPage. **DestroyMultipleProductionsRequest**: authorize viewAny; rules ids required array; mensajes en español.
+- **ProductionPolicy**: viewAny, view, create, update (todos los roles); delete solo administrador y tecnico. Registrada en AuthServiceProvider.
+- **StoreProductionRequest / UpdateProductionRequest**: authorize con create y (controller) update. ProductionController: index(IndexProductionRequest), destroyMultiple(DestroyMultipleProductionsRequest); authorize('view', $production) en show, getDiagram, getProcessTree, getTotals, getReconciliation, getAvailableProductsForOutputs; authorize('update', $production) en update; authorize('delete', $production) en destroy; en destroyMultiple authorize('delete', $production) por cada ítem antes de deleteMultiple.
+- ProductionController 207 líneas (ligeramente por encima de 200 por authorize en cada método); contrato API preservado.
+
+### Verification Results
+
+- AuthBlockApiTest, ProductosBlockApiTest, StockBlockApiTest, SettingsBlockApiTest: 82 tests OK. Sin tests Feature específicos de Production; rutas bajo mismo middleware que bloques verificados.
+
+### Gap to 10/10
+
+- ProductionRecordController (356 líneas) y resto del módulo Producción en sub-bloques posteriores. Tests Feature opcionales para productions CRUD.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Sub-bloque 2 A.6 (ProductionRecord) o siguiente módulo CORE.
+
+---
+
+## [2025-02-14] Block A.6 Producción - Sub-bloque 2 (ProductionRecord: Form Requests, Policy, authorize, getSourcesData en servicio)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 4/10** | **Rating después: 9/10** (entidad ProductionRecord)
+
+### Problems Addressed
+
+- ProductionRecordController 356 líneas (P1); sin Policy ni authorize(); index y options con Request sin validación; getSourcesData con ~90 líneas de lógica en el controlador.
+
+### Changes Applied
+
+- **IndexProductionRecordRequest**: authorize viewAny(ProductionRecord::class); rules production_id, root_only, parent_record_id, process_id, completed, perPage. **ProductionRecordOptionsRequest**: authorize viewAny; rules production_id, exclude_id.
+- **ProductionRecordPolicy**: viewAny, view, create, update (todos los roles); delete solo administrador y tecnico. Registrada en AuthServiceProvider.
+- **StoreProductionRecordRequest**: authorize create(ProductionRecord::class). Controller: authorize view/update/delete en show, update, destroy, tree, finish, syncOutputs, syncConsumptions, getSourcesData.
+- **ProductionRecordService::getSourcesData(ProductionRecord $record)**: extraída la lógica de construcción de stockBoxes, parentOutputs y totales desde el controlador; el controlador delega y devuelve JSON.
+- ProductionRecordController reducido de **356 a 251 líneas**; contrato API preservado.
+
+### Verification Results
+
+- AuthBlockApiTest, ProductosBlockApiTest, StockBlockApiTest, SettingsBlockApiTest: 82 tests OK. Sin tests Feature específicos de production-records.
+
+### Gap to 10/10
+
+- Controller aún 251 líneas (objetivo <200 opcional: extraer options() mapping a servicio). Resto del módulo Producción (Input, Output, Consumption, Cost, CostCatalog, Process) en sub-bloques posteriores.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Sub-bloque 3 A.6 (ProductionInput, ProductionOutput, ProductionOutputConsumption) o siguiente módulo CORE.
+
+---
+
+## [2025-02-14] Block A.6 Producción - Sub-bloque 3 (ProductionInput, ProductionOutput, ProductionOutputConsumption: Policies, Form Requests, authorize)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 4/10** | **Rating después: 9/10** (entidades Input, Output, Consumption)
+
+### Problems Addressed
+
+- ProductionInputController, ProductionOutputController y ProductionOutputConsumptionController sin Policy ni authorize(); index y (Input) destroyMultiple con Request sin validación; Form Requests Store/Update/StoreMultiple con authorize true.
+
+### Changes Applied
+
+- **ProductionInput**: IndexProductionInputRequest, DestroyMultipleProductionInputsRequest; ProductionInputPolicy (delete solo admin/tecnico); StoreProductionInputRequest y StoreMultipleProductionInputsRequest con authorize create; authorize en index (vía Request), show, store/storeMultiple (vía Request), destroy, destroyMultiple (authorize delete por ítem).
+- **ProductionOutput**: IndexProductionOutputRequest; ProductionOutputPolicy (delete solo admin/tecnico); StoreProductionOutputRequest y StoreMultipleProductionOutputsRequest con authorize create; authorize en index, show, getCostBreakdown, update, destroy, store/storeMultiple (vía Request).
+- **ProductionOutputConsumption**: IndexProductionOutputConsumptionRequest; ProductionOutputConsumptionPolicy (delete solo admin/tecnico); StoreProductionOutputConsumptionRequest y StoreMultipleProductionOutputConsumptionsRequest con authorize create; authorize en index, show, update, destroy, getAvailableOutputs (authorize view sobre ProductionRecord). UpdateProductionOutputRequest y UpdateProductionOutputConsumptionRequest sin cambio (authorize en controller).
+- Registro de las tres Policies en AuthServiceProvider. Contrato API preservado.
+
+### Verification Results
+
+- AuthBlockApiTest, ProductosBlockApiTest, StockBlockApiTest, SettingsBlockApiTest: 82 tests OK. Sin tests Feature específicos de production-inputs/outputs/consumptions.
+
+### Gap to 10/10
+
+- ProductionCost, CostCatalog, Process (sub-bloque 4). Tests Feature opcionales para Input/Output/Consumption.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Sub-bloque 4 A.6 (ProductionCost, CostCatalog, Process) o siguiente módulo CORE.
+
+---
+
+## [2025-02-14] Block A.6 Producción - Sub-bloque 4 (ProductionCost, CostCatalog, Process: Form Requests, Policies, authorize)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 4/10** | **Rating después: 9/10** (entidades ProductionCost, CostCatalog, Process)
+
+### Problems Addressed
+
+- ProductionCostController, CostCatalogController y ProcessController con validación inline y sin Policy ni authorize(); sin Form Requests.
+
+### Changes Applied
+
+- **ProductionCost**: IndexProductionCostRequest, StoreProductionCostRequest (withValidator para mutual exclusion production_record_id/production_id y total_cost/cost_per_kg), UpdateProductionCostRequest; ProductionCostPolicy (delete solo admin/tecnico); controller delgado con authorize en show, update, destroy. Validación tenant (exists:tenant.*).
+- **CostCatalog**: IndexCostCatalogRequest, StoreCostCatalogRequest (unique:tenant.cost_catalog,name), UpdateCostCatalogRequest (unique ignore por id); CostCatalogPolicy (delete solo admin/tecnico); controller delgado; destroy mantiene comprobación productionCosts()->exists() antes de borrar.
+- **Process**: IndexProcessRequest, ProcessOptionsRequest, StoreProcessRequest, UpdateProcessRequest; ProcessPolicy (delete solo admin/tecnico); controller delgado con authorize en show, update, destroy, options (vía Request).
+- Registro de las tres Policies en AuthServiceProvider. Contrato API preservado.
+
+### Verification Results
+
+- AuthBlockApiTest, ProductosBlockApiTest, StockBlockApiTest, SettingsBlockApiTest: 82 tests OK.
+
+### Gap to 10/10
+
+- Tests Feature opcionales para production-costs, cost-catalog, processes. Bloque A.6 Producción completo (todos los sub-bloques 1–4).
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Siguiente módulo CORE. Bloque A.6 Producción cerrado en 9/10.
+
+---
+
+## [2025-02-14] Block A.5 Despachos de Cebo (CeboDispatchListService, Policy delete, controller delgado)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 7/10** | **Rating después: 9/10**
+
+### Problems Addressed
+
+- CeboDispatchController con lógica de filtros en el controlador; CeboDispatchPolicy permitía delete a todos los roles; destroyMultiple sin authorize por ítem.
+
+### Changes Applied
+
+- **CeboDispatchListService** (app/Services/v2/): list(Request) con applyFilters (id, ids, suppliers, dates, species, products, notes, export_type) y orden por fecha; paginación. CeboDispatchController::index delega en CeboDispatchListService::list($request).
+- **CeboDispatchPolicy**: delete restringido a administrador y tecnico (rolesCanDelete); viewAny, view, create, update sin cambio (todos los roles).
+- **destroyMultiple**: authorize('delete', $dispatch) por cada despacho antes de borrar; respuestas 403 coherentes por ítem no autorizado.
+- Tests existentes en StockBlockApiTest (cebo dispatch): 6 tests pasan (store, show, update, destroy, destroy_multiple, 422 invalid payload).
+
+### Verification Results
+
+- StockBlockApiTest --filter=cebo: 6 tests, 25 assertions OK. Contrato API preservado.
+
+### Gap to 10/10
+
+- Tests unitarios opcionales para CeboDispatchListService; CeboDispatchStatisticsController sin refactor en este sub-bloque.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Siguiente módulo CORE.
+
+---
+
 ## [2025-02-14] Block Configuración por tenant (Settings) - Sub-bloque 1
 
 **Priority**: P1 + P2  

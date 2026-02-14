@@ -29,6 +29,14 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\ActivityLog::class => \App\Policies\ActivityLogPolicy::class,
         \App\Sanctum\PersonalAccessToken::class => \App\Policies\SessionPolicy::class,
         \App\Models\Setting::class => \App\Policies\SettingPolicy::class,
+        \App\Models\Production::class => \App\Policies\ProductionPolicy::class,
+        \App\Models\ProductionRecord::class => \App\Policies\ProductionRecordPolicy::class,
+        \App\Models\ProductionInput::class => \App\Policies\ProductionInputPolicy::class,
+        \App\Models\ProductionOutput::class => \App\Policies\ProductionOutputPolicy::class,
+        \App\Models\ProductionOutputConsumption::class => \App\Policies\ProductionOutputConsumptionPolicy::class,
+        \App\Models\ProductionCost::class => \App\Policies\ProductionCostPolicy::class,
+        \App\Models\CostCatalog::class => \App\Policies\CostCatalogPolicy::class,
+        \App\Models\Process::class => \App\Policies\ProcessPolicy::class,
     ];
 
     /**

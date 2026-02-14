@@ -3,47 +3,35 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\IndexProcessRequest;
+use App\Http\Requests\v2\ProcessOptionsRequest;
+use App\Http\Requests\v2\StoreProcessRequest;
+use App\Http\Requests\v2\UpdateProcessRequest;
 use App\Http\Resources\v2\ProcessResource;
 use App\Models\Process;
-use Illuminate\Http\Request;
 
 class ProcessController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index(Request $request)
+    public function index(IndexProcessRequest $request)
     {
         $query = Process::query();
 
-        // Filtro por tipo
-        if ($request->has('type')) {
+        if ($request->filled('type')) {
             $query->where('type', $request->type);
         }
-
-        // Filtro por name
-        if ($request->has('name')) {
+        if ($request->filled('name')) {
             $query->where('name', 'like', '%' . $request->name . '%');
         }
 
-        // Ordenar por name
         $query->orderBy('name', 'asc');
-
         $perPage = $request->input('perPage', 15);
+
         return ProcessResource::collection($query->paginate($perPage));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(StoreProcessRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|min:2',
-            'type' => 'required|in:starting,process,final',
-        ]);
-
-        $process = Process::create($validated);
+        $process = Process::create($request->validated());
 
         return response()->json([
             'message' => 'Proceso creado correctamente.',
@@ -51,12 +39,10 @@ class ProcessController extends Controller
         ], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
         $process = Process::findOrFail($id);
+        $this->authorize('view', $process);
 
         return response()->json([
             'message' => 'Proceso obtenido correctamente.',
@@ -64,19 +50,11 @@ class ProcessController extends Controller
         ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function update(UpdateProcessRequest $request, string $id)
     {
         $process = Process::findOrFail($id);
-
-        $validated = $request->validate([
-            'name' => 'sometimes|required|string|min:2',
-            'type' => 'sometimes|required|in:starting,process,final',
-        ]);
-
-        $process->update($validated);
+        $this->authorize('update', $process);
+        $process->update($request->validated());
 
         return response()->json([
             'message' => 'Proceso actualizado correctamente.',
@@ -84,12 +62,10 @@ class ProcessController extends Controller
         ]);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
         $process = Process::findOrFail($id);
+        $this->authorize('delete', $process);
         $process->delete();
 
         return response()->json([
@@ -97,32 +73,24 @@ class ProcessController extends Controller
         ], 200);
     }
 
-    /**
-     * Obtener opciones para seleccionar en el frontend
-     */
-    public function options(Request $request)
+    public function options(ProcessOptionsRequest $request)
     {
         $query = Process::query();
 
-        // Filtrar por tipo si se proporciona
-        if ($request->has('type')) {
+        if ($request->filled('type')) {
             $query->where('type', $request->type);
         }
 
-        // Ordenar por name
         $query->orderBy('name', 'asc');
-
         $processes = $query->get();
 
         return response()->json([
             'message' => 'Opciones de procesos obtenidas correctamente.',
-            'data' => $processes->map(function ($process) {
-                return [
-                    'value' => $process->id,
-                    'label' => $process->name,
-                    'type' => $process->type,
-                ];
-            }),
+            'data' => $processes->map(fn ($process) => [
+                'value' => $process->id,
+                'label' => $process->name,
+                'type' => $process->type,
+            ]),
         ]);
     }
 }

@@ -2,16 +2,14 @@
 
 namespace App\Http\Requests\v2;
 
+use App\Models\ProductionInput;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreProductionInputRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('create', ProductionInput::class);
     }
 
     /**

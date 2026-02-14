@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\DestroyMultipleProductionsRequest;
+use App\Http\Requests\v2\IndexProductionRequest;
 use App\Http\Requests\v2\StoreProductionRequest;
 use App\Http\Requests\v2\UpdateProductionRequest;
 use App\Http\Resources\v2\ProductionResource;
@@ -19,7 +21,7 @@ class ProductionController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(IndexProductionRequest $request)
     {
         $filters = $request->only(['lot', 'species_id', 'status']);
         $perPage = $request->input('perPage', 15);
@@ -49,6 +51,7 @@ class ProductionController extends Controller
     {
         $result = $this->productionService->getWithReconciliation($id);
         $production = $result['production'];
+        $this->authorize('view', $production);
         $reconciliation = $result['reconciliation'];
 
         return response()->json([
@@ -66,6 +69,7 @@ class ProductionController extends Controller
     public function update(UpdateProductionRequest $request, string $id)
     {
         $production = Production::findOrFail($id);
+        $this->authorize('update', $production);
         $production = $this->productionService->update($production, $request->validated());
 
         return response()->json([
@@ -80,6 +84,7 @@ class ProductionController extends Controller
     public function destroy(string $id)
     {
         $production = Production::findOrFail($id);
+        $this->authorize('delete', $production);
         $this->productionService->delete($production);
 
         return response()->json([
@@ -90,29 +95,20 @@ class ProductionController extends Controller
     /**
      * Remove multiple resources from storage.
      */
-    public function destroyMultiple(Request $request)
+    public function destroyMultiple(DestroyMultipleProductionsRequest $request)
     {
-        $ids = $request->input('ids', []);
+        $ids = $request->validated('ids');
+        $productions = Production::whereIn('id', $ids)->get();
 
-        if (!is_array($ids) || empty($ids)) {
-            return response()->json([
-                'message' => 'No se han proporcionado IDs válidos.',
-                'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.'
-            ], 400);
+        foreach ($productions as $production) {
+            $this->authorize('delete', $production);
         }
 
-        try {
-            $deletedCount = $this->productionService->deleteMultiple($ids);
+        $deletedCount = $this->productionService->deleteMultiple($ids);
 
-            return response()->json([
-                'message' => "{$deletedCount} producción(es) eliminada(s) correctamente.",
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error al eliminar las producciones.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'message' => "{$deletedCount} producción(es) eliminada(s) correctamente.",
+        ], 200);
     }
 
     /**
@@ -121,6 +117,7 @@ class ProductionController extends Controller
     public function getDiagram(string $id)
     {
         $production = Production::findOrFail($id);
+        $this->authorize('view', $production);
 
         $diagramData = $production->getDiagramData();
 
@@ -137,6 +134,7 @@ class ProductionController extends Controller
     public function getProcessTree(string $id)
     {
         $production = Production::findOrFail($id);
+        $this->authorize('view', $production);
 
         $tree = $production->buildProcessTree();
 
@@ -163,6 +161,7 @@ class ProductionController extends Controller
     public function getTotals(string $id)
     {
         $production = Production::findOrFail($id);
+        $this->authorize('view', $production);
 
         return response()->json([
             'message' => 'Totales obtenidos correctamente.',
@@ -176,6 +175,7 @@ class ProductionController extends Controller
     public function getReconciliation(string $id)
     {
         $production = Production::findOrFail($id);
+        $this->authorize('view', $production);
 
         $reconciliation = $production->reconcile();
 
@@ -195,6 +195,7 @@ class ProductionController extends Controller
     public function getAvailableProductsForOutputs(string $id)
     {
         $production = Production::findOrFail($id);
+        $this->authorize('view', $production);
 
         $products = $production->getAvailableProductsForOutputs();
 

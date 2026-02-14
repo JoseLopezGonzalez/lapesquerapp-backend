@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\IndexProductionOutputRequest;
+use App\Http\Requests\v2\StoreMultipleProductionOutputsRequest;
 use App\Http\Requests\v2\StoreProductionOutputRequest;
 use App\Http\Requests\v2\UpdateProductionOutputRequest;
-use App\Http\Requests\v2\StoreMultipleProductionOutputsRequest;
 use App\Http\Resources\v2\ProductionOutputResource;
 use App\Models\ProductionOutput;
 use App\Services\Production\ProductionOutputService;
@@ -19,33 +20,22 @@ class ProductionOutputController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(IndexProductionOutputRequest $request)
     {
         $query = ProductionOutput::query();
-
-        // Cargar relaciones
         $query->with(['productionRecord', 'product', 'sources']);
 
-        // Filtro por production_record_id
-        if ($request->has('production_record_id')) {
+        if ($request->filled('production_record_id')) {
             $query->where('production_record_id', $request->production_record_id);
         }
-
-        // Filtro por product_id
-        if ($request->has('product_id')) {
+        if ($request->filled('product_id')) {
             $query->where('product_id', $request->product_id);
         }
-
-        // Filtro por lot_id
-        if ($request->has('lot_id')) {
+        if ($request->filled('lot_id')) {
             $query->where('lot_id', $request->lot_id);
         }
-
-        // Filtro por production_id (a través de production_record)
-        if ($request->has('production_id')) {
-            $query->whereHas('productionRecord', function ($q) use ($request) {
-                $q->where('production_id', $request->production_id);
-            });
+        if ($request->filled('production_id')) {
+            $query->whereHas('productionRecord', fn ($q) => $q->where('production_id', $request->production_id));
         }
 
         $perPage = $request->input('perPage', 15);
@@ -72,6 +62,7 @@ class ProductionOutputController extends Controller
     {
         $output = ProductionOutput::with(['productionRecord', 'product', 'sources'])
             ->findOrFail($id);
+        $this->authorize('view', $output);
 
         return response()->json([
             'message' => 'Salida de producción obtenida correctamente.',
@@ -86,6 +77,7 @@ class ProductionOutputController extends Controller
     {
         $output = ProductionOutput::with(['productionRecord', 'product', 'sources'])
             ->findOrFail($id);
+        $this->authorize('view', $output);
 
         return response()->json([
             'message' => 'Desglose de costes obtenido correctamente.',
@@ -102,6 +94,7 @@ class ProductionOutputController extends Controller
     public function update(UpdateProductionOutputRequest $request, string $id)
     {
         $output = ProductionOutput::findOrFail($id);
+        $this->authorize('update', $output);
         $output = $this->productionOutputService->update($output, $request->validated());
 
         return response()->json([
@@ -116,6 +109,7 @@ class ProductionOutputController extends Controller
     public function destroy(string $id)
     {
         $output = ProductionOutput::findOrFail($id);
+        $this->authorize('delete', $output);
         $this->productionOutputService->delete($output);
 
         return response()->json([

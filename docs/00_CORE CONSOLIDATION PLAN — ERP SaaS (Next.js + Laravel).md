@@ -372,7 +372,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | CeboDispatch, CeboDispatchProduct, Cebo |
 | **Controladores** | CeboDispatchController, CeboDispatchStatisticsController |
 | **Rutas clave** | cebo-dispatches, dispatch-chart-data, facilcom-xlsx, a3erp-xlsx |
-| **Evolution log** | Tests integración CRUD + fix authorize update; **Rating actual: 7/10** |
+| **Evolution log** | Tests CRUD + fix authorize; CeboDispatchListService, Policy delete (admin/tecnico), controller delgado, destroyMultiple authorize; **Rating actual: 9/10** |
 
 ### A.6 Producción
 | Tipo | Detalle |
@@ -381,6 +381,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Controladores** | ProductionController, ProductionRecordController, ProductionInputController, ProductionOutputController, ProductionOutputConsumptionController, CostCatalogController, ProductionCostController |
 | **Rutas clave** | productions, production-records, production-inputs, production-outputs, production-output-consumptions, cost-catalog, production-costs, processes |
 | **Nota** | Módulo más complejo; trazabilidad a nivel de caja |
+| **Evolution log** | Sub-bloques 1–4: Production, ProductionRecord, Input/Output/Consumption, ProductionCost, CostCatalog, Process (Form Requests, Policies, authorize). **Rating actual: 9/10**. Bloque completo. |
 
 ### A.7 Productos (y maestros anidados)
 | Tipo | Detalle |
@@ -487,8 +488,8 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **A.2** Ventas | **8,5/10** | Sub-bloques 1–5; N+1 revisado |
 | **A.3** Inventario / Stock | **8/10** | Policies, Form Requests, tests feature |
 | **A.4** Recepciones de Materia Prima | **9/10** | WriteService, BulkService, 23 tests (incl. edge cases) |
-| **A.5** Despachos de Cebo | **7/10** | Tests CRUD + fix authorize |
-| **A.6** Producción | — | Sin entrada en evolution log |
+| **A.5** Despachos de Cebo | **9/10** | ListService, Policy delete, controller delgado |
+| **A.6** Producción | **9/10** (Production) | Sub-bloque 1: Form Requests, Policy, authorize; resto pendiente |
 | **A.7** Productos | **9/10** | Sub-bloques 1–2: Form Requests, Policies, ListServices, ProductosBlockApiTest 24 tests |
 | **A.8** Catálogos transaccionales | — | Sin entrada en evolution log |
 | **A.9** Proveedores + Liquidaciones | — | Sin entrada en evolution log |

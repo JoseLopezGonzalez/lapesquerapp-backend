@@ -3,25 +3,19 @@
 namespace App\Policies;
 
 use App\Enums\Role;
-use App\Models\CeboDispatch;
+use App\Models\ProductionOutput;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class CeboDispatchPolicy
+class ProductionOutputPolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * Roles que pueden listar, ver, crear y actualizar despachos de cebo.
-     */
     protected function allowedRoles(): array
     {
         return Role::values();
     }
 
-    /**
-     * Roles que pueden eliminar despachos de cebo (solo administrador y técnico).
-     */
     protected function rolesCanDelete(): array
     {
         return [
@@ -35,7 +29,7 @@ class CeboDispatchPolicy
         return $user->hasAnyRole($this->allowedRoles());
     }
 
-    public function view(User $user, CeboDispatch $ceboDispatch): bool
+    public function view(User $user, ProductionOutput $productionOutput): bool
     {
         return $user->hasAnyRole($this->allowedRoles());
     }
@@ -45,12 +39,12 @@ class CeboDispatchPolicy
         return $user->hasAnyRole($this->allowedRoles());
     }
 
-    public function update(User $user, CeboDispatch $ceboDispatch): bool
+    public function update(User $user, ProductionOutput $productionOutput): bool
     {
         return $user->hasAnyRole($this->allowedRoles());
     }
 
-    public function delete(User $user, CeboDispatch $ceboDispatch): bool
+    public function delete(User $user, ProductionOutput $productionOutput): bool
     {
         return $user->hasAnyRole($this->rolesCanDelete());
     }

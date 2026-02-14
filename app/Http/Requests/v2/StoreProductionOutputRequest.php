@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\v2;
 
+use App\Models\ProductionOutput;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreProductionOutputRequest extends FormRequest
@@ -11,7 +12,7 @@ class StoreProductionOutputRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('create', ProductionOutput::class);
     }
 
     /**

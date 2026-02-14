@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\v2\StoreProductionInputRequest;
+use App\Http\Requests\v2\DestroyMultipleProductionInputsRequest;
+use App\Http\Requests\v2\IndexProductionInputRequest;
 use App\Http\Requests\v2\StoreMultipleProductionInputsRequest;
+use App\Http\Requests\v2\StoreProductionInputRequest;
 use App\Http\Resources\v2\ProductionInputResource;
 use App\Models\ProductionInput;
 use App\Services\Production\ProductionInputService;
@@ -18,28 +20,19 @@ class ProductionInputController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(IndexProductionInputRequest $request)
     {
         $query = ProductionInput::query();
-
-        // Cargar relaciones
         $query->with(['productionRecord', 'box.product']);
 
-        // Filtro por production_record_id
-        if ($request->has('production_record_id')) {
+        if ($request->filled('production_record_id')) {
             $query->where('production_record_id', $request->production_record_id);
         }
-
-        // Filtro por box_id
-        if ($request->has('box_id')) {
+        if ($request->filled('box_id')) {
             $query->where('box_id', $request->box_id);
         }
-
-        // Filtro por production_id (a través de production_record)
-        if ($request->has('production_id')) {
-            $query->whereHas('productionRecord', function ($q) use ($request) {
-                $q->where('production_id', $request->production_id);
-            });
+        if ($request->filled('production_id')) {
+            $query->whereHas('productionRecord', fn ($q) => $q->where('production_id', $request->production_id));
         }
 
         return ProductionInputResource::collection($query->get());
@@ -92,6 +85,7 @@ class ProductionInputController extends Controller
     {
         $input = ProductionInput::with(['productionRecord', 'box.product'])
             ->findOrFail($id);
+        $this->authorize('view', $input);
 
         return response()->json([
             'message' => 'Entrada de producción obtenida correctamente.',
@@ -105,6 +99,7 @@ class ProductionInputController extends Controller
     public function destroy(string $id)
     {
         $input = ProductionInput::findOrFail($id);
+        $this->authorize('delete', $input);
         $this->productionInputService->delete($input);
 
         return response()->json([
@@ -115,28 +110,19 @@ class ProductionInputController extends Controller
     /**
      * Remove multiple resources from storage.
      */
-    public function destroyMultiple(Request $request)
+    public function destroyMultiple(DestroyMultipleProductionInputsRequest $request)
     {
-        $ids = $request->input('ids', []);
+        $ids = $request->validated('ids');
+        $inputs = ProductionInput::whereIn('id', $ids)->get();
 
-        if (!is_array($ids) || empty($ids)) {
-            return response()->json([
-                'message' => 'No se han proporcionado IDs válidos.',
-                'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.'
-            ], 400);
+        foreach ($inputs as $input) {
+            $this->authorize('delete', $input);
         }
 
-        try {
-            $deletedCount = $this->productionInputService->deleteMultiple($ids);
+        $deletedCount = $this->productionInputService->deleteMultiple($ids);
 
-            return response()->json([
-                'message' => "{$deletedCount} entrada(s) de producción eliminada(s) correctamente.",
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error al eliminar las entradas de producción.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'message' => "{$deletedCount} entrada(s) de producción eliminada(s) correctamente.",
+        ], 200);
     }
 }

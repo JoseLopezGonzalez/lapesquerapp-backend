@@ -9,7 +9,7 @@ use App\Http\Requests\v2\StoreCeboDispatchRequest;
 use App\Http\Requests\v2\UpdateCeboDispatchRequest;
 use App\Http\Resources\v2\CeboDispatchResource;
 use App\Models\CeboDispatch;
-use App\Models\CeboDispatchProduct;
+use App\Services\v2\CeboDispatchListService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
@@ -17,63 +17,7 @@ class CeboDispatchController extends Controller
 {
     public function index(IndexCeboDispatchRequest $request)
     {
-        $query = CeboDispatch::query();
-        $query->with('supplier', 'products.product');
-
-        if ($request->has('id')) {
-            $query->where('id', $request->id);
-        }
-
-        if ($request->has('ids')) {
-            $query->whereIn('id', $request->ids);
-        }
-
-        if ($request->has('suppliers')) {
-            $query->whereIn('supplier_id', $request->suppliers);
-        }
-
-        if ($request->has('dates')) {
-            $dates = $request->input('dates');
-            /* Check if $dates['start'] exists */
-            if (isset($dates['start'])) {
-                $startDate = $dates['start'];
-                $startDate = date('Y-m-d 00:00:00', strtotime($startDate));
-                $query->where('date', '>=', $startDate);
-            }
-            /* Check if $dates['end'] exists */
-            if (isset($dates['end'])) {
-                $endDate = $dates['end'];
-                $endDate = date('Y-m-d 23:59:59', strtotime($endDate));
-                $query->where('date', '<=', $endDate);
-            }
-        }
-
-
-        if ($request->has('species')) {
-            $query->whereHas('products.product', function ($query) use ($request) {
-                $query->whereIn('species_id', $request->species);
-            });
-        }
-
-        if ($request->has('products')) {
-            $query->whereHas('products.product', function ($query) use ($request) {
-                $query->whereIn('id', $request->products);
-            });
-        }
-
-        if ($request->has('notes')) {
-            $query->where('notes', 'like', '%' . $request->notes . '%');
-        }
-
-        if ($request->has('export_type')) {
-            $query->where('export_type', $request->export_type);
-        }
-
-        /* Order by Date Descen */
-        $query->orderBy('date', 'desc');
-
-        $perPage = $request->input('perPage', 12); // Default a 10 si no se proporciona
-        return CeboDispatchResource::collection($query->paginate($perPage));
+        return CeboDispatchResource::collection(CeboDispatchListService::list($request));
     }
 
     public function store(StoreCeboDispatchRequest $request)
@@ -155,6 +99,11 @@ class CeboDispatchController extends Controller
     public function destroyMultiple(DestroyMultipleCeboDispatchesRequest $request)
     {
         $ids = $request->validated('ids');
+        $dispatches = CeboDispatch::whereIn('id', $ids)->get();
+
+        foreach ($dispatches as $dispatch) {
+            $this->authorize('delete', $dispatch);
+        }
 
         CeboDispatch::whereIn('id', $ids)->delete();
 
