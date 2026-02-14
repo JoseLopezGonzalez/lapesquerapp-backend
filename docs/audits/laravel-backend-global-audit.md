@@ -23,7 +23,7 @@ El proyecto **no** sigue un checklist rígido de patrones; implícitamente adopt
 - **API**: REST v2 con prefijo `v2`, Form Requests para validación, API Resources para serialización, respuestas JSON consistentes.
 - **Autenticación**: Sanctum (API tokens), roles por usuario (`role` en `users`), middleware `role:tecnico,administrador,...` para rutas protegidas.
 - **Persistencia**: Eloquent con trait `UsesTenantConnection` en modelos de negocio; modelo `Tenant` en conexión por defecto (base central).
-- **Sin**: Repositorios genéricos, capa de dominio explícita (DDD), colas/jobs en el código analizado, políticas (Policies) registradas.
+- **Sin**: Repositorios genéricos, capa de dominio explícita (DDD), colas/jobs en el código analizado. Policies sí registradas (Order, User) pero solo usadas en UserController.
 
 La identidad es **Laravel estándar con servicios** y multi-tenant por base de datos, adecuada para un ERP de cooperativas pesqueras con necesidad de aislamiento fuerte de datos.
 
@@ -45,7 +45,7 @@ La identidad es **Laravel estándar con servicios** y multi-tenant por base de d
 
 ## 4. Riesgos o Debilidades Estructurales
 
-- **Autorización**: No hay políticas (Policy); `AuthServiceProvider::$policies` está vacío. La autorización se reduce a “estar autenticado + tener uno de los roles permitidos” en el middleware. No hay control fino por recurso (por ejemplo, “solo el comercial asignado puede editar este pedido”).
+- **Autorización**: Hay políticas registradas para Order y User en `AuthServiceProvider`, pero **solo `UserController`** llama a `authorize()`. El resto de controladores (incluido OrderController) no usan políticas. La autorización efectiva se reduce a “estar autenticado + tener uno de los roles permitidos” en el middleware. No hay control fino por recurso (por ejemplo, “solo el comercial asignado puede editar este pedido”).
 - **Uso directo de Query Builder en contexto tenant**: Varios controladores usan `DB::connection('tenant')->table(...)` (SettingController, OrderController, PunchController, RawMaterialReceptionController). Aumenta el riesgo de olvidar el contexto tenant en futuros cambios y rompe la cohesión con Eloquent (modelos, eventos, scopes).
 - **Controladores muy gruesos**: OrderController y PunchController concentran gran cantidad de filtros, consultas y lógica de presentación/agregación. Dificulta pruebas y mantenimiento y mezcla responsabilidades.
 - **Tests**: Solo tests de ejemplo (Feature/ExampleTest, Unit/ExampleTest). No hay tests de integración ni de dominio; la regresión se apoya en pruebas manuales o externas.
@@ -64,7 +64,7 @@ La identidad es **Laravel estándar con servicios** y multi-tenant por base de d
 | Validación | ✅ | Form Requests en operaciones críticas; mensajes y reglas en español donde se ha revisado. |
 | Serialización API | ✅ | API Resources para entidades principales; respuestas JSON homogéneas. |
 | Autenticación | ✅ | Sanctum, magic link y OTP; throttling en endpoints sensibles. |
-| Autorización | ⚠️ | Solo por rol a nivel de grupo de rutas; sin Policies ni Gates por modelo/recurso. |
+| Autorización | ⚠️ | Policies registradas (Order, User); solo UserController las usa. Resto: solo por rol a nivel de grupo de rutas. |
 | Eloquent y conexiones | ⚠️ | Uso correcto del trait en modelos; pero acceso directo a `DB::connection('tenant')->table()` en varios sitios. |
 | Transacciones | ✅ | Usadas en servicios y controladores donde hay operaciones compuestas. |
 | Excepciones | ✅ | Handler personalizado para API, ValidationException, QueryException, HttpException. |
@@ -77,7 +77,27 @@ En conjunto, el proyecto está **alineado con Laravel** en la mayoría de las á
 
 ---
 
-## 6. Evaluación OOP (SRP, acoplamiento, cohesión)
+## 6. Uso de componentes estructurales Laravel
+
+Evaluación explícita de los bloques estructurales de Laravel (presencia, corrección, consistencia):
+
+| Componente | Presencia | Corrección / consistencia |
+|------------|-----------|---------------------------|
+| **Services** | ✅ Presente | Servicios de aplicación en dominios complejos (Producción, estadísticas, PDF, correo, MagicLink, TenantMail). Responsabilidad única y reutilización adecuadas. |
+| **Actions** | ❌ Ausente | No existe carpeta `Actions` ni invocables de un solo propósito. No es obligatorio; la lógica está en servicios o controladores. |
+| **Jobs** | ❌ Ausente | No hay clases Job; no se usan colas. Si se añaden en el futuro, debe definirse convención de contexto tenant en el payload. |
+| **Events / Listeners** | Solo por defecto | EventServiceProvider solo registra `Registered` → `SendEmailVerificationNotification`. No hay eventos de dominio ni listeners propios; adecuado para el flujo actual. |
+| **Form Requests** | ⚠️ Parcial | Solo módulo Production (14 clases en `Http/Requests/v2/`). El resto de la API valida en controlador o sin validación explícita. Inconsistencia en cobertura. |
+| **Policies / Gates** | ⚠️ Parcial | Registradas Order y User en AuthServiceProvider; **solo UserController** llama a `authorize()`. OrderController y el resto no usan políticas. Uso incoherente. |
+| **Middleware** | ✅ | `tenant`, `auth:sanctum`, `role`, `throttle`, `LogActivity`. Correcto y coherente. |
+| **API Resources** | ✅ | Recursos v2 para entidades principales; serialización estable. |
+| **Otros** | — | Sin DTOs, sin Observers, sin Repositories. No requerido por la arquitectura actual. |
+
+**Resumen**: La capa de servicios está bien utilizada; Form Requests y Policies están presentes pero de forma desigual (Form Requests solo en Production; Policies solo aplicadas en usuarios). La evolución natural es extender Form Requests a más endpoints y usar `authorize()` en todos los controladores de recursos críticos.
+
+---
+
+## 7. Evaluación OOP (SRP, acoplamiento, cohesión)
 
 - **Responsabilidad única**: Los servicios de producción y de correo/PDF tienen responsabilidades bien delimitadas. Los controladores grandes (Order, Punch) asumen demasiado: filtrado, agregaciones, exportaciones y reglas de negocio mezcladas.
 - **Acoplamiento**: Los controladores acoplan directamente Request, Model y a veces `DB::connection('tenant')`; las dependencias están inyectadas en servicios. El acoplamiento a la base de datos es alto donde se usa Query Builder directo.
@@ -86,7 +106,7 @@ En conjunto, el proyecto está **alineado con Laravel** en la mayoría de las á
 
 ---
 
-## 7. API y Diseño de Serialización
+## 8. API y Diseño de Serialización
 
 - **Recursos**: Uso de API Resources (OrderResource, OrderDetailsResource, ActiveOrderCardResource, etc.) mantiene la forma de salida estable y evita exponer atributos internos.
 - **Consistencia**: Respuestas con `message`, `userMessage` y `errors` en errores; estructura predecible en listados y detalle.
@@ -95,7 +115,7 @@ En conjunto, el proyecto está **alineado con Laravel** en la mayoría de las á
 
 ---
 
-## 8. Distribución de la Lógica de Dominio
+## 9. Distribución de la Lógica de Dominio
 
 - **En modelos**: Constantes de estado (Order::STATUS_*), métodos estáticos (getValidStatuses), relaciones, accessors (formatted_id, summary) y scopes (withTotals). Parte de la lógica de “qué es un pedido” está bien en el modelo.
 - **En controladores**: Filtros de listado, agregaciones para dashboards y reportes, y en algunos casos reglas de negocio (por ejemplo condiciones de estado y fechas). Esta parte sería más mantenible en servicios o query objects.
@@ -104,7 +124,7 @@ En conjunto, el proyecto está **alineado con Laravel** en la mayoría de las á
 
 ---
 
-## 9. Integridad Transaccional y Efectos Secundarios
+## 10. Integridad Transaccional y Efectos Secundarios
 
 - **Transacciones**: Usadas en creación/actualización de recepciones de materia prima, palets, despachos de cebo, productos (duplicación), fichajes y en todos los servicios de producción. Coherente con operaciones multi-tabla.
 - **Efectos secundarios**: Envío de correo (OrderMailerService) y generación de PDFs se invocan desde controladores; si en el futuro se movieran a colas, habría que garantizar que el tenant esté en el payload del job.
@@ -112,7 +132,7 @@ En conjunto, el proyecto está **alineado con Laravel** en la mayoría de las á
 
 ---
 
-## 10. Testing y Mantenibilidad
+## 11. Testing y Mantenibilidad
 
 - **Cobertura**: Prácticamente nula; solo ExampleTest. No hay tests de API, de servicios ni de multi-tenant.
 - **Mantenibilidad**: La base de código es legible y los nombres son descriptivos. La mantenibilidad se ve afectada por controladores muy largos y por la falta de tests que documenten el comportamiento esperado.
@@ -120,7 +140,7 @@ En conjunto, el proyecto está **alineado con Laravel** en la mayoría de las á
 
 ---
 
-## 11. Señales de Rendimiento y Escalabilidad
+## 12. Señales de Rendimiento y Escalabilidad
 
 - **Consultas N+1**: Uso de `with()` en listados (por ejemplo Order con customer, salesperson, transport, incoterm) indica conciencia del problema; en controladores grandes puede haber puntos sin eager loading.
 - **Índices**: No se ha revisado el esquema de migraciones en detalle; para listados filtrados por fechas, estado y tenant (implícito por conexión), conviene revisar índices en tablas grandes (orders, punch_events, production_*).
@@ -129,7 +149,7 @@ En conjunto, el proyecto está **alineado con Laravel** en la mayoría de las á
 
 ---
 
-## 12. Seguridad y Autorización
+## 13. Seguridad y Autorización
 
 - **Aislamiento tenant**: El middleware garantiza que solo se use un tenant activo por request; los modelos de negocio usan la conexión `tenant` inyectada. Riesgo: cualquier código que use la conexión por defecto o que construya SQL sin conexión explícita podría fugarse a otra base.
 - **Autorización**: Solo por rol a nivel de ruta; no hay comprobación “este usuario puede ver/editar este Order/Customer”. Para un ERP, es un gap si los requisitos exigen restricciones por comercial, almacén o cliente.
@@ -138,7 +158,7 @@ En conjunto, el proyecto está **alineado con Laravel** en la mayoría de las á
 
 ---
 
-## 13. Oportunidades de Mejora (Priorizadas)
+## 14. Oportunidades de Mejora (Priorizadas)
 
 1. **Introducir políticas de autorización**: Empezar por recursos críticos (Order, RawMaterialReception, User) y registrar políticas en AuthServiceProvider; sustituir o complementar el middleware de rol con `authorize()` en controladores.
 2. **Eliminar o acotar el uso de `DB::connection('tenant')->table()`**: Preferir modelos Eloquent (por ejemplo un modelo `Setting` con conexión tenant) o servicios que encapsulen el acceso; reducir superficie de error y mantener un solo punto de configuración de conexión.
@@ -149,7 +169,7 @@ En conjunto, el proyecto está **alineado con Laravel** en la mayoría de las á
 
 ---
 
-## 14. Trayectoria de Evolución Sugerida
+## 15. Trayectoria de Evolución Sugerida
 
 - **Fase 1 (corto plazo)**: Políticas para Order y User; modelo (o helper tipado) para Settings en tenant; revisión de índices en tablas críticas.
 - **Fase 2 (medio plazo)**: Extracción de “query” o “report” para Order y Punch; tests de integración para login y un flujo de pedido y uno de producción.
@@ -159,7 +179,7 @@ La evolución es **adaptativa**: el proyecto no requiere pasar a DDD o CQRS; mej
 
 ---
 
-## 15. Marco de Madurez Arquitectónica
+## 16. Marco de Madurez Arquitectónica
 
 Evaluación por dimensión (1–10), con justificación breve:
 
@@ -177,7 +197,7 @@ Evaluación por dimensión (1–10), con justificación breve:
 
 ---
 
-## 16. Top 5 Riesgos Sistémicos
+## 17. Top 5 Riesgos Sistémicos
 
 1. **Falta de autorización por recurso**: Cualquier usuario autenticado con el rol adecuado puede actuar sobre cualquier recurso del tenant (por ejemplo cualquier pedido); riesgo de abuso o error en entornos multi-usuario.
 2. **Uso de `DB::connection('tenant')->table()` sin modelo**: Aumenta el riesgo de olvidar el contexto tenant en cambios futuros y dificulta refactors y tests.
@@ -187,7 +207,7 @@ Evaluación por dimensión (1–10), con justificación breve:
 
 ---
 
-## 17. Top 5 Mejoras de Mayor Impacto
+## 18. Top 5 Mejoras de Mayor Impacto
 
 1. **Implementar políticas (Policies) para recursos críticos** y usarlas en controladores: mayor seguridad y claridad de permisos sin cambiar la estructura actual.
 2. **Sustituir acceso directo a `settings` por un modelo o servicio** que use Eloquent y, si aplica, caché: un solo punto de acceso y menor riesgo de fuga de contexto.
@@ -197,7 +217,7 @@ Evaluación por dimensión (1–10), con justificación breve:
 
 ---
 
-## 18. Preguntas de Contexto (opcionales)
+## 19. Preguntas de Contexto (opcionales)
 
 Si se desea afinar recomendaciones, estas preguntas pueden ayudar:
 

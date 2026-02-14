@@ -25,8 +25,8 @@
 
 ## 3. Autorización
 
-- **Estado actual**: No hay políticas (Policy) registradas en `AuthServiceProvider`. La restricción de acceso se hace por middleware de rol: `role:tecnico,administrador,direccion,administracion,comercial,operario` en el grupo de rutas protegidas.
-- **Implicación**: Cualquier usuario autenticado que tenga uno de esos roles puede acceder a **todos** los recursos del tenant (todos los pedidos, todos los clientes, etc.). No hay comprobación del tipo “este usuario solo puede ver pedidos de sus clientes” o “solo puede editar su almacén”.
+- **Estado actual**: Hay políticas registradas en `AuthServiceProvider` para Order y User, pero **solo `UserController`** llama a `authorize()`. El resto de controladores (incluido OrderController) no usan políticas. La restricción efectiva de acceso se hace por middleware de rol: `role:tecnico,administrador,direccion,administracion,comercial,operario` en el grupo de rutas protegidas.
+- **Implicación**: Cualquier usuario autenticado que tenga uno de esos roles puede acceder a **todos** los recursos del tenant (todos los pedidos, todos los clientes, etc.), excepto donde se aplica la política de User. No hay comprobación del tipo “este usuario solo puede ver pedidos de sus clientes” o “solo puede editar su almacén” en Order ni en el resto de recursos.
 - **Riesgo**: En entornos multi-usuario por tenant, puede ser un problema de negocio o de cumplimiento si se requieren restricciones por comercial, almacén o cliente. También dificulta auditorías “quién pudo hacer qué”.
 - **Recomendación**: Introducir políticas para recursos críticos (Order, User, RawMaterialReception, etc.) y usar `$this->authorize(...)` en controladores; mantener el middleware de rol como filtro grueso y las políticas como filtro fino.
 

@@ -92,6 +92,38 @@ Always start with P0, require approval to move to next priority.
 
 ---
 
+## Quality Rating (1/10) — Before & After
+
+For every block you work on, you **must** produce an explicit rating from 1 to 10, both **before** and **after** the changes. This appears in the analysis (STEP 1), the log (STEP 5), and whenever you summarize a block.
+
+**Scale definition:**
+
+| Score | Meaning |
+|-------|---------|
+| 1–2 | Critical: major P0 issues, structural chaos, high regression risk |
+| 3–4 | Poor: serious P1/P2 debt, weak use of Laravel components, fragile |
+| 5–6 | Acceptable: works but has notable technical debt and improvement opportunities |
+| 7–8 | Good: clean structure, proper use of Services/Policies/Form Requests, low risk |
+| 9–10 | Excellent: exemplary architecture, minimal debt, strong test coverage, production-grade |
+
+**Criteria to consider when scoring (non-exhaustive):**
+
+- Use of Laravel structural components (Services, Actions, Form Requests, Policies, etc.)
+- Controller thickness and separation of concerns
+- Business logic clarity and consistency
+- Multi-tenant safety
+- Test coverage and verification
+- Technical debt (N+1, missing transactions, naming, etc.)
+- Alignment with audit findings and CORE Plan
+
+**Where to include the rating:**
+
+1. **STEP 1 (Analysis)** → Add **"Rating antes: X/10"** with a one-line justification
+2. **STEP 5 (Log)** → Include **"Rating antes"** and **"Rating después"** in every log entry
+3. **Summary in chat** → When presenting analysis or results, always show `Antes: X/10 → Después: Y/10`
+
+---
+
 ## Laravel Structural Components (Evaluation & Application)
 
 When analyzing and evolving each module, explicitly consider whether Laravel’s structural building blocks are used correctly. Use the audit’s **Laravel Structural Components** findings (and `structural-components-usage.md` if present) as input. For each block:
@@ -185,6 +217,7 @@ Ask: "Does current code behavior match documented business rules?"
 Document:
 
 * What this module currently does
+* **Rating antes: X/10** (with brief justification; see "Quality Rating" section)
 * Architectural quality
 * Risks identified
 * **Usage of Laravel structural components** in this module (Services, Actions, Jobs, Events, Listeners, Form Requests, Policies): what is present, what is missing or misused (see section "Laravel Structural Components")
@@ -223,7 +256,7 @@ Only after explicit approval:
 
 ### STEP 4 -- Validation
 
-Execute verification strategy:
+Execute verification strategy. After verification, produce **Rating después: Y/10** with justification (the post-refactor quality score; see "Quality Rating" section).
 
 #### Automated Verification
 
@@ -265,6 +298,7 @@ Use this format:
 
 **Priority**: P0/P1/P2/P3
 **Risk Level**: Low/Medium/High/Critical
+**Rating antes: X/10** | **Rating después: Y/10** (obligatorio en cada entrada)
 
 ### Problems Addressed
 - Issue 1
@@ -330,6 +364,7 @@ Provide a detailed summary of:
 
 * What was tested
 * Results obtained
+* **Rating después: Y/10** (compared to Rating antes from STEP 1)
 * Any warnings or observations
 * Confirmation of behavior preservation
 
@@ -380,10 +415,10 @@ Guided by the **Laravel Structural Components** section and the audit findings:
 6. **Ask the user which module/block they want to address first**
 7. Once the user specifies the block:
    * Execute STEP 0: Document current business behavior
-   * Execute STEP 1: Analysis with priority classification
+   * Execute STEP 1: Analysis with **Rating antes: X/10** and priority classification
    * Execute STEP 2: Present proposed changes
    * Wait for approval
-8. After approval, proceed with STEP 3, 4, and 5
+8. After approval, proceed with STEP 3, 4, and 5 (log must include **Rating antes** and **Rating después**)
 
 **Do NOT start arbitrarily.Do NOT assume which block to work on.Always ask the user for direction on which module to tackle next.**
 
