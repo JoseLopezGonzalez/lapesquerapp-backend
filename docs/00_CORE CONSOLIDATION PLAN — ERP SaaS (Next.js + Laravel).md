@@ -428,8 +428,10 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 ### A.13 Configuración por tenant
 | Tipo | Detalle |
 |------|---------|
+| **Entidades** | Setting (key-value por tenant) |
 | **Controladores** | SettingController |
 | **Rutas clave** | settings (GET, PUT) |
+| **Evolution log** | Sub-bloque 1: Modelo Setting, SettingService, UpdateSettingsRequest, SettingPolicy (admin/tecnico), GET enmascara password, SettingsBlockApiTest 8 tests. **Rating actual: 9/10** |
 
 ### A.14 Sistema
 | Tipo | Detalle |
@@ -493,7 +495,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **A.10** Etiquetas | **8/10** | Form Requests, Policy, tests Feature |
 | **A.11** Fichajes | — | Sin entrada en evolution log |
 | **A.12** Estadísticas e informes | — | Sin entrada en evolution log |
-| **A.13** Configuración por tenant | — | Sin entrada en evolution log |
+| **A.13** Configuración por tenant | **9/10** | Setting model, SettingService, Policy, Form Request, GET enmascara password, SettingsBlockApiTest 8 tests |
 | **A.14** Sistema | **9/10** | Mismo bloque que A.1 Auth (users, roles, activity-logs) |
 | **A.15** Documentos (PDF/Excel) | — | Sin entrada en evolution log |
 | **A.16** Tenants | — | Sin entrada en evolution log |

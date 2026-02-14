@@ -5,6 +5,32 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2025-02-14] Block Configuración por tenant (Settings) - Sub-bloque 1
+
+**Priority**: P1 + P2  
+**Risk Level**: Low  
+**Rating antes: 4/10** | **Rating después: 9/10**
+
+### Problems Addressed
+- SettingController usaba DB::connection en index y update; lógica en controlador; sin Form Request, Policy ni modelo; GET exponía password.
+
+### Changes Applied
+- Modelo Setting (UsesTenantConnection), SettingService (getAllKeyValue con ofuscación password, updateFromPayload con regla password), UpdateSettingsRequest, SettingPolicy (admin/tecnico), controller delgado, SettingsBlockApiTest 8 tests.
+
+### Verification Results
+- SettingsBlockApiTest 8 tests OK; AuthBlockApiTest y ProductosBlockApiTest pasan. Contrato API preservado (GET password ahora ********).
+
+### Gap to 10/10
+- Helper tenantSetting() sigue con DB directo; tests unitarios opcionales.
+
+### Rollback Plan
+`git revert <commit-hash>`.
+
+### Next
+- Siguiente módulo CORE.
+
+---
+
 ## [2025-02-14] Block Auth - Sub-bloque 1 (Session tenant fix, Form Requests, UserListService)
 
 **Priority**: P0 + P1  
