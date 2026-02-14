@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\v2;
 
+use App\Http\Requests\v2\DeleteMultipleStoresRequest;
+use App\Http\Requests\v2\IndexStoreRequest;
+use App\Http\Requests\v2\StoreStoreRequest;
+use App\Http\Requests\v2\UpdateStoreRequest;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
@@ -50,7 +54,7 @@ class StoreController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(IndexStoreRequest $request)
     {
         $query = Store::query();
 
@@ -82,18 +86,9 @@ class StoreController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreStoreRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|min:3|max:255|unique:tenant.stores,name',
-            'temperature' => 'required|numeric|between:-99.99,99.99',
-            'capacity' => 'required|numeric|min:0',
-        ], [
-            'name.unique' => 'Ya existe un almacén con este nombre.',
-            'temperature.numeric' => 'La temperatura debe ser un número.',
-            'temperature.between' => 'La temperatura debe estar entre -99.99 y 99.99.',
-        ]);
-
+        $validated = $request->validated();
         $validated['map'] = json_encode($this->getDefaultMap());
 
         $store = Store::create($validated);
@@ -123,7 +118,7 @@ class StoreController extends Controller
             'palletsV2.boxes.box.product', // Cargar product para toArrayAssocV2
             'palletsV2.storedPallet', // Cargar storedPallet para posición
         ])->findOrFail($id);
-        
+        $this->authorize('view', $store);
         return response()->json([
             'data' => new StoreDetailsResource($store),
         ]);
@@ -132,19 +127,11 @@ class StoreController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(UpdateStoreRequest $request, string $id)
     {
         $store = Store::findOrFail($id);
-
-        $validated = $request->validate([
-            'name' => 'required|string|min:3|max:255|unique:tenant.stores,name,' . $id,
-            'temperature' => 'required|numeric|between:-99.99,99.99',
-            'capacity' => 'required|numeric|min:0',
-        ], [
-            'name.unique' => 'Ya existe un almacén con este nombre.',
-            'temperature.numeric' => 'La temperatura debe ser un número.',
-            'temperature.between' => 'La temperatura debe estar entre -99.99 y 99.99.',
-        ]);
+        $this->authorize('update', $store);
+        $validated = $request->validated();
 
         $store->update($validated);
 
@@ -161,23 +148,15 @@ class StoreController extends Controller
     public function destroy(string $id)
     {
         $store = Store::findOrFail($id);
+        $this->authorize('delete', $store);
         $store->delete();
 
         return response()->json(['message' => 'Almacén eliminado correctamente.']);
     }
 
-    public function deleteMultiple(Request $request)
+    public function deleteMultiple(DeleteMultipleStoresRequest $request)
     {
-        $validated = $request->validate([
-            'ids' => 'required|array|min:1',
-            'ids.*' => 'integer|exists:tenant.stores,id',
-        ], [
-            'ids.required' => 'Debe proporcionar al menos un ID válido para eliminar.',
-            'ids.min' => 'Debe proporcionar al menos un ID válido para eliminar.',
-            'ids.*.integer' => 'Los IDs deben ser números enteros.',
-            'ids.*.exists' => 'Uno o más almacenes no existen.',
-        ]);
-
+        $validated = $request->validated();
         Store::whereIn('id', $validated['ids'])->delete();
 
         return response()->json(['message' => 'Almacenes eliminados correctamente.']);
@@ -188,6 +167,7 @@ class StoreController extends Controller
     /* Options */
     public function options()
     {
+        $this->authorize('viewAny', Store::class);
         $stores = Store::select('id', 'name')
             ->orderBy('name', 'asc')
             ->get();
@@ -198,6 +178,7 @@ class StoreController extends Controller
 
     public function totalStockByProducts()
     {
+        $this->authorize('viewAny', Store::class);
         // Obtener palets almacenados (desde StoredPallet)
         $storedPallets = \App\Models\StoredPallet::with([
             'pallet.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad

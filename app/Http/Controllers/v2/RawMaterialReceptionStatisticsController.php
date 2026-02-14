@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\ReceptionChartDataRequest;
 use App\Services\v2\RawMaterialReceptionStatisticsService;
-use Illuminate\Http\Request;
 
 class RawMaterialReceptionStatisticsController extends Controller
 {
@@ -30,20 +30,11 @@ class RawMaterialReceptionStatisticsController extends Controller
      *   ...
      * ]
      *
-     * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function receptionChartData(Request $request)
+    public function receptionChartData(ReceptionChartDataRequest $request)
     {
-        $validated = $request->validate([
-            'dateFrom' => 'required|date',
-            'dateTo' => 'required|date',
-            'speciesId' => 'nullable|integer|exists:tenant.species,id',
-            'familyId' => 'nullable|integer|exists:tenant.product_families,id',
-            'categoryId' => 'nullable|integer|exists:tenant.product_categories,id',
-            'valueType' => 'required|in:amount,quantity',
-            'groupBy' => 'nullable|in:day,week,month',
-        ]);
+        $validated = $request->validated();
 
         $dateFrom = $validated['dateFrom'] . ' 00:00:00';
         $dateTo = $validated['dateTo'] . ' 23:59:59';

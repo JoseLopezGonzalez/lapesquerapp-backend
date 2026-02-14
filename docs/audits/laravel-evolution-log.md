@@ -5,6 +5,197 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2026-02-14] Block Inventario/Stock - Sub-bloque 1 (P0 + Policies + Form Requests)
+
+**Priority**: P0 + P1  
+**Risk Level**: Low  
+**Rating antes: 4/10** | **Rating después: 5,5/10**
+
+### Problems Addressed
+
+- **P0**: destroyMultiple de RawMaterialReception usaba `whereIn()->delete()` y no disparaba el evento `deleting` del modelo; se podían eliminar recepciones con palets vinculados a pedidos o cajas en producción.
+- Ausencia de Policies para RawMaterialReception, Pallet, Box, CeboDispatch, Store; autorización solo por middleware de rol.
+- Ausencia de Form Requests en el bloque; validación inline en CeboDispatchController, BoxesController y destroyMultiple de RawMaterialReception.
+
+### Changes Applied
+
+- **RawMaterialReceptionController**: destroyMultiple ahora itera por cada ID, llama `$reception->delete()` por recepción (aplicando reglas del modelo) y devuelve 422 con detalle si alguna no puede eliminarse. Uso de DestroyMultipleRawMaterialReceptionsRequest. authorize() en index, show, store, update, destroy, destroyMultiple, validateBulkUpdateDeclaredData, bulkUpdateDeclaredData.
+- **Policies**: RawMaterialReceptionPolicy, PalletPolicy, BoxPolicy, CeboDispatchPolicy, StorePolicy (viewAny, view, create, update, delete; mismos roles que middleware). Registradas en AuthServiceProvider.
+- **CeboDispatchController**: IndexCeboDispatchRequest, StoreCeboDispatchRequest, UpdateCeboDispatchRequest, DestroyMultipleCeboDispatchesRequest; authorize() en todos los métodos.
+- **BoxesController**: IndexBoxRequest, DestroyMultipleBoxesRequest; authorize() en index, destroy, destroyMultiple.
+- **PalletController, StoreController, StockStatisticsController, RawMaterialReceptionStatisticsController, CeboDispatchStatisticsController**: authorize() en todos los métodos públicos según Policy correspondiente.
+- **Form Requests nuevos**: IndexCeboDispatchRequest, StoreCeboDispatchRequest, UpdateCeboDispatchRequest, DestroyMultipleCeboDispatchesRequest, IndexBoxRequest, StoreBoxRequest, UpdateBoxRequest, DestroyMultipleBoxesRequest, DestroyMultipleRawMaterialReceptionsRequest.
+
+### Verification Results
+
+- ✅ Linter sin errores en Policies y Form Requests.
+- ✅ PHPUnit ejecutado (tests existentes).
+- Comportamiento: destroyMultiple de recepciones ya no borra en lote sin validaciones; 422 con mensaje cuando alguna recepción no puede eliminarse. Policies aplicadas en toda la API del bloque.
+
+### Gap to 10/10 (Rating después < 9)
+
+- Form Requests para RawMaterialReception (index, store, update), Pallet (index, store, update y acciones), Store (index, store, update, deleteMultiple).
+- Sustituir DB::connection('tenant')->table() por Eloquent en RawMaterialReceptionController.
+- Reducir RawMaterialReceptionController y PalletController por debajo de 200 líneas (servicios de listado y actualización).
+- Tests de integración/feature para el bloque.
+- Bloqueado por: nada. Siguiente paso: Sub-bloque 2 cuando el usuario lo apruebe.
+
+### Rollback Plan
+
+Si aparecen problemas: `git revert <commit-hash>` de los commits del sub-bloque 1. No hay migraciones ni cambios de contrato API.
+
+### Next
+
+- Sub-bloque 2 del bloque Inventario/Stock: Form Requests para RawMaterialReception, Pallet, Store; sustitución de DB::connection('tenant') por Eloquent en RawMaterialReceptionController. ✅ Aplicado a continuación.
+
+---
+
+## [2026-02-14] Block Inventario/Stock - Sub-bloque 2 (Form Requests + Eloquent)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 5,5/10** | **Rating después: 6,5/10**
+
+### Problems Addressed
+
+- RawMaterialReception, Pallet y Store sin Form Requests en index, store, update y deleteMultiple/destroyMultiple.
+- Uso de `DB::connection('tenant')->table()` en RawMaterialReceptionController para eliminar boxes, pallet_boxes y pallets (bypass de Eloquent y eventos).
+
+### Changes Applied
+
+- **RawMaterialReceptionController**: IndexRawMaterialReceptionRequest, StoreRawMaterialReceptionRequest, UpdateRawMaterialReceptionRequest (reglas condicionadas por creation_mode). index(), store() y update() usan Form Requests; validación inline eliminada. Sustitución de DB::connection('tenant')->table() por Eloquent: eliminación de cajas con `Box::find($id)?->delete()`, de pallet_boxes con `PalletBox::where('pallet_id', ...)->delete()`, y de palet en contexto de recepción con `Model::withoutEvents(fn () => $pallet->delete())` (modificación desde recepción permitida).
+- **PalletController**: IndexPalletRequest, StorePalletRequest, UpdatePalletRequest, DestroyMultiplePalletsRequest. index(), store(), update() y destroyMultiple() usan Form Requests; validación inline eliminada.
+- **StoreController**: IndexStoreRequest, StoreStoreRequest, UpdateStoreRequest, DeleteMultipleStoresRequest. index(), store(), update() y deleteMultiple() usan Form Requests; validación inline eliminada.
+- **Form Requests nuevos**: IndexRawMaterialReceptionRequest, StoreRawMaterialReceptionRequest, UpdateRawMaterialReceptionRequest, IndexPalletRequest, StorePalletRequest, UpdatePalletRequest, DestroyMultiplePalletsRequest, IndexStoreRequest, StoreStoreRequest, UpdateStoreRequest, DeleteMultipleStoresRequest.
+
+### Verification Results
+
+- ✅ PHPUnit ejecutado (tests existentes).
+- ✅ Comportamiento preservado: validación en frontera HTTP; eliminaciones en RawMaterialReceptionController vía Eloquent con eventos (Box) o withoutEvents solo para palet en contexto de recepción.
+
+### Gap to 10/10 (Rating después < 9)
+
+- RawMaterialReceptionController y PalletController siguen por encima de 200 líneas; extracción a servicios de listado y actualización (Sub-bloque 3).
+- Tests de integración/feature para el bloque.
+- Bloqueado por: nada.
+
+### Rollback Plan
+
+Si aparecen problemas: `git revert <commit-hash>` de los commits del sub-bloque 2. No hay migraciones ni cambios de contrato API.
+
+### Next
+
+- Sub-bloque 3 del bloque Inventario/Stock: RawMaterialReceptionListService, PalletListService; adelgazar controladores. ✅ Aplicado a continuación.
+
+---
+
+## [2026-02-14] Block Inventario/Stock - Sub-bloque 3 (Servicios de listado)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 6,5/10** | **Rating después: 7/10**
+
+### Problems Addressed
+
+- RawMaterialReceptionController y PalletController con lógica de listado (filtros, relaciones, paginación) dentro del controlador; objetivo adelgazar y reutilizar.
+
+### Changes Applied
+
+- **RawMaterialReceptionListService**: Nuevo servicio estático `list(Request $request)` que construye el query con filtros (id, ids, suppliers, dates, species, products, notes), orden y paginación; devuelve `LengthAwarePaginator`. RawMaterialReceptionController::index delega en este servicio y devuelve RawMaterialReceptionResource::collection(service::list()).
+- **PalletListService**: Nuevo servicio con `list(Request $request)` (query + loadRelations + applyFilters + orden + paginación), `loadRelations(Builder)` público (para show, store, update, etc.) y `applyFilters(Builder, array)` público. PalletController::index delega en PalletListService::list(). Eliminados del controlador los métodos privados loadPalletRelations y applyFiltersToQuery; todas las llamadas sustituidas por PalletListService::loadRelations y PalletListService::applyFilters.
+- **Corrección**: availableForOrder usaba `$pallets->map()` sobre el paginador; sustituido por `$pallets->getCollection()->map()`.
+
+### Verification Results
+
+- ✅ PHPUnit ejecutado (tests existentes).
+- RawMaterialReceptionController: ~106 líneas menos (index reducido). PalletController: ~185 líneas menos (index + métodos privados movidos a servicio).
+
+### Gap to 10/10 (Rating después < 9)
+
+- RawMaterialReceptionController y PalletController siguen por encima de 200 líneas (1286 y 1146 respectivamente); falta extracción de lógica de store/update a servicios o acciones.
+- Tests de integración/feature para el bloque.
+- Bloqueado por: nada.
+
+### Rollback Plan
+
+Si aparecen problemas: `git revert <commit-hash>` de los commits del sub-bloque 3.
+
+### Next
+
+- Sub-bloque 4 (opcional): Form Requests para estadísticas del bloque. ✅ Aplicado a continuación.
+
+---
+
+## [2026-02-14] Block Inventario/Stock - Sub-bloque 4 (Form Requests estadísticas)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 7/10** | **Rating después: 7,5/10**
+
+### Problems Addressed
+
+- RawMaterialReceptionStatisticsController y CeboDispatchStatisticsController validaban parámetros con `$request->validate()` inline; autorización ya correcta (viewAny del modelo). Objetivo: validación en frontera mediante Form Requests y autorización delegada en el Form Request.
+
+### Changes Applied
+
+- **ReceptionChartDataRequest**: Form Request con authorize(viewAny, RawMaterialReception::class) y reglas dateFrom, dateTo, speciesId, familyId, categoryId, valueType, groupBy. RawMaterialReceptionStatisticsController::receptionChartData inyecta ReceptionChartDataRequest; se elimina authorize() y validate() del controlador; se usa $request->validated().
+- **DispatchChartDataRequest**: Form Request con authorize(viewAny, CeboDispatch::class) y mismas reglas. CeboDispatchStatisticsController::dispatchChartData inyecta DispatchChartDataRequest; se elimina authorize() y validate() del controlador; se usa $request->validated().
+- **StockStatisticsController**: Sin cambios (totalStockStats y totalStockBySpeciesStats no reciben parámetros; ya usan authorize('viewAny', Pallet::class)).
+
+### Verification Results
+
+- ✅ Linter sin errores.
+- Comportamiento preservado: validación y 403 delegados en Form Requests; respuestas idénticas con params válidos.
+
+### Gap to 10/10 (Rating después < 9)
+
+- RawMaterialReceptionController y PalletController siguen >200 líneas; tests del bloque; opcional más extracción (update/acciones).
+- Bloqueado por: nada.
+
+### Rollback Plan
+
+Si aparecen problemas: `git revert <commit-hash>` de los commits del sub-bloque 4. No hay cambios de contrato API.
+
+### Next
+
+- Sub-bloque 5: tests de integración/feature para el bloque. ✅ Aplicado a continuación.
+
+---
+
+## [2026-02-14] Block Inventario/Stock - Sub-bloque 5 (Tests de integración/feature)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 7,5/10** | **Rating después: 8/10**
+
+### Problems Addressed
+
+- Bloque Inventario/Stock sin tests de integración/feature; cualquier refactor con alto riesgo de regresión (P2 del análisis).
+
+### Changes Applied
+
+- **StockBlockApiTest** (tests/Feature/StockBlockApiTest.php): 11 tests con tenant + Sanctum (ConfiguresTenantConnection, usuario Administrador). Flujos cubiertos: list raw-material-receptions, list pallets, list stores; GET statistics/stock/total y statistics/stock/total-by-species; reception-chart-data (422 sin params requeridos, 200 con params válidos); dispatch-chart-data (422 sin params, 200 con params); show store (crear almacén y GET por id); endpoints requieren auth (401 sin token).
+
+### Verification Results
+
+- ✅ Los 11 tests pasan (php artisan test tests/Feature/StockBlockApiTest.php).
+- ✅ Linter sin errores.
+
+### Gap to 10/10 (Rating después < 9)
+
+- RawMaterialReceptionController y PalletController siguen >200 líneas; opcional más extracción (update, acciones) y tests adicionales (CRUD recepción completo, moveToStore, linkOrder).
+- Bloqueado por: nada.
+
+### Rollback Plan
+
+Si aparecen problemas: `git revert <commit-hash>` de los commits del sub-bloque 5. Solo se añade archivo de tests.
+
+### Next
+
+- Bloque Inventario/Stock cerrado en esta fase (rating 8/10). Siguiente bloque según plan de evolución (p. ej. otro módulo o más adelgazamiento opcional).
+
+---
+
 ## [2026-02-14] Block Ventas - Sub-bloque 1 (Form Requests + autorización)
 
 **Priority**: P1  

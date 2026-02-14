@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\DestroyMultipleBoxesRequest;
+use App\Http\Requests\v2\IndexBoxRequest;
 use App\Http\Resources\v2\BoxResource;
 use App\Models\Box;
-use App\Models\Transport;
 use Illuminate\Http\Request;
 
 class BoxesController extends Controller
@@ -13,7 +14,7 @@ class BoxesController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(IndexBoxRequest $request)
     {
         // Cargar relaciones necesarias para determinar disponibilidad
         $query = Box::with(['productionInputs.productionRecord.production', 'product']);
@@ -258,22 +259,15 @@ class BoxesController extends Controller
     public function destroy(string $id)
     {
         $box = Box::findOrFail($id);
+        $this->authorize('delete', $box);
         $box->delete();
 
         return response()->json(['message' => 'Caja eliminada con éxito']);
     }
 
-    public function destroyMultiple(Request $request)
+    public function destroyMultiple(DestroyMultipleBoxesRequest $request)
     {
-        $ids = $request->input('ids', []);
-
-        if (!is_array($ids) || empty($ids)) {
-            return response()->json([
-                'message' => 'No se han proporcionado IDs válidos.',
-                'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.'
-            ], 400);
-        }
-
+        $ids = $request->validated('ids');
         Box::whereIn('id', $ids)->delete();
 
         return response()->json(['message' => 'Cajas eliminadas con éxito']);

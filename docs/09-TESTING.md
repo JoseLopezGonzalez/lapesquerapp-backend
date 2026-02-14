@@ -32,7 +32,7 @@ Desarrolladores backend.
 
 ## Inventario de tests
 
-**Total: 22+ tests** (ejecuta `php artisan test` para ver el resultado actual).
+**Total: 33+ tests** (ejecuta `php artisan test` para ver el resultado actual).
 
 | Archivo | Tests | Descripción |
 |--------|-------|-------------|
@@ -45,9 +45,10 @@ Desarrolladores backend.
 | `tests/Feature/OrderApiTest.php` | 1 | `test_can_create_order_via_api_with_tenant_and_auth` — POST /api/v2/orders con tenant + Sanctum. |
 | `tests/Feature/CustomerApiTest.php` | 5 | list, create, show, update, destroy customer. |
 | `tests/Feature/LabelApiTest.php` | 10 | list, options, create, show, update, destroy, duplicate, validación. |
+| `tests/Feature/StockBlockApiTest.php` | 11 | Bloque Inventario/Stock: list receptions/pallets/stores, stock stats, reception/dispatch chart data (422/200), show store, auth 401. |
 | `tests/Feature/ApiDocumentationTest.php` | 4 | Scribe, OpenAPI, header X-Tenant, esquema de autenticación. |
 
-**Tests que requieren base de datos:** OrderStoreServiceTest, OrderUpdateServiceTest, OrderDetailServiceTest, OrderListServiceTest, OrderApiTest, CustomerApiTest y LabelApiTest usan el trait `ConfiguresTenantConnection` y necesitan MySQL (o BD configurada) y migraciones de `database/migrations/companies` aplicadas en la BD de testing.
+**Tests que requieren base de datos:** OrderStoreServiceTest, OrderUpdateServiceTest, OrderDetailServiceTest, OrderListServiceTest, OrderApiTest, CustomerApiTest, LabelApiTest y StockBlockApiTest usan el trait `ConfiguresTenantConnection` y necesitan MySQL (o BD configurada) y migraciones de `database/migrations/companies` aplicadas en la BD de testing.
 
 ---
 
@@ -237,3 +238,4 @@ Para tests de API v2: usar `$this->get('/api/v2/...')` o `$this->post(...)` con 
 | 2026-02-13 | Documento creado (FASE 5).      |
 | 2026-02-14 | Añadido inventario de tests (14 tests, 7 archivos) e instrucciones detalladas de ejecución. |
 | 2026-02-14 | Eliminados tests por defecto ExampleTest (Unit y Feature); inventario actualizado (12 tests, 5 archivos). |
+| 2026-02-14 | Añadido StockBlockApiTest (11 tests) para bloque Inventario/Stock; inventario 33+ tests. |

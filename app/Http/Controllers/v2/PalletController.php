@@ -3,7 +3,12 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\DestroyMultiplePalletsRequest;
+use App\Http\Requests\v2\IndexPalletRequest;
+use App\Http\Requests\v2\StorePalletRequest;
+use App\Http\Requests\v2\UpdatePalletRequest;
 use App\Http\Resources\v2\PalletResource;
+use App\Services\v2\PalletListService;
 use App\Models\Box;
 use App\Models\Order;
 use App\Models\OrderPallet;
@@ -30,200 +35,18 @@ class PalletController extends Controller
 
     } */
 
-    /**
-     * Carga las relaciones necesarias para el PalletResource
-     */
-    private function loadPalletRelations($query)
+    public function index(IndexPalletRequest $request)
     {
-        return $query->with([
-            'storedPallet',
-            'reception', // Cargar recepción para incluir información en el JSON
-            'boxes.box.productionInputs.productionRecord.production', // Cargar productionInputs y su producción para determinar disponibilidad y mostrar info de producción
-            'boxes.box.product', // Asegurar que product esté cargado para toArrayAssocV2
-        ]);
-    }
-
-    private function applyFiltersToQuery($query, $filters)
-    {
-
-        if (isset($filters['filters'])) {
-            $filters = $filters['filters']; // Para aceptar filtros anidados
-        }
-
-
-        if (isset($filters['id'])) {
-            $query->where('id', 'like', "%{$filters['id']}%");
-        }
-
-        if (isset($filters['ids'])) {
-            $query->whereIn('id', $filters['ids']);
-        }
-
-        if (!empty($filters['state'])) {
-            if ($filters['state'] === 'registered') {
-                $query->where('status', Pallet::STATE_REGISTERED);
-            } elseif ($filters['state'] === 'stored') {
-                $query->where('status', Pallet::STATE_STORED);
-            } elseif ($filters['state'] === 'shipped') {
-                $query->where('status', Pallet::STATE_SHIPPED);
-            } elseif ($filters['state'] === 'processed') {
-                $query->where('status', Pallet::STATE_PROCESSED);
-            }
-        }
-
-        if (!empty($filters['orderState'])) {
-            if ($filters['orderState'] === 'pending') {
-                $query->whereHas('order', fn($q) => $q->where('status', 'pending'));
-            } elseif ($filters['orderState'] === 'finished') {
-                $query->whereHas('order', fn($q) => $q->where('status', 'finished'));
-            } elseif ($filters['orderState'] === 'without_order') {
-                $query->whereDoesntHave('order');
-            }
-        }
-
-        if (!empty($filters['position'])) {
-            if ($filters['position'] === 'located') {
-                $query->whereHas('storedPallet', fn($q) => $q->whereNotNull('position'));
-            } elseif ($filters['position'] === 'unlocated') {
-                $query->whereHas('storedPallet', fn($q) => $q->whereNull('position'));
-            }
-        }
-
-        if (!empty($filters['dates']['start'])) {
-            $query->where('created_at', '>=', date('Y-m-d 00:00:00', strtotime($filters['dates']['start'])));
-        }
-
-        if (!empty($filters['dates']['end'])) {
-            $query->where('created_at', '<=', date('Y-m-d 23:59:59', strtotime($filters['dates']['end'])));
-        }
-
-        if (!empty($filters['notes'])) {
-            $query->where('observations', 'like', "%{$filters['notes']}%");
-        }
-
-        if (!empty($filters['lots'])) {
-            $query->whereHas('boxes.box', fn($q) => $q->whereIn('lot', $filters['lots']));
-        }
-
-        if (!empty($filters['products'])) {
-            $query->whereHas('boxes.box', fn($q) => $q->whereIn('article_id', $filters['products']));
-        }
-
-        if (!empty($filters['species'])) {
-            $query->whereHas('boxes.box.product', fn($q) => $q->whereIn('species_id', $filters['species']));
-        }
-
-        if (!empty($filters['stores'])) {
-            $query->whereHas('storedPallet', fn($q) => $q->whereIn('store_id', $filters['stores']));
-        }
-
-        if (!empty($filters['orders'])) {
-            $query->whereHas('order', fn($q) => $q->whereIn('order_id', $filters['orders']));
-        }
-
-        if (!empty($filters['weights']['netWeight'])) {
-            if (isset($filters['weights']['netWeight']['min'])) {
-                $min = $filters['weights']['netWeight']['min'];
-                $query->whereHas('boxes.box', fn($q) => $q->havingRaw('sum(net_weight) >= ?', [$min]));
-            }
-            if (isset($filters['weights']['netWeight']['max'])) {
-                $max = $filters['weights']['netWeight']['max'];
-                $query->whereHas('boxes.box', fn($q) => $q->havingRaw('sum(net_weight) <= ?', [$max]));
-            }
-        }
-
-        if (!empty($filters['weights']['grossWeight'])) {
-            if (isset($filters['weights']['grossWeight']['min'])) {
-                $min = $filters['weights']['grossWeight']['min'];
-                $query->whereHas('boxes.box', fn($q) => $q->havingRaw('sum(gross_weight) >= ?', [$min]));
-            }
-            if (isset($filters['weights']['grossWeight']['max'])) {
-                $max = $filters['weights']['grossWeight']['max'];
-                $query->whereHas('boxes.box', fn($q) => $q->havingRaw('sum(gross_weight) <= ?', [$max]));
-            }
-        }
-
-        // Filtro para palets con cajas disponibles
-        if (!empty($filters['hasAvailableBoxes'])) {
-            if ($filters['hasAvailableBoxes'] === true || $filters['hasAvailableBoxes'] === 'true') {
-                $query->whereHas('boxes.box', function ($q) {
-                    $q->whereDoesntHave('productionInputs');
-                });
-            }
-        }
-
-        // Filtro para palets con cajas usadas
-        if (!empty($filters['hasUsedBoxes'])) {
-            if ($filters['hasUsedBoxes'] === true || $filters['hasUsedBoxes'] === 'true') {
-                $query->whereHas('boxes.box', function ($q) {
-                    $q->whereHas('productionInputs');
-                });
-            }
-        }
-
-        // Filtro para solo mostrar cajas disponibles en la respuesta
-        // Esto se manejará en el Resource, pero podemos agregar un flag aquí si es necesario
-
-        return $query;
-    }
-
-
-    public function index(Request $request)
-    {
-        $query = Pallet::query();
-        $query = $this->loadPalletRelations($query);
-
-        // Extraemos todos los filtros aplicables del request
-        $filters = $request->all();
-
-        // Aplicamos los filtros con el helper reutilizable
-        $query = $this->applyFiltersToQuery($query, $filters);
-
-        // Orden y paginación
-        $query->orderBy('id', 'desc');
-        $perPage = $request->input('perPage', 10);
-
-        return PalletResource::collection($query->paginate($perPage));
+        return PalletResource::collection(PalletListService::list($request));
     }
 
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StorePalletRequest $request)
     {
-
-        //Validación Sin mensaje JSON
-        /* $request->validate([
-            'observations' => 'required|string',
-            'boxes' => 'required|array',
-            'boxes.*.article.id' => 'required|integer',
-            'boxes.*.lot' => 'required|string',
-            'boxes.*.gs1128' => 'required|string',
-            'boxes.*.grossWeight' => 'required|numeric',
-            'boxes.*.netWeight' => 'required|numeric',
-        ]); */
-
-        //Validación Con mensaje JSON
-        $validator = Validator::make($request->all(), [
-            'observations' => 'nullable|string',
-            'boxes' => 'required|array',
-            'boxes.*.product.id' => 'required|integer',
-            'boxes.*.lot' => 'required|string',
-            'boxes.*.gs1128' => 'required|string',
-            'boxes.*.grossWeight' => 'required|numeric',
-            'boxes.*.netWeight' => 'required|numeric',
-            'store.id' => 'sometimes|nullable|integer|exists:tenant.stores,id',
-            'orderId' => 'sometimes|nullable|integer|exists:tenant.orders,id',
-            'state.id' => 'sometimes|integer|in:1,2,3,4',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422); // Código de estado 422 - Unprocessable Entity
-        }
-
-
-        $pallet = $request->all();
+        $pallet = $request->validated();
         $boxes = $pallet['boxes'];
 
 
@@ -271,7 +94,7 @@ class PalletController extends Controller
 
         /* return resource */
         $newPallet->refresh(); // Refrescar el modelo para obtener los datos actualizados
-        $newPallet = $this->loadPalletRelations(Pallet::query()->where('id', $newPallet->id))->first();
+        $newPallet = PalletListService::loadRelations(Pallet::query()->where('id', $newPallet->id))->first();
         return response()->json(new PalletResource($newPallet), 201); // Código de estado 201 - Created
     }
 
@@ -280,7 +103,8 @@ class PalletController extends Controller
      */
     public function show(string $id)
     {
-        $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->firstOrFail();
+        $pallet = PalletListService::loadRelations(Pallet::query()->where('id', $id))->firstOrFail();
+        $this->authorize('view', $pallet);
         return response()->json([
             'data' => new PalletResource($pallet),
         ]);
@@ -289,10 +113,10 @@ class PalletController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(UpdatePalletRequest $request, string $id)
     {
         $pallet = Pallet::with('reception', 'boxes.box.productionInputs')->findOrFail($id);
-        
+        $this->authorize('update', $pallet);
         // Si el palet pertenece a una recepción, validar que se pueda editar
         if ($pallet->reception_id !== null) {
             $reception = $pallet->reception;
@@ -321,30 +145,10 @@ class PalletController extends Controller
             }
         }
 
-        $validator = Validator::make($request->all(), [
-            'id' => 'required|integer',
-            'observations' => 'sometimes|nullable|string',
-            'store.id' => 'sometimes|nullable|integer',
-            'state.id' => 'sometimes|integer',
-            'boxes' => 'sometimes|array',
-            'boxes.*.id' => 'sometimes|nullable|integer',
-            'boxes.*.product.id' => 'required_with:boxes|integer',
-            'boxes.*.lot' => 'required_with:boxes|string',
-            'boxes.*.gs1128' => 'required_with:boxes|string',
-            'boxes.*.grossWeight' => 'required_with:boxes|numeric',
-            'boxes.*.netWeight' => 'required_with:boxes|numeric',
-            'orderId' => 'sometimes|nullable|integer|exists:tenant.orders,id',
-        ]);
+        $validated = $request->validated();
 
-        //Cuidado con cambiar validación en la opcion de cambiar a enviado un palet
-
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422); // Código de estado 422 - Unprocessable Entity
-        }
-
-        return DB::transaction(function () use ($request, $pallet, $id) {
-            $palletData = $request->all();
+        return DB::transaction(function () use ($request, $pallet, $id, $validated) {
+            $palletData = $validated;
 
             //Creating Pallet
             $updatedPallet = $pallet;
@@ -477,7 +281,7 @@ class PalletController extends Controller
             }
 
             // Cargar relaciones y devolver el palet actualizado
-            $updatedPallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->firstOrFail();
+            $updatedPallet = PalletListService::loadRelations(Pallet::query()->where('id', $id))->firstOrFail();
             return response()->json(new PalletResource($updatedPallet), 201);
         });
 
@@ -490,6 +294,7 @@ class PalletController extends Controller
     public function destroy(string $id)
     {
         $pallet = Pallet::findOrFail($id);
+        $this->authorize('delete', $pallet);
         
         // Validar que no se pueda eliminar un palet de recepción
         if ($pallet->reception_id !== null) {
@@ -517,13 +322,9 @@ class PalletController extends Controller
     /**
      * Remove multiple resources from storage.
      */
-    public function destroyMultiple(Request $request)
+    public function destroyMultiple(DestroyMultiplePalletsRequest $request)
     {
-        $validated = $request->validate([
-            'ids' => 'required|array|min:1',
-            'ids.*' => 'integer|exists:tenant.pallets,id',
-        ]);
-
+        $validated = $request->validated();
         $palletIds = $validated['ids'];
         
         // Validar que ninguno de los palets pertenezca a una recepción
@@ -555,6 +356,7 @@ class PalletController extends Controller
 
     public function assignToPosition(Request $request)
     {
+        $this->authorize('viewAny', Pallet::class);
         $validated = Validator::make($request->all(), [
             'position_id' => 'required|integer|min:1',
             'pallet_ids' => 'required|array|min:1',
@@ -579,6 +381,7 @@ class PalletController extends Controller
 
     public function moveToStore(Request $request)
     {
+        $this->authorize('viewAny', Pallet::class);
         $validated = Validator::make($request->all(), [
             'pallet_id' => 'required|integer|exists:tenant.pallets,id',
             'store_id' => 'required|integer|exists:tenant.stores,id',
@@ -610,7 +413,7 @@ class PalletController extends Controller
         $storedPallet->save();
 
         $pallet->refresh();
-        $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $pallet->id))->first();
+        $pallet = PalletListService::loadRelations(Pallet::query()->where('id', $pallet->id))->first();
         return response()->json([
             'message' => 'Palet movido correctamente al nuevo almacén',
             'pallet' => new PalletResource($pallet),
@@ -619,6 +422,7 @@ class PalletController extends Controller
 
     public function moveMultipleToStore(Request $request)
     {
+        $this->authorize('viewAny', Pallet::class);
         $validated = Validator::make($request->all(), [
             'pallet_ids' => 'required|array|min:1',
             'pallet_ids.*' => 'integer|exists:tenant.pallets,id',
@@ -683,6 +487,8 @@ class PalletController extends Controller
 
     public function unassignPosition($id)
     {
+        $pallet = Pallet::findOrFail($id);
+        $this->authorize('update', $pallet);
         $stored = StoredPallet::where('pallet_id', $id)->first();
 
         if (!$stored) {
@@ -701,6 +507,7 @@ class PalletController extends Controller
 
     public function bulkUpdateState(Request $request)
     {
+        $this->authorize('viewAny', Pallet::class);
         $validated = Validator::make($request->all(), [
             'status' => 'required|integer|in:1,2,3,4',
             'ids' => 'array|required_without_all:filters,applyToAll',
@@ -719,7 +526,7 @@ class PalletController extends Controller
         if ($request->filled('ids')) {
             $palletsQuery->whereIn('id', $request->input('ids'));
         } elseif ($request->filled('filters')) {
-            $palletsQuery = $this->applyFiltersToQuery($palletsQuery, ['filters' => $request->input('filters')]);
+            $palletsQuery = PalletListService::applyFilters($palletsQuery, ['filters' => $request->input('filters')]);
 
         } elseif (!$request->boolean('applyToAll')) {
             return response()->json(['error' => 'No se especificó ninguna condición válida para seleccionar pallets.'], 400);
@@ -762,6 +569,8 @@ class PalletController extends Controller
      */
     public function linkOrder(Request $request, string $id)
     {
+        $pallet = Pallet::findOrFail($id);
+        $this->authorize('update', $pallet);
         $validated = $request->validate([
             'orderId' => 'required|integer|exists:tenant.orders,id',
         ]);
@@ -770,7 +579,7 @@ class PalletController extends Controller
 
         // Check if pallet is already linked to this order
         if ($pallet->order_id == $validated['orderId']) {
-            $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->first();
+            $pallet = PalletListService::loadRelations(Pallet::query()->where('id', $id))->first();
             return response()->json([
                 'message' => 'El palet ya está vinculado a este pedido',
                 'pallet' => new PalletResource($pallet)
@@ -788,7 +597,7 @@ class PalletController extends Controller
         $pallet->order_id = $validated['orderId'];
         $pallet->save();
 
-        $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->first();
+        $pallet = PalletListService::loadRelations(Pallet::query()->where('id', $id))->first();
         return response()->json([
             'message' => 'Palet vinculado correctamente al pedido',
             'pallet_id' => $id,
@@ -805,6 +614,7 @@ class PalletController extends Controller
      */
     public function linkOrders(Request $request)
     {
+        $this->authorize('viewAny', Pallet::class);
         $validated = $request->validate([
             'pallets' => 'required|array|min:1',
             'pallets.*.id' => 'required|integer|exists:tenant.pallets,id',
@@ -886,10 +696,11 @@ class PalletController extends Controller
     public function unlinkOrder(string $id)
     {
         $pallet = Pallet::findOrFail($id);
+        $this->authorize('update', $pallet);
 
         // Check if pallet is already unlinked from any order
         if (!$pallet->order_id) {
-            $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->first();
+            $pallet = PalletListService::loadRelations(Pallet::query()->where('id', $id))->first();
             return response()->json([
                 'message' => 'El palet ya no está asociado a ninguna orden',
                 'pallet' => new PalletResource($pallet)
@@ -909,7 +720,7 @@ class PalletController extends Controller
         $pallet->unStore();
         $pallet->save();
 
-        $pallet = $this->loadPalletRelations(Pallet::query()->where('id', $id))->first();
+        $pallet = PalletListService::loadRelations(Pallet::query()->where('id', $id))->first();
         return response()->json([
             'message' => 'Palet desvinculado correctamente de la orden',
             'pallet_id' => $id,
@@ -926,6 +737,7 @@ class PalletController extends Controller
      */
     public function unlinkOrders(Request $request)
     {
+        $this->authorize('viewAny', Pallet::class);
         $validated = $request->validate([
             'pallet_ids' => 'required|array|min:1',
             'pallet_ids.*' => 'required|integer|exists:tenant.pallets,id',
@@ -1072,6 +884,7 @@ class PalletController extends Controller
      */
     public function searchByLot(Request $request)
     {
+        $this->authorize('viewAny', Pallet::class);
         $lot = $request->query('lot');
 
         if (!$lot) {
@@ -1143,9 +956,10 @@ class PalletController extends Controller
 
     public function registeredPallets()
     {
+        $this->authorize('viewAny', Pallet::class);
         // Obtener todos los palets registrados (status = 1) con relaciones cargadas
-        $query = Pallet::where('status', Pallet::STATE_REGISTERED);
-        $query = $this->loadPalletRelations($query);
+        $query = Pallet::query()->where('status', Pallet::STATE_REGISTERED);
+        $query = PalletListService::loadRelations($query);
         $pallets = $query->orderBy('id', 'desc')->get();
 
         // Calcular pesos totales - usar sum con callback para acceder al accessor
@@ -1184,6 +998,7 @@ class PalletController extends Controller
      */
     public function availableForOrder(int $orderId, Request $request)
     {
+        $this->authorize('viewAny', Pallet::class);
         // Validar que el pedido existe
         \Validator::make(['orderId' => $orderId], [
             'orderId' => 'required|integer|exists:tenant.orders,id',
@@ -1244,7 +1059,7 @@ class PalletController extends Controller
         $pallets = $query->paginate($perPage);
 
         // Formatear respuesta con datos relevantes
-        $formattedPallets = $pallets->map(function ($pallet) {
+        $formattedPallets = $pallets->getCollection()->map(function ($pallet) {
             // Calcular resumen por producto
             $productsSummary = [];
             

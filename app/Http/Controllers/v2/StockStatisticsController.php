@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Models\Pallet;
 use App\Services\v2\StockStatisticsService;
 use Illuminate\Http\Request;
 
@@ -25,6 +26,7 @@ class StockStatisticsController extends Controller
      */
     public function totalStockStats()
     {
+        $this->authorize('viewAny', Pallet::class);
         $stats = StockStatisticsService::getTotalStockStats();
 
         return response()->json($stats);
@@ -48,6 +50,7 @@ class StockStatisticsController extends Controller
      */
     public function totalStockBySpeciesStats()
     {
+        $this->authorize('viewAny', Pallet::class);
         $stats = StockStatisticsService::getTotalStockBySpeciesStats();
 
         return response()->json($stats);

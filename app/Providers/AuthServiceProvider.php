@@ -18,6 +18,11 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\Customer::class => \App\Policies\CustomerPolicy::class,
         \App\Models\Salesperson::class => \App\Policies\SalespersonPolicy::class,
         \App\Models\Label::class => \App\Policies\LabelPolicy::class,
+        \App\Models\RawMaterialReception::class => \App\Policies\RawMaterialReceptionPolicy::class,
+        \App\Models\Pallet::class => \App\Policies\PalletPolicy::class,
+        \App\Models\Box::class => \App\Policies\BoxPolicy::class,
+        \App\Models\CeboDispatch::class => \App\Policies\CeboDispatchPolicy::class,
+        \App\Models\Store::class => \App\Policies\StorePolicy::class,
     ];
 
     /**

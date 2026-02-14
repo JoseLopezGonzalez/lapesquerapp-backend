@@ -3,7 +3,12 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\DestroyMultipleRawMaterialReceptionsRequest;
+use App\Http\Requests\v2\IndexRawMaterialReceptionRequest;
+use App\Http\Requests\v2\StoreRawMaterialReceptionRequest;
+use App\Http\Requests\v2\UpdateRawMaterialReceptionRequest;
 use App\Http\Resources\v2\RawMaterialReceptionResource;
+use App\Services\v2\RawMaterialReceptionListService;
 use App\Models\RawMaterial;
 use App\Models\RawMaterialReception;
 use App\Models\RawMaterialReceptionProduct;
@@ -19,99 +24,15 @@ use Carbon\Carbon;
 
 class RawMaterialReceptionController extends Controller
 {
-    public function index(Request $request)
+    public function index(IndexRawMaterialReceptionRequest $request)
     {
-        $query = RawMaterialReception::query();
-        $query->with('supplier', 'products.product', 'pallets.reception', 'pallets.boxes.box.productionInputs');
-
-        if ($request->has('id')) {
-            $query->where('id', $request->id);
-        }
-
-        /* ids */
-        if ($request->has('ids')) {
-            $query->whereIn('id', $request->ids);
-        }
-
-        if ($request->has('suppliers')) {
-            $query->whereIn('supplier_id', $request->suppliers);
-        }
-
-        if ($request->has('dates')) {
-            $dates = $request->input('dates');
-            /* Check if $dates['start'] exists */
-            if (isset($dates['start'])) {
-                $startDate = $dates['start'];
-                $startDate = date('Y-m-d 00:00:00', strtotime($startDate));
-                $query->where('date', '>=', $startDate);
-            }
-            /* Check if $dates['end'] exists */
-            if (isset($dates['end'])) {
-                $endDate = $dates['end'];
-                $endDate = date('Y-m-d 23:59:59', strtotime($endDate));
-                $query->where('date', '<=', $endDate);
-            }
-        }
-
-        if ($request->has('species')) {
-            $query->whereHas('products.product', function ($query) use ($request) {
-                $query->whereIn('species_id', $request->species);
-            });
-        }
-
-        if ($request->has('products')) {
-            $query->whereHas('products.product', function ($query) use ($request) {
-                $query->whereIn('id', $request->products);
-            });
-        }
-
-        if ($request->has('notes')) {
-            $query->where('notes', 'like', '%' . $request->notes . '%');
-        }
-
-        /* Order by Date Descen */
-        $query->orderBy('date', 'desc');
-
-        $perPage = $request->input('perPage', 12); // Default a 10 si no se proporciona
-        return RawMaterialReceptionResource::collection($query->paginate($perPage));
+        return RawMaterialReceptionResource::collection(
+            RawMaterialReceptionListService::list($request)
+        );
     }
 
-    public function store(Request $request)
+    public function store(StoreRawMaterialReceptionRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'supplier.id' => 'required',
-            'date' => 'required|date',
-            'notes' => 'nullable|string',
-            'declaredTotalAmount' => 'nullable|numeric|min:0',
-            'declaredTotalNetWeight' => 'nullable|numeric|min:0',
-            // Opción 1: Líneas con creación automática de palets
-            'details' => 'required_without:pallets|array',
-            'details.*.product.id' => 'required_with:details|exists:tenant.products,id',
-            'details.*.netWeight' => 'required_with:details|numeric',
-            'details.*.price' => 'nullable|numeric|min:0',
-            'details.*.lot' => 'nullable|string',
-            'details.*.boxes' => 'nullable|integer|min:0', // Número de cajas (0 = 1)
-            // Opción 2: Palets manuales con creación automática de líneas
-            'pallets' => 'required_without:details|array',
-            'pallets.*.observations' => 'nullable|string',
-            'pallets.*.store.id' => 'nullable|integer|exists:tenant.stores,id',
-            'pallets.*.boxes' => 'required_with:pallets|array|min:1',
-            'pallets.*.boxes.*.product.id' => 'required|exists:tenant.products,id',
-            'pallets.*.boxes.*.lot' => 'nullable|string',
-            'pallets.*.boxes.*.gs1128' => 'required|string',
-            'pallets.*.boxes.*.grossWeight' => 'required|numeric',
-            'pallets.*.boxes.*.netWeight' => 'required|numeric',
-            // Precios en la raíz de la recepción (compartidos por todos los palets)
-            'prices' => 'required_with:pallets|array',
-            'prices.*.product.id' => 'required_with:prices|exists:tenant.products,id',
-            'prices.*.lot' => 'required_with:prices|string',
-            'prices.*.price' => 'required_with:prices|numeric|min:0',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         return DB::transaction(function () use ($request) {
             // 1. Crear recepción
             $reception = new RawMaterialReception();
@@ -153,70 +74,17 @@ class RawMaterialReceptionController extends Controller
     public function show($id)
     {
         $reception = RawMaterialReception::with('supplier', 'products.product', 'pallets.reception', 'pallets.boxes.box.productionInputs')->findOrFail($id);
+        $this->authorize('view', $reception);
         return response()->json([
             'data' => new RawMaterialReceptionResource($reception),
         ]);
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateRawMaterialReceptionRequest $request, $id)
     {
         $reception = RawMaterialReception::with('pallets.reception', 'pallets.boxes.box.productionInputs')->findOrFail($id);
-
-        // Validar según el modo de creación
-        if ($reception->creation_mode === RawMaterialReception::CREATION_MODE_LINES) {
-            $validated = $request->validate([
-                'supplier.id' => 'required',
-                'date' => 'required|date',
-                'notes' => 'nullable|string',
-                'declaredTotalAmount' => 'nullable|numeric|min:0',
-                'declaredTotalNetWeight' => 'nullable|numeric|min:0',
-                'details' => 'required|array',
-                'details.*.product.id' => 'required|exists:tenant.products,id',
-                'details.*.netWeight' => 'required|numeric',
-                'details.*.price' => 'nullable|numeric|min:0',
-                'details.*.lot' => 'nullable|string',
-                'details.*.boxes' => 'nullable|integer|min:0',
-            ]);
-        } elseif ($reception->creation_mode === RawMaterialReception::CREATION_MODE_PALLETS) {
-            $validated = $request->validate([
-                'supplier.id' => 'required',
-                'date' => 'required|date',
-                'notes' => 'nullable|string',
-                'declaredTotalAmount' => 'nullable|numeric|min:0',
-                'declaredTotalNetWeight' => 'nullable|numeric|min:0',
-                'pallets' => 'required|array',
-                'pallets.*.id' => 'nullable|integer|exists:tenant.pallets,id',
-                'pallets.*.observations' => 'nullable|string',
-                'pallets.*.store.id' => 'nullable|integer|exists:tenant.stores,id',
-                'pallets.*.boxes' => 'required|array|min:1',
-                'pallets.*.boxes.*.id' => 'nullable|integer|exists:tenant.boxes,id',
-                'pallets.*.boxes.*.product.id' => 'required|exists:tenant.products,id',
-                'pallets.*.boxes.*.lot' => 'nullable|string',
-                'pallets.*.boxes.*.gs1128' => 'required|string',
-                'pallets.*.boxes.*.grossWeight' => 'required|numeric',
-                'pallets.*.boxes.*.netWeight' => 'required|numeric',
-                // Precios en la raíz de la recepción (compartidos por todos los palets)
-                'prices' => 'required|array',
-                'prices.*.product.id' => 'required|exists:tenant.products,id',
-                'prices.*.lot' => 'required|string',
-                'prices.*.price' => 'required|numeric|min:0',
-            ]);
-        } else {
-            // Recepciones antiguas sin creation_mode - permitir edición por líneas
-            $validated = $request->validate([
-                'supplier.id' => 'required',
-                'date' => 'required|date',
-                'notes' => 'nullable|string',
-                'declaredTotalAmount' => 'nullable|numeric|min:0',
-                'declaredTotalNetWeight' => 'nullable|numeric|min:0',
-                'details' => 'required|array',
-                'details.*.product.id' => 'required|exists:tenant.products,id',
-                'details.*.netWeight' => 'required|numeric',
-                'details.*.price' => 'nullable|numeric|min:0',
-                'details.*.lot' => 'nullable|string',
-                'details.*.boxes' => 'nullable|integer|min:0',
-            ]);
-        }
+        $this->authorize('update', $reception);
+        $validated = $request->validated();
 
         return DB::transaction(function () use ($reception, $validated, $request) {
             // Validar restricciones comunes (cajas en producción, palets vinculados)
@@ -252,24 +120,48 @@ class RawMaterialReceptionController extends Controller
     public function destroy($id)
     {
         $reception = RawMaterialReception::findOrFail($id);
+        $this->authorize('delete', $reception);
         $reception->delete();
         return response()->json(['message' => 'Recepción eliminada correctamente'], 200);
     }
 
-    public function destroyMultiple(Request $request)
+    public function destroyMultiple(DestroyMultipleRawMaterialReceptionsRequest $request)
     {
-        $ids = $request->input('ids', []);
+        $ids = $request->validated('ids');
 
-        if (!is_array($ids) || empty($ids)) {
-            return response()->json([
-                'message' => 'No se han proporcionado IDs válidos.',
-                'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.'
-            ], 400);
+        $deleted = 0;
+        $errors = [];
+
+        foreach ($ids as $id) {
+            $reception = RawMaterialReception::find($id);
+            if (!$reception) {
+                continue;
+            }
+            try {
+                $reception->delete();
+                $deleted++;
+            } catch (\Exception $e) {
+                $errors[] = [
+                    'id' => $id,
+                    'message' => $e->getMessage(),
+                    'userMessage' => 'No se pudo eliminar la recepción #' . $id . ': ' . ($e->getMessage()),
+                ];
+            }
         }
 
-        RawMaterialReception::whereIn('id', $ids)->delete();
+        if (!empty($errors)) {
+            return response()->json([
+                'message' => 'Algunas recepciones no pudieron eliminarse.',
+                'userMessage' => count($errors) . ' recepción(es) no pudieron eliminarse (palets vinculados a pedidos, cajas en producción o almacenados).',
+                'deleted' => $deleted,
+                'errors' => $errors,
+            ], 422);
+        }
 
-        return response()->json(['message' => 'Recepciones de materia prima eliminadas con éxito']);
+        return response()->json([
+            'message' => 'Recepciones de materia prima eliminadas con éxito',
+            'deleted' => $deleted,
+        ]);
     }
 
     /**
@@ -578,13 +470,15 @@ class RawMaterialReceptionController extends Controller
                     throw new \Exception("No se puede eliminar el palet #{$pallet->id}: tiene cajas siendo usadas en producción");
                 }
                 
-                // Eliminar relaciones palet-caja y cajas (usando eliminación directa de BD)
+                // Eliminar cajas (Eloquent para disparar eventos), luego pallet_boxes y palet
                 foreach ($pallet->boxes as $palletBox) {
-                    DB::connection('tenant')->table('boxes')->where('id', $palletBox->box_id)->delete();
+                    Box::find($palletBox->box_id)?->delete();
                 }
-                DB::connection('tenant')->table('pallet_boxes')->where('pallet_id', $pallet->id)->delete();
-                // Eliminar palet (usando eliminación directa de BD para evitar el evento)
-                DB::connection('tenant')->table('pallets')->where('id', $pallet->id)->delete();
+                PalletBox::where('pallet_id', $pallet->id)->delete();
+                // Palet con reception_id: el evento deleting lo prohibiría; aquí es modificación desde recepción (permitido)
+                \Illuminate\Database\Eloquent\Model::withoutEvents(function () use ($pallet) {
+                    $pallet->delete();
+                });
             }
         }
 
@@ -907,13 +801,11 @@ class RawMaterialReceptionController extends Controller
                 }
             }
             
-            // Eliminar cajas existentes (se recrearán según los nuevos detalles)
+            // Eliminar cajas existentes (Eloquent) y relaciones palet-caja
             foreach ($pallet->boxes as $palletBox) {
-                // Usar eliminación directa de BD para evitar el evento deleting
-                DB::connection('tenant')->table('boxes')->where('id', $palletBox->box_id)->delete();
+                Box::find($palletBox->box_id)?->delete();
             }
-            // Eliminar relaciones palet-caja
-            DB::connection('tenant')->table('pallet_boxes')->where('pallet_id', $pallet->id)->delete();
+            PalletBox::where('pallet_id', $pallet->id)->delete();
         }
 
         // Eliminar líneas antiguas
@@ -1144,6 +1036,7 @@ class RawMaterialReceptionController extends Controller
      */
     public function validateBulkUpdateDeclaredData(Request $request)
     {
+        $this->authorize('viewAny', RawMaterialReception::class);
         $validated = $request->validate([
             'receptions' => 'required|array|min:1',
             'receptions.*.supplier_id' => 'required|integer|exists:tenant.suppliers,id',
@@ -1249,6 +1142,7 @@ class RawMaterialReceptionController extends Controller
      */
     public function bulkUpdateDeclaredData(Request $request)
     {
+        $this->authorize('viewAny', RawMaterialReception::class);
         $validated = $request->validate([
             'receptions' => 'required|array|min:1',
             'receptions.*.supplier_id' => 'required|integer|exists:tenant.suppliers,id',

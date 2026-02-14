@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\DestroyMultipleCeboDispatchesRequest;
+use App\Http\Requests\v2\IndexCeboDispatchRequest;
+use App\Http\Requests\v2\StoreCeboDispatchRequest;
+use App\Http\Requests\v2\UpdateCeboDispatchRequest;
 use App\Http\Resources\v2\CeboDispatchResource;
 use App\Models\CeboDispatch;
 use App\Models\CeboDispatchProduct;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class CeboDispatchController extends Controller
 {
-    public function index(Request $request)
+    public function index(IndexCeboDispatchRequest $request)
     {
         $query = CeboDispatch::query();
         $query->with('supplier', 'products.product');
@@ -73,23 +76,10 @@ class CeboDispatchController extends Controller
         return CeboDispatchResource::collection($query->paginate($perPage));
     }
 
-    public function store(Request $request)
+    public function store(StoreCeboDispatchRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'supplier.id' => 'required',
-            'date' => 'required|date',
-            'notes' => 'nullable|string',
-            'details' => 'required|array',
-            'details.*.product.id' => 'required|exists:tenant.products,id',
-            'details.*.netWeight' => 'required|numeric',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422); // Código de estado 422 - Unprocessable Entity
-        }
-
         $dispatch = new CeboDispatch();
-        $dispatch->supplier_id = $request->supplier['id'];
+        $dispatch->supplier_id = $request->input('supplier.id');
         $dispatch->date = $request->date;
 
         if ($request->has('notes')) {
@@ -116,23 +106,17 @@ class CeboDispatchController extends Controller
     public function show($id)
     {
         $dispatch = CeboDispatch::with('supplier', 'products.product')->findOrFail($id);
+        $this->authorize('view', $dispatch);
         return response()->json([
             'data' => new CeboDispatchResource($dispatch),
         ]);
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateCeboDispatchRequest $request, $id)
     {
-        $validated = $request->validate([
-            'supplier.id' => 'required',
-            'date' => 'required|date',
-            'notes' => 'nullable|string',
-            'details' => 'required|array',
-            'details.*.product.id' => 'required|exists:tenant.products,id',
-            'details.*.netWeight' => 'required|numeric',
-        ]);
-
+        $validated = $request->validated();
         $dispatch = CeboDispatch::findOrFail($id);
+        $this->authorize('update', $dispatch);
         
         DB::transaction(function () use ($dispatch, $validated) {
             $dispatch->update([
@@ -160,6 +144,7 @@ class CeboDispatchController extends Controller
     public function destroy($id)
     {
         $dispatch = CeboDispatch::findOrFail($id);
+        $this->authorize('delete', $dispatch);
 
         // Eliminar el despacho - las líneas (cebo_dispatch_products) se eliminarán automáticamente
         // por cascade, pero los productos en sí NO se eliminarán
@@ -167,19 +152,10 @@ class CeboDispatchController extends Controller
         return response()->json(['message' => 'Despacho de cebo eliminado correctamente'], 200);
     }
 
-    public function destroyMultiple(Request $request)
+    public function destroyMultiple(DestroyMultipleCeboDispatchesRequest $request)
     {
-        $ids = $request->input('ids', []);
+        $ids = $request->validated('ids');
 
-        if (!is_array($ids) || empty($ids)) {
-            return response()->json([
-                'message' => 'No se proporcionaron IDs válidos.',
-                'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.'
-            ], 400);
-        }
-
-        // Eliminar los despachos - las líneas (cebo_dispatch_products) se eliminarán automáticamente
-        // por cascade, pero los productos en sí NO se eliminarán
         CeboDispatch::whereIn('id', $ids)->delete();
 
         return response()->json(['message' => 'Despachos de cebo eliminados correctamente']);

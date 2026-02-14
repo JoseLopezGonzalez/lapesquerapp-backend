@@ -315,3 +315,149 @@
 * **Profesional**
 * **Documentado**
 * **Listo para vender e implantar**
+
+---
+
+# ANEXO A — Inventario de Bloques del Proyecto PesquerApp
+
+Inventario detallado de bloques funcionales identificados en el backend (rutas, modelos, controladores, evolution log). Para cada bloque del Core se aplican las Fases 1–9 del plan.
+
+---
+
+## Bloques principales (Core comercial)
+
+### A.1 Auth + Roles/Permisos
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | User, Role, Session, MagicLinkToken |
+| **Controladores** | AuthController, RoleController, UserController, SessionController |
+| **Rutas clave** | login, logout, me, request-access, magic-link, otp, users, roles, sessions |
+
+### A.2 Ventas (Pedidos / Sales)
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | Order, OrderPlannedProductDetail, Incident, Customer, Salesperson |
+| **Controladores** | OrderController, OrderPlannedProductDetailController, IncidentController, OrdersReportController, OrderStatisticsController, CustomerController, SalespersonController |
+| **Rutas clave** | orders, order-planned-product-details, orders/{id}/incident, customers, salespeople, orders_report, statistics/orders/* |
+| **Evolution log** | Sub-bloques 1–5 aplicados; Rating ~8,5/10 |
+
+### A.3 Inventario / Stock
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | Store, Pallet, Box, PalletBox, StoredPallet, StoredBox |
+| **Controladores** | StoreController, PalletController, BoxesController, StockStatisticsController |
+| **Rutas clave** | stores, pallets, boxes, statistics/stock/*, assign-to-position, move-to-store, link-order |
+| **Evolution log** | Sub-bloques 1–3 aplicados; Rating ~6,5/10 |
+
+### A.4 Recepciones de Materia Prima
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | RawMaterialReception, RawMaterialReceptionProduct |
+| **Controladores** | RawMaterialReceptionController, RawMaterialReceptionStatisticsController |
+| **Rutas clave** | raw-material-receptions, reception-chart-data, facilcom-xls, a3erp-xls, bulk-update-declared-data |
+
+### A.5 Despachos de Cebo
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | CeboDispatch, CeboDispatchProduct, Cebo |
+| **Controladores** | CeboDispatchController, CeboDispatchStatisticsController |
+| **Rutas clave** | cebo-dispatches, dispatch-chart-data, facilcom-xlsx, a3erp-xlsx |
+
+### A.6 Producción
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | Production, ProductionRecord, ProductionInput, ProductionOutput, ProductionOutputConsumption, Process, CostCatalog, ProductionCost |
+| **Controladores** | ProductionController, ProductionRecordController, ProductionInputController, ProductionOutputController, ProductionOutputConsumptionController, CostCatalogController, ProductionCostController |
+| **Rutas clave** | productions, production-records, production-inputs, production-outputs, production-output-consumptions, cost-catalog, production-costs, processes |
+| **Nota** | Módulo más complejo; trazabilidad a nivel de caja |
+
+### A.7 Productos (y maestros anidados)
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | Product, ProductCategory, ProductFamily, Species, CaptureZone |
+| **Controladores** | ProductController, ProductCategoryController, ProductFamilyController, SpeciesController, CaptureZoneController |
+| **Rutas clave** | products, product-categories, product-families, species, capture-zones |
+
+### A.8 Catálogos transaccionales
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | Transport, Incoterm, PaymentTerm, Country, Tax, FishingGear |
+| **Controladores** | TransportController, IncotermController, PaymentTermController, CountryController, TaxController, FishingGearController |
+| **Rutas clave** | transports, incoterms, payment-terms, countries, taxes, fishing-gears |
+
+### A.9 Proveedores + Liquidaciones
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | Supplier |
+| **Controladores** | SupplierController, SupplierLiquidationController |
+| **Rutas clave** | suppliers, supplier-liquidations/* |
+
+### A.10 Etiquetas (Labels)
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | Label |
+| **Controladores** | LabelController |
+| **Rutas clave** | labels, labels/options, labels/{id}/duplicate |
+| **Evolution log** | Sub-bloques 1–2 aplicados; Rating ~8/10 |
+
+### A.11 Fichajes
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | PunchEvent, Employee |
+| **Controladores** | PunchController, EmployeeController |
+| **Rutas clave** | punches (store público NFC), punches/dashboard, punches/statistics, punches/calendar, punches/bulk, employees |
+
+### A.12 Estadísticas e informes
+| Tipo | Detalle |
+|------|---------|
+| **Controladores** | OrderStatisticsController, StockStatisticsController, RawMaterialReceptionStatisticsController, CeboDispatchStatisticsController, OrdersReportController |
+| **Rutas clave** | statistics/orders/*, statistics/stock/*, orders_report, reception-chart-data, dispatch-chart-data |
+
+### A.13 Configuración por tenant
+| Tipo | Detalle |
+|------|---------|
+| **Controladores** | SettingController |
+| **Rutas clave** | settings (GET, PUT) |
+
+### A.14 Sistema
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | User, Role, ActivityLog |
+| **Controladores** | UserController, RoleController, ActivityLogController |
+| **Rutas clave** | users, roles/options, activity-logs |
+
+---
+
+## Bloques transversales
+
+### A.15 Documentos (PDF / Excel)
+| Tipo | Detalle |
+|------|---------|
+| **Controladores** | PDFController, ExcelController, OrderDocumentController |
+| **Rutas clave** | orders/{id}/pdf/*, orders/xlsx/*, raw-material-receptions/*-xls, cebo-dispatches/*-xlsx, boxes/xlsx |
+
+### A.16 Tenants (multi-tenant)
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | Tenant |
+| **Controladores** | TenantController (público) |
+| **Rutas clave** | v2/public/tenant/{subdomain} |
+
+---
+
+## Mapeo CORE típico → PesquerApp
+
+| Bloque CORE genérico | Bloques PesquerApp correspondientes |
+|----------------------|------------------------------------|
+| Auth + Roles/Permisos | A.1 Auth + A.14 Sistema |
+| Productos (y anidados) | A.7 Productos |
+| Clientes | A.2 Ventas (Customer) |
+| Ventas | A.2 Ventas |
+| Stock / Movimientos | A.3 Inventario + A.4 Recepciones + A.5 Despachos |
+| Informes básicos | A.12 Estadísticas |
+| Configuración por tenant | A.13 Settings |
+| — | A.6 Producción, A.9 Proveedores, A.10 Etiquetas, A.11 Fichajes (específicos dominio pesquero) |
+
+---
+
+*Fuente: análisis de rutas, modelos, controladores, `docs/audits/laravel-evolution-log.md` y documentación en `docs/`. Última revisión: 2025-02-14.*
