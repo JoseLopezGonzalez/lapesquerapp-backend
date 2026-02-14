@@ -9,7 +9,11 @@ class UpdateCeboDispatchRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('cebo_dispatch'));
+        $dispatch = $this->route('cebo_dispatch');
+        if ($dispatch instanceof CeboDispatch) {
+            return $this->user()->can('update', $dispatch);
+        }
+        return $this->user()->can('update', CeboDispatch::findOrFail((int) $dispatch));
     }
 
     /**

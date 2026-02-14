@@ -19,17 +19,25 @@
 
 **Antes de mejorar nada, debemos definir qué bloques forman el Core comercial estable.**
 
-**Ejemplo típico:**
+**Bloques del Core, como por ejemplo:**
 
 * **Auth + Roles/Permisos**
-* **Productos (y anidados)**
-* **Clientes**
-* **Ventas (Orders + líneas + estados)**
-* **Stock / Movimientos**
-* **Informes básicos**
-* **Configuración por tenant**
+* **Productos (y anidados)** — Product, ProductCategory, ProductFamily, Species, CaptureZone
+* **Clientes** — Customer
+* **Ventas** — Orders, OrderPlannedProductDetail, Incident, Salesperson
+* **Inventario / Stock** — Store, Pallet, Box
+* **Recepciones de materia prima** — RawMaterialReception
+* **Despachos de cebo** — CeboDispatch
+* **Producción** — Production, ProductionRecord, Inputs, Outputs
+* **Catálogos** — Transport, Incoterm, PaymentTerm, Country, Tax, FishingGear
+* **Proveedores + Liquidaciones**
+* **Etiquetas** — Label
+* **Fichajes** — PunchEvent, Employee
+* **Estadísticas e informes**
+* **Configuración por tenant** — Settings
+* **Sistema** — Users, Roles, ActivityLogs
 
-**⚠️ Todo lo que quede fuera es “roadmap”, no core.**
+**⚠️ Todo lo que quede fuera es “roadmap”, no core.** *(Inventario completo en ANEXO A.)*
 
 ---
 

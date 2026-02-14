@@ -122,7 +122,7 @@ class CeboDispatchController extends Controller
             $dispatch->update([
                 'supplier_id' => $validated['supplier']['id'],
                 'date' => $validated['date'],
-                'notes' => $validated['notes']
+                'notes' => $validated['notes'] ?? null,
             ]);
 
             $dispatch->products()->delete();

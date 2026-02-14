@@ -5,6 +5,177 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2026-02-14] Block Recepciones de materia prima - Sub-bloque 1 (Form Requests bulk + RawMaterialReceptionBulkService)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 4/10** | **Rating después: 6/10**
+
+### Problems Addressed
+
+- Endpoints `validateBulkUpdateDeclaredData` y `bulkUpdateDeclaredData` sin Form Request; validación y autorización inline en el controlador.
+- Lógica de validación/actualización bulk y de “recepción más cercana” concentrada en RawMaterialReceptionController (~227 líneas), dificultando pruebas y mantenimiento.
+
+### Changes Applied
+
+- **Form Requests nuevos**: ValidateBulkUpdateDeclaredDataRequest, BulkUpdateDeclaredDataRequest (reglas: receptions, supplier_id, date, declared_total_amount, declared_total_net_weight; autorización viewAny RawMaterialReception). Usados en validateBulkUpdateDeclaredData y bulkUpdateDeclaredData.
+- **RawMaterialReceptionBulkService** (app/Services/v2): validateBulkUpdateDeclaredData(array), bulkUpdateDeclaredData(array), findClosestReceptions(supplierId, date). Toda la lógica de bulk y búsqueda de recepción más cercana movida aquí; métodos estáticos.
+- **RawMaterialReceptionController**: validateBulkUpdateDeclaredData y bulkUpdateDeclaredData reducidos a inyectar Form Request, llamar al servicio con los datos validados y devolver JSON con el mismo status (200/207). Eliminado el método privado findClosestReceptions y la validación inline. Controlador pasa de ~1287 a ~1060 líneas.
+
+### Verification Results
+
+- ✅ Linter sin errores en los archivos tocados.
+- ✅ Tests/Feature/StockBlockApiTest pasan (11 tests, incl. list raw material receptions, reception chart data, auth).
+- Contrato API preservado: mismos cuerpos de request/respuesta y códigos 200/207.
+
+### Gap to 10/10 (Rating después < 9)
+
+- RawMaterialReceptionController sigue > 200 líneas (~1060); extraer en sub-bloque 2 la lógica de store/update (createPalletsFromRequest, createDetailsFromRequest, updatePalletsFromRequest, updateDetailsFromRequest) a Services o Actions.
+- Tests de integración para store, update, destroy, destroyMultiple y endpoints bulk.
+- Bloqueado por: nada.
+
+### Rollback Plan
+
+Si aparecen problemas: `git revert <commit-hash>` de los commits de este sub-bloque. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Sub-bloque 2 del bloque Recepciones de materia prima: adelgazamiento del controlador (store/update) mediante extracción a servicios/acciones. ✅ Aplicado a continuación.
+
+---
+
+## [2026-02-14] Block Recepciones de materia prima - Sub-bloque 2 (RawMaterialReceptionWriteService, controlador <200 líneas)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 6/10** | **Rating después: 8/10**
+
+### Problems Addressed
+
+- RawMaterialReceptionController ~1060 líneas (P1); lógica de store/update (createPalletsFromRequest, updatePalletsFromRequest, createDetailsFromRequest, updateDetailsFromRequest y helpers) concentrada en el controlador.
+
+### Changes Applied
+
+- **RawMaterialReceptionWriteService** (app/Services/v2/): store(array $data), update(RawMaterialReception $reception, array $data). Toda la lógica de creación/actualización de recepciones, palets, cajas y líneas movida a este servicio (métodos privados estáticos). Uso de Model::withoutEvents para eliminación de palets en contexto de recepción.
+- **RawMaterialReceptionController**: store() y update() delegan en RawMaterialReceptionWriteService dentro de DB::transaction; eliminados los 8 métodos privados (~863 líneas). Eliminados imports no usados. **Controlador: ~150 líneas** (<200).
+- Sin cambios de contrato API.
+
+### Verification Results
+
+- ✅ Linter sin errores.
+- ✅ Tests/Feature/StockBlockApiTest (11 tests) pasan.
+- Comportamiento preservado: store y update idénticos en API.
+
+### Gap to 10/10 (Rating después < 9)
+
+- Tests de integración para store, update, destroy, destroyMultiple y bulk (crear recepción, editar, restricciones cajas en producción).
+- Bloqueado por: nada.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay migraciones ni cambios de contrato.
+
+### Next
+
+- Tests de integración para el bloque Recepciones de materia prima; o siguiente módulo CORE según prioridad.
+
+---
+
+## [2026-02-14] Block Recepciones de materia prima - Tests de integración (StockBlockApiTest)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 8/10** | **Rating después: 8,5/10**
+
+### Problems Addressed
+
+- Gap del sub-bloque 2: ausencia de tests de integración para store, update, destroy, destroyMultiple y endpoints bulk.
+
+### Changes Applied
+
+- **Tests en tests/Feature/StockBlockApiTest.php**: seedTenantForReceptions() (seeders sin ProductSeeder por compatibilidad PHPUnit); test_can_store_raw_material_reception_with_details; test_can_show_raw_material_reception; test_can_update_raw_material_reception; test_can_destroy_raw_material_reception; test_can_destroy_multiple_raw_material_receptions; test_validate_bulk_update_declared_data_returns_structure; test_bulk_update_declared_data_updates_receptions (fecha fija 2019-06-15 para aislamiento entre tests).
+- **BulkUpdateDeclaredDataRequest**: prepareForValidation() para normalizar payload a snake_case y aceptar camelCase del frontend.
+- **RawMaterialReceptionBulkService**: acepta declared_total_amount y declaredTotalAmount (y net_weight equivalente).
+- **RawMaterialReceptionController (bulkUpdateDeclaredData)**: normalización explícita de receptions a snake_case antes de llamar al servicio.
+- Assertiones de bulk update vía GET show (mismo contexto tenant) para evitar falsos negativos por conexión/estado en suite completa.
+
+### Verification Results
+
+- 18 tests en StockBlockApiTest pasan (85 aserciones): list, pallets, stores, stats, chart data, auth, store, show, update, destroy, destroyMultiple, validate-bulk, bulk-update-declared-data.
+
+### Gap to 10/10 (Rating después < 9)
+
+- Tests de restricciones (recepción con palet vinculado a pedido, cajas en producción) y edge cases de update/destroy.
+- Bloqueado por: nada.
+
+### Rollback Plan
+
+Revertir commits de tests y cambios en BulkRequest/BulkService/Controller; no hay migraciones.
+
+### Next
+
+- Más tests de edge cases para recepciones; o siguiente bloque CORE (p. ej. Etiquetas, Despachos de cebo, Producción).
+
+---
+
+## [2026-02-14] Block Recepciones de materia prima - Tests edge cases (restricciones destroy + 422)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 8,5/10** | **Rating después: 9/10**
+
+### Problems Addressed
+
+- Gap: tests de restricciones al eliminar (palet almacenado, palet vinculado a pedido) y validación 422 en store/bulk.
+
+### Changes Applied
+
+- **StockBlockApiTest**: test_destroy_reception_fails_when_pallet_stored (DELETE → 500, recepción sigue en BD); test_destroy_reception_fails_when_pallet_linked_to_order (Order mínimo vía createMinimalOrderOnTenant(), DELETE → 500); test_destroy_multiple_returns_422_when_one_has_pallet_linked_to_order (422, deleted 1, errors); test_store_reception_returns_422_with_invalid_payload (falta supplier.id); test_bulk_update_declared_data_returns_422_with_invalid_payload (supplier_id inexistente). Helper createMinimalOrderOnTenant() (Country, PaymentTerm, Salesperson, Transport, Customer firstOrCreate, Order) para tests que requieren palet vinculado a pedido.
+
+### Verification Results
+
+- 23 tests en StockBlockApiTest (104 aserciones). Todos pasan.
+
+### Gap to 10/10
+
+- Test opcional: recepción con caja en producción (ProductionInput) no se puede eliminar (requiere fixture Producción más pesado). Bloqueado por: nada.
+
+### Next
+
+- Siguiente bloque CORE: Despachos de cebo (A.5) o Etiquetas (A.10).
+
+---
+
+## [2026-02-14] Block Despachos de cebo (CeboDispatch) - Tests de integración + fix authorize update
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: N/A (sin rating previo)** | **Rating después: 7/10**
+
+### Problems Addressed
+
+- Sin tests de integración para CRUD de cebo-dispatches (store, show, update, destroy, destroyMultiple). Update devolvía 500: UpdateCeboDispatchRequest pasaba el id de ruta a la Policy y la Policy espera CeboDispatch.
+
+### Changes Applied
+
+- **StockBlockApiTest**: tests test_can_store_cebo_dispatch, test_can_show_cebo_dispatch, test_can_update_cebo_dispatch, test_can_destroy_cebo_dispatch, test_can_destroy_multiple_cebo_dispatches, test_store_cebo_dispatch_returns_422_with_invalid_payload. Reutilizan seedTenantForReceptions() (supplier + product).
+- **UpdateCeboDispatchRequest**: authorize() resuelve CeboDispatch cuando el route param es id (findOrFail) para que la Policy reciba el modelo.
+- **CeboDispatchController (update)**: uso de `$validated['notes'] ?? null` para evitar undefined index.
+
+### Verification Results
+
+- 29 tests en StockBlockApiTest (129 aserciones), todos pasan. Incluyen recepciones, pallets, stores, stats, chart data, cebo-dispatches CRUD y 422.
+
+### Gap to 10/10
+
+- destroyMultiple usa whereIn()->delete(); no dispara eventos del modelo (CeboDispatch no tiene deleting actualmente; consistencia con Recepciones opcional). Tests de edge cases si en el futuro se añaden restricciones.
+
+### Next
+
+- Siguiente bloque CORE según prioridad (Etiquetas, Producción, etc.).
+
+---
+
 ## [2026-02-14] Block Inventario/Stock - Sub-bloque 1 (P0 + Policies + Form Requests)
 
 **Priority**: P0 + P1  
