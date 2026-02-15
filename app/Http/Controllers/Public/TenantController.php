@@ -3,24 +3,23 @@
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Public\ShowTenantBySubdomainRequest;
+use App\Http\Resources\Public\TenantPublicResource;
 use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 
 class TenantController extends Controller
 {
-    public function showBySubdomain(string $subdomain): JsonResponse
+    public function showBySubdomain(ShowTenantBySubdomainRequest $request): JsonResponse
     {
-        $tenant = Tenant::where('subdomain', $subdomain)->first();
+        $tenant = Tenant::where('subdomain', $request->validated('subdomain'))->first();
 
-        if (!$tenant) {
+        if (! $tenant) {
             return response()->json([
-                'error' => 'Tenant not found'
+                'error' => 'Tenant no encontrado',
             ], 404);
         }
 
-        return response()->json([
-            'active' => (bool) $tenant->active,
-            'name' => $tenant->name,
-        ]);
+        return (new TenantPublicResource($tenant))->response();
     }
 }

@@ -187,10 +187,14 @@ Content-Type: application/json
 
 ### Response Exitosa (200)
 
+Convención API Resources (envoltorio `data`):
+
 ```json
 {
-  "active": true,
-  "name": "Mi Empresa"
+  "data": {
+    "active": true,
+    "name": "Mi Empresa"
+  }
 }
 ```
 
@@ -198,7 +202,24 @@ Content-Type: application/json
 
 ```json
 {
-  "error": "Tenant not found"
+  "error": "Tenant no encontrado"
 }
 ```
+
+### Response Errónea (422) - Subdominio Inválido
+
+Si el subdominio contiene caracteres no permitidos (espacios, `@`, etc.):
+
+```json
+{
+  "message": "El subdominio solo puede contener letras, números, guiones y guiones bajos.",
+  "errors": {
+    "subdomain": ["El subdominio solo puede contener letras, números, guiones y guiones bajos."]
+  }
+}
+```
+
+### Throttling
+
+60 peticiones/minuto. Si se excede: **429 Too Many Requests**.
 

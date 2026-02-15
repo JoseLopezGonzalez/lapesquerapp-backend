@@ -5,6 +5,50 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2026-02-15] Block A.16 Tenants
+
+**Priority**: P0/P1
+**Risk Level**: Low
+**Rating antes: 4/10** | **Rating después: 9/10**
+
+### Problems Addressed
+
+- Tenant model usaba UsesTenantConnection (conexión tenant) cuando la tabla `tenants` vive en la base central (mysql) — riesgo P0 en ruta pública.
+- Sin Form Request para validar subdominio.
+- Sin API Resource; respuesta manual.
+- Mensajes de error en inglés; inconsistente con el resto del API.
+- Sin throttling en endpoint público (enumeración de subdominios).
+- Sin tests Feature para el endpoint de resolución de tenant.
+
+### Changes Applied
+
+- **Tenant model**: Eliminado UsesTenantConnection; `protected $connection = 'mysql'` para usar la base central correctamente.
+- **ShowTenantBySubdomainRequest**: Form Request con validación de subdominio (required, string, max:63, alpha_dash) y mensajes en español.
+- **TenantPublicResource**: API Resource para serialización consistente (active, name).
+- **TenantController**: Usa Form Request y Resource; mensaje 404 en español ("Tenant no encontrado").
+- **Ruta**: Throttling 60 req/min (`throttle:60,1`); nombre de ruta `api.v2.public.tenant`.
+- **TenantBlockApiTest**: 5 tests (200 existente, 200 inactivo, 404 no encontrado, 422 subdominio inválido, 422 caracteres inválidos).
+
+### Verification Results
+
+- ✅ TenantBlockApiTest: 5 tests, 8 assertions, OK.
+- ✅ AuthBlockApiTest, ProductosBlockApiTest: OK (Tenant::create en tests con conexión mysql).
+- ⚠️ **Breaking change frontend:** Respuesta 200 ahora envuelve en `data` (convención API Resources). Doc: `docs/33-frontend/API-CAMBIO-Tenant-Endpoint-Data-Wrapper.md`.
+
+### Gap to 10/10
+
+- Bloque cerrado en 9/10. Opcional: incluir branding_image_url en API si se añade migración (no existe en BD actual).
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Siguiente bloque CORE según plan (A.8 Catálogos, A.3 Stock, etc.).
+
+---
+
 ## [2026-02-15] Block A.9 Proveedores + Liquidaciones
 
 **Priority**: P1

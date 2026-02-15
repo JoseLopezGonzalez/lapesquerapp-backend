@@ -458,6 +458,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 |------|---------|
 | **Entidades** | Tenant |
 | **Controladores** | TenantController (público) |
+| **Evolution log** | Tenant model conexión mysql; ShowTenantBySubdomainRequest; TenantPublicResource; throttling; TenantBlockApiTest 5 tests. **Rating actual: 9/10** |
 | **Rutas clave** | v2/public/tenant/{subdomain} |
 
 ---
@@ -500,4 +501,4 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **A.13** Configuración por tenant | **9/10** | Setting model, SettingService, Policy, Form Request, GET enmascara password, SettingsBlockApiTest 8 tests |
 | **A.14** Sistema | **9/10** | Mismo bloque que A.1 Auth (users, roles, activity-logs) |
 | **A.15** Documentos (PDF/Excel) | — | Sin entrada en evolution log |
-| **A.16** Tenants | — | Sin entrada en evolution log |
+| **A.16** Tenants | **9/10** | Tenant conexión mysql, Form Request, Resource, throttling, TenantBlockApiTest 5 tests |

@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
-use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Model;
 
 class Tenant extends Model
 {
+    /** @var string Conexión a la base central (tabla tenants). */
+    protected $connection = 'mysql';
 
     protected $fillable = [
         'name',

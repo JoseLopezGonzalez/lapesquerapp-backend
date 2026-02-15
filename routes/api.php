@@ -111,8 +111,10 @@ Route::get('/test-cors', function (Request $request) {
     Route::get('v2/orders_report', [OrdersReportController::class, 'exportToExcel'])->name('export.orders');
 }); */
 
-/* IMPORTANTISIMO */
-Route::get('v2/public/tenant/{subdomain}', [TenantController::class, 'showBySubdomain']);
+/* IMPORTANTISIMO - Resolución de tenant por subdominio (público, sin auth) */
+Route::get('v2/public/tenant/{subdomain}', [TenantController::class, 'showBySubdomain'])
+    ->middleware('throttle:60,1')
+    ->name('api.v2.public.tenant');
 
 /* Comprobar el tenant ya que esta aplicado de manera global */
 Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], function () {
