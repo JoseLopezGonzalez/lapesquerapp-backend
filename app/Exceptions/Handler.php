@@ -43,7 +43,6 @@ class Handler extends ExceptionHandler
             if ($exception instanceof ValidationException) {
                 $errors = $exception->errors();
                 $userMessage = $this->formatValidationErrorsForUser($errors);
-                
                 return response()->json([
                     'message' => 'Error de validación.',
                     'userMessage' => $userMessage,
@@ -63,7 +62,6 @@ class Handler extends ExceptionHandler
             if ($exception instanceof HttpException) {
                 $statusCode = $exception->getStatusCode();
                 $userMessage = $this->formatHttpExceptionMessage($statusCode, $exception->getMessage());
-                
                 return response()->json([
                     'message' => $exception->getMessage() ?: 'Error HTTP.',
                     'userMessage' => $userMessage,
@@ -88,7 +86,6 @@ class Handler extends ExceptionHandler
                     stripos($errorMessage, 'unique constraint') !== false) {
                     
                     $userMessage = $this->formatUniqueConstraintViolationForUser($errorMessage, $request);
-                    
                     return response()->json([
                         'message' => 'Error de validación.',
                         'userMessage' => $userMessage,
@@ -98,7 +95,6 @@ class Handler extends ExceptionHandler
                 
                 // Otros errores de base de datos (foreign key, not null, etc.)
                 $userMessage = $this->formatQueryExceptionForUser($errorMessage, $request);
-                
                 return response()->json([
                     'message' => 'Error de base de datos.',
                     'userMessage' => $userMessage,
@@ -109,7 +105,6 @@ class Handler extends ExceptionHandler
             // Manejar cualquier otra excepción como error interno del servidor
             $errorMessage = $exception->getMessage();
             $userMessage = $this->formatExceptionMessageForUser($errorMessage, $request);
-            
             return response()->json([
                 'message' => 'Ocurrió un error inesperado.',
                 'userMessage' => $userMessage,
@@ -120,7 +115,6 @@ class Handler extends ExceptionHandler
         // Si no es una API o no espera JSON, usar el manejo por defecto
         return parent::render($request, $exception);
     }
-
 
     /**
      * Formatea los errores de validación en un mensaje legible para el usuario

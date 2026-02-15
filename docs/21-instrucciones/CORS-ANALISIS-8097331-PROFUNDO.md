@@ -53,19 +53,36 @@ Esa lista de headers coincide exactamente con la config de **ca740d7**, no con e
 
 ---
 
-## Solución: volver al Dockerfile de 8097331
+## Estado que funcionaba: d8aab25 (13 feb 2026)
 
-Para replicar el comportamiento que funcionaba, hay que **quitar Apache CORS** del Dockerfile y dejar que **solo Laravel** gestione CORS:
+El commit **d8aab25657128e158c0207627b150aa865840bfd** (13 feb 2026, "Refactor TenantMiddleware logging") es el que funcionaba en producción.
 
-- Sin Apache CORS, el flujo es el mismo que en 8097331.
-- Laravel tiene HandleCors, orígenes y patrones ya configurados.
-- No se depende de que Apache reciba ni coincida el `Origin`.
+**Restaurado exactamente:**
+- `config/cors.php` — orígenes con lapesquerapp.es, *.lapesquerapp.es, patrones, supports_credentials
+- `app/Http/Kernel.php` — HandleCors en global y api, sin EnsureCorsOnApiResponse
+- `Dockerfile` — sin Apache CORS, solo `a2enmod rewrite`
+- `TenantMiddleware` — excluye `api/v2/public/*`, log solo en debug
 
 ---
 
-## Pasos
+## Nota: Coolify/Traefik
+
+Tras más análisis: **Coolify usa Traefik como proxy** y hay un [issue abierto](https://github.com/coollabsio/coolify/issues/2570) donde se indica que **los headers CORS que envía la aplicación no llegan al cliente** porque Traefik los elimina o altera.
+
+Por eso **revertir a 8097331 no soluciona el problema**: el fallo está en la capa de proxy, no en el código Laravel.
+
+**Solución:** Configurar CORS en Traefik dentro de Coolify. Ver:
+**`docs/21-instrucciones/CORS-COOLIFY-TRAEFIK-SOLUCION.md`**
+
+---
+
+## Solución anterior (solo si el proxy no fuera el problema)
+
+Para replicar el comportamiento que funcionaba, habría que **quitar Apache CORS** del Dockerfile y dejar que **solo Laravel** gestione CORS. Pero si Coolify/Traefik está quitando los headers, eso no basta.
+
+### Pasos (si el proxy no interfiere)
 
 1. Revertir el Dockerfile al estado de 8097331 (sin Apache CORS).
-2. Mantener `config/cors.php` como en 8097331 (hardcodeado) o con el merge de `env`; ambos son válidos.
+2. Mantener `config/cors.php` como en 8097331 (hardcodeado).
 3. Reconstruir la imagen con `docker build --no-cache`.
 4. Desplegar.
