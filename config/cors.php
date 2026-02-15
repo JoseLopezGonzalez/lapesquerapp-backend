@@ -1,6 +1,5 @@
 <?php
 
-
 return [
 
     /*
@@ -18,37 +17,25 @@ return [
 
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-    'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    'allowed_methods' => ['*'],
 
+    // Orígenes explícitos desde env (comma-separated). En producción: lista blanca.
+    'allowed_origins' => array_filter(array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,http://localhost:5173')))),
 
-    // Permitir varios orígenes (especifica los dominios)
-    // Los subdominios *.lapesquerapp.es también se permiten vía allowed_origins_patterns
-    'allowed_origins' => [
-        'http://localhost:3000', // Next.js desarrollo (guía Sail)
-        'http://localhost:3001',
-        'http://127.0.0.1:3000',
-        'http://127.0.0.1:3001',
-        'http://localhost:5173',
-        'https://*.congeladosbrisamar.es', // Origen de producción
-        'https://lapesquerapp.es',
-        'https://*.lapesquerapp.es', // wildcard convertido a patrón por Fruitcake
-        'https://brisamar.lapesquerapp.es', // explícito por si el proxy no reenvía Origin
-        'http://brisamar.localhost:3000',
-        'http://test.localhost:3000',
-        'http://pymcolorao.localhost:3000',
-    ],
-
-
+    // Patrones regex para subdominios dinámicos (multi-tenant)
     'allowed_origins_patterns' => [
         '/^https:\/\/[a-z0-9\-]+\.lapesquerapp\.es$/',
+        '/^https:\/\/lapesquerapp\.es$/',
+        '/^https:\/\/[a-z0-9\-]+\.congeladosbrisamar\.es$/',
+        '/^http:\/\/[a-z0-9\-]+\.localhost(:\d+)?$/',
+        '/^http:\/\/127\.0\.0\.1(:\d+)?$/',
     ],
-
 
     'allowed_headers' => ['*'],
 
     'exposed_headers' => [],
 
-    'max_age' => 0,
+    'max_age' => 86400,
 
     'supports_credentials' => true,
 

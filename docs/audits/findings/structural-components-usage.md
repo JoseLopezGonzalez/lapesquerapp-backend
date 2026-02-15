@@ -1,13 +1,13 @@
 # Uso de componentes estructurales Laravel — PesquerApp Backend
 
 **Documento de hallazgos** | Auditoría global Laravel  
-**Fecha**: 2026-02-14
+**Fecha**: 2026-02-15
 
 ---
 
 ## 1. Objetivo
 
-Evaluar la presencia, corrección y consistencia de los bloques estructurales que Laravel y la comunidad recomiendan: Services, Actions, Jobs, Events/Listeners, Form Requests, Policies/Gates, Middleware, API Resources y otros (DTOs, Observers).
+Evaluar la presencia, corrección y consistencia de los bloques estructurales que Laravel y la comunidad recomiendan: Services, Actions, Jobs, Events/Listeners, Form Requests, Policies/Gates, Middleware, API Resources y otros.
 
 ---
 
@@ -15,11 +15,12 @@ Evaluar la presencia, corrección y consistencia de los bloques estructurales qu
 
 | Aspecto | Valoración | Detalle |
 |---------|------------|---------|
-| Presencia | ✅ | Múltiples servicios en `app/Services/`, `app/Services/v2/`, `app/Services/Production/`. |
-| Responsabilidad | ✅ | Producción (ProductionRecordService, ProductionOutputService, etc.), estadísticas (OrderStatisticsService, StockStatisticsService, etc.), OrderPDFService, OrderMailerService, TenantMailConfigService, MagicLinkService. |
+| Presencia | ✅ | 46 servicios en `app/Services/`, `app/Services/v2/`, `app/Services/Production/`. |
+| Responsabilidad | ✅ | Producción, estadísticas (OrderStatisticsService, StockStatisticsService, etc.), listados (OrderListService, PunchEventListService, CustomerListService, etc.), SettingService, OrderPDFService, OrderMailerService. |
 | Reutilización | ✅ | Servicios inyectados en controladores; transacciones y lógica compleja centralizadas. |
+| Controladores refactorizados | ✅ | OrderController delega en OrderListService, OrderDetailService, OrderStoreService, OrderUpdateService; PunchController en PunchDashboardService, PunchCalendarService, PunchStatisticsService, PunchEventListService, PunchEventWriteService. |
 
-**Conclusión**: Uso correcto y coherente. La lógica de aplicación está bien separada de controladores en dominios complejos.
+**Conclusión**: Uso correcto y coherente. La lógica de aplicación está bien separada de controladores en dominios complejos. **Mejora respecto a auditoría anterior** (2026-02-14): controladores gruesos han sido refactorizados.
 
 ---
 
@@ -28,7 +29,7 @@ Evaluar la presencia, corrección y consistencia de los bloques estructurales qu
 | Aspecto | Valoración | Detalle |
 |---------|------------|---------|
 | Presencia | ❌ | No existe carpeta `app/Actions` ni clases invocables de un solo propósito. |
-| Necesidad | Opcional | La lógica está en servicios o en controladores; no es obligatorio introducir Actions. Si en el futuro se quieren operaciones muy acotadas (por ejemplo “Confirmar pedido”, “Cerrar producción”), una Action por operación podría mejorar claridad. |
+| Necesidad | Opcional | La lógica está en servicios o en controladores; no es obligatorio introducir Actions. |
 
 ---
 
@@ -37,7 +38,7 @@ Evaluar la presencia, corrección y consistencia de los bloques estructurales qu
 | Aspecto | Valoración | Detalle |
 |---------|------------|---------|
 | Presencia | ❌ | No hay clases Job en el proyecto. |
-| Riesgo futuro | ⚠️ | Si se añaden colas (envío de correo asíncrono, reportes, integraciones), el **contexto tenant** no se propaga por defecto. Debe definirse convención (payload con tenant_subdomain o tenant_database) y configurar la conexión tenant en el worker. |
+| Riesgo futuro | ⚠️ | Si se añaden colas, el **contexto tenant** no se propaga por defecto. Debe definirse convención (payload con tenant_subdomain o tenant_database) y configurar la conexión tenant en el worker. |
 
 ---
 
@@ -47,7 +48,7 @@ Evaluar la presencia, corrección y consistencia de los bloques estructurales qu
 |---------|------------|---------|
 | Presencia | Solo por defecto | EventServiceProvider registra únicamente `Registered` → `SendEmailVerificationNotification`. |
 | Eventos de dominio | ❌ | No hay eventos propios (por ejemplo OrderShipped, ProductionFinished). |
-| Decoupling | N/A | Los efectos secundarios (correo, PDF) se invocan desde controladores o servicios de forma síncrona. Adecuado para el volumen actual; si crece la necesidad de desacoplar, introducir eventos sería el siguiente paso. |
+| Decoupling | N/A | Los efectos secundarios (correo, PDF) se invocan desde controladores o servicios de forma síncrona. Adecuado para el volumen actual. |
 
 ---
 
@@ -55,11 +56,11 @@ Evaluar la presencia, corrección y consistencia de los bloques estructurales qu
 
 | Aspecto | Valoración | Detalle |
 |---------|------------|---------|
-| Presencia | ⚠️ Parcial | 14 clases en `app/Http/Requests/v2/`, **todas** del módulo Production (Store/Update/Sync/Multiple para Production, ProductionRecord, ProductionInput, ProductionOutput, ProductionOutputConsumption). |
-| Resto de la API | ❌ | Endpoints de Orders, Customers, RawMaterialReceptions, Pallets, etc. no usan Form Request dedicado; validación en controlador con `$request->validate()` o sin validación explícita. |
-| Consistencia | ⚠️ | Inconsistente: un módulo (Production) tiene validación en frontera HTTP bien encapsulada; el resto depende de controladores. |
+| Presencia | ✅ | **137 clases** en `app/Http/Requests/v2/`. |
+| Cobertura | ✅ | Prácticamente toda la API v2: Orders, Customers, Products, Punch, RawMaterialReception, CeboDispatch, Production, Settings, Suppliers, Transport, Catalogos, etc. |
+| Consistencia | ✅ | Validación en frontera HTTP coherente; mensajes en español donde aplica. |
 
-**Recomendación**: Extender Form Requests a recursos críticos (Order, RawMaterialReception, Customer, etc.) para unificar validación y autorización en la frontera HTTP.
+**Conclusión**: **Mejora significativa respecto a auditoría anterior** (2026-02-14 indicaba "solo Production, 14 clases"). Cobertura amplia y consistente.
 
 ---
 
@@ -67,11 +68,11 @@ Evaluar la presencia, corrección y consistencia de los bloques estructurales qu
 
 | Aspecto | Valoración | Detalle |
 |---------|------------|---------|
-| Registro | ✅ | AuthServiceProvider registra `Order::class => OrderPolicy::class`, `User::class => UserPolicy::class`. |
-| Uso en controladores | ⚠️ Parcial | **Solo UserController** llama a `authorize()` (viewAny, create, view, update, delete). OrderController y el resto de controladores **no** llaman a `authorize()` para Order ni para otros modelos. |
-| Consistencia | ❌ | Policies definidas pero no aplicadas en la mayoría de recursos. La autorización efectiva es solo por rol a nivel de ruta. |
+| Registro | ✅ | AuthServiceProvider registra ~30 políticas: Order, User, Customer, Salesperson, Label, RawMaterialReception, Pallet, Box, CeboDispatch, Store, Product, ProductCategory, ProductFamily, ActivityLog, Session, Setting, Production, ProductionRecord, ProductionInput, ProductionOutput, ProductionOutputConsumption, ProductionCost, CostCatalog, Process, PunchEvent, Employee, Supplier, Transport, Incoterm, PaymentTerm, Country, Tax, FishingGear. |
+| Uso en controladores | ✅ | **La mayoría de controladores** llaman a `authorize()`: OrderController, CustomerController, PalletController, PunchController, SupplierController, EmployeeController, ProductionController, ProductionRecordController, ProductionInputController, ProductionOutputController, ProductionOutputConsumptionController, CostCatalogController, ProcessController, SettingController, FishingGearController, TaxController, CountryController, PaymentTermController, IncotermController, TransportController, ExcelController, PDFController, OrderDocumentController, SupplierLiquidationController, OrderPlannedProductDetailController, CeboDispatchStatisticsController, RawMaterialReceptionStatisticsController. |
+| Consistencia | ✅ | Policies aplicadas en recursos críticos; autorización por recurso además del middleware de rol. |
 
-**Recomendación**: Usar `$this->authorize('action', $model)` en todos los controladores de recursos críticos (Order, RawMaterialReception, User, etc.) para que las políticas tengan efecto real.
+**Conclusión**: **Mejora significativa respecto a auditoría anterior** (2026-02-14 indicaba "solo UserController usa authorize()"). Uso amplio y coherente.
 
 ---
 
@@ -88,16 +89,16 @@ Evaluar la presencia, corrección y consistencia de los bloques estructurales qu
 
 | Aspecto | Valoración | Detalle |
 |---------|------------|---------|
-| Presencia | ✅ | Múltiples recursos en `app/Http/Resources/v2/` (User, Order, Species, Store, Box, etc.). |
+| Presencia | ✅ | Múltiples recursos en `app/Http/Resources/v2/` (Order, OrderDetails, Product, PunchEvent, Pallet, etc.). |
 | Uso | ✅ | Controladores devuelven recursos para serialización; respuestas JSON homogéneas. |
 
 ---
 
 ## 10. Otros (DTOs, Observers, Repositories)
 
-- **DTOs**: No utilizados. Los datos se pasan como arrays o como modelos; no es crítico para el tamaño actual.
-- **Observers**: No registrados. Si se necesitan efectos secundarios al crear/actualizar/eliminar modelos (auditoría, invalidación de caché), los Observers serían la opción Laravel idiomática.
-- **Repositories**: No hay capa de repositorios; acceso directo vía Eloquent y en varios sitios `DB::connection('tenant')->table()`. La mejora prioritaria es reducir el acceso directo a `table()` más que introducir un patrón Repository completo.
+- **DTOs**: No utilizados. No crítico para el tamaño actual.
+- **Observers**: No registrados. Si se necesitan efectos secundarios al crear/actualizar/eliminar modelos, los Observers serían la opción Laravel idiomática.
+- **Repositories**: No hay capa de repositorios; acceso vía Eloquent y modelos. **Mejora**: Se ha eliminado el acceso directo a `DB::connection('tenant')->table()` de los controladores; queda solo en el helper `tenantSetting()` para lectura de settings.
 
 ---
 
@@ -109,9 +110,9 @@ Evaluar la presencia, corrección y consistencia de los bloques estructurales qu
 | Actions | ❌ | — | Opcional; valorar para operaciones muy acotadas. |
 | Jobs | ❌ | — | Al añadir colas: convención de contexto tenant. |
 | Events/Listeners | Solo default | — | Valorar si se quiere desacoplar efectos secundarios. |
-| Form Requests | ⚠️ | ⚠️ | Extender a más recursos (Order, Customer, etc.). |
-| Policies | ✅ registro | ❌ uso | Llamar a `authorize()` en todos los controladores de recursos críticos. |
+| Form Requests | ✅ | ✅ | Mantener cobertura; no hay acciones pendientes. |
+| Policies | ✅ | ✅ | Mantener; verificar que nuevos recursos incluyan authorize(). |
 | Middleware | ✅ | ✅ | Sin cambios. |
 | API Resources | ✅ | ✅ | Sin cambios. |
 
-El proyecto utiliza bien Services y API Resources; el mayor gap es el **uso desigual** de Form Requests y de Policies (registradas pero no aplicadas en la mayoría de controladores).
+**Conclusión general**: El proyecto utiliza bien Services, Form Requests, Policies y API Resources. **Mejora sustancial respecto a la auditoría anterior** en Form Requests, Policies y refactorización de controladores.

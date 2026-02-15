@@ -49,10 +49,7 @@ RUN apt-get update && apt-get install -y \
 # Habilitar mod_rewrite (útil para Laravel)
 RUN a2enmod rewrite
 
-# CORS: módulos y configuración para /api (aplicada en cada deploy)
-RUN a2enmod headers setenvif
-COPY docker/apache-cors.conf /etc/apache2/conf-available/cors.conf
-RUN a2enconf cors
+# CORS se gestiona exclusivamente en Laravel (config/cors.php). No duplicar en Apache.
 
 # Configurar Apache para que apunte a /public (Laravel)
 RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
