@@ -403,7 +403,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | Transport, Incoterm, PaymentTerm, Country, Tax, FishingGear |
 | **Controladores** | TransportController, IncotermController, PaymentTermController, CountryController, TaxController, FishingGearController |
 | **Rutas clave** | transports, incoterms, payment-terms, countries, taxes, fishing-gears |
-| **Evolution log** | Sin entrada. **Rating actual: —** |
+| **Evolution log** | Sub-bloque 1: Form Requests, Policies, TransportListService, authorize, CatalogosBlockApiTest 17 tests. **Rating actual: 9/10** |
 
 ### A.9 Proveedores + Liquidaciones
 | Tipo | Detalle |
@@ -516,13 +516,13 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 |--------|---------|
 | **9/10** | A.1, A.2, A.4, A.5, A.6, A.7, A.9, A.12, A.13, A.14, A.15, A.16 |
 | **8/10** | A.3, A.10, A.11 |
-| **—** | A.8, A.18 |
+| **—** | A.18 |
 
 ---
 
 ## Resumen de valoraciones actuales (Evolution log)
 
-**Resumen por rating:** 9/10 → 13 bloques | 8/10 → 3 bloques | Sin rating → 2 bloques (A.8, A.18)
+**Resumen por rating:** 9/10 → 14 bloques | 8/10 → 3 bloques | Sin rating → 1 bloque (A.18)
 
 | Bloque | Rating actual | Notas |
 |--------|----------------|--------|
@@ -533,7 +533,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **A.5** Despachos de Cebo | **9/10** | ListService, Policy delete, controller delgado |
 | **A.6** Producción | **9/10** | Sub-bloques 1–4: Production, ProductionRecord, Input/Output/Consumption, Cost/CostCatalog/Process. Form Requests, Policies, authorize. Bloque completo. |
 | **A.7** Productos | **9/10** | Sub-bloques 1–2: Form Requests, Policies, ListServices, ProductosBlockApiTest 24 tests |
-| **A.8** Catálogos transaccionales | — | Sin entrada en evolution log |
+| **A.8** Catálogos transaccionales | **9/10** | Form Requests, Policies, TransportListService, authorize, CatalogosBlockApiTest 17 tests |
 | **A.9** Proveedores + Liquidaciones | **9/10** | Sub-bloques 1–3: Form Requests, SupplierPolicy, SupplierListService, SupplierLiquidationService, authorize, SuppliersBlockApiTest 14 tests |
 | **A.10** Etiquetas | **8/10** | Form Requests, Policy, tests Feature |
 | **A.11** Fichajes | **8/10** | Sub-bloques 1–3: Dashboard/Calendar/Statistics/List/Write services, Form Requests, PunchEventPolicy, EmployeePolicy, authorize. Gap: tests Feature. |

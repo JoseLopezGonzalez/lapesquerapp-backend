@@ -40,6 +40,12 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\PunchEvent::class => \App\Policies\PunchEventPolicy::class,
         \App\Models\Employee::class => \App\Policies\EmployeePolicy::class,
         \App\Models\Supplier::class => \App\Policies\SupplierPolicy::class,
+        \App\Models\Transport::class => \App\Policies\TransportPolicy::class,
+        \App\Models\Incoterm::class => \App\Policies\IncotermPolicy::class,
+        \App\Models\PaymentTerm::class => \App\Policies\PaymentTermPolicy::class,
+        \App\Models\Country::class => \App\Policies\CountryPolicy::class,
+        \App\Models\Tax::class => \App\Policies\TaxPolicy::class,
+        \App\Models\FishingGear::class => \App\Policies\FishingGearPolicy::class,
     ];
 
     /**

@@ -108,6 +108,8 @@ Route::get('/test-cors', function () {
 }); */
 
 /* IMPORTANTISIMO - Resolución de tenant por subdominio (público, sin auth) */
+Route::options('v2/public/tenant/{subdomain}', [TenantController::class, 'optionsTenant'])
+    ->middleware('throttle:60,1');
 Route::get('v2/public/tenant/{subdomain}', [TenantController::class, 'showBySubdomain'])
     ->middleware('throttle:60,1')
     ->name('api.v2.public.tenant');

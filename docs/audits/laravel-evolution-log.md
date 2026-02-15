@@ -5,6 +5,48 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2026-02-15] Block A.8: Catálogos transaccionales
+
+**Priority**: P1
+**Risk Level**: Low
+**Rating antes: 5/10** | **Rating después: 9/10**
+
+### Problems Addressed
+
+- TransportController, IncotermController, PaymentTermController, CountryController, FishingGearController sin Form Requests, sin Policies, sin authorize().
+- TaxController prácticamente vacío (solo options); sin Policy.
+- TransportController 268 líneas (P1: >200).
+- Sin tests Feature para catálogos transaccionales.
+
+### Changes Applied
+
+- **Policies**: TransportPolicy, IncotermPolicy, PaymentTermPolicy, CountryPolicy, TaxPolicy (viewAny), FishingGearPolicy — registradas en AuthServiceProvider.
+- **Form Requests**: Store/Update/DestroyMultiple para Transport, Incoterm, PaymentTerm, Country, FishingGear; IndexTransportRequest.
+- **TransportListService**: Extracción de lógica de listado; TransportController reducido a <200 líneas.
+- **Controllers**: authorize() en todos los métodos; uso de Form Requests en store/update/destroyMultiple; route model binding (Transport $transport, etc.).
+- **TaxController**: Simplificado a options() únicamente; authorize viewAny.
+- **CatalogosBlockApiTest**: 17 tests — list, store, require_authentication para Transport, Incoterm, PaymentTerm, Country, FishingGear; options y require_authentication para Tax.
+
+### Verification Results
+
+- ✅ CatalogosBlockApiTest: 17 passed (41 assertions).
+- ✅ Contrato API preservado. Sin cambios de rutas ni estructura de respuesta.
+- ✅ TransportController <200 líneas.
+
+### Gap to 10/10
+
+- Ninguno para este bloque. Opcional P3: Index Form Requests para Incoterm, PaymentTerm, Country, FishingGear.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay migraciones.
+
+### Next
+
+- Bloque A.8 cerrado en 9/10. Siguiente bloque CORE según plan.
+
+---
+
 ## [2026-02-15] Block A.17: Infraestructura API
 
 **Priority**: P2
