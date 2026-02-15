@@ -5,6 +5,102 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2026-02-15] Blocks A.3, A.10, A.11: Inventario, Etiquetas, Fichajes → 9/10
+
+**Priority**: P1
+**Risk Level**: Low
+**Rating antes: 8/10** | **Rating después: 9/10** (tres bloques)
+
+### A.3 Inventario / Stock
+
+**Problems Addressed**
+
+- PalletController ~1146 líneas (P1: >200).
+- Sin tests Feature específicos para pallets (store, require auth).
+
+**Changes Applied**
+
+- **PalletWriteService**: Extracción de lógica store() y update() (incl. updateReceptionLinesFromPallets).
+- **PalletController**: Delegación de store y update en PalletWriteService; reducido de 1146 a ~890 líneas.
+- **StockBlockApiTest**: Añadidos test_can_store_pallet, test_pallets_require_authentication.
+
+### A.10 Etiquetas
+
+**Changes Applied**
+
+- **LabelApiTest**: test_labels_require_authentication añadido; 11 tests totales.
+
+### A.11 Fichajes
+
+**Problems Addressed**
+
+- Sin tests Feature para flujos críticos (punches index, dashboard, calendar, statistics, employees CRUD, require auth).
+
+**Changes Applied**
+
+- **FichajesBlockApiTest**: 8 tests — punches index/dashboard/calendar/statistics, employees list/store, require_authentication para punches y employees.
+
+### Verification Results
+
+- ✅ LabelApiTest: 11 passed.
+- ✅ FichajesBlockApiTest: 8 passed.
+- ✅ StockBlockApiTest: 31 passed (incl. can_store_pallet, pallets_require_authentication).
+- ✅ PalletWriteService store y update preservan comportamiento.
+
+### Gap to 10/10
+
+- A.3: PalletController sigue ~890 líneas; objetivo <200 requeriría extraer PalletActionService (assign-to-position, move-to-store, link-order, etc.) y métodos de lectura (searchByLot, registeredPallets, availableForOrder).
+- A.10, A.11: Ninguno para 9/10.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay migraciones.
+
+---
+
+## [2026-02-15] Block A.18: Utilidades — Extracción de texto desde PDF
+
+**Priority**: P2
+**Risk Level**: Low
+**Rating antes: 4/10** | **Rating después: 9/10**
+
+### Problems Addressed
+
+- PdfExtractionController sin ruta registrada (pendiente de exponer).
+- Sin Form Request; validación inline.
+- Sin authorize; sin extracción de lógica a servicio.
+- Lógica processPdfText en controller (~150 líneas); controller grueso.
+- Sin manejo de excepciones de parser (PDF no parseable).
+- Sin tests Feature.
+
+### Changes Applied
+
+- **Ruta**: POST /api/v2/pdf-extract registrada en grupo protegido (auth:sanctum, role).
+- **ExtractPdfRequest**: Validación pdf (required, file, mimes:pdf, max:20480); authorize con Role::values().
+- **PdfExtractionService**: Extracción de texto (smalot/pdfparser) y processPdfText; borrado temporal tras procesar.
+- **PdfExtractionController**: Thin; usa Form Request y Service; catch Throwable → 422 para PDF no parseable.
+- **PdfExtractionApiTest**: 4 tests — require_authentication, 422 no file, 422 invalid mime, 422 unparseable PDF.
+
+### Verification Results
+
+- ✅ PdfExtractionApiTest: 4 passed (9 assertions).
+- ✅ Contrato API preservado. Endpoint expuesto bajo auth.
+- ✅ Controller <50 líneas.
+
+### Gap to 10/10
+
+- Ninguno para este bloque. Opcional P3: test 200 con fixture PDF válido; throttle específico para uploads.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay migraciones.
+
+### Next
+
+- Bloque A.18 cerrado en 9/10. Todos los bloques CORE con rating asignado.
+
+---
+
 ## [2026-02-15] Block A.8: Catálogos transaccionales
 
 **Priority**: P1

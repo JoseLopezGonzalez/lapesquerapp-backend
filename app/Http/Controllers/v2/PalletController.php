@@ -9,7 +9,7 @@ use App\Http\Requests\v2\StorePalletRequest;
 use App\Http\Requests\v2\UpdatePalletRequest;
 use App\Http\Resources\v2\PalletResource;
 use App\Services\v2\PalletListService;
-use App\Models\Box;
+use App\Services\v2\PalletWriteService;
 use App\Models\Order;
 use App\Models\OrderPallet;
 use App\Models\Pallet;
@@ -46,56 +46,9 @@ class PalletController extends Controller
      */
     public function store(StorePalletRequest $request)
     {
-        $pallet = $request->validated();
-        $boxes = $pallet['boxes'];
+        $newPallet = PalletWriteService::store($request->validated());
 
-
-        //Insertando Palet
-        $newPallet = new Pallet;
-        $newPallet->observations = $pallet['observations'];
-        
-        // Determinar estado según si se indica almacén
-        // Si se indica almacén → almacenado, si no → registrado
-        $storeId = $pallet['store']['id'] ?? null;
-        if ($storeId) {
-            $newPallet->status = Pallet::STATE_STORED; // Almacenado
-        } else {
-            $newPallet->status = $pallet['state']['id'] ?? Pallet::STATE_REGISTERED; // Registrado por defecto
-        }
-        
-        $newPallet->order_id = $pallet['orderId'] ?? null; // Si se proporciona, asignar la orden
-        $newPallet->save();
-
-        // Crear vínculo con almacén si se proporciona
-        if ($storeId) {
-            StoredPallet::create([
-                'pallet_id' => $newPallet->id,
-                'store_id' => $storeId,
-            ]);
-        }
-
-
-        //Insertando Cajas
-        foreach ($boxes as $box) {
-            $newBox = new Box;
-            $newBox->article_id = $box['product']['id'];
-            $newBox->lot = $box['lot'];
-            $newBox->gs1_128 = $box['gs1128'];
-            $newBox->gross_weight = $box['grossWeight'];
-            $newBox->net_weight = $box['netWeight'];
-            $newBox->save();
-
-            //Agregando Cajas a Palet
-            $newPalletBox = new PalletBox;
-            $newPalletBox->pallet_id = $newPallet->id;
-            $newPalletBox->box_id = $newBox->id;
-            $newPalletBox->save();
-        }
-
-        /* return resource */
-        $newPallet->refresh(); // Refrescar el modelo para obtener los datos actualizados
-        $newPallet = PalletListService::loadRelations(Pallet::query()->where('id', $newPallet->id))->first();
-        return response()->json(new PalletResource($newPallet), 201); // Código de estado 201 - Created
+        return response()->json(new PalletResource($newPallet), 201);
     }
 
     /**
@@ -145,147 +98,9 @@ class PalletController extends Controller
             }
         }
 
-        $validated = $request->validated();
+        $updatedPallet = PalletWriteService::update($request, $pallet, $request->validated());
 
-        return DB::transaction(function () use ($request, $pallet, $id, $validated) {
-            $palletData = $validated;
-
-            //Creating Pallet
-            $updatedPallet = $pallet;
-
-            //Updating Order
-            $wasUnlinked = false;
-            if ($request->has('orderId')) {
-                if ($palletData['orderId'] == null && $updatedPallet->order_id !== null) {
-                    $updatedPallet->order_id = null;
-                    $wasUnlinked = true;
-                } else {
-                    // La validación ya verifica que el orderId existe si no es null
-                    $updatedPallet->order_id = $palletData['orderId'];
-                }
-            }
-
-            //Updating State
-            $stateWasManuallyChanged = false;
-            if ($request->has('state')) {
-                if ($updatedPallet->status != $palletData['state']['id']) {
-                    // UnStoring pallet if it is in a store
-                    if ($updatedPallet->store != null && $palletData['state']['id'] != Pallet::STATE_STORED) {
-                        $updatedPallet->unStore();
-                    }
-                    $updatedPallet->status = $palletData['state']['id'];
-                    $stateWasManuallyChanged = true;
-                }
-            }
-
-            // Si se desvinculó de un pedido y no se cambió el estado manualmente, cambiar automáticamente a registrado
-            if ($wasUnlinked && !$stateWasManuallyChanged) {
-                if ($updatedPallet->status !== Pallet::STATE_REGISTERED) {
-                    $updatedPallet->status = Pallet::STATE_REGISTERED;
-                }
-                // Quitar almacenamiento si existe
-                $updatedPallet->unStore();
-            }
-
-            //Updating Observations
-            if ($request->has('observations')) {
-                if ($palletData['observations'] != $updatedPallet->observations) {
-                    $updatedPallet->observations = $palletData['observations'];
-                }
-            }
-
-            $updatedPallet->save();
-
-            // Updating Store
-            if (array_key_exists("store", $palletData)) {
-                $storeId = $palletData['store']['id'] ?? null;
-
-                $isPalletStored = StoredPallet::where('pallet_id', $updatedPallet->id)->first();
-                if ($isPalletStored) {
-                    if ($isPalletStored->store_id != $storeId) {
-                        $isPalletStored->delete();
-                        if ($storeId) {
-                            //Agregando Palet a almacen
-                            $newStoredPallet = new StoredPallet;
-                            $newStoredPallet->pallet_id = $updatedPallet->id;
-                            $newStoredPallet->store_id = $storeId;
-                            $newStoredPallet->save();
-                        }
-                    }
-                } else {
-                    if ($storeId) {
-                        //Agregando Palet a almacen
-                        $newStoredPallet = new StoredPallet;
-                        $newStoredPallet->pallet_id = $updatedPallet->id;
-                        $newStoredPallet->store_id = $storeId;
-                        $newStoredPallet->save();
-                    }
-                }
-            }
-
-            //Updating Boxes
-            if (array_key_exists("boxes", $palletData)) {
-                $boxes = $palletData['boxes'];
-
-                //Eliminando Cajas y actualizando
-                $updatedPallet->boxes->map(function ($box) use (&$boxes) {
-                    $hasBeenUpdated = false;
-
-                    foreach ($boxes as $index => $updatedBox) {
-                        if ($updatedBox['id'] == $box->box->id) {
-                            $box->box->article_id = $updatedBox['product']['id'];
-                            $box->box->lot = $updatedBox['lot'];
-                            $box->box->gs1_128 = $updatedBox['gs1128'];
-                            $box->box->gross_weight = $updatedBox['grossWeight'];
-                            $box->box->net_weight = $updatedBox['netWeight'];
-                            $box->box->save();
-                            $hasBeenUpdated = true;
-                            //Eliminando Caja del array para añadir
-                            unset($boxes[$index]);
-                        }
-                    }
-
-                    if (!$hasBeenUpdated) {
-                        $box->box->delete();
-                    }
-                });
-
-                $boxes = array_values($boxes);
-
-                //Insertando Cajas
-                foreach ($boxes as $box) {
-                    $newBox = new Box;
-                    $newBox->article_id = $box['product']['id'];
-                    $newBox->lot = $box['lot'];
-                    $newBox->gs1_128 = $box['gs1128'];
-                    $newBox->gross_weight = $box['grossWeight'];
-                    $newBox->net_weight = $box['netWeight'];
-                    $newBox->save();
-
-                    //Agregando Cajas a Palet
-                    $newPalletBox = new PalletBox;
-                    $newPalletBox->pallet_id = $updatedPallet->id;
-                    $newPalletBox->box_id = $newBox->id;
-                    $newPalletBox->save();
-                }
-            }
-
-            $updatedPallet->refresh();
-
-            // Si el palet pertenece a una recepción creada en modo palets, actualizar las líneas de recepción
-            if ($updatedPallet->reception_id !== null) {
-                $reception = $updatedPallet->reception;
-                if ($reception && $reception->creation_mode === RawMaterialReception::CREATION_MODE_PALLETS) {
-                    $this->updateReceptionLinesFromPallets($reception);
-                }
-            }
-
-            // Cargar relaciones y devolver el palet actualizado
-            $updatedPallet = PalletListService::loadRelations(Pallet::query()->where('id', $id))->firstOrFail();
-            return response()->json(new PalletResource($updatedPallet), 201);
-        });
-
-        //return response()->json($updatedPallet->toArrayAssoc(), 201);
+        return response()->json(new PalletResource($updatedPallet), 201);
     }
 
     /**
@@ -807,77 +622,6 @@ class PalletController extends Controller
      * Obtener palets registrados como si fuera un almacén
      * Retorna un formato similar a StoreDetailsResource para mantener consistencia
      */
-    /**
-     * Actualizar líneas de recepción basándose en los palets actualizados
-     * Se llama cuando se edita un palet de una recepción creada en modo palets
-     */
-    private function updateReceptionLinesFromPallets(RawMaterialReception $reception): void
-    {
-        // Cargar todos los palets de la recepción con sus cajas y líneas existentes
-        $reception->load('pallets.boxes.box', 'products');
-        
-        // Obtener precios existentes por producto+lote (usar el precio de la línea con más peso si hay múltiples)
-        $existingPrices = [];
-        foreach ($reception->products as $product) {
-            $productId = $product->product_id;
-            $lot = $product->lot;
-            $key = "{$productId}_{$lot}";
-            if (!isset($existingPrices[$key]) || 
-                ($product->net_weight > ($existingPrices[$key]['weight'] ?? 0))) {
-                $existingPrices[$key] = [
-                    'price' => $product->price,
-                    'weight' => $product->net_weight,
-                ];
-            }
-        }
-        
-        $groupedByProduct = [];
-        
-        foreach ($reception->pallets as $pallet) {
-            foreach ($pallet->boxes as $palletBox) {
-                $box = $palletBox->box;
-                if (!$box) {
-                    continue;
-                }
-                
-                $productId = $box->article_id;
-                $lot = $box->lot;
-                $netWeight = $box->net_weight ?? 0;
-                
-                // Obtener el precio de las líneas existentes del mismo producto+lote
-                $key = "{$productId}_{$lot}";
-                $price = $existingPrices[$key]['price'] ?? null;
-                
-                // Agrupar por producto y lote
-                $key = "{$productId}_{$lot}";
-                if (!isset($groupedByProduct[$key])) {
-                    $groupedByProduct[$key] = [
-                        'product_id' => $productId,
-                        'lot' => $lot,
-                        'net_weight' => 0,
-                        'price' => $price,
-                    ];
-                }
-                $groupedByProduct[$key]['net_weight'] += $netWeight;
-            }
-        }
-        
-        // Eliminar líneas antiguas
-        $reception->products()->delete();
-        
-        // Crear nuevas líneas de recepción
-        foreach ($groupedByProduct as $group) {
-            if ($group['net_weight'] > 0) {
-                $reception->products()->create([
-                    'product_id' => $group['product_id'],
-                    'lot' => $group['lot'],
-                    'net_weight' => $group['net_weight'],
-                    'price' => $group['price'],
-                ]);
-            }
-        }
-    }
-
     /**
      * Buscar palets registrados por lote
      * Retorna solo palets que tienen cajas disponibles con el lote especificado

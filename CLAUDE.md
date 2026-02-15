@@ -98,15 +98,15 @@ No se usa capa Repository ni DDD estricto; identidad: **Laravel idiomático + ca
 |--------|--------|--------|
 | A.1 Auth + Roles/Permisos | 9/10 | ✅ |
 | A.2 Ventas | 8,5/10 | 🔄 En progreso |
-| A.3 Inventario / Stock | 8/10 | 🔄 En progreso |
+| A.3 Inventario / Stock | 9/10 | ✅ |
 | A.4 Recepciones Materia Prima | 9/10 | ✅ |
 | A.5 Despachos de Cebo | 9/10 | ✅ |
 | A.6 Producción | 9/10 | ✅ |
 | A.7 Productos | 9/10 | ✅ |
 | A.8 Catálogos | — | ⏳ Pendiente |
 | A.9 Proveedores | — | ⏳ Pendiente |
-| A.10 Etiquetas | 8/10 | 🔄 En progreso |
-| A.11 Fichajes | ~6/10 | 🔄 En progreso (controller aún grande, falta Policies y más servicios) |
+| A.10 Etiquetas | 9/10 | ✅ |
+| A.11 Fichajes | 9/10 | ✅ |
 | A.12 Estadísticas | — | ⏳ |
 | A.13 Configuración (Settings) | 9/10 | ✅ |
 | A.14 Sistema | 9/10 | ✅ (comparte A.1) |
@@ -129,7 +129,7 @@ Detalle por bloque y sub-bloques en `docs/00_CORE CONSOLIDATION PLAN — ERP Saa
 - Framework: PHPUnit/Pest; Feature tests para endpoints API v2.
 - Tenant en tests: Configurar conexión tenant (trait o helper que fije BD de prueba por tenant); no mezclar datos entre tenants en tests.
 - Cobertura objetivo: ≥ 80% en bloques críticos; tests de integración para flujos completos (auth + tenant + al menos un CRUD por dominio).
-- Bloques con tests existentes: Auth (AuthBlockApiTest), Productos (ProductosBlockApiTest), Stock (StockBlockApiTest), Settings (SettingsBlockApiTest); Fichajes y otros aún con verificación manual recomendada.
+- Bloques con tests existentes: Auth (AuthBlockApiTest), Productos (ProductosBlockApiTest), Stock (StockBlockApiTest), Settings (SettingsBlockApiTest), Fichajes (FichajesBlockApiTest), Label (LabelApiTest).
 
 ---
 

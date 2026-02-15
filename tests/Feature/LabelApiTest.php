@@ -207,4 +207,12 @@ class LabelApiTest extends TestCase
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['name']);
     }
+
+    public function test_labels_require_authentication(): void
+    {
+        $response = $this->withHeaders(['X-Tenant' => $this->tenantSubdomain, 'Accept' => 'application/json'])
+            ->getJson('/api/v2/labels');
+
+        $response->assertUnauthorized();
+    }
 }

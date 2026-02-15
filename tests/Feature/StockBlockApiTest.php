@@ -293,6 +293,42 @@ class StockBlockApiTest extends TestCase
         $response->assertStatus(401);
     }
 
+    public function test_pallets_require_authentication(): void
+    {
+        $response = $this->withHeaders(['X-Tenant' => $this->tenantSubdomain, 'Accept' => 'application/json'])
+            ->getJson('/api/v2/pallets');
+
+        $response->assertStatus(401);
+    }
+
+    public function test_can_store_pallet(): void
+    {
+        $this->seedTenantForReceptions();
+        $product = Product::on('tenant')->first();
+        $this->assertNotNull($product);
+
+        $payload = [
+            'observations' => 'Palet test',
+            'boxes' => [
+                [
+                    'product' => ['id' => $product->id],
+                    'lot' => 'LOT-' . uniqid(),
+                    'gs1128' => '01000000000000001' . str_pad(rand(1, 99), 2, '0'),
+                    'grossWeight' => 10.5,
+                    'netWeight' => 9.0,
+                ],
+            ],
+        ];
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/pallets', $payload);
+
+        $response->assertStatus(201);
+        $json = $response->json();
+        $this->assertTrue(isset($json['id']) || isset($json['data']['id']), 'Response should have id');
+        $this->assertDatabaseHas('pallets', ['observations' => 'Palet test'], 'tenant');
+    }
+
     public function test_can_store_raw_material_reception_with_details(): void
     {
         $this->seedTenantForReceptions();

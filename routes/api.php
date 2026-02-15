@@ -152,6 +152,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             Route::get('settings', [SettingController::class, 'index']);
             Route::put('settings', [SettingController::class, 'update']);
 
+            /* Utilidades - Extracción PDF */
+            Route::post('pdf-extract', [PdfExtractionController::class, 'extract'])->name('v2.pdf-extract');
+
             Route::get('/customers/options', [V2CustomerController::class, 'options']);
             Route::get('/salespeople/options', [V2SalespersonController::class, 'options']);
             Route::get('/employees/options', [EmployeeController::class, 'options']);

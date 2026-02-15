@@ -362,7 +362,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | Store, Pallet, Box, PalletBox, StoredPallet, StoredBox |
 | **Controladores** | StoreController, PalletController, BoxesController, StockStatisticsController |
 | **Rutas clave** | stores, pallets, boxes, statistics/stock/*, assign-to-position, move-to-store, link-order |
-| **Evolution log** | Sub-bloques 1–5 aplicados; **Rating actual: 8/10** |
+| **Evolution log** | PalletWriteService (store, update); PalletController reducido; StockBlockApiTest +2 tests. **Rating actual: 9/10** |
 
 ### A.4 Recepciones de Materia Prima
 | Tipo | Detalle |
@@ -419,7 +419,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | Label |
 | **Controladores** | LabelController |
 | **Rutas clave** | labels, labels/options, labels/{id}/duplicate |
-| **Evolution log** | Sub-bloques 1–2 aplicados; **Rating actual: 8/10** |
+| **Evolution log** | LabelApiTest test_labels_require_authentication. **Rating actual: 9/10** |
 
 ### A.11 Fichajes
 | Tipo | Detalle |
@@ -427,7 +427,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | PunchEvent, Employee |
 | **Controladores** | PunchController, EmployeeController |
 | **Rutas clave** | punches (store público NFC), punches/dashboard, punches/statistics, punches/calendar, punches/bulk, employees |
-| **Evolution log** | Sub-bloques 1–3: PunchDashboardService, Form Requests, DB→Eloquent; PunchCalendarService, PunchStatisticsService, PunchEventListService; PunchEventWriteService, PunchEventPolicy, EmployeePolicy, authorize en todos los métodos. **Rating actual: 8/10** |
+| **Evolution log** | Sub-bloques 1–3 aplicados; FichajesBlockApiTest 8 tests. **Rating actual: 9/10** |
 
 ### A.12 Estadísticas e informes
 | Tipo | Detalle |
@@ -489,8 +489,8 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 |------|---------|
 | **Entidades** | Ninguna (procesamiento de archivo) |
 | **Controladores** | PdfExtractionController (método extract) |
-| **Rutas clave** | Sin ruta registrada en api.php (controlador presente; uso interno o pendiente de exponer). |
-| **Evolution log** | Sin entrada. **Rating actual: —** |
+| **Rutas clave** | POST /api/v2/pdf-extract |
+| **Evolution log** | Sub-bloque 1: ExtractPdfRequest, PdfExtractionService, ruta expuesta, authorize, PdfExtractionApiTest 4 tests. **Rating actual: 9/10** |
 
 ---
 
@@ -514,33 +514,31 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 
 | Rating | Bloques |
 |--------|---------|
-| **9/10** | A.1, A.2, A.4, A.5, A.6, A.7, A.9, A.12, A.13, A.14, A.15, A.16 |
-| **8/10** | A.3, A.10, A.11 |
-| **—** | A.18 |
+| **9/10** | A.1, A.2, A.3, A.4, A.5, A.6, A.7, A.8, A.9, A.10, A.11, A.12, A.13, A.14, A.15, A.16, A.17, A.18 |
 
 ---
 
 ## Resumen de valoraciones actuales (Evolution log)
 
-**Resumen por rating:** 9/10 → 14 bloques | 8/10 → 3 bloques | Sin rating → 1 bloque (A.18)
+**Resumen por rating:** 9/10 → 18 bloques | 8/10 → 0 bloques | Sin rating → 0 bloques
 
 | Bloque | Rating actual | Notas |
 |--------|----------------|--------|
 | **A.1** Auth + Roles/Permisos | **9/10** | Sub-bloques 1–2: Session tenant fix, Form Requests, UserListService, SessionPolicy, ActivityLogPolicy, UserPolicy refinada, AuthBlockApiTest 21 tests |
 | **A.2** Ventas | **9/10** | Sub-bloques 1–6: Form Requests, Policies, ListServices, N+1, CustomerOrderHistoryService, IndexOrderRequest, authorize destroyMultiple, OrderApiTest 14 tests. Bloque cerrado. |
-| **A.3** Inventario / Stock | **8/10** | Sub-bloques 1–5: Policies, Form Requests, ListServices, tests feature (StockBlockApiTest) |
+| **A.3** Inventario / Stock | **9/10** | PalletWriteService (store, update), PalletController reducido, StockBlockApiTest +2 tests (can_store_pallet, pallets_require_authentication) |
 | **A.4** Recepciones de Materia Prima | **9/10** | WriteService, BulkService, 23 tests (incl. edge cases) |
 | **A.5** Despachos de Cebo | **9/10** | ListService, Policy delete, controller delgado |
 | **A.6** Producción | **9/10** | Sub-bloques 1–4: Production, ProductionRecord, Input/Output/Consumption, Cost/CostCatalog/Process. Form Requests, Policies, authorize. Bloque completo. |
 | **A.7** Productos | **9/10** | Sub-bloques 1–2: Form Requests, Policies, ListServices, ProductosBlockApiTest 24 tests |
 | **A.8** Catálogos transaccionales | **9/10** | Form Requests, Policies, TransportListService, authorize, CatalogosBlockApiTest 17 tests |
 | **A.9** Proveedores + Liquidaciones | **9/10** | Sub-bloques 1–3: Form Requests, SupplierPolicy, SupplierListService, SupplierLiquidationService, authorize, SuppliersBlockApiTest 14 tests |
-| **A.10** Etiquetas | **8/10** | Form Requests, Policy, tests Feature |
-| **A.11** Fichajes | **8/10** | Sub-bloques 1–3: Dashboard/Calendar/Statistics/List/Write services, Form Requests, PunchEventPolicy, EmployeePolicy, authorize. Gap: tests Feature. |
+| **A.10** Etiquetas | **9/10** | Form Requests, Policy, LabelApiTest test_labels_require_authentication (11 tests) |
+| **A.11** Fichajes | **9/10** | Sub-bloques 1–3 aplicados; FichajesBlockApiTest 8 tests (punches index/dashboard/calendar/statistics, employees list/store, require_authentication) |
 | **A.12** Estadísticas e informes | **9/10** | Sub-bloque 1: authorize en reception/dispatch chart; OrderStatisticsApiTest 7 tests |
 | **A.13** Configuración por tenant | **9/10** | Setting model, SettingService, Policy, Form Request, GET enmascara password, SettingsBlockApiTest 8 tests |
 | **A.14** Sistema | **9/10** | Mismo bloque que A.1 Auth (users, roles, activity-logs) |
 | **A.15** Documentos (PDF/Excel) | **9/10** | OrderExportFilterService, Form Requests, authorize, DocumentsBlockApiTest |
 | **A.16** Tenants | **9/10** | Tenant conexión mysql, Form Request, Resource, throttling, TenantBlockApiTest 5 tests |
 | **A.17** Infraestructura API | **9/10** | Sub-bloque 1: exclusión TenantMiddleware, test-cors simplificado, InfraestructuraApiTest 2 tests |
-| **A.18** Utilidades — Extracción PDF | — | PdfExtractionController sin ruta en api.php; sin evolution log |
+| **A.18** Utilidades — Extracción PDF | **9/10** | ExtractPdfRequest, PdfExtractionService, POST pdf-extract, authorize, PdfExtractionApiTest 4 tests |
