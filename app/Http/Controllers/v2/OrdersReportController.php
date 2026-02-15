@@ -26,6 +26,9 @@ class OrdersReportController extends Controller
     }
 
 
+    /**
+     * Exportación Excel formato A3ERP. Nota: actualmente no tiene ruta registrada en api.php.
+     */
     public function exportToExcelA3ERP(OrdersReportRequest $request)
     {
         try {

@@ -36,8 +36,10 @@
 * **Estadísticas e informes**
 * **Configuración por tenant** — Settings
 * **Sistema** — Users, Roles, ActivityLogs
+* **Infraestructura API** — health, CORS (endpoints de verificación)
+* **Utilidades** — Extracción de texto desde PDF (cuando esté expuesto)
 
-**⚠️ Todo lo que quede fuera es “roadmap”, no core.** *(Inventario completo en ANEXO A.)*
+**⚠️ Todo lo que quede fuera es “roadmap”, no core.** *(Inventario completo en ANEXO A: bloques A.1–A.18.)*
 
 ---
 
@@ -328,7 +330,11 @@
 
 # ANEXO A — Inventario de Bloques del Proyecto PesquerApp
 
-Inventario detallado de bloques funcionales identificados en el backend (rutas, modelos, controladores, evolution log). Para cada bloque del Core se aplican las Fases 1–9 del plan.
+Inventario detallado de bloques funcionales identificados en el backend (rutas, modelos, controladores, evolution log). **Numeración completa: A.1–A.18.** Para cada bloque del Core se aplican las Fases 1–9 del plan.
+
+- **A.1–A.14**: Bloques principales (core comercial y sistema).
+- **A.15–A.16**: Bloques transversales (Documentos, Tenants).
+- **A.17–A.18**: Bloques adicionales detectados en backend (Infraestructura API, Utilidades PDF).
 
 ---
 
@@ -397,6 +403,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | Transport, Incoterm, PaymentTerm, Country, Tax, FishingGear |
 | **Controladores** | TransportController, IncotermController, PaymentTermController, CountryController, TaxController, FishingGearController |
 | **Rutas clave** | transports, incoterms, payment-terms, countries, taxes, fishing-gears |
+| **Evolution log** | Sin entrada. **Rating actual: —** |
 
 ### A.9 Proveedores + Liquidaciones
 | Tipo | Detalle |
@@ -404,6 +411,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | Supplier |
 | **Controladores** | SupplierController, SupplierLiquidationController |
 | **Rutas clave** | suppliers, supplier-liquidations/* |
+| **Evolution log** | Sub-bloques 1–3: Form Requests, SupplierPolicy, SupplierListService, SupplierLiquidationService, authorize, SuppliersBlockApiTest 14 tests. **Rating actual: 9/10** |
 
 ### A.10 Etiquetas (Labels)
 | Tipo | Detalle |
@@ -426,6 +434,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 |------|---------|
 | **Controladores** | OrderStatisticsController, StockStatisticsController, RawMaterialReceptionStatisticsController, CeboDispatchStatisticsController, OrdersReportController |
 | **Rutas clave** | statistics/orders/*, statistics/stock/*, orders_report, reception-chart-data, dispatch-chart-data |
+| **Evolution log** | Sub-bloque 1: authorize viewAny en RawMaterialReceptionStatisticsController y CeboDispatchStatisticsController; comentario exportToExcelA3ERP; OrderStatisticsApiTest 7 tests. **Rating actual: 9/10** |
 
 ### A.13 Configuración por tenant
 | Tipo | Detalle |
@@ -464,6 +473,27 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 
 ---
 
+## Bloques adicionales identificados en backend
+
+### A.17 Infraestructura API
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | Ninguna |
+| **Controladores** | Closures en `routes/api.php` |
+| **Rutas clave** | GET /health, GET /test-cors |
+| **Nota** | Endpoints sin tenant ni auth; verificación de estado y CORS. |
+| **Evolution log** | Sin entrada. **Rating actual: —** |
+
+### A.18 Utilidades — Extracción de texto desde PDF
+| Tipo | Detalle |
+|------|---------|
+| **Entidades** | Ninguna (procesamiento de archivo) |
+| **Controladores** | PdfExtractionController (método extract) |
+| **Rutas clave** | Sin ruta registrada en api.php (controlador presente; uso interno o pendiente de exponer). |
+| **Evolution log** | Sin entrada. **Rating actual: —** |
+
+---
+
 ## Mapeo CORE típico → PesquerApp
 
 | Bloque CORE genérico | Bloques PesquerApp correspondientes |
@@ -475,17 +505,24 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | Stock / Movimientos | A.3 Inventario + A.4 Recepciones + A.5 Despachos |
 | Informes básicos | A.12 Estadísticas |
 | Configuración por tenant | A.13 Settings |
+| Infraestructura / Utilidades | A.17 Infraestructura API, A.18 Extracción PDF |
 | — | A.6 Producción, A.9 Proveedores, A.10 Etiquetas, A.11 Fichajes (específicos dominio pesquero) |
 
 ---
 
 *Fuente: análisis de rutas, modelos, controladores, `docs/audits/laravel-evolution-log.md` y documentación en `docs/`. Última revisión: 2026-02-15.*
 
+| Rating | Bloques |
+|--------|---------|
+| **9/10** | A.1, A.2, A.4, A.5, A.6, A.7, A.9, A.12, A.13, A.14, A.15, A.16 |
+| **8/10** | A.3, A.10, A.11 |
+| **—** | A.8, A.17, A.18 |
+
 ---
 
 ## Resumen de valoraciones actuales (Evolution log)
 
-**Resumen por rating:** 9/10 → 11 bloques | 8/10 → 3 bloques | Sin rating → 2 bloques
+**Resumen por rating:** 9/10 → 12 bloques | 8/10 → 3 bloques | Sin rating → 3 bloques (A.8, A.17, A.18)
 
 | Bloque | Rating actual | Notas |
 |--------|----------------|--------|
@@ -500,8 +537,10 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **A.9** Proveedores + Liquidaciones | **9/10** | Sub-bloques 1–3: Form Requests, SupplierPolicy, SupplierListService, SupplierLiquidationService, authorize, SuppliersBlockApiTest 14 tests |
 | **A.10** Etiquetas | **8/10** | Form Requests, Policy, tests Feature |
 | **A.11** Fichajes | **8/10** | Sub-bloques 1–3: Dashboard/Calendar/Statistics/List/Write services, Form Requests, PunchEventPolicy, EmployeePolicy, authorize. Gap: tests Feature. |
-| **A.12** Estadísticas e informes | — | Sin entrada en evolution log |
+| **A.12** Estadísticas e informes | **9/10** | Sub-bloque 1: authorize en reception/dispatch chart; OrderStatisticsApiTest 7 tests |
 | **A.13** Configuración por tenant | **9/10** | Setting model, SettingService, Policy, Form Request, GET enmascara password, SettingsBlockApiTest 8 tests |
 | **A.14** Sistema | **9/10** | Mismo bloque que A.1 Auth (users, roles, activity-logs) |
 | **A.15** Documentos (PDF/Excel) | **9/10** | OrderExportFilterService, Form Requests, authorize, DocumentsBlockApiTest |
 | **A.16** Tenants | **9/10** | Tenant conexión mysql, Form Request, Resource, throttling, TenantBlockApiTest 5 tests |
+| **A.17** Infraestructura API | — | health, test-cors; sin evolution log |
+| **A.18** Utilidades — Extracción PDF | — | PdfExtractionController sin ruta en api.php; sin evolution log |

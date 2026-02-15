@@ -4,6 +4,7 @@ namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\DispatchChartDataRequest;
+use App\Models\CeboDispatch;
 use App\Services\v2\CeboDispatchStatisticsService;
 
 class CeboDispatchStatisticsController extends Controller
@@ -34,6 +35,8 @@ class CeboDispatchStatisticsController extends Controller
      */
     public function dispatchChartData(DispatchChartDataRequest $request)
     {
+        $this->authorize('viewAny', CeboDispatch::class);
+
         $validated = $request->validated();
 
         $dateFrom = $validated['dateFrom'] . ' 00:00:00';

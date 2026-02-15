@@ -4,6 +4,7 @@ namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\ReceptionChartDataRequest;
+use App\Models\RawMaterialReception;
 use App\Services\v2\RawMaterialReceptionStatisticsService;
 
 class RawMaterialReceptionStatisticsController extends Controller
@@ -34,6 +35,8 @@ class RawMaterialReceptionStatisticsController extends Controller
      */
     public function receptionChartData(ReceptionChartDataRequest $request)
     {
+        $this->authorize('viewAny', RawMaterialReception::class);
+
         $validated = $request->validated();
 
         $dateFrom = $validated['dateFrom'] . ' 00:00:00';

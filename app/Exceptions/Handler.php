@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Http\Request;
 use Throwable;
 
 use Illuminate\Auth\Access\AuthorizationException;
@@ -44,39 +45,41 @@ class Handler extends ExceptionHandler
             if ($exception instanceof ValidationException) {
                 $errors = $exception->errors();
                 $userMessage = $this->formatValidationErrorsForUser($errors);
-                
-                return response()->json([
+                $response = response()->json([
                     'message' => 'Error de validación.',
                     'userMessage' => $userMessage,
                     'errors' => $errors, // Detalles técnicos para programadores
                 ], 422); // 422 Unprocessable Entity
+                return $this->ensureCorsOnApiResponse($request, $response);
             }
 
             // Manejar errores de autenticación
             if ($exception instanceof AuthenticationException) {
-                return response()->json([
+                $response = response()->json([
                     'message' => 'No autenticado.',
                     'userMessage' => 'Debes iniciar sesión para acceder a este recurso.',
                 ], 401); // 401 Unauthorized
+                return $this->ensureCorsOnApiResponse($request, $response);
             }
 
             // Manejar errores de autorización (policy devuelve false)
             if ($exception instanceof AuthorizationException) {
-                return response()->json([
+                $response = response()->json([
                     'message' => $exception->getMessage() ?: 'No autorizado.',
                     'userMessage' => 'No tienes permisos para realizar esta acción.',
                 ], 403); // 403 Forbidden
+                return $this->ensureCorsOnApiResponse($request, $response);
             }
 
             // Manejar errores HTTP estándar (404, 403, etc.)
             if ($exception instanceof HttpException) {
                 $statusCode = $exception->getStatusCode();
                 $userMessage = $this->formatHttpExceptionMessage($statusCode, $exception->getMessage());
-                
-                return response()->json([
+                $response = response()->json([
                     'message' => $exception->getMessage() ?: 'Error HTTP.',
                     'userMessage' => $userMessage,
                 ], $statusCode);
+                return $this->ensureCorsOnApiResponse($request, $response);
             }
 
             // Manejar errores de base de datos (QueryException)
@@ -97,37 +100,82 @@ class Handler extends ExceptionHandler
                     stripos($errorMessage, 'unique constraint') !== false) {
                     
                     $userMessage = $this->formatUniqueConstraintViolationForUser($errorMessage, $request);
-                    
-                    return response()->json([
+                    $response = response()->json([
                         'message' => 'Error de validación.',
                         'userMessage' => $userMessage,
                         'error' => $errorMessage, // Detalles técnicos para programadores
                     ], 422); // 422 Unprocessable Entity
+                    return $this->ensureCorsOnApiResponse($request, $response);
                 }
                 
                 // Otros errores de base de datos (foreign key, not null, etc.)
                 $userMessage = $this->formatQueryExceptionForUser($errorMessage, $request);
-                
-                return response()->json([
+                $response = response()->json([
                     'message' => 'Error de base de datos.',
                     'userMessage' => $userMessage,
                     'error' => $errorMessage, // Detalles técnicos para programadores
                 ], 500); // 500 Internal Server Error
+                return $this->ensureCorsOnApiResponse($request, $response);
             }
 
             // Manejar cualquier otra excepción como error interno del servidor
             $errorMessage = $exception->getMessage();
             $userMessage = $this->formatExceptionMessageForUser($errorMessage, $request);
-            
-            return response()->json([
+            $response = response()->json([
                 'message' => 'Ocurrió un error inesperado.',
                 'userMessage' => $userMessage,
                 'error' => $errorMessage, // Detalles técnicos para programadores
             ], 500); // 500 Internal Server Error
+            return $this->ensureCorsOnApiResponse($request, $response);
         }
 
         // Si no es una API o no espera JSON, usar el manejo por defecto
         return parent::render($request, $exception);
+    }
+
+    /**
+     * Añade cabeceras CORS a respuestas de error de la API cuando la respuesta
+     * se genera en el Exception Handler (y no pasa por HandleCors).
+     * Evita "No 'Access-Control-Allow-Origin' header" en 4xx/5xx desde el frontend.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Illuminate\Http\Response|\Symfony\Component\HttpFoundation\Response  $response
+     * @return \Illuminate\Http\Response|\Symfony\Component\HttpFoundation\Response
+     */
+    protected function ensureCorsOnApiResponse(Request $request, $response)
+    {
+        if (! $request->is('api/*')) {
+            return $response;
+        }
+
+        $origin = $request->header('Origin');
+        if (! $origin) {
+            return $response;
+        }
+
+        $allowedOrigins = config('cors.allowed_origins', []);
+        $allowedPatterns = config('cors.allowed_origins_patterns', []);
+
+        $allowed = in_array($origin, $allowedOrigins, true);
+        if (! $allowed && ! empty($allowedPatterns)) {
+            foreach ($allowedPatterns as $pattern) {
+                if (preg_match($pattern, $origin)) {
+                    $allowed = true;
+                    break;
+                }
+            }
+        }
+
+        if ($allowed) {
+            $response->headers->set('Access-Control-Allow-Origin', $origin);
+            $response->headers->set('Access-Control-Allow-Methods', implode(', ', config('cors.allowed_methods', ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'])));
+            $response->headers->set('Access-Control-Allow-Headers', implode(', ', config('cors.allowed_headers', ['*'])));
+            if (config('cors.supports_credentials', false)) {
+                $response->headers->set('Access-Control-Allow-Credentials', 'true');
+            }
+        }
+
+        return $response;
     }
 
 

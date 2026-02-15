@@ -5,6 +5,46 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2026-02-15] Block A.12: Estadísticas e informes — Sub-bloque 1
+
+**Priority**: P1
+**Risk Level**: Low
+**Rating antes: 6,5/10** | **Rating después: 9/10**
+
+### Problems Addressed
+
+- RawMaterialReceptionStatisticsController y CeboDispatchStatisticsController sin authorize(); acceso a reception-chart-data y dispatch-chart-data no protegido por Policy.
+- Cobertura de tests insuficiente: faltaban tests para totalAmountStats, orderRankingStats, salesChartData y tests de autorización (401) para chart-data.
+- exportToExcelA3ERP sin ruta registrada y sin documentar.
+
+### Changes Applied
+
+- **RawMaterialReceptionStatisticsController**: Añadido `authorize('viewAny', RawMaterialReception::class)` en receptionChartData().
+- **CeboDispatchStatisticsController**: Añadido `authorize('viewAny', CeboDispatch::class)` en dispatchChartData().
+- **OrdersReportController**: Comentario PHPDoc en exportToExcelA3ERP indicando que no tiene ruta registrada en api.php.
+- **OrderStatisticsApiTest**: 5 tests nuevos — test_can_get_total_amount_stats, test_can_get_order_ranking_stats, test_can_get_sales_chart_data, test_reception_chart_data_requires_authentication, test_dispatch_chart_data_requires_authentication. Total 7 tests en el archivo.
+
+### Verification Results
+
+- ✅ OrderStatisticsApiTest: 7 passed (31 assertions).
+- ✅ StockBlockApiTest: 29 passed (reception/dispatch chart 200 con params siguen pasando con authorize).
+- ✅ Contrato API preservado. Sin cambios de rutas ni estructura de respuesta.
+- ✅ Usuarios sin token reciben 401 en reception-chart-data y dispatch-chart-data.
+
+### Gap to 10/10
+
+- Ninguno para este bloque. Opcional P3: agregación en DB para Reception/Dispatch chart en rangos muy grandes (memoria).
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Bloque A.12 cerrado en 9/10. Siguiente bloque CORE según plan.
+
+---
+
 ## [2026-02-15] Block A.15 Documentos (PDF/Excel)
 
 **Priority**: P1

@@ -87,4 +87,90 @@ class OrderStatisticsApiTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('content-type', 'application/vnd.ms-excel');
     }
+
+    public function test_can_get_total_amount_stats(): void
+    {
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/statistics/orders/total-amount?' . http_build_query([
+                'dateFrom' => '2024-01-01',
+                'dateTo' => '2024-12-31',
+            ]));
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'value',
+            'subtotal',
+            'tax',
+            'comparisonValue',
+            'comparisonSubtotal',
+            'comparisonTax',
+            'percentageChange',
+            'range' => [
+                'from',
+                'to',
+                'fromPrev',
+                'toPrev',
+            ],
+        ]);
+    }
+
+    public function test_can_get_order_ranking_stats(): void
+    {
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/statistics/orders/ranking?' . http_build_query([
+                'groupBy' => 'client',
+                'valueType' => 'totalAmount',
+                'dateFrom' => '2024-01-01',
+                'dateTo' => '2024-12-31',
+            ]));
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([]);
+        $this->assertIsArray($response->json());
+    }
+
+    public function test_can_get_sales_chart_data(): void
+    {
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/orders/sales-chart-data?' . http_build_query([
+                'dateFrom' => '2024-01-01',
+                'dateTo' => '2024-12-31',
+                'valueType' => 'quantity',
+                'groupBy' => 'day',
+            ]));
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([]);
+        $this->assertIsArray($response->json());
+    }
+
+    public function test_reception_chart_data_requires_authentication(): void
+    {
+        $response = $this->withHeaders([
+            'X-Tenant' => $this->tenantSubdomain,
+            'Accept' => 'application/json',
+        ])->getJson('/api/v2/raw-material-receptions/reception-chart-data?' . http_build_query([
+            'dateFrom' => '2024-01-01',
+            'dateTo' => '2024-12-31',
+            'valueType' => 'quantity',
+            'groupBy' => 'day',
+        ]));
+
+        $response->assertStatus(401);
+    }
+
+    public function test_dispatch_chart_data_requires_authentication(): void
+    {
+        $response = $this->withHeaders([
+            'X-Tenant' => $this->tenantSubdomain,
+            'Accept' => 'application/json',
+        ])->getJson('/api/v2/cebo-dispatches/dispatch-chart-data?' . http_build_query([
+            'dateFrom' => '2024-01-01',
+            'dateTo' => '2024-12-31',
+            'valueType' => 'quantity',
+            'groupBy' => 'day',
+        ]));
+
+        $response->assertStatus(401);
+    }
 }
