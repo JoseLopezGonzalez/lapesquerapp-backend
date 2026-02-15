@@ -348,7 +348,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | Order, OrderPlannedProductDetail, Incident, Customer, Salesperson |
 | **Controladores** | OrderController, OrderPlannedProductDetailController, IncidentController, OrdersReportController, OrderStatisticsController, CustomerController, SalespersonController |
 | **Rutas clave** | orders, order-planned-product-details, orders/{id}/incident, customers, salespeople, orders_report, statistics/orders/* |
-| **Evolution log** | Sub-bloques 1–5 aplicados; **Rating actual: 8,5/10** |
+| **Evolution log** | Sub-bloques 1–6: Form Requests, Policies, ListServices, N+1, CustomerOrderHistoryService, IndexOrderRequest, authorize destroyMultiple, OrderApiTest 14 tests. **Rating actual: 9/10** |
 
 ### A.3 Inventario / Stock
 | Tipo | Detalle |
@@ -381,7 +381,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Controladores** | ProductionController, ProductionRecordController, ProductionInputController, ProductionOutputController, ProductionOutputConsumptionController, CostCatalogController, ProductionCostController |
 | **Rutas clave** | productions, production-records, production-inputs, production-outputs, production-output-consumptions, cost-catalog, production-costs, processes |
 | **Nota** | Módulo más complejo; trazabilidad a nivel de caja |
-| **Evolution log** | Sub-bloques 1–4: Production, ProductionRecord, Input/Output/Consumption, ProductionCost, CostCatalog, Process (Form Requests, Policies, authorize). **Rating actual: 9/10**. Bloque completo. |
+| **Evolution log** | Sub-bloques 1–4: Production, ProductionRecord, Input/Output/Consumption, ProductionCost, CostCatalog, Process (Form Requests, Policies, authorize, getSourcesData en servicio). **Rating actual: 9/10**. Bloque completo. |
 
 ### A.7 Productos (y maestros anidados)
 | Tipo | Detalle |
@@ -419,6 +419,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | PunchEvent, Employee |
 | **Controladores** | PunchController, EmployeeController |
 | **Rutas clave** | punches (store público NFC), punches/dashboard, punches/statistics, punches/calendar, punches/bulk, employees |
+| **Evolution log** | Sub-bloques 1–3: PunchDashboardService, Form Requests, DB→Eloquent; PunchCalendarService, PunchStatisticsService, PunchEventListService; PunchEventWriteService, PunchEventPolicy, EmployeePolicy, authorize en todos los métodos. **Rating actual: 8/10** |
 
 ### A.12 Estadísticas e informes
 | Tipo | Detalle |
@@ -476,7 +477,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 
 ---
 
-*Fuente: análisis de rutas, modelos, controladores, `docs/audits/laravel-evolution-log.md` y documentación en `docs/`. Última revisión: 2026-02-14.*
+*Fuente: análisis de rutas, modelos, controladores, `docs/audits/laravel-evolution-log.md` y documentación en `docs/`. Última revisión: 2026-02-15.*
 
 ---
 
@@ -485,16 +486,16 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | Bloque | Rating actual | Notas |
 |--------|----------------|--------|
 | **A.1** Auth + Roles/Permisos | **9/10** | Sub-bloques 1–2: Session tenant fix, Form Requests, UserListService, SessionPolicy, ActivityLogPolicy, UserPolicy refinada, AuthBlockApiTest 21 tests |
-| **A.2** Ventas | **8,5/10** | Sub-bloques 1–5; N+1 revisado |
-| **A.3** Inventario / Stock | **8/10** | Policies, Form Requests, tests feature |
+| **A.2** Ventas | **9/10** | Sub-bloques 1–6: Form Requests, Policies, ListServices, N+1, CustomerOrderHistoryService, IndexOrderRequest, authorize destroyMultiple, OrderApiTest 14 tests. Bloque cerrado. |
+| **A.3** Inventario / Stock | **8/10** | Sub-bloques 1–5: Policies, Form Requests, ListServices, tests feature (StockBlockApiTest) |
 | **A.4** Recepciones de Materia Prima | **9/10** | WriteService, BulkService, 23 tests (incl. edge cases) |
 | **A.5** Despachos de Cebo | **9/10** | ListService, Policy delete, controller delgado |
-| **A.6** Producción | **9/10** (Production) | Sub-bloque 1: Form Requests, Policy, authorize; resto pendiente |
+| **A.6** Producción | **9/10** | Sub-bloques 1–4: Production, ProductionRecord, Input/Output/Consumption, Cost/CostCatalog/Process. Form Requests, Policies, authorize. Bloque completo. |
 | **A.7** Productos | **9/10** | Sub-bloques 1–2: Form Requests, Policies, ListServices, ProductosBlockApiTest 24 tests |
 | **A.8** Catálogos transaccionales | — | Sin entrada en evolution log |
 | **A.9** Proveedores + Liquidaciones | — | Sin entrada en evolution log |
 | **A.10** Etiquetas | **8/10** | Form Requests, Policy, tests Feature |
-| **A.11** Fichajes | — | Sin entrada en evolution log |
+| **A.11** Fichajes | **8/10** | Sub-bloques 1–3: Dashboard/Calendar/Statistics/List/Write services, Form Requests, PunchEventPolicy, EmployeePolicy, authorize. Gap: tests Feature. |
 | **A.12** Estadísticas e informes | — | Sin entrada en evolution log |
 | **A.13** Configuración por tenant | **9/10** | Setting model, SettingService, Policy, Form Request, GET enmascara password, SettingsBlockApiTest 8 tests |
 | **A.14** Sistema | **9/10** | Mismo bloque que A.1 Auth (users, roles, activity-logs) |

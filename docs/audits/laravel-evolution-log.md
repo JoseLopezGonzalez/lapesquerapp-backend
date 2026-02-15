@@ -1,7 +1,54 @@
 # Laravel Evolution Log — PesquerApp Backend
 
-Registro de cambios aplicados en el marco de la evolución incremental (CORE v1.0).  
+Registro de cambios aplicados en el marco de la evolución incremental (CORE v1.0).
 Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incremental evolution prompt.md`.
+
+---
+
+## [2026-02-15] Block A.2 Ventas - Sub-bloque 6 (CustomerOrderHistoryService, IndexOrderRequest, authorize destroyMultiple, tests Order CRUD)
+
+**Priority**: P1
+**Risk Level**: Low
+**Rating antes: 8,5/10** | **Rating después: 9/10**
+
+### Problems Addressed
+
+- CustomerController 582 líneas (P1): getOrderHistory + 3 helpers privados (~310 líneas de lógica de negocio en el controlador).
+- OrderController.index usaba Request plano en lugar de Form Request; inconsistente con el resto del bloque.
+- OrderController.destroyMultiple usaba authorize('viewAny') sin comprobar authorize('delete') por cada pedido.
+- OrderApiTest solo tenía 1 test (create); flujos críticos (show, update, destroy, updateStatus, options, active) sin cobertura.
+- Métodos scaffold vacíos (create(), edit()) en OrderController, CustomerController, OrderPlannedProductDetailController.
+
+### Changes Applied
+
+- **CustomerOrderHistoryService** (app/Services/v2/): getOrderHistory(Customer, Request) con métodos privados estáticos: getAvailableYears, buildProductHistory, formatLoadDate, getPreviousPeriodNetWeights, calculateAggregates, applyOrderHistoryFilters, getPreviousPeriodDates, calculateTrendValue. Toda la lógica de historial extraída del controlador.
+- **CustomerController**: getOrderHistory() delega en CustomerOrderHistoryService::getOrderHistory(). Eliminados 4 métodos privados. **582 → 222 líneas** (−360).
+- **IndexOrderRequest**: Form Request con authorize viewAny(Order::class) y reglas para todos los filtros de OrderListService (active, id, ids, customers, buyerReference, status, loadDate, entryDate, transports, salespeople, palletsState, products, species, incoterm, transport, perPage).
+- **OrderController**: index(IndexOrderRequest) — autorización delegada en Form Request; eliminado authorize() redundante. destroyMultiple: authorize('delete', $order) por cada pedido antes de validar restricciones. Eliminados métodos scaffold vacíos create() y edit(). Limpieza de líneas en blanco. **324 → 269 líneas**.
+- **OrderPlannedProductDetailController**: eliminados create() y edit() scaffold vacíos. **136 → 116 líneas**.
+- **OrderApiTest** ampliado de 1 a 14 tests: list (200 paginado), auth 401, create (201), create 422 (payload vacío), show (200), update (200 + buyerReference), destroy OK (200), destroy falla con palets (400), destroyMultiple OK (200), destroyMultiple falla con palets (400), updateStatus a finished (200), options (200), active (200), active-orders/options (200).
+
+### Verification Results
+
+- ✅ OrderApiTest: 14 tests, 36 assertions, OK.
+- ✅ CustomerApiTest: 5 tests OK. SalespersonApiTest: 5 tests OK. OrderStatisticsApiTest: 2 tests OK.
+- ✅ Bloque Ventas completo: 26 tests, 84 assertions, OK.
+- ✅ Suite global (Auth, Productos, Stock, Labels, Settings + Ventas): 92 tests, 340 assertions, OK.
+- ✅ Contrato API preservado. Sin cambios de rutas ni de estructura de respuesta.
+
+### Gap to 10/10
+
+- Tests opcionales: OrderPlannedProductDetail CRUD, Incident CRUD, getOrderHistory con filtros.
+- Lógica de formateo de emails duplicada en CustomerController y SalespersonController (P3, extraíble a helper).
+- Bloqueado por: nada. Bloque A.2 Ventas cerrado en 9/10.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Siguiente bloque CORE según plan de ejecución (A.3 Stock, A.10 Etiquetas, A.8 Catálogos o A.9 Proveedores).
 
 ---
 

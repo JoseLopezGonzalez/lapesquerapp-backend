@@ -4,6 +4,7 @@ namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\DestroyMultipleOrdersRequest;
+use App\Http\Requests\v2\IndexOrderRequest;
 use App\Http\Requests\v2\OrderTransportChartRequest;
 use App\Http\Requests\v2\SalesBySalespersonRequest;
 use App\Http\Requests\v2\StoreOrderRequest;
@@ -19,7 +20,6 @@ use App\Services\v2\OrderProductionViewService;
 use App\Services\v2\OrderStatisticsService;
 use App\Services\v2\OrderStoreService;
 use App\Services\v2\OrderUpdateService;
-use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
@@ -27,19 +27,9 @@ class OrderController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(IndexOrderRequest $request)
     {
-        $this->authorize('viewAny', Order::class);
-
         return OrderResource::collection(OrderListService::list($request));
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
     }
 
     /**
@@ -75,14 +65,6 @@ class OrderController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
      * Update the specified resource in storage.
      */
     public function update(UpdateOrderRequest $request, string $id)
@@ -110,20 +92,15 @@ class OrderController extends Controller
         }
     }
 
-
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(string $id)
     {
         $order = Order::findOrFail($id);
-
         $this->authorize('delete', $order);
 
-        // Validar si el pedido está en uso antes de eliminar
-        $usedInPallets = $order->pallets()->exists();
-
-        if ($usedInPallets) {
+        if ($order->pallets()->exists()) {
             return response()->json([
                 'message' => 'No se puede eliminar el pedido porque está en uso',
                 'details' => 'El pedido está siendo utilizado en palets',
@@ -137,17 +114,15 @@ class OrderController extends Controller
 
     public function destroyMultiple(DestroyMultipleOrdersRequest $request)
     {
-        $this->authorize('viewAny', Order::class);
-
         $validated = $request->validated();
         $orders = Order::whereIn('id', $validated['ids'])->get();
-        
-        // Validar si alguno de los pedidos está en uso
+
         $inUse = [];
+
         foreach ($orders as $order) {
-            $usedInPallets = $order->pallets()->exists();
-            
-            if ($usedInPallets) {
+            $this->authorize('delete', $order);
+
+            if ($order->pallets()->exists()) {
                 $inUse[] = [
                     'id' => $order->id,
                     'formattedId' => $order->formatted_id ?? '#' . str_pad($order->id, 5, '0', STR_PAD_LEFT),
@@ -156,15 +131,12 @@ class OrderController extends Controller
         }
 
         if (!empty($inUse)) {
-            $message = 'No se pueden eliminar algunos pedidos porque están en uso: ';
-            $details = array_map(function($item) {
-                return $item['formattedId'] . ' (usado en palets)';
-            }, $inUse);
-            
+            $details = array_map(fn ($item) => $item['formattedId'] . ' (usado en palets)', $inUse);
+
             return response()->json([
                 'message' => 'No se pueden eliminar algunos pedidos porque están en uso',
                 'details' => implode(', ', $details),
-                'userMessage' => $message . implode(', ', array_column($inUse, 'formattedId'))
+                'userMessage' => 'No se pueden eliminar algunos pedidos porque están en uso: ' . implode(', ', array_column($inUse, 'formattedId'))
             ], 400);
         }
 
@@ -173,7 +145,9 @@ class OrderController extends Controller
         return response()->json(['message' => 'Pedidos eliminados correctamente']);
     }
 
-    /* Options */
+    /**
+     * Options.
+     */
     public function options()
     {
         $this->authorize('viewAny', Order::class);
@@ -182,7 +156,7 @@ class OrderController extends Controller
     }
 
     /**
-     * List active orders for Order Manager (tarjetas: estado, id, cliente, fecha de carga).
+     * List active orders for Order Manager.
      */
     public function active()
     {
@@ -191,7 +165,9 @@ class OrderController extends Controller
         return ActiveOrderCardResource::collection(OrderListService::active());
     }
 
-    /* Active Orders Options */
+    /**
+     * Active Orders Options.
+     */
     public function activeOrdersOptions()
     {
         $this->authorize('viewAny', Order::class);
@@ -199,8 +175,9 @@ class OrderController extends Controller
         return response()->json(OrderListService::activeOrdersOptions());
     }
 
-
-    /* update Order status */
+    /**
+     * Update Order status.
+     */
     public function updateStatus(UpdateOrderStatusRequest $request, string $id)
     {
         $order = Order::with([
@@ -215,7 +192,6 @@ class OrderController extends Controller
         $order->status = $status;
         $order->save();
 
-        // Si el pedido cambia a 'finished', cambiar todos los palets a 'shipped'
         if ($status === 'finished' && $previousStatus !== 'finished') {
             foreach ($order->pallets as $pallet) {
                 $pallet->changeToShipped();
@@ -229,9 +205,6 @@ class OrderController extends Controller
             'data' => new OrderDetailsResource($order),
         ]);
     }
-
-
-
 
     public function salesBySalesperson(SalesBySalespersonRequest $request)
     {
@@ -253,13 +226,6 @@ class OrderController extends Controller
             return response()->json(['error' => 'Error processing request: ' . $e->getMessage()], 500);
         }
     }
-
-    /* Ojo, calcula la comparacion mismo rango de fechas pero un año atrás */
-
-
-
-
-
 
     public function transportChartData(OrderTransportChartRequest $request)
     {
@@ -284,8 +250,6 @@ class OrderController extends Controller
 
     /**
      * Vista de producción - Pedidos agrupados por producto (día actual).
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
     public function productionView()
     {
@@ -302,23 +266,4 @@ class OrderController extends Controller
             ], 500);
         }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
