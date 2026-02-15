@@ -26,7 +26,9 @@ return [
         'http://localhost:3000', // Origen local (por ejemplo, frontend en desarrollo)
         'http://localhost:5173',
         'https://lapesquerapp.es',
-        /* 'https://brisamar.lapesquerapp.es', */
+        'https://brisamar.lapesquerapp.es',
+        'https://test.lapesquerapp.es',
+        'https://pymcolorao.lapesquerapp.es',
         'http://brisamar.localhost:3000',
         'http://test.localhost:3000',
         'http://pymcolorao.localhost:3000',
