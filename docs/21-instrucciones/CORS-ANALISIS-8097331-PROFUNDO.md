@@ -1,5 +1,15 @@
 # Análisis CORS: 8097331 (funcionaba) vs producción actual
 
+## Hallazgo clave: Exception Handler (15 Feb 2026)
+
+**Síntoma:** `GET /api/v2/public/tenant/brisamar` devuelve CORS correctamente (200 OK). `POST /api/v2/auth/request-access` no devuelve `Access-Control-Allow-Origin` y el navegador bloquea.
+
+**Causa raíz:** Las respuestas generadas por el **Exception Handler** (ValidationException, 404, 500, etc.) **no pasan por el middleware**. HandleCors solo se ejecuta en el flujo normal request → controller → response. Cuando se lanza una excepción, el Handler devuelve JSON directamente y esa respuesta nunca recibe cabeceras CORS.
+
+**Solución aplicada:** `Handler::ensureCorsOnApiResponse()` — añade CORS a todas las respuestas JSON del Handler para rutas `api/*`. Ver `app/Exceptions/Handler.php`.
+
+---
+
 ## Resumen
 
 En **8097331** CORS funcionaba con la **misma configuración de servidor** (Coolify/proxy). La única diferencia relevante es la **imagen Docker desplegada**.
