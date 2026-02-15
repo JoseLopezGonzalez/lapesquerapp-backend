@@ -1,5 +1,6 @@
 <?php
 
+
 return [
 
     /*
@@ -19,31 +20,27 @@ return [
 
     'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
 
-    // Orígenes permitidos (como en 8097331, funcionaba). Los subdominios *.lapesquerapp.es
-    // se cubren con allowed_origins_patterns.
+
+    // Permitir varios orígenes (especifica los dominios)
     'allowed_origins' => [
-        'http://localhost:3000',
+        'http://localhost:3000', // Next.js desarrollo (guía Sail)
         'http://localhost:3001',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:3001',
         'http://localhost:5173',
+        'https://*.congeladosbrisamar.es', // Origen de producción
         'https://lapesquerapp.es',
-        'https://brisamar.lapesquerapp.es',
-        'https://pymcolorao.lapesquerapp.es',
-        'https://app.lapesquerapp.es',
-        'https://nextjs.congeladosbrisamar.es',
+        'https://*.lapesquerapp.es', // permite todos los subdominios
         'http://brisamar.localhost:3000',
         'http://test.localhost:3000',
         'http://pymcolorao.localhost:3000',
     ],
 
+
     'allowed_origins_patterns' => [
         '/^https:\/\/[a-z0-9\-]+\.lapesquerapp\.es$/',
-        '/^https:\/\/lapesquerapp\.es$/',
-        '/^https:\/\/[a-z0-9\-]+\.congeladosbrisamar\.es$/',
-        '/^http:\/\/[a-z0-9\-]+\.localhost(:\d+)?$/',
-        '/^http:\/\/127\.0\.0\.1(:\d+)?$/',
     ],
+
 
     'allowed_headers' => ['*'],
 
