@@ -5,6 +5,46 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2026-02-15] Block A.9 Proveedores + Liquidaciones
+
+**Priority**: P1
+**Risk Level**: Low
+**Rating antes: 5/10** | **Rating después: 9/10**
+
+### Problems Addressed
+
+- SupplierController sin Form Requests, sin Policy, validación inline; lógica de listado en controller.
+- SupplierLiquidationController ~520 líneas (P1); toda la lógica de negocio (getSuppliers, getDetails, calculateSummary, calculatePaymentTotals) en controller; sin Form Requests ni authorize.
+- destroyMultiple Supplier sin authorize por registro.
+- Sin tests Feature para Proveedores ni Liquidaciones.
+
+### Changes Applied
+
+- **Supplier (Sub-bloque 1)**: StoreSupplierRequest, UpdateSupplierRequest, IndexSupplierRequest, DestroyMultipleSuppliersRequest. SupplierPolicy (viewAny, view, create, update, delete) y registro en AuthServiceProvider. SupplierListService para index. authorize() en todos los métodos. Controller delgado (~120 líneas).
+- **Liquidaciones (Sub-bloque 2)**: SupplierLiquidationService con getSuppliersWithActivity(), getLiquidationDetails(), filterDetailsForPdf(), calculateSummary(), calculatePaymentTotals(). GetSuppliersLiquidationRequest, GetLiquidationDetailsRequest, GenerateLiquidationPdfRequest. authorize('viewAny', Supplier::class) en getSuppliers; authorize('view', $supplier) en getDetails y generatePdf. SupplierLiquidationController reducido a orquestación (~95 líneas).
+- **Tests (Sub-bloque 3)**: SuppliersBlockApiTest con 14 tests: index, index filtros, store, store 422, show, update, destroy, destroyMultiple, destroyMultiple 422, options, liquidations getSuppliers, liquidations getSuppliers 422, liquidations getDetails, auth 401.
+
+### Verification Results
+
+- ✅ SuppliersBlockApiTest: 14 tests, 56 assertions, OK.
+- ✅ StockBlockApiTest: 29 tests OK (usos de Supplier en receptions/dispatches).
+- ✅ Contrato API preservado. Sin cambios de rutas ni de estructura de respuesta.
+
+### Gap to 10/10
+
+- Test opcional para generatePdf (requiere Chromium/Snappdf en CI).
+- Bloque cerrado en 9/10.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Siguiente bloque CORE según plan (A.8 Catálogos, A.3 Stock, A.10 Etiquetas, etc.).
+
+---
+
 ## [2026-02-15] Block A.2 Ventas - Sub-bloque 6 (CustomerOrderHistoryService, IndexOrderRequest, authorize destroyMultiple, tests Order CRUD)
 
 **Priority**: P1

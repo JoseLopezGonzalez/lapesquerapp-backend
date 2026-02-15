@@ -39,6 +39,7 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\Process::class => \App\Policies\ProcessPolicy::class,
         \App\Models\PunchEvent::class => \App\Policies\PunchEventPolicy::class,
         \App\Models\Employee::class => \App\Policies\EmployeePolicy::class,
+        \App\Models\Supplier::class => \App\Policies\SupplierPolicy::class,
     ];
 
     /**

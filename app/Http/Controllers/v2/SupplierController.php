@@ -3,72 +3,30 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\DestroyMultipleSuppliersRequest;
+use App\Http\Requests\v2\IndexSupplierRequest;
+use App\Http\Requests\v2\StoreSupplierRequest;
+use App\Http\Requests\v2\UpdateSupplierRequest;
 use App\Http\Resources\v2\SupplierResource;
 use App\Models\Supplier;
-use Illuminate\Http\Request;
+use App\Services\v2\SupplierListService;
+use Illuminate\Http\JsonResponse;
 
 class SupplierController extends Controller
 {
-    public function index(Request $request)
+    public function index(IndexSupplierRequest $request)
     {
-        $query = Supplier::query();
+        $this->authorize('viewAny', Supplier::class);
 
-        if ($request->has('id')) {
-            $query->where('id', $request->id);
-        }
-
-        if ($request->has('ids')) {
-            $query->whereIn('id', $request->ids);
-        }
-
-        /* name like */
-        if ($request->has('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
-        }
-
-
-        $query->orderBy('name', 'asc');
-
-        $perPage = $request->input('perPage', 12); // Default a 10 si no se proporciona
-        return SupplierResource::collection($query->paginate($perPage));
+        return SupplierResource::collection(SupplierListService::list($request));
     }
 
-
-
-
-    public function store(Request $request)
+    public function store(StoreSupplierRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'nullable|string|max:255',
-            'contact_person' => 'nullable|string|max:255',
-            'phone' => 'nullable|string|max:50',
-            'emails' => 'nullable|array',
-            'emails.*' => 'string|email:rfc,dns|distinct',
-            'ccEmails' => 'nullable|array',
-            'ccEmails.*' => 'string|email:rfc,dns|distinct',
-            'address' => 'nullable|string|max:1000',
-            'cebo_export_type' => 'nullable|string|max:255',
-            'a3erp_cebo_code' => 'nullable|string|max:255',
-            'facilcom_cebo_code' => 'nullable|string|max:255',
-            'facil_com_code' => 'nullable|string|max:255',
-        ]);
+        $this->authorize('create', Supplier::class);
 
-        $allEmails = [];
-
-        foreach ($validated['emails'] ?? [] as $email) {
-            $allEmails[] = trim($email);
-        }
-
-        foreach ($validated['ccEmails'] ?? [] as $email) {
-            $allEmails[] = 'CC:' . trim($email);
-        }
-
-        $validated['emails'] = count($allEmails) > 0
-            ? implode(";\n", $allEmails) . ';'
-            : null;
-
-        unset($validated['ccEmails']);
+        $validated = $request->validated();
+        $validated = $this->prepareEmailsForStorage($validated);
 
         $supplier = Supplier::create($validated);
 
@@ -78,10 +36,10 @@ class SupplierController extends Controller
         ], 201);
     }
 
-
-    public function show($id)
+    public function show(string $id): JsonResponse
     {
         $supplier = Supplier::findOrFail($id);
+        $this->authorize('view', $supplier);
 
         return response()->json([
             'message' => 'Proveedor obtenido con éxito',
@@ -89,42 +47,13 @@ class SupplierController extends Controller
         ]);
     }
 
-
-    public function update(Request $request, $id)
+    public function update(UpdateSupplierRequest $request, string $id): JsonResponse
     {
         $supplier = Supplier::findOrFail($id);
+        $this->authorize('update', $supplier);
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'nullable|string|max:255',
-            'contact_person' => 'nullable|string|max:255',
-            'phone' => 'nullable|string|max:50',
-            'emails' => 'nullable|array',
-            'emails.*' => 'string|email:rfc,dns|distinct',
-            'ccEmails' => 'nullable|array',
-            'ccEmails.*' => 'string|email:rfc,dns|distinct',
-            'address' => 'nullable|string|max:1000',
-            'cebo_export_type' => 'nullable|string|max:255',
-            'a3erp_cebo_code' => 'nullable|string|max:255',
-            'facilcom_cebo_code' => 'nullable|string|max:255',
-            'facil_com_code' => 'nullable|string|max:255',
-        ]);
-
-        $allEmails = [];
-
-        foreach ($validated['emails'] ?? [] as $email) {
-            $allEmails[] = trim($email);
-        }
-
-        foreach ($validated['ccEmails'] ?? [] as $email) {
-            $allEmails[] = 'CC:' . trim($email);
-        }
-
-        $validated['emails'] = count($allEmails) > 0
-            ? implode(";\n", $allEmails) . ';'
-            : null;
-
-        unset($validated['ccEmails']);
+        $validated = $request->validated();
+        $validated = $this->prepareEmailsForStorage($validated);
 
         $supplier->update($validated);
 
@@ -134,24 +63,25 @@ class SupplierController extends Controller
         ]);
     }
 
-
-    public function destroy(string $id)
+    public function destroy(string $id): JsonResponse
     {
         $supplier = Supplier::findOrFail($id);
+        $this->authorize('delete', $supplier);
+
         $supplier->delete();
 
         return response()->json(['message' => 'Proveedor eliminado con éxito']);
     }
 
-    public function destroyMultiple(Request $request)
+    public function destroyMultiple(DestroyMultipleSuppliersRequest $request): JsonResponse
     {
-        $ids = $request->input('ids', []);
+        $this->authorize('viewAny', Supplier::class);
 
-        if (!is_array($ids) || empty($ids)) {
-            return response()->json([
-                'message' => 'No se han proporcionado IDs válidos.',
-                'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.'
-            ], 400);
+        $ids = $request->validated('ids');
+        $suppliers = Supplier::whereIn('id', $ids)->get();
+
+        foreach ($suppliers as $supplier) {
+            $this->authorize('delete', $supplier);
         }
 
         Supplier::whereIn('id', $ids)->delete();
@@ -159,18 +89,41 @@ class SupplierController extends Controller
         return response()->json(['message' => 'Proveedores eliminados con éxito']);
     }
 
-
-    /**
-     * Get all options for the suppliers select box.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function options()
+    public function options(): JsonResponse
     {
-        $suppliers = Supplier::select('id', 'name') // Selecciona solo los campos necesarios
-            ->orderBy('name', 'asc') // Ordena por nombre, opcional
+        $this->authorize('viewAny', Supplier::class);
+
+        $suppliers = Supplier::select('id', 'name')
+            ->orderBy('name', 'asc')
             ->get();
 
         return response()->json($suppliers);
+    }
+
+    /**
+     * Convierte arrays emails/ccEmails a string para almacenamiento.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function prepareEmailsForStorage(array $validated): array
+    {
+        $allEmails = [];
+
+        foreach ($validated['emails'] ?? [] as $email) {
+            $allEmails[] = trim((string) $email);
+        }
+
+        foreach ($validated['ccEmails'] ?? [] as $email) {
+            $allEmails[] = 'CC:'.trim((string) $email);
+        }
+
+        $validated['emails'] = count($allEmails) > 0
+            ? implode(";\n", $allEmails).';'
+            : null;
+
+        unset($validated['ccEmails']);
+
+        return $validated;
     }
 }

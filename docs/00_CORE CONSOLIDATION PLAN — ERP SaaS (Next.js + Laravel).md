@@ -493,7 +493,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **A.6** Producción | **9/10** | Sub-bloques 1–4: Production, ProductionRecord, Input/Output/Consumption, Cost/CostCatalog/Process. Form Requests, Policies, authorize. Bloque completo. |
 | **A.7** Productos | **9/10** | Sub-bloques 1–2: Form Requests, Policies, ListServices, ProductosBlockApiTest 24 tests |
 | **A.8** Catálogos transaccionales | — | Sin entrada en evolution log |
-| **A.9** Proveedores + Liquidaciones | — | Sin entrada en evolution log |
+| **A.9** Proveedores + Liquidaciones | **9/10** | Sub-bloques 1–3: Form Requests, SupplierPolicy, SupplierListService, SupplierLiquidationService, authorize, SuppliersBlockApiTest 14 tests |
 | **A.10** Etiquetas | **8/10** | Form Requests, Policy, tests Feature |
 | **A.11** Fichajes | **8/10** | Sub-bloques 1–3: Dashboard/Calendar/Statistics/List/Write services, Form Requests, PunchEventPolicy, EmployeePolicy, authorize. Gap: tests Feature. |
 | **A.12** Estadísticas e informes | — | Sin entrada en evolution log |
