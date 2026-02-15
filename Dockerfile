@@ -46,12 +46,8 @@ RUN apt-get update && apt-get install -y \
         mbstring \
         gd
 
-# Habilitar mod_rewrite, mod_headers y mod_setenvif (Laravel + CORS)
-RUN a2enmod rewrite headers setenvif
-
-# CORS en Apache como red de seguridad si el proxy no reenvía Origin correctamente
-COPY docker/apache-cors.conf /etc/apache2/conf-available/cors.conf
-RUN a2enconf cors
+# Habilitar mod_rewrite (útil para Laravel)
+RUN a2enmod rewrite
 
 # Configurar Apache para que apunte a /public (Laravel)
 RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf

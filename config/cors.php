@@ -21,28 +21,23 @@ return [
     'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
 
 
-    // Permitir varios orígenes: env CORS_ALLOWED_ORIGINS (producción) + desarrollo
-    'allowed_origins' => array_filter(array_merge(
-        array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', ''))),
-        [
-            'http://localhost:3000',
-            'http://localhost:3001',
-            'http://127.0.0.1:3000',
-            'http://127.0.0.1:3001',
-            'http://localhost:5173',
-            'https://*.congeladosbrisamar.es',
-            'https://lapesquerapp.es',
-            'https://*.lapesquerapp.es',
-            'http://brisamar.localhost:3000',
-            'http://test.localhost:3000',
-            'http://pymcolorao.localhost:3000',
-        ]
-    )),
+    // Permitir varios orígenes (especifica los dominios) — idéntico a 8097331
+    'allowed_origins' => [
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:3001',
+        'http://localhost:5173',
+        'https://*.congeladosbrisamar.es',
+        'https://lapesquerapp.es',
+        'https://*.lapesquerapp.es',
+        'http://brisamar.localhost:3000',
+        'http://test.localhost:3000',
+        'http://pymcolorao.localhost:3000',
+    ],
 
     'allowed_origins_patterns' => [
         '/^https:\/\/[a-z0-9\-]+\.lapesquerapp\.es$/',
-        '/^https:\/\/[a-z0-9\-]+\.congeladosbrisamar\.es$/',
-        '/^https:\/\/app\.lapesquerapp\.es$/',
     ],
 
 
