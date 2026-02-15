@@ -5,7 +5,6 @@ use App\Http\Controllers\v2\OrderDocumentController;
 use App\Http\Controllers\v2\PdfExtractionController;
 use App\Http\Controllers\v2\SettingController;
 use App\Http\Controllers\v2\TaxController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\v2\ActivityLogController;
 use App\Http\Controllers\v2\AuthController as V2AuthController;
@@ -82,12 +81,8 @@ Route::get('/health', function () {
     ], 200);
 })->name('api.health');
 
-Route::get('/test-cors', function (Request $request) {
-    return response()->json(['message' => 'CORS funciona correctamente!'], 200)
-        ->header('Access-Control-Allow-Origin', $request->header('Origin'))
-        ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE')
-        ->header('Access-Control-Allow-Headers', 'Origin, Content-Type, Authorization')
-        ->header('Access-Control-Allow-Credentials', 'true');
+Route::get('/test-cors', function () {
+    return response()->json(['message' => 'CORS funciona correctamente!'], 200);
 });
 
 
@@ -114,7 +109,7 @@ Route::get('/test-cors', function (Request $request) {
 /* IMPORTANTISIMO */
 Route::get('v2/public/tenant/{subdomain}', [TenantController::class, 'showBySubdomain']);
 
-/* Comprobar el tenant ya que esta aplicado de manera global */
+/* Rutas multi-tenant: aplicar middleware tenant de forma explícita al grupo v2 */
 Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], function () {
     // Rutas públicas (sin autenticación)
     Route::post('login', [V2AuthController::class, 'login'])->middleware('throttle:5,1')->name('v2.login');
