@@ -66,7 +66,7 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
-            // HandleCors ya está en middleware global; no duplicar aquí
+            \Illuminate\Http\Middleware\HandleCors::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\LogActivity::class,

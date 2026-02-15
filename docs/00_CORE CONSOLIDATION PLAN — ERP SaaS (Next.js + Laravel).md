@@ -362,7 +362,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Entidades** | Store, Pallet, Box, PalletBox, StoredPallet, StoredBox |
 | **Controladores** | StoreController, PalletController, BoxesController, StockStatisticsController |
 | **Rutas clave** | stores, pallets, boxes, statistics/stock/*, assign-to-position, move-to-store, link-order |
-| **Evolution log** | PalletWriteService (store, update); PalletController reducido; StockBlockApiTest +2 tests. **Rating actual: 9/10** |
+| **Evolution log** | PalletWriteService, PalletActionService, PalletListService ampliado; PalletController 890→300 líneas. **Rating actual: 10/10** |
 
 ### A.4 Recepciones de Materia Prima
 | Tipo | Detalle |

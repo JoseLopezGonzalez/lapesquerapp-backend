@@ -38,6 +38,26 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2026-02-15] Block A.3: Inventario / Stock → 10/10
+
+**Priority**: P1
+**Risk Level**: Low
+**Rating antes: 9/10** | **Rating después: 10/10**
+
+### Changes Applied
+
+- **PalletActionService**: assignToPosition, moveToStore, moveMultipleToStore, unassignPosition, bulkUpdateState, linkOrder, linkOrders, unlinkOrder, unlinkOrders.
+- **PalletListService**: searchByLot, registeredPallets, availableForOrder.
+- **PalletWriteService**: destroy, destroyMultiple, validateUpdatePermissions.
+- **PalletController**: Delegación en servicios; 890 → 300 líneas.
+
+### Verification Results
+
+- Contrato API preservado.
+- StockBlockApiTest cubre list, store, require_auth.
+
+---
+
 ## [2026-02-15] Blocks A.3, A.10, A.11: Inventario, Etiquetas, Fichajes → 9/10
 
 **Priority**: P1
@@ -80,9 +100,9 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 - ✅ StockBlockApiTest: 31 passed (incl. can_store_pallet, pallets_require_authentication).
 - ✅ PalletWriteService store y update preservan comportamiento.
 
-### Gap to 10/10
+### Gap to 10/10 (CERRADO)
 
-- A.3: PalletController sigue ~890 líneas; objetivo <200 requeriría extraer PalletActionService (assign-to-position, move-to-store, link-order, etc.) y métodos de lectura (searchByLot, registeredPallets, availableForOrder).
+- A.3: PalletController refactorizado: 890 → 300 líneas. PalletActionService, PalletListService ampliado, PalletWriteService ampliado.
 - A.10, A.11: Ninguno para 9/10.
 
 ### Rollback Plan

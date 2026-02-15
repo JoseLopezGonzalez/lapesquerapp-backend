@@ -187,4 +187,149 @@ class PalletListService
 
         return $query;
     }
+
+    /**
+     * Buscar palets registrados por lote con cajas disponibles.
+     */
+    public static function searchByLot(string $lot): array
+    {
+        $pallets = Pallet::where('status', Pallet::STATE_REGISTERED)
+            ->whereHas('boxes.box', function ($query) use ($lot) {
+                $query->where('lot', $lot)
+                    ->whereDoesntHave('productionInputs');
+            })
+            ->with([
+                'boxes.box' => fn ($q) => $q->with(['product', 'productionInputs.productionRecord.production']),
+                'storedPallet',
+                'reception',
+            ])
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $formattedPallets = $pallets->map(function ($pallet) use ($lot) {
+            $filteredBoxes = $pallet->boxes->filter(function ($palletBox) use ($lot) {
+                $box = $palletBox->box;
+                return $box && strtolower($box->lot ?? '') === strtolower($lot) && $box->isAvailable;
+            });
+
+            if ($filteredBoxes->isEmpty()) {
+                return null;
+            }
+
+            $palletArray = $pallet->toArrayAssocV2();
+            $palletArray['boxes'] = $filteredBoxes->map(fn ($pb) => $pb->box?->toArrayAssocV2())->filter()->values();
+
+            return $palletArray;
+        })->filter()->values();
+
+        return [
+            'pallets' => $formattedPallets,
+            'total' => $formattedPallets->count(),
+            'totalBoxes' => $formattedPallets->sum(fn ($p) => count($p['boxes'] ?? [])),
+        ];
+    }
+
+    /**
+     * Obtener palets registrados (formato similar a StoreDetailsResource).
+     */
+    public static function registeredPallets(): array
+    {
+        $query = Pallet::query()->where('status', Pallet::STATE_REGISTERED);
+        $query = self::loadRelations($query);
+        $pallets = $query->orderBy('id', 'desc')->get();
+
+        $netWeightPallets = $pallets->sum(fn ($p) => $p->netWeight ?? 0);
+
+        return [
+            'id' => null,
+            'name' => 'Palets Registrados',
+            'temperature' => null,
+            'capacity' => null,
+            'netWeightPallets' => round($netWeightPallets, 3),
+            'totalNetWeight' => round($netWeightPallets, 3),
+            'content' => [
+                'pallets' => $pallets->map(fn ($p) => $p->toArrayAssocV2())->values(),
+                'boxes' => [],
+                'bigBoxes' => [],
+            ],
+            'map' => null,
+        ];
+    }
+
+    /**
+     * Listar palets disponibles para vincular a un pedido.
+     */
+    public static function availableForOrder(int $orderId, ?array $idsFilter, ?int $storeId, int $perPage): array
+    {
+        $query = Pallet::query()
+            ->whereIn('status', [Pallet::STATE_REGISTERED, Pallet::STATE_STORED])
+            ->with([
+                'boxes.box.product',
+                'boxes.box.productionInputs',
+                'storedPallet.store',
+                'reception',
+            ]);
+
+        if ($idsFilter && ! empty($idsFilter)) {
+            $query->whereIn('id', $idsFilter);
+        } elseif ($storeId !== null) {
+            $query->whereHas('storedPallet', fn ($q) => $q->where('store_id', $storeId));
+        }
+
+        $query->where(fn ($q) => $q->whereNull('order_id')->orWhere('order_id', $orderId));
+        $query->orderBy('id', 'desc');
+
+        $pallets = $query->paginate($perPage);
+
+        $formattedPallets = $pallets->getCollection()->map(function ($pallet) {
+            $productsSummary = [];
+            if ($pallet->boxes && $pallet->boxes->isNotEmpty()) {
+                $boxesByProduct = $pallet->boxes->groupBy(fn ($pb) => $pb->box && $pb->box->product ? $pb->box->product->id : null)->filter(fn ($_, $id) => $id !== null);
+                foreach ($boxesByProduct as $productId => $productBoxes) {
+                    $firstBox = $productBoxes->first()->box;
+                    $product = $firstBox->product;
+                    if (! $product) {
+                        continue;
+                    }
+                    $availableBoxes = $productBoxes->filter(fn ($pb) => $pb->box && $pb->box->isAvailable);
+                    $productsSummary[] = [
+                        'product' => ['id' => $product->id, 'name' => $product->name],
+                        'availableBoxCount' => $availableBoxes->count(),
+                        'availableNetWeight' => round($availableBoxes->sum(fn ($pb) => $pb->box->net_weight ?? 0), 3),
+                        'totalBoxCount' => $productBoxes->count(),
+                        'totalNetWeight' => round($productBoxes->sum(fn ($pb) => $pb->box->net_weight ?? 0), 3),
+                    ];
+                }
+            }
+
+            return [
+                'id' => $pallet->id,
+                'status' => $pallet->status,
+                'state' => ['id' => $pallet->status, 'name' => $pallet->stateArray['name'] ?? null],
+                'productsNames' => $pallet->productsNames ?? [],
+                'lots' => $pallet->lots ?? [],
+                'productsSummary' => $productsSummary,
+                'numberOfBoxes' => $pallet->numberOfBoxes ?? 0,
+                'availableBoxesCount' => $pallet->availableBoxesCount ?? 0,
+                'netWeight' => $pallet->netWeight !== null ? round($pallet->netWeight, 3) : null,
+                'totalAvailableWeight' => $pallet->totalAvailableWeight !== null ? round($pallet->totalAvailableWeight, 3) : null,
+                'storedPallet' => $pallet->storedPallet ? [
+                    'store_id' => $pallet->storedPallet->store_id,
+                    'store_name' => $pallet->storedPallet->store?->name,
+                    'position' => $pallet->storedPallet->position,
+                ] : null,
+                'order_id' => $pallet->order_id,
+                'receptionId' => $pallet->reception_id,
+                'observations' => $pallet->observations,
+            ];
+        });
+
+        return [
+            'data' => $formattedPallets,
+            'current_page' => $pallets->currentPage(),
+            'last_page' => $pallets->lastPage(),
+            'per_page' => $pallets->perPage(),
+            'total' => $pallets->total(),
+        ];
+    }
 }

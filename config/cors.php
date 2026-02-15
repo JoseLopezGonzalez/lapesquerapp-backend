@@ -17,12 +17,26 @@ return [
 
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
 
-    // Orígenes explícitos desde env (comma-separated). En producción: lista blanca.
-    'allowed_origins' => array_filter(array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,http://localhost:5173')))),
+    // Orígenes permitidos (como en 8097331, funcionaba). Los subdominios *.lapesquerapp.es
+    // se cubren con allowed_origins_patterns.
+    'allowed_origins' => [
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:3001',
+        'http://localhost:5173',
+        'https://lapesquerapp.es',
+        'https://brisamar.lapesquerapp.es',
+        'https://pymcolorao.lapesquerapp.es',
+        'https://app.lapesquerapp.es',
+        'https://nextjs.congeladosbrisamar.es',
+        'http://brisamar.localhost:3000',
+        'http://test.localhost:3000',
+        'http://pymcolorao.localhost:3000',
+    ],
 
-    // Patrones regex para subdominios dinámicos (multi-tenant)
     'allowed_origins_patterns' => [
         '/^https:\/\/[a-z0-9\-]+\.lapesquerapp\.es$/',
         '/^https:\/\/lapesquerapp\.es$/',
@@ -35,7 +49,7 @@ return [
 
     'exposed_headers' => [],
 
-    'max_age' => 86400,
+    'max_age' => 0,
 
     'supports_credentials' => true,
 

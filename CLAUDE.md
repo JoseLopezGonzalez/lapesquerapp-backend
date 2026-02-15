@@ -98,7 +98,7 @@ No se usa capa Repository ni DDD estricto; identidad: **Laravel idiomático + ca
 |--------|--------|--------|
 | A.1 Auth + Roles/Permisos | 9/10 | ✅ |
 | A.2 Ventas | 8,5/10 | 🔄 En progreso |
-| A.3 Inventario / Stock | 9/10 | ✅ |
+| A.3 Inventario / Stock | 10/10 | ✅ |
 | A.4 Recepciones Materia Prima | 9/10 | ✅ |
 | A.5 Despachos de Cebo | 9/10 | ✅ |
 | A.6 Producción | 9/10 | ✅ |

@@ -55,6 +55,30 @@ class PalletWriteService
     }
 
     /**
+     * Valida si un palet de recepción puede ser editado. Retorna mensaje de error o null.
+     */
+    public static function validateUpdatePermissions(Pallet $pallet): ?string
+    {
+        if ($pallet->reception_id === null) {
+            return null;
+        }
+        $reception = $pallet->reception;
+        if ($reception->creation_mode !== RawMaterialReception::CREATION_MODE_PALLETS) {
+            return 'No se puede modificar un palet que proviene de una recepción creada por líneas. Modifique desde la recepción.';
+        }
+        if ($pallet->order_id !== null) {
+            return 'No se puede modificar el palet: está vinculado a un pedido';
+        }
+        foreach ($pallet->boxes as $palletBox) {
+            if ($palletBox->box && $palletBox->box->productionInputs()->exists()) {
+                return "No se puede modificar el palet: la caja #{$palletBox->box->id} está siendo usada en producción";
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Actualiza un palet.
      */
     public static function update(Request $request, Pallet $pallet, array $validated): Pallet
@@ -230,5 +254,31 @@ class PalletWriteService
                 ]);
             }
         }
+    }
+
+    /**
+     * Elimina un palet (validar reception_id antes de llamar).
+     */
+    public static function destroy(Pallet $pallet): void
+    {
+        DB::transaction(function () use ($pallet) {
+            if ($pallet->storedPallet) {
+                $pallet->storedPallet->delete();
+            }
+            $pallet->boxes()->delete();
+            $pallet->delete();
+        });
+    }
+
+    /**
+     * Elimina múltiples palets (validar que ninguno tenga reception_id antes de llamar).
+     */
+    public static function destroyMultiple(array $palletIds): void
+    {
+        DB::transaction(function () use ($palletIds) {
+            StoredPallet::whereIn('pallet_id', $palletIds)->delete();
+            PalletBox::whereIn('pallet_id', $palletIds)->delete();
+            Pallet::whereIn('id', $palletIds)->delete();
+        });
     }
 }
