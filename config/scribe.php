@@ -1,5 +1,14 @@
 <?php
 
+// Scribe is a dev dependency; config must be loadable when the package is not installed (e.g. production config:cache).
+if (! class_exists(\Knuckles\Scribe\Config\Defaults::class)) {
+    return [
+        'title' => 'API Documentation',
+        'description' => '',
+        'auth' => ['enabled' => false],
+    ];
+}
+
 use Knuckles\Scribe\Config\AuthIn;
 use Knuckles\Scribe\Config\Defaults;
 use Knuckles\Scribe\Extracting\Strategies;
