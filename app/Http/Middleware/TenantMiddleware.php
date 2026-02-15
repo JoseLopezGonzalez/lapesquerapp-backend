@@ -25,6 +25,10 @@ class TenantMiddleware
             }
         }
 
+        // Preflight OPTIONS no incluye X-Tenant; debe pasar para que HandleCors responda con CORS
+        if ($request->isMethod('OPTIONS')) {
+            return $next($request);
+        }
 
         $subdomain = $request->header('X-Tenant');
 
