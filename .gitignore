@@ -25,3 +25,6 @@ vendor/
 /.scribe/
 # Documentación API generada (solo local/CI; no desplegar en producción)
 /public/docs/
+
+# Cobertura de tests (generada por phpunit --coverage)
+/coverage/

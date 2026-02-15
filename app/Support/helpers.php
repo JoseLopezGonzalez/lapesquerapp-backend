@@ -1,7 +1,6 @@
 <?php
 
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use App\Models\Setting;
 
 if (! function_exists('tenantSetting')) {
     function tenantSetting(string $key, mixed $default = null): mixed
@@ -20,14 +19,13 @@ if (! function_exists('tenantSetting')) {
             return $settingsCache[$normalizedKey];
         }
 
-        // Leer de la base de datos del tenant
-        $value = DB::connection('tenant')->table('settings')
+        // Leer vía Setting model (usa UsesTenantConnection; unifica punto de acceso)
+        $value = Setting::query()
             ->where('key', $normalizedKey)
             ->value('value');
 
         // Usar fallback si no existe o está vacío
         if (is_null($value) || $value === '') {
-            // Si la clave ya incluye prefijo 'company.', usarla tal cual
             $value = config($normalizedKey, $default);
         }
 

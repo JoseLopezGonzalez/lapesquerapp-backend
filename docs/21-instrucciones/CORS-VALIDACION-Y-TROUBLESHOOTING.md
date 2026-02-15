@@ -50,6 +50,7 @@ curl -H "Origin: http://localhost:3000" \
 
 | Error | Causa | Solución |
 |-------|-------|----------|
+| No 'Access-Control-Allow-Origin' header (preflight) | PWA/Service Worker cachea respuesta sin CORS; o TenantMiddleware bloqueaba OPTIONS | Rutas OPTIONS explícitas en auth; TenantMiddleware deja pasar OPTIONS. Probar en incógnito o desregistrar SW |
 | No 'Access-Control-Allow-Origin' header | Origin no permitido o no llega | Revisar CORS_ALLOWED_ORIGINS y patrones; verificar que proxy reenvíe Origin |
 | CORS con credentials rechazado | Origin no coincide exactamente | No usar * con credentials; lista blanca explícita |
 | Preflight falla con X-Tenant | Header no en Allow-Headers | config/cors.php debe tener allowed_headers => ['*'] |

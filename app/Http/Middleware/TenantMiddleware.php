@@ -14,6 +14,10 @@ class TenantMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Preflight OPTIONS no incluye X-Tenant; dejar pasar para que HandleCors o rutas OPTIONS respondan
+        if ($request->isMethod('OPTIONS')) {
+            return $next($request);
+        }
 
         $excluded = [
             'api/v2/public/*',

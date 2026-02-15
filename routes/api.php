@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Public\TenantController;
+use App\Http\Support\CorsResponse;
 use App\Http\Controllers\v2\OrderDocumentController;
 use App\Http\Controllers\v2\PdfExtractionController;
 use App\Http\Controllers\v2\SettingController;
@@ -116,6 +117,13 @@ Route::get('v2/public/tenant/{subdomain}', [TenantController::class, 'showBySubd
 
 /* Comprobar el tenant ya que esta aplicado de manera global */
 Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], function () {
+    // Preflight OPTIONS explícito para auth (PWA/Service Worker pueden cachear mal; asegura CORS)
+    Route::options('auth/request-access', fn () => CorsResponse::preflightResponse(request()))->middleware('throttle:60,1');
+    Route::options('auth/magic-link/request', fn () => CorsResponse::preflightResponse(request()))->middleware('throttle:60,1');
+    Route::options('auth/magic-link/verify', fn () => CorsResponse::preflightResponse(request()))->middleware('throttle:60,1');
+    Route::options('auth/otp/request', fn () => CorsResponse::preflightResponse(request()))->middleware('throttle:60,1');
+    Route::options('auth/otp/verify', fn () => CorsResponse::preflightResponse(request()))->middleware('throttle:60,1');
+
     // Rutas públicas (sin autenticación)
     Route::post('login', [V2AuthController::class, 'login'])->middleware('throttle:5,1')->name('v2.login');
     Route::post('logout', [V2AuthController::class, 'logout'])->middleware('auth:sanctum')->name('v2.logout');

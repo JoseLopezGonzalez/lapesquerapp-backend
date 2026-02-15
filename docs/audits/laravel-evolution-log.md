@@ -5,6 +5,39 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2026-02-15] Auditoría global — Mejoras implementadas
+
+**Fuente:** `docs/audits/laravel-backend-global-audit.md`  
+**Alcance:** Top 5 mejoras (excepto OpenAPI/Swagger) y ampliación de tests.
+
+### Cambios aplicados
+
+1. **Refactorizar `tenantSetting()`** — Helper migrado de `DB::connection('tenant')->table('settings')` a `Setting::query()` para unificar punto de acceso. Cache por petición preservado.
+
+2. **Documentar convenciones de API** — Nuevo `docs/33-frontend/API-Conventions.md`: headers, paginación, filtrado, serialización, formato de errores, endpoints options.
+
+3. **Documentar convención tenant para jobs** — Nuevo `docs/20-fundamentos/02-Convencion-Tenant-Jobs.md`: payload con `tenant_subdomain`, configuración de conexión en worker, trait reutilizable.
+
+4. **Medir cobertura de tests** — Nuevo `docs/21-instrucciones/TESTING-Coverage.md`: comandos `php artisan test --coverage`, `--coverage-html`, requisitos (pcov/xdebug). Carpeta `coverage/` en `.gitignore`.
+
+5. **Revisar índices en tablas críticas** — Nueva migración `2026_02_15_160000_add_indexes_for_audit_tables.php`: índice en `punch_events.timestamp`, índice en `productions.date`. Documento `docs/audits/indexes-audit-2026-02-15.md`.
+
+6. **Ampliar tests en bloques críticos** — Nuevo `ProductionBlockApiTest`: test_productions_list_returns_paginated, test_productions_require_authentication.
+
+### Archivos modificados/creados
+
+- `app/Support/helpers.php` — tenantSetting usa Setting::query()
+- `docs/33-frontend/API-Conventions.md` — nuevo
+- `docs/20-fundamentos/02-Convencion-Tenant-Jobs.md` — nuevo
+- `docs/21-instrucciones/TESTING-Coverage.md` — nuevo
+- `docs/audits/indexes-audit-2026-02-15.md` — nuevo
+- `database/migrations/companies/2026_02_15_160000_add_indexes_for_audit_tables.php` — nuevo
+- `tests/Feature/ProductionBlockApiTest.php` — nuevo
+- `phpunit.xml` — source/include app (sin report por compatibilidad schema)
+- `.gitignore` — coverage/
+
+---
+
 ## [2026-02-15] Blocks A.3, A.10, A.11: Inventario, Etiquetas, Fichajes → 9/10
 
 **Priority**: P1
