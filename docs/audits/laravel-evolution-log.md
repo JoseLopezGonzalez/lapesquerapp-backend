@@ -5,6 +5,111 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2026-02-15] Block A.11 Fichajes - Sub-bloque 1 (Dashboard service, Form Requests, DB→Eloquent)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 3/10** | **Rating después: 5/10**
+
+### Problems Addressed
+
+- PunchController ~2349 líneas (P1); uso de `DB::connection('tenant')->table('punch_events')` en dashboard; ausencia de Form Requests en punches y employees; lógica de dashboard en el controlador.
+
+### Changes Applied
+
+- **PunchDashboardService**: extraída toda la lógica de `dashboard()`; reemplazo de la consulta raw con `DB::connection('tenant')` por Eloquent (subquery con `joinSub` sobre `PunchEvent` para último evento por empleado). Método `getData(?Carbon $date)` devuelve el mismo array que antes.
+- **PunchController**: constructor con inyección de `PunchDashboardService`; `dashboard()` delega en `$this->dashboardService->getData($date)` y devuelve `response()->json($result)`. Uso de **UpdatePunchEventRequest**, **BulkValidatePunchesRequest**, **BulkStorePunchesRequest**, **DestroyMultiplePunchesRequest** en update, bulkValidate, bulkStore, destroyMultiple. storeManual sigue recibiendo `Request` y valida con `StoreManualPunchRequest::getRules()` / `getMessages()` (misma ruta POST /punches para NFC y manual).
+- **Form Requests creados**: StorePunchRequest (NFC), StoreManualPunchRequest (reglas + estáticos getRules/getMessages), UpdatePunchEventRequest, BulkValidatePunchesRequest, BulkStorePunchesRequest, DestroyMultiplePunchesRequest; StoreEmployeeRequest, UpdateEmployeeRequest, DestroyMultipleEmployeesRequest.
+- **EmployeeController**: store(StoreEmployeeRequest), update(UpdateEmployeeRequest), destroyMultiple(DestroyMultipleEmployeesRequest); validación delegada en Form Requests.
+
+### Verification Results
+
+- Sintaxis PHP OK en servicio y controladores. Rutas `punches` y `employees` listadas correctamente. No hay tests existentes para Fichajes; verificación manual recomendada (dashboard, store manual, bulk, employees CRUD).
+
+### Gap to 10/10
+
+- PunchController sigue muy grande (~2100+ líneas): extraer calendar, statistics, listado (index) y escrituras (store NFC, storeManual, bulk) a servicios/acciones en sub-bloques 2–3. Policies para PunchEvent y Employee. Sustitución completa de validación inline en store() NFC por Form Request si se separa ruta. Tests Feature para flujos críticos.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Sub-bloque 2: PunchCalendarService, PunchStatisticsService, PunchEventListService; o sub-bloque 3: acciones de escritura (store NFC, manual, bulk) y Policies.
+
+---
+
+## [2026-02-15] Block A.11 Fichajes - Sub-bloque 2 (Servicios de lectura: calendar, statistics, listado)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 5/10** | **Rating después: 6/10**
+
+### Problems Addressed
+
+- PunchController aún con ~2100 líneas; lógica de calendar(), statistics() e index() (filtros) en el controlador.
+
+### Changes Applied
+
+- **PunchCalendarService**: método `getData(int $year, int $month)` con toda la lógica de calendario (fichajes por día, incidencias, anomalías). PunchController::calendar valida year/month y delega.
+- **PunchStatisticsService**: método `getData(Carbon $dateStart, Carbon $dateEnd)` con toda la lógica de estadísticas por período; `getEmptyResponseForDates()` para el caso sin empleados. Controller valida date_start/date_end y delega.
+- **PunchEventListService**: método `applyFiltersToQuery(Builder $query, array $filters)` con la lógica de filtros de listado. PunchController::index delega en listService y pagina.
+- **PunchController**: inyección de PunchCalendarService, PunchStatisticsService, PunchEventListService; eliminados applyFiltersToQuery, getEmptyStatisticsResponse y formatTime (lógica en servicios). Reducción de **~2349 a ~1110 líneas** (sub-bloques 1+2).
+
+### Verification Results
+
+- Sintaxis PHP OK. Rutas listadas. Sin tests específicos de Fichajes; verificación manual recomendada (calendar, statistics, index con filtros).
+
+### Gap to 10/10
+
+- Controller aún ~1110 líneas: extraer escrituras (store NFC, storeManual, bulkValidate, bulkStore) a acciones/servicio en sub-bloque 3. Policies (PunchEventPolicy, EmployeePolicy). Tests Feature.
+
+### Rollback Plan
+
+`git revert <commit-hash>`.
+
+### Next
+
+- Sub-bloque 3: acciones de escritura (StorePunchFromNfcAction, StoreManualPunch, BulkValidate/BulkStore) y/o Policies.
+
+---
+
+## [2026-02-15] Block A.11 Fichajes - Sub-bloque 3 (Escrituras en servicio, Policies, authorize)
+
+**Priority**: P1  
+**Risk Level**: Low  
+**Rating antes: 6/10** | **Rating después: 8/10**
+
+### Problems Addressed
+
+- Lógica de escritura (store NFC, storeManual, bulkValidate, bulkStore) y de secuencia/validación en PunchController; ausencia de Policies y authorize() en Fichajes y Empleados.
+
+### Changes Applied
+
+- **PunchEventWriteService**: storeFromNfc(array), storeManual(array), bulkValidate(array), bulkStore(array); determineEventType, validatePunchSequence y validación por ítem en bulk (validateSinglePunchForBulk). Toda la lógica de escritura y validación de secuencia extraída del controlador.
+- **PunchEventPolicy** y **EmployeePolicy**: viewAny, view, create, update, delete; allowedRoles() = Role::values(). Registradas en AuthServiceProvider (PunchEvent → PunchEventPolicy, Employee → EmployeePolicy).
+- **PunchController**: inyección de PunchEventWriteService; store() delega en writeService->storeFromNfc(); storeManual() authorize('create', PunchEvent::class), valida con StoreManualPunchRequest estáticos, delega en writeService->storeManual(); bulkValidate/bulkStore authorize create y delegan en writeService; authorize('viewAny') en index, dashboard, calendar, statistics, destroyMultiple; authorize('view'/'update'/'delete') en show, update, destroy y por ítem en destroyMultiple. Eliminados determineEventType y validatePunchSequence del controlador.
+- **EmployeeController**: authorize('viewAny', Employee::class) en index, options, destroyMultiple; authorize('view', $employee) en show; authorize('create', Employee::class) en store; authorize('update'/$employee) en update; authorize('delete', $employee) en destroy y por ítem en destroyMultiple.
+
+### Verification Results
+
+- Sintaxis PHP OK en controladores y políticas. Rutas punches/employees bajo middleware existente. Verificación manual recomendada (NFC, manual, bulk, CRUD empleados).
+
+### Gap to 10/10
+
+- Tests Feature para flujos críticos (store NFC/manual, bulk, CRUD). Opcional: separar ruta POST manual si se quiere type-hint StoreManualPunchRequest en storeManual().
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Tests Feature del módulo Fichajes o siguiente bloque CORE.
+
+---
+
 ## [2025-02-14] Block A.6 Producción - Sub-bloque 1 (Production: Form Requests, Policy, authorize)
 
 **Priority**: P1  

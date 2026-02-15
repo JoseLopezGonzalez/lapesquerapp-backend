@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\DestroyMultipleEmployeesRequest;
+use App\Http\Requests\v2\StoreEmployeeRequest;
+use App\Http\Requests\v2\UpdateEmployeeRequest;
 use App\Http\Resources\v2\EmployeeResource;
 use App\Models\Employee;
 use Illuminate\Http\Request;
@@ -14,6 +17,8 @@ class EmployeeController extends Controller
      */
     public function index(Request $request)
     {
+        $this->authorize('viewAny', Employee::class);
+
         $query = Employee::query();
 
         // Filtro por ID
@@ -54,6 +59,8 @@ class EmployeeController extends Controller
      */
     public function options(Request $request)
     {
+        $this->authorize('viewAny', Employee::class);
+
         $query = Employee::query();
 
         // Filtro por nombre (opcional)
@@ -80,6 +87,7 @@ class EmployeeController extends Controller
     public function show(string $id)
     {
         $employee = Employee::with('lastPunchEvent')->findOrFail($id);
+        $this->authorize('view', $employee);
 
         return response()->json([
             'message' => 'Empleado obtenido correctamente.',
@@ -90,18 +98,11 @@ class EmployeeController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreEmployeeRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'nfc_uid' => 'required|string|unique:tenant.employees,nfc_uid',
-        ], [
-            'name.required' => 'El nombre es obligatorio.',
-            'nfc_uid.required' => 'El UID NFC es obligatorio.',
-            'nfc_uid.unique' => 'Ya existe un empleado con este UID NFC.',
-        ]);
+        $this->authorize('create', Employee::class);
 
-        $employee = Employee::create($validated);
+        $employee = Employee::create($request->validated());
 
         return response()->json([
             'message' => 'Empleado creado correctamente.',
@@ -112,20 +113,12 @@ class EmployeeController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(UpdateEmployeeRequest $request, string $id)
     {
         $employee = Employee::findOrFail($id);
+        $this->authorize('update', $employee);
 
-        $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'nfc_uid' => 'sometimes|required|string|unique:tenant.employees,nfc_uid,' . $id,
-        ], [
-            'name.required' => 'El nombre es obligatorio.',
-            'nfc_uid.required' => 'El UID NFC es obligatorio.',
-            'nfc_uid.unique' => 'Ya existe otro empleado con este UID NFC.',
-        ]);
-
-        $employee->update($validated);
+        $employee->update($request->validated());
 
         return response()->json([
             'message' => 'Empleado actualizado correctamente.',
@@ -139,6 +132,7 @@ class EmployeeController extends Controller
     public function destroy(string $id)
     {
         $employee = Employee::findOrFail($id);
+        $this->authorize('delete', $employee);
         $employee->delete();
 
         return response()->json([
@@ -149,19 +143,16 @@ class EmployeeController extends Controller
     /**
      * Remove multiple resources from storage.
      */
-    public function destroyMultiple(Request $request)
+    public function destroyMultiple(DestroyMultipleEmployeesRequest $request)
     {
-        $validated = $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'integer|exists:tenant.employees,id',
-        ], [
-            'ids.required' => 'Debe proporcionar un array de IDs.',
-            'ids.array' => 'Los IDs deben ser un array.',
-            'ids.*.integer' => 'Cada ID debe ser un número entero.',
-            'ids.*.exists' => 'Uno o más IDs no existen.',
-        ]);
+        $this->authorize('viewAny', Employee::class);
 
-        Employee::whereIn('id', $validated['ids'])->delete();
+        $ids = $request->validated()['ids'];
+        foreach (Employee::whereIn('id', $ids)->get() as $employee) {
+            $this->authorize('delete', $employee);
+        }
+
+        Employee::whereIn('id', $ids)->delete();
 
         return response()->json([
             'message' => 'Empleados eliminados correctamente.',
