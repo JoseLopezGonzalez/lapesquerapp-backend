@@ -16,25 +16,23 @@ use App\Exports\v2\RawMaterialReceptionA3erpExport;
 use App\Exports\v2\CeboDispatchFacilcomExport;
 use App\Exports\v2\CeboDispatchA3erpExport;
 use App\Exports\v2\CeboDispatchA3erp2Export;
-
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\OrderFilteredExportRequest;
+use App\Models\Order;
+use App\Services\v2\OrderExportFilterService;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\v2\OrdersExport;
+use App\Exports\v2\OrderExport;
 use App\Exports\v2\ProductLotDetailsExport;
-use App\Models\Order;
 
 class ExcelController extends Controller
 {
-    /**
-     * Aplicar límites de memoria y tiempo para exportaciones
-     * 
-     * @param string $exportType Tipo de exportación (para configuraciones específicas)
-     * @return void
-     */
+    public function __construct(
+        protected OrderExportFilterService $filterService
+    ) {}
+
     private function applyExportLimits(string $exportType = 'standard'): void
     {
-        // Obtener configuración de límites
         $config = config("exports.types.{$exportType}", 'standard');
         $limits = config("exports.limits.{$config}");
 
@@ -44,159 +42,50 @@ class ExcelController extends Controller
         }
     }
 
-    /**
-     * Generar exportación en función del tipo de archivo y entidad
-     */
-    private function generateExport($exportClass, $fileName)
-    {
-        return Excel::download(new $exportClass, "{$fileName}.xlsx");
-    }
-
-    /**
-     * Valida y sanitiza un array de enteros para usar en whereIn()
-     * Previene SQL injection asegurando que solo se usen arrays de enteros válidos
-     * 
-     * @param mixed $value Valor del request
-     * @return array Array de enteros válidos, o array vacío si no es válido
-     */
-    private function sanitizeIntegerArray($value): array
-    {
-        if (!is_array($value)) {
-            return [];
-        }
-
-        return array_filter(
-            array_map('intval', $value),
-            fn($item) => $item > 0
-        );
-    }
-
     public function exportOrders(Request $request)
     {
         $this->applyExportLimits('standard');
-        return $this->generateExport(OrdersExport::class, 'orders_report');
+        $this->authorize('viewAny', Order::class);
+
+        return Excel::download(new OrderExport($request), 'orders_report.xlsx');
     }
 
-
-    public function exportProductLotDetails($orderId)
+    public function exportProductLotDetails(int|string $orderId)
     {
         $this->applyExportLimits('standard');
         $order = Order::findOrFail($orderId);
+        $this->authorize('view', $order);
+
         return Excel::download(new ProductLotDetailsExport($order), "product_lot_details_{$order->formattedId}.xlsx");
     }
 
-    public function exportBoxList($orderId)
+    public function exportBoxList(int|string $orderId)
     {
         $this->applyExportLimits('standard');
         $order = Order::findOrFail($orderId);
+        $this->authorize('view', $order);
+
         return Excel::download(new OrderBoxListExport($order), "box_list_{$order->formattedId}.xlsx");
     }
 
-
-    public function exportA3ERPOrderSalesDeliveryNote($orderId)
+    public function exportA3ERPOrderSalesDeliveryNote(int|string $orderId)
     {
         $this->applyExportLimits('standard');
         $order = Order::findOrFail($orderId);
-        return Excel::download(new A3ERPOrderSalesDeliveryNoteExport($order), "albaran_venta_{$order->formattedId}.xls");
+        $this->authorize('view', $order);
+
+        return Excel::download(
+            new A3ERPOrderSalesDeliveryNoteExport($order),
+            "albaran_venta_{$order->formattedId}.xls",
+            \Maatwebsite\Excel\Excel::XLS
+        );
     }
 
-    public function exportA3ERPOrderSalesDeliveryNoteWithFilters(Request $request)
+    public function exportA3ERPOrderSalesDeliveryNoteWithFilters(OrderFilteredExportRequest $request)
     {
         $this->applyExportLimits('standard');
 
-        $query = Order::query();
-
-        if ($request->has('active')) {
-            if ($request->active == 'true') {
-                $query->where(function ($q) {
-                    $q->where('status', 'pending')
-                        ->orWhereDate('load_date', '>=', now());
-                });
-            } else {
-                $query->where('status', 'finished')
-                    ->whereDate('load_date', '<', now());
-            }
-        }
-
-        if ($request->has('customers')) {
-            $customers = $this->sanitizeIntegerArray($request->customers);
-            if (!empty($customers)) {
-                $query->whereIn('customer_id', $customers);
-            }
-        }
-
-        if ($request->has('id')) {
-            $query->where('id', 'like', '%' . $request->id . '%');
-        }
-
-        if ($request->has('ids')) {
-            $ids = $this->sanitizeIntegerArray($request->ids);
-            if (!empty($ids)) {
-                $query->whereIn('id', $ids);
-            }
-        }
-
-        if ($request->has('buyerReference')) {
-            $query->where('buyer_reference', 'like', '%' . $request->buyerReference . '%');
-        }
-
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->has('loadDate')) {
-            $loadDate = $request->loadDate;
-            if (isset($loadDate['start'])) {
-                $query->where('load_date', '>=', date('Y-m-d 00:00:00', strtotime($loadDate['start'])));
-            }
-            if (isset($loadDate['end'])) {
-                $query->where('load_date', '<=', date('Y-m-d 23:59:59', strtotime($loadDate['end'])));
-            }
-        }
-
-        if ($request->has('entryDate')) {
-            $entryDate = $request->entryDate;
-            if (isset($entryDate['start'])) {
-                $query->where('entry_date', '>=', date('Y-m-d 00:00:00', strtotime($entryDate['start'])));
-            }
-            if (isset($entryDate['end'])) {
-                $query->where('entry_date', '<=', date('Y-m-d 23:59:59', strtotime($entryDate['end'])));
-            }
-        }
-
-        if ($request->has('transports')) {
-            $transports = $this->sanitizeIntegerArray($request->transports);
-            if (!empty($transports)) {
-                $query->whereIn('transport_id', $transports);
-            }
-        }
-
-        if ($request->has('salespeople')) {
-            $salespeople = $this->sanitizeIntegerArray($request->salespeople);
-            if (!empty($salespeople)) {
-                $query->whereIn('salesperson_id', $salespeople);
-            }
-        }
-
-        if ($request->has('palletsState')) {
-            if ($request->palletsState == 'stored') {
-                $query->whereHas('pallets', fn($q) => $q->where('status', \App\Models\Pallet::STATE_STORED));
-            } elseif ($request->palletsState == 'shipping') {
-                $query->whereHas('pallets', fn($q) => $q->where('status', \App\Models\Pallet::STATE_SHIPPED));
-            }
-        }
-
-        if ($request->has('incoterm')) {
-            $query->where('incoterm_id', $request->incoterm);
-        }
-
-        if ($request->has('transport')) {
-            $query->where('transport_id', $request->transport);
-        }
-
-        $query->orderBy('load_date', 'desc');
-
-        $orders = $query->get(); // exporta todos los resultados filtrados
+        $orders = $this->filterService->getFilteredOrders($request);
 
         return Excel::download(
             new A3ERPOrdersSalesDeliveryNotesExport($orders),
@@ -205,100 +94,11 @@ class ExcelController extends Controller
         );
     }
 
-    public function exportFacilcomOrderSalesDeliveryNoteWithFilters(Request $request)
+    public function exportFacilcomOrderSalesDeliveryNoteWithFilters(OrderFilteredExportRequest $request)
     {
         $this->applyExportLimits('standard');
 
-        $query = Order::query();
-
-        if ($request->has('active')) {
-            if ($request->active == 'true') {
-                $query->where(function ($q) {
-                    $q->where('status', 'pending')->orWhereDate('load_date', '>=', now());
-                });
-            } else {
-                $query->where('status', 'finished')->whereDate('load_date', '<', now());
-            }
-        }
-
-        if ($request->has('customers')) {
-            $customers = $this->sanitizeIntegerArray($request->customers);
-            if (!empty($customers)) {
-                $query->whereIn('customer_id', $customers);
-            }
-        }
-
-        if ($request->has('id')) {
-            $query->where('id', 'like', '%' . $request->id . '%');
-        }
-
-        if ($request->has('ids')) {
-            $ids = $this->sanitizeIntegerArray($request->ids);
-            if (!empty($ids)) {
-                $query->whereIn('id', $ids);
-            }
-        }
-
-        if ($request->has('buyerReference')) {
-            $query->where('buyer_reference', 'like', '%' . $request->buyerReference . '%');
-        }
-
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->has('loadDate')) {
-            $loadDate = $request->loadDate;
-            if (isset($loadDate['start'])) {
-                $query->where('load_date', '>=', date('Y-m-d 00:00:00', strtotime($loadDate['start'])));
-            }
-            if (isset($loadDate['end'])) {
-                $query->where('load_date', '<=', date('Y-m-d 23:59:59', strtotime($loadDate['end'])));
-            }
-        }
-
-        if ($request->has('entryDate')) {
-            $entryDate = $request->entryDate;
-            if (isset($entryDate['start'])) {
-                $query->where('entry_date', '>=', date('Y-m-d 00:00:00', strtotime($entryDate['start'])));
-            }
-            if (isset($entryDate['end'])) {
-                $query->where('entry_date', '<=', date('Y-m-d 23:59:59', strtotime($entryDate['end'])));
-            }
-        }
-
-        if ($request->has('transports')) {
-            $transports = $this->sanitizeIntegerArray($request->transports);
-            if (!empty($transports)) {
-                $query->whereIn('transport_id', $transports);
-            }
-        }
-
-        if ($request->has('salespeople')) {
-            $salespeople = $this->sanitizeIntegerArray($request->salespeople);
-            if (!empty($salespeople)) {
-                $query->whereIn('salesperson_id', $salespeople);
-            }
-        }
-
-        if ($request->has('palletsState')) {
-            if ($request->palletsState == 'stored') {
-                $query->whereHas('pallets', fn($q) => $q->where('status', \App\Models\Pallet::STATE_STORED));
-            } elseif ($request->palletsState == 'shipping') {
-                $query->whereHas('pallets', fn($q) => $q->where('status', \App\Models\Pallet::STATE_SHIPPED));
-            }
-        }
-
-        if ($request->has('incoterm')) {
-            $query->where('incoterm_id', $request->incoterm);
-        }
-
-        if ($request->has('transport')) {
-            $query->where('transport_id', $request->transport);
-        }
-
-        $query->orderBy('load_date', 'desc');
-        $orders = $query->get();
+        $orders = $this->filterService->getFilteredOrders($request);
 
         return Excel::download(
             new FacilcomOrdersSalesDeliveryNotesExport($orders),
@@ -307,10 +107,11 @@ class ExcelController extends Controller
         );
     }
 
-    public function exportFacilcomSingleOrder($orderId)
+    public function exportFacilcomSingleOrder(int|string $orderId)
     {
         $this->applyExportLimits('standard');
         $order = Order::findOrFail($orderId);
+        $this->authorize('view', $order);
 
         return Excel::download(
             new FacilcomOrderSalesDeliveryNoteExport($order),
@@ -319,12 +120,12 @@ class ExcelController extends Controller
         );
     }
 
-    /* A3ERP2 Order Sales Delivery Note Export - Formato A3 con códigos Facilcom, solo clientes con facilcom_code */
-    public function exportA3ERP2OrderSalesDeliveryNote($orderId)
+    public function exportA3ERP2OrderSalesDeliveryNote(int|string $orderId)
     {
         $this->applyExportLimits('standard');
         $order = Order::findOrFail($orderId);
-        
+        $this->authorize('view', $order);
+
         return Excel::download(
             new A3ERP2OrderSalesDeliveryNoteExport($order),
             "albaran_venta_a3erp2_{$order->formattedId}.xls",
@@ -332,107 +133,11 @@ class ExcelController extends Controller
         );
     }
 
-    /* A3ERP2 Orders Sales Delivery Notes Export - Formato A3 con códigos Facilcom */
-    public function exportA3ERP2OrderSalesDeliveryNoteWithFilters(Request $request)
+    public function exportA3ERP2OrderSalesDeliveryNoteWithFilters(OrderFilteredExportRequest $request)
     {
         $this->applyExportLimits('standard');
 
-        $query = Order::query();
-
-        // NOTA: Exportamos todos los pedidos, incluso si no tienen código Facilcom
-        // Los campos faltantes se mostrarán con "-" y se resaltarán en amarillo
-
-        if ($request->has('active')) {
-            if ($request->active == 'true') {
-                $query->where(function ($q) {
-                    $q->where('status', 'pending')
-                        ->orWhereDate('load_date', '>=', now());
-                });
-            } else {
-                $query->where('status', 'finished')
-                    ->whereDate('load_date', '<', now());
-            }
-        }
-
-        if ($request->has('customers')) {
-            $customers = $this->sanitizeIntegerArray($request->customers);
-            if (!empty($customers)) {
-                $query->whereIn('customer_id', $customers);
-            }
-        }
-
-        if ($request->has('id')) {
-            $query->where('id', 'like', '%' . $request->id . '%');
-        }
-
-        if ($request->has('ids')) {
-            $ids = $this->sanitizeIntegerArray($request->ids);
-            if (!empty($ids)) {
-                $query->whereIn('id', $ids);
-            }
-        }
-
-        if ($request->has('buyerReference')) {
-            $query->where('buyer_reference', 'like', '%' . $request->buyerReference . '%');
-        }
-
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->has('loadDate')) {
-            $loadDate = $request->loadDate;
-            if (isset($loadDate['start'])) {
-                $query->where('load_date', '>=', date('Y-m-d 00:00:00', strtotime($loadDate['start'])));
-            }
-            if (isset($loadDate['end'])) {
-                $query->where('load_date', '<=', date('Y-m-d 23:59:59', strtotime($loadDate['end'])));
-            }
-        }
-
-        if ($request->has('entryDate')) {
-            $entryDate = $request->entryDate;
-            if (isset($entryDate['start'])) {
-                $query->where('entry_date', '>=', date('Y-m-d 00:00:00', strtotime($entryDate['start'])));
-            }
-            if (isset($entryDate['end'])) {
-                $query->where('entry_date', '<=', date('Y-m-d 23:59:59', strtotime($entryDate['end'])));
-            }
-        }
-
-        if ($request->has('transports')) {
-            $transports = $this->sanitizeIntegerArray($request->transports);
-            if (!empty($transports)) {
-                $query->whereIn('transport_id', $transports);
-            }
-        }
-
-        if ($request->has('salespeople')) {
-            $salespeople = $this->sanitizeIntegerArray($request->salespeople);
-            if (!empty($salespeople)) {
-                $query->whereIn('salesperson_id', $salespeople);
-            }
-        }
-
-        if ($request->has('palletsState')) {
-            if ($request->palletsState == 'stored') {
-                $query->whereHas('pallets', fn($q) => $q->where('status', \App\Models\Pallet::STATE_STORED));
-            } elseif ($request->palletsState == 'shipping') {
-                $query->whereHas('pallets', fn($q) => $q->where('status', \App\Models\Pallet::STATE_SHIPPED));
-            }
-        }
-
-        if ($request->has('incoterm')) {
-            $query->where('incoterm_id', $request->incoterm);
-        }
-
-        if ($request->has('transport')) {
-            $query->where('transport_id', $request->transport);
-        }
-
-        $query->orderBy('load_date', 'desc');
-
-        $orders = $query->get();
+        $orders = $this->filterService->getFilteredOrders($request);
 
         return Excel::download(
             new A3ERP2OrdersSalesDeliveryNotesExport($orders),
@@ -444,6 +149,7 @@ class ExcelController extends Controller
     public function exportActiveOrderPlannedProducts()
     {
         $this->applyExportLimits('standard');
+        $this->authorize('viewAny', Order::class);
 
         return Excel::download(
             new ActiveOrderPlannedProductsExport(),

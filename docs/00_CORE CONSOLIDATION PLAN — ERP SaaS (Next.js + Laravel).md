@@ -452,6 +452,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 |------|---------|
 | **Controladores** | PDFController, ExcelController, OrderDocumentController |
 | **Rutas clave** | orders/{id}/pdf/*, orders/xlsx/*, raw-material-receptions/*-xls, cebo-dispatches/*-xlsx, boxes/xlsx |
+| **Evolution log** | OrderExportFilterService; SendCustomDocumentsRequest; OrderFilteredExportRequest; authorize en PDF/Excel; DocumentsBlockApiTest 8 tests. **Rating actual: 9/10** |
 
 ### A.16 Tenants (multi-tenant)
 | Tipo | Detalle |
@@ -484,6 +485,8 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 
 ## Resumen de valoraciones actuales (Evolution log)
 
+**Resumen por rating:** 9/10 → 11 bloques | 8/10 → 3 bloques | Sin rating → 2 bloques
+
 | Bloque | Rating actual | Notas |
 |--------|----------------|--------|
 | **A.1** Auth + Roles/Permisos | **9/10** | Sub-bloques 1–2: Session tenant fix, Form Requests, UserListService, SessionPolicy, ActivityLogPolicy, UserPolicy refinada, AuthBlockApiTest 21 tests |
@@ -500,5 +503,5 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **A.12** Estadísticas e informes | — | Sin entrada en evolution log |
 | **A.13** Configuración por tenant | **9/10** | Setting model, SettingService, Policy, Form Request, GET enmascara password, SettingsBlockApiTest 8 tests |
 | **A.14** Sistema | **9/10** | Mismo bloque que A.1 Auth (users, roles, activity-logs) |
-| **A.15** Documentos (PDF/Excel) | — | Sin entrada en evolution log |
+| **A.15** Documentos (PDF/Excel) | **9/10** | OrderExportFilterService, Form Requests, authorize, DocumentsBlockApiTest |
 | **A.16** Tenants | **9/10** | Tenant conexión mysql, Form Request, Resource, throttling, TenantBlockApiTest 5 tests |

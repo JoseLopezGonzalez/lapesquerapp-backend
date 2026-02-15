@@ -5,6 +5,50 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2026-02-15] Block A.15 Documentos (PDF/Excel)
+
+**Priority**: P1
+**Risk Level**: Low
+**Rating antes: 4/10** | **Rating después: 9/10**
+
+### Problems Addressed
+
+- OrderDocumentController sin Form Request, sin authorize, mensajes en inglés.
+- PDFController ~305 líneas; ExcelController ~612 líneas; lógica de filtros duplicada (~300 líneas) en 5 lugares.
+- Sin Form Request ni authorize en PDF/Excel endpoints.
+- Sin tests Feature para documentos.
+
+### Changes Applied
+
+- **OrderDocumentController (Sub-bloque 1)**: SendCustomDocumentsRequest (validación + authorize view Order); authorize('view', $order) en sendStandardDocumentation; mensajes en español.
+- **OrderExportFilterService**: Servicio con applyFilters() y getFilteredOrders(); elimina duplicación de filtros de pedidos.
+- **PDFController**: Usa OrderExportFilterService y OrderFilteredExportRequest; authorize('view', $order) en todos los métodos con orderId; authorize vía Form Request en generateOrderSheetsWithFilters. **305 → 150 líneas.**
+- **ExcelController**: Usa OrderExportFilterService y OrderFilteredExportRequest en 4 métodos con filtros; authorize('view', $order) en métodos con orderId; authorize('viewAny', Order::class) en exportOrders y exportActiveOrderPlannedProducts. **612 → 315 líneas.**
+- **OrderFilteredExportRequest**: Form Request con reglas de filtros y authorize viewAny(Order::class).
+- **DocumentsBlockApiTest**: 8 tests (sendCustom 200 skip si no Chromium, 422 invalid/invalid type, sendStandard 200 skip, 401 sin auth ×2, export lots 200, 401).
+
+### Verification Results
+
+- ✅ DocumentsBlockApiTest: 6 passed, 2 skipped (Chromium).
+- ✅ OrderApiTest, OrderStatisticsApiTest: OK.
+- ✅ Contrato API preservado. Sin cambios de rutas ni de estructura de respuesta.
+
+### Gap to 10/10
+
+- ExcelController aún 315 líneas (objetivo <200); posibles extracciones: agrupar exports por entidad.
+- Tests send custom/standard 200 requieren Chromium (skip en CI sin Chrome).
+- Bloque cerrado en 9/10.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Siguiente bloque CORE según plan.
+
+---
+
 ## [2026-02-15] Block A.16 Tenants
 
 **Priority**: P0/P1

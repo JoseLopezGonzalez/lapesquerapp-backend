@@ -3,41 +3,34 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\SendCustomDocumentsRequest;
 use App\Models\Order;
 use App\Services\OrderMailerService;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class OrderDocumentController extends Controller
 {
-    protected $mailerService;
+    public function __construct(
+        protected OrderMailerService $mailerService
+    ) {}
 
-    public function __construct(OrderMailerService $mailerService)
+    public function sendCustomDocumentation(SendCustomDocumentsRequest $request): JsonResponse
     {
-        $this->mailerService = $mailerService;
+        $order = Order::findOrFail($request->route('orderId'));
+
+        $this->mailerService->sendDocuments($order, $request->validated('documents'));
+
+        return response()->json(['message' => 'Documentación enviada correctamente.']);
     }
 
-    // Personalizado
-    public function sendCustomDocumentation(Request $request, $orderId)
+    public function sendStandardDocumentation(int $orderId): JsonResponse
     {
         $order = Order::findOrFail($orderId);
 
-        $request->validate([
-            'documents' => 'required|array',
-            'documents.*.type' => 'required|string',
-            'documents.*.recipients' => 'required|array',
-        ]);
+        $this->authorize('view', $order);
 
-        $this->mailerService->sendDocuments($order, $request->documents);
-
-        return response()->json(['message' => 'Custom documentation sent successfully!']);
-    }
-
-    // Estándar
-    public function sendStandardDocumentation($orderId)
-    {
-        $order = Order::findOrFail($orderId);
         $this->mailerService->sendStandardDocuments($order);
 
-        return response()->json(['message' => 'Standard documentation sent successfully!']);
+        return response()->json(['message' => 'Documentación estándar enviada correctamente.']);
     }
 }
