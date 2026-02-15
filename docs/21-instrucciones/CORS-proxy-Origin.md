@@ -1,6 +1,10 @@
 # CORS y cabecera Origin en producción
 
-Si el frontend (p. ej. `https://brisamar.lapesquerapp.es`) recibe **"No 'Access-Control-Allow-Origin' header"** al llamar a la API (`https://api.lapesquerapp.es`), el servidor debe poder ver la cabecera **`Origin`** que envía el navegador.
+Si el frontend (p. ej. `https://brisamar.lapesquerapp.es`) recibe **"No 'Access-Control-Allow-Origin' header"** al llamar a la API (`https://api.lapesquerapp.es`), puede deberse a:
+
+1. **Origin no llega al backend** (proxy no reenvía la cabecera).
+2. **Cabeceras CORS no se envían** en la respuesta (p. ej. Nginx no las reenvía o las sustituye).
+3. **Service Worker** que devuelve una respuesta cacheada sin cabeceras CORS.
 
 ## Comprobación
 
@@ -50,3 +54,10 @@ En esta app se ha añadido:
 - **Middleware `EnsureCorsOnApiResponse`**: refuerza CORS en todas las respuestas de `api/*` cuando la petición trae un `Origin` permitido.
 
 Si aun así no hay cabecera CORS, lo más probable es que **`Origin` no llegue al backend** (proxy o caché). Revisar la configuración del proxy y la comprobación con `curl` anterior.
+
+## Service Worker (PWA)
+
+Si la app usa un Service Worker (p. ej. Next.js PWA o `sw.js`), las peticiones a la API pueden estar siendo interceptadas. Una respuesta cacheada puede no incluir las cabeceras CORS.
+
+- **Recomendación**: No cachear en el SW las peticiones a `/api/v2/public/tenant/*` (usar estrategia "network-only" o excluir esa URL del cache).
+- En Workbox: `navigationRoute` o `registerRoute` no deben cachear respuestas de la API de tenant.
