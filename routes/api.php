@@ -81,9 +81,6 @@ Route::get('/health', function () {
     ], 200);
 })->name('api.health');
 
-Route::get('/test-cors', function () {
-    return response()->json(['message' => 'CORS funciona correctamente!'], 200);
-});
 
 
 
