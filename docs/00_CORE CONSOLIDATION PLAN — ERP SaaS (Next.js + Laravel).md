@@ -482,7 +482,7 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **Controladores** | Closures en `routes/api.php` |
 | **Rutas clave** | GET /health, GET /test-cors |
 | **Nota** | Endpoints sin tenant ni auth; verificación de estado y CORS. |
-| **Evolution log** | Sin entrada. **Rating actual: —** |
+| **Evolution log** | Sub-bloque 1: Exclusión TenantMiddleware, simplificación test-cors, InfraestructuraApiTest 2 tests. **Rating actual: 9/10** |
 
 ### A.18 Utilidades — Extracción de texto desde PDF
 | Tipo | Detalle |
@@ -516,13 +516,13 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 |--------|---------|
 | **9/10** | A.1, A.2, A.4, A.5, A.6, A.7, A.9, A.12, A.13, A.14, A.15, A.16 |
 | **8/10** | A.3, A.10, A.11 |
-| **—** | A.8, A.17, A.18 |
+| **—** | A.8, A.18 |
 
 ---
 
 ## Resumen de valoraciones actuales (Evolution log)
 
-**Resumen por rating:** 9/10 → 12 bloques | 8/10 → 3 bloques | Sin rating → 3 bloques (A.8, A.17, A.18)
+**Resumen por rating:** 9/10 → 13 bloques | 8/10 → 3 bloques | Sin rating → 2 bloques (A.8, A.18)
 
 | Bloque | Rating actual | Notas |
 |--------|----------------|--------|
@@ -542,5 +542,5 @@ Inventario detallado de bloques funcionales identificados en el backend (rutas, 
 | **A.14** Sistema | **9/10** | Mismo bloque que A.1 Auth (users, roles, activity-logs) |
 | **A.15** Documentos (PDF/Excel) | **9/10** | OrderExportFilterService, Form Requests, authorize, DocumentsBlockApiTest |
 | **A.16** Tenants | **9/10** | Tenant conexión mysql, Form Request, Resource, throttling, TenantBlockApiTest 5 tests |
-| **A.17** Infraestructura API | — | health, test-cors; sin evolution log |
+| **A.17** Infraestructura API | **9/10** | Sub-bloque 1: exclusión TenantMiddleware, test-cors simplificado, InfraestructuraApiTest 2 tests |
 | **A.18** Utilidades — Extracción PDF | — | PdfExtractionController sin ruta en api.php; sin evolution log |

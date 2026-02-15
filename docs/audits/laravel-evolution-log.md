@@ -5,6 +5,45 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ---
 
+## [2026-02-15] Block A.17: Infraestructura API
+
+**Priority**: P2
+**Risk Level**: Low
+**Rating antes: 5/10** | **Rating después: 9/10**
+
+### Problems Addressed
+
+- Health y test-cors requerían header X-Tenant; CORE Plan indica endpoints sin tenant ni auth.
+- test-cors duplicaba headers CORS manualmente; HandleCors ya los gestiona vía config/cors.php.
+- test-cors sin nombre de ruta; inconsistente con health.
+- Sin tests Feature para health ni test-cors.
+
+### Changes Applied
+
+- **TenantMiddleware**: Añadidos `api/health` y `api/test-cors` a rutas excluidas; endpoints accesibles sin X-Tenant.
+- **routes/api.php**: Simplificado test-cors — eliminados headers CORS manuales; HandleCors gestiona CORS. Añadido `->name('api.test-cors')`. Mensaje con punto final consistente.
+- **InfraestructuraApiTest**: 2 tests — test_health_returns_200_without_tenant, test_test_cors_returns_200_without_tenant.
+
+### Verification Results
+
+- ✅ InfraestructuraApiTest: 2 passed (7 assertions).
+- ✅ Contrato API preservado. Health y test-cors responden sin X-Tenant.
+- ✅ deploy-dev.sh y guías pueden usar `curl /api/health` con o sin X-Tenant (ambos funcionan).
+
+### Gap to 10/10
+
+- Ninguno para este bloque. Opcional P3: health extendido con DB/Redis check si se requiere.
+
+### Rollback Plan
+
+`git revert <commit-hash>`. No hay cambios de contrato API ni migraciones.
+
+### Next
+
+- Bloque A.17 cerrado en 9/10. Siguiente bloque CORE según plan.
+
+---
+
 ## [2026-02-15] Block A.12: Estadísticas e informes — Sub-bloque 1
 
 **Priority**: P1

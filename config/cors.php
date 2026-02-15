@@ -22,6 +22,7 @@ return [
 
 
     // Permitir varios orígenes (especifica los dominios)
+    // Los subdominios *.lapesquerapp.es también se permiten vía allowed_origins_patterns
     'allowed_origins' => [
         'http://localhost:3000', // Next.js desarrollo (guía Sail)
         'http://localhost:3001',
@@ -30,7 +31,8 @@ return [
         'http://localhost:5173',
         'https://*.congeladosbrisamar.es', // Origen de producción
         'https://lapesquerapp.es',
-        'https://*.lapesquerapp.es', // permite todos los subdominios
+        'https://*.lapesquerapp.es', // wildcard convertido a patrón por Fruitcake
+        'https://brisamar.lapesquerapp.es', // explícito por si el proxy no reenvía Origin
         'http://brisamar.localhost:3000',
         'http://test.localhost:3000',
         'http://pymcolorao.localhost:3000',

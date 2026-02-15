@@ -17,6 +17,8 @@ class TenantMiddleware
 
         $excluded = [
             'api/v2/public/*',
+            'api/health',
+            'api/test-cors',
         ];
 
         foreach ($excluded as $route) {
