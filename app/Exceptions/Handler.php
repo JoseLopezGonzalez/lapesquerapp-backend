@@ -5,6 +5,7 @@ namespace App\Exceptions;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
 
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\QueryException;
@@ -57,6 +58,16 @@ class Handler extends ExceptionHandler
                     'message' => 'No autenticado.',
                     'userMessage' => 'Debes iniciar sesión para acceder a este recurso.',
                 ], 401); // 401 Unauthorized
+            }
+
+            // Manejar autorización denegada (Policy devuelve false)
+            // AuthorizationException extiende Exception, no HttpException, por eso se devolvía 500
+            if ($exception instanceof AuthorizationException) {
+                return response()->json([
+                    'message' => $exception->getMessage() ?: 'Acción no autorizada.',
+                    'userMessage' => 'No tienes permiso para realizar esta acción.',
+                    'error' => $exception->getMessage(),
+                ], 403); // 403 Forbidden
             }
 
             // Manejar errores HTTP estándar (404, 403, etc.)
