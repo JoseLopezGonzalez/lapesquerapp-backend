@@ -144,7 +144,7 @@ public function palletBoxes()
 - Al cambiar a otro estado, se elimina automáticamente de `stored_pallets`
 - Los estados cambian automáticamente según el uso en producción y pedidos
 
-**📖 Documentación detallada**: Ver [31-Palets-Estados-Fijos.md](./31-Palets-Estados-Fijos.md) para información completa sobre la lógica automática de cambios de estado.
+**📖 Documentación detallada**: Ver [31b-Palets-Estados-Fijos.md](./31b-Palets-Estados-Fijos.md) para información completa sobre la lógica automática de cambios de estado.
 
 ---
 
@@ -735,7 +735,7 @@ Authorization: Bearer {token}
    - Liberación de producción (todas las cajas disponibles → `registered`)
    - Finalización de pedidos (todos los palets → `shipped`)
 
-**📖 Para más detalles**: Ver [31-Palets-Estados-Fijos.md](./31-Palets-Estados-Fijos.md)
+**📖 Para más detalles**: Ver [31b-Palets-Estados-Fijos.md](./31b-Palets-Estados-Fijos.md)
 
 ---
 

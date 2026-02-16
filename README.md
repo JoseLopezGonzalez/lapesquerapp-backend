@@ -19,7 +19,7 @@
 
 ## 🧱 Tecnologías utilizadas
 
-- **Laravel 11**
+- **Laravel 10**
 - **MySQL** (una base central + una por tenant)
 - **Sanctum** para autenticación
 - **Docker / Coolify** para despliegue
@@ -38,7 +38,7 @@ La documentación incluye:
 - Utilidades (PDF, Excel, IA)
 - Referencia técnica (Modelos, Rutas, Errores, Glosario)
 
-**📋 Resumen de problemas críticos**: Ver [`docs/PROBLEMAS-CRITICOS.md`](docs/PROBLEMAS-CRITICOS.md) para los 25 problemas más críticos.
+**📋 Resumen de problemas críticos**: Ver [`docs/audits/PROBLEMAS-CRITICOS.md`](docs/audits/PROBLEMAS-CRITICOS.md) para los 25 problemas más críticos.
 
 - **Índice estándar (00-15):** [`docs/00-OVERVIEW.md`](docs/00-OVERVIEW.md)
 - **Índice por dominio:** [`docs/README.md`](docs/README.md)

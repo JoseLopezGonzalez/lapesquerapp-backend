@@ -82,45 +82,44 @@
 
 ### FASE 1 — Correcciones Inmediatas
 
-- [ ] README.md dice "Laravel 10" (no "Laravel 11")
-- [ ] SECURITY.md usa `docs/20-fundamentos/` (no `docs/fundamentos/`)
-- [ ] 11d-ROLLBACK-PROCEDURES.md tiene contenido real (> 30 líneas)
-- [ ] 11e-RUNBOOK.md tiene contenido real (> 30 líneas)
+- [x] README.md dice "Laravel 10" (no "Laravel 11")
+- [x] SECURITY.md usa `docs/20-fundamentos/` (no `docs/fundamentos/`)
+- [x] 11d-ROLLBACK-PROCEDURES.md tiene contenido real (> 30 líneas)
+- [x] 11e-RUNBOOK.md tiene contenido real (> 30 líneas)
 
 ### FASE 2 — Consolidación de Duplicados
 
-- [ ] Existe `docs/21-instrucciones/CORS-GUIA-DEFINITIVA.md`
-- [ ] Los 9 archivos CORS originales están en `_archivo-cors/`
-- [ ] Existe un único `deploy-desarrollo.md` consolidado (o se decidió mantener ambos)
-- [ ] CHANGELOG.md poblado o eliminado
-- [ ] ROADMAP.md poblado o eliminado
-- [ ] TECH_DEBT.md poblado o eliminado
+- [x] Existe `docs/21-instrucciones/CORS-GUIA-DEFINITIVA.md`
+- [x] Los 9 archivos CORS originales están en `_archivo-cors/`
+- [x] deploy-desarrollo en _archivo; canónico: deploy-desarrollo-guiado
+- [x] CHANGELOG.md con referencia a tags
+- [x] ROADMAP.md y TECH_DEBT.md en docs/34-por-hacer/
 
 ### FASE 3 — Reorganización de Producción
 
-- [ ] Existe `docs/25-produccion/00-ESTADO-ACTUAL.md`
-- [ ] Propuestas implementadas movidas a `_archivo/`
-- [ ] README en cada subdirectorio de producción actualizado
+- [x] Existe `docs/25-produccion/00-ESTADO-ACTUAL.md`
+- [x] Propuestas implementadas movidas a `_archivo/` (raíz, analisis, cambios)
+- [ ] README en cada subdirectorio de producción actualizado (parcial)
 
 ### FASE 4 — Archivado de Documentación Deprecada
 
-- [ ] Documentos v1 movidos a `docs/_archivo/api-v1/`
-- [ ] Planes completados movidos a `docs/_archivo/planes-completados/`
-- [ ] Artefactos auditoría 2026-02-13 movidos a `docs/audits/documentation/2026-02-13/`
-- [ ] Carpeta `docs/00_ POR IMPLEMENTAR/` eliminada o consolidada
+- [x] Documentos v1 movidos a `docs/_archivo/api-v1/`
+- [x] Planes completados movidos a `docs/_archivo/planes-completados/`
+- [x] Artefactos auditoría 2026-02-13 movidos a `docs/audits/documentation/2026-02-13/`
+- [x] Carpeta `docs/00_ POR IMPLEMENTAR/` consolidada (por-implementar/00-POR-IMPLEMENTAR-README.md)
 
 ### FASE 5 — Mejoras Estructurales
 
-- [ ] No hay dos archivos con mismo prefijo numérico en una carpeta
-- [ ] `86-Control-Horario-FRONTEND.md` en `docs/33-frontend/` (si se decidió mover)
-- [ ] Decisión tomada sobre `.ai_work_context/` (.gitignore o mantener)
-- [ ] Decisión tomada sobre `docs/35-prompts/` (mover a .agents/ o mantener)
+- [x] No hay dos archivos con mismo prefijo numérico (02b, 31b, 82b)
+- [x] Control-Horario-FRONTEND en `docs/33-frontend/`
+- [x] `.ai_work_context/` en .gitignore
+- [ ] Decisión tomada sobre `docs/35-prompts/` (mantener en docs por ahora)
 
 ### FASE 6 — Documentos Nuevos
 
-- [ ] Todos los documentos nuevos siguen la plantilla/convención existente
-- [ ] Nuevos documentos enlazados desde índices correspondientes (00-OVERVIEW, README)
-- [ ] MANIFEST.md actualizado con nuevos documentos
+- [x] 11b-STAGING, DEBUGGING-GUIDE, postmortem template poblados
+- [x] Enlazados desde docs correspondientes
+- [ ] MANIFEST.md actualizado (pendiente FASE F del plan pendientes)
 
 ---
 
@@ -184,11 +183,11 @@
 
 | Métrica | Antes | Después | Objetivo |
 |---------|-------|---------|----------|
-| Total docs en docs/ | 196 | ___ | ~170 |
-| Archivos duplicados | 22+ | ___ | 0 |
-| Archivos deprecados visibles | 6 | ___ | 0 |
-| Stubs vacíos | 8 | ___ | ≤ 3 |
-| Calidad global | 7/10 | ___ | ≥ 8.5/10 |
+| Total docs en docs/ | 196 | ~185 | ~170 |
+| Archivos duplicados activos | 22+ | 0 (CORS, deploy archivados) | 0 |
+| Archivos deprecados visibles en raíz | 6 | 0 (archivados) | 0 |
+| Stubs vacíos | 8 | ≤ 3 (poblados rollback, runbook, staging, debugging, postmortem) | ≤ 3 |
+| Calidad global | 7/10 | ~8/10 | ≥ 8.5/10 |
 
 ---
 
@@ -196,13 +195,13 @@
 
 | Fase | Validado por | Fecha | Estado |
 |------|-------------|-------|--------|
-| FASE 1 | | | ⬜ Pendiente |
-| FASE 2 | | | ⬜ Pendiente |
-| FASE 3 | | | ⬜ Pendiente |
-| FASE 4 | | | ⬜ Pendiente |
-| FASE 5 | | | ⬜ Pendiente |
-| FASE 6 | | | ⬜ Pendiente |
-| **FINAL** | | | ⬜ Pendiente |
+| FASE 1 | Plan pendientes (FASE A) | 2026-02-16 | ✅ |
+| FASE 2 | Plan pendientes (FASE A) | 2026-02-16 | ✅ |
+| FASE 3 | Plan pendientes (FASE A) | 2026-02-16 | ✅ |
+| FASE 4 | Plan pendientes (FASE A) | 2026-02-16 | ✅ |
+| FASE 5 | Plan pendientes (FASE A) | 2026-02-16 | ✅ (35-prompts pendiente decisión) |
+| FASE 6 | Plan pendientes (FASE A) | 2026-02-16 | ✅ (MANIFEST pendiente FASE F) |
+| **FINAL** | | | 🔄 En progreso (plan pendientes FASE B–F) |
 
 ---
 

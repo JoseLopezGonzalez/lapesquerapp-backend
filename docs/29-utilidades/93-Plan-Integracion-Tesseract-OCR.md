@@ -243,7 +243,7 @@ public function handle(Request $request, Closure $next)
 
 #### 2.2.4 Registrar Middleware
 
-**Archivo**: `app/Http/Kernel.php` o `bootstrap/app.php` (Laravel 11)
+**Archivo**: `app/Http/Kernel.php` o `bootstrap/app.php` (Laravel 10)
 
 ```php
 protected $middlewareAliases = [

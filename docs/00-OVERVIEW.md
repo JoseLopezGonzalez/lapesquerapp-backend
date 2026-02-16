@@ -35,7 +35,7 @@ audience: Backend Engineers, DevOps, Architects
 | 09 | Testing | [09-TESTING.md](./09-TESTING.md) | Por completar |
 | 10 | Observabilidad | [10-OBSERVABILITY-MONITORING.md](./10-OBSERVABILITY-MONITORING.md) | Por completar |
 | 11 | Deployment | [11-DEPLOYMENT/](./11-DEPLOYMENT/) | [instrucciones/](./21-instrucciones/) |
-| 12 | Troubleshooting | [12-TROUBLESHOOTING/](./12-TROUBLESHOOTING/) | [referencia/98-Errores-Comunes](./30-referencia/98-Errores-Comunes.md), [PROBLEMAS-CRITICOS](./PROBLEMAS-CRITICOS.md) |
+| 12 | Troubleshooting | [12-TROUBLESHOOTING/](./12-TROUBLESHOOTING/) | [referencia/98-Errores-Comunes](./30-referencia/98-Errores-Comunes.md), [PROBLEMAS-CRITICOS](./audits/PROBLEMAS-CRITICOS.md) |
 | 13 | Postmortems | [13-POSTMORTEMS/](./13-POSTMORTEMS/) | Carpeta para informes de incidentes (por documentar) |
 | 14 | Architecture Decisions | [14-ARCHITECTURE-DECISIONS/](./14-ARCHITECTURE-DECISIONS/) | ADR (por documentar) |
 | 15 | Multi-tenant | [15-MULTI-TENANT-SPECIFICS.md](./15-MULTI-TENANT-SPECIFICS.md) | [fundamentos/01-Arquitectura-Multi-Tenant](./20-fundamentos/01-Arquitectura-Multi-Tenant.md) |
@@ -67,20 +67,14 @@ Las carpetas de contenido tienen prefijo numérico para un orden claro al listar
 
 ## Problemas críticos
 
-**[PROBLEMAS-CRITICOS.md](./PROBLEMAS-CRITICOS.md)** — Resumen ejecutivo de los 25 problemas más críticos.  
+**[PROBLEMAS-CRITICOS.md](./audits/PROBLEMAS-CRITICOS.md)** — Resumen ejecutivo de los 25 problemas más críticos.  
 Detalle ampliado: [referencia/98-Errores-Comunes.md](./30-referencia/98-Errores-Comunes.md).
 
 ---
 
 ## Auditoría de documentación
 
-- [CURRENT_STATE_SNAPSHOT.md](./CURRENT_STATE_SNAPSHOT.md) — Snapshot estado actual (FASE 0).
-- [INVENTORY.md](./INVENTORY.md) — Inventario (FASE 1).
-- [CLASSIFICATION_MATRIX.md](./CLASSIFICATION_MATRIX.md) — Matriz de clasificación y hallazgos (FASE 2).
-- [DOCUMENTATION_MAPPING_MATRIX.md](./DOCUMENTATION_MAPPING_MATRIX.md) — Mapeo docs → estructura objetivo (FASE 3).
-- [DOCUMENTATION_ORPHANS_AND_CATEGORIES.md](./DOCUMENTATION_ORPHANS_AND_CATEGORIES.md) — Huérfanos y nuevas categorías (FASE 4).
-- [DOCUMENTATION_RESTRUCTURING_CHECKLIST.md](./DOCUMENTATION_RESTRUCTURING_CHECKLIST.md) — Plan de reestructuración (FASE 5).
-- [DOCUMENTATION_AUDIT_REPORT.md](./DOCUMENTATION_AUDIT_REPORT.md) — Informe de auditoría (FASE 7).
+Artefactos de auditoría previa (2026-02-13) y actual: [audits/documentation/](./audits/documentation/) (incl. 2026-02-13/, AUDIT_REPORT.md, MANIFEST.md, REORGANIZATION_PLAN.md).
 
 ---
 

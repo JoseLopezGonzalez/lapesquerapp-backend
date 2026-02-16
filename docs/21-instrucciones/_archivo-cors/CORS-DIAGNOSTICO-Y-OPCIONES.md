@@ -1,3 +1,10 @@
+# CORS: diagnóstico y opciones (archivado — ver CORS-GUIA-DEFINITIVA.md)
+
+---
+**Archivado:** 2026-02-16. Contenido consolidado en `CORS-GUIA-DEFINITIVA.md`.
+
+---
+
 # CORS: diagnóstico y opciones antes de seguir
 
 ## Lo que sabemos

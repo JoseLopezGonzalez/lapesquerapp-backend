@@ -92,7 +92,7 @@ Cada base de datos tenant contiene:
 ## 🧱 Tecnologías Utilizadas
 
 ### Backend Framework
-- **Laravel 11**: Framework PHP moderno y robusto
+- **Laravel 10**: Framework PHP moderno y robusto
 - **PHP 8.1+**: Lenguaje de programación
 
 ### Base de Datos

@@ -30,7 +30,7 @@ Documentación esencial para entender la arquitectura del sistema:
 
 ### 📁 [Instrucciones](./21-instrucciones/)
 Despliegue y entorno de desarrollo:
-- **[deploy-desarrollo.md](./21-instrucciones/deploy-desarrollo.md)**: Deploy con Docker Sail (resumen y scripts)
+- **[deploy-desarrollo.md](./21-instrucciones/_archivo/deploy-desarrollo.md)**: Deploy con Docker Sail — resumen y scripts (archivado; documento principal: deploy-desarrollo-guiado)
 - **[deploy-desarrollo-guiado.md](./21-instrucciones/deploy-desarrollo-guiado.md)**: Guía paso a paso (primera vez)
 - **[actualizacion-seeders-migraciones.md](./21-instrucciones/actualizacion-seeders-migraciones.md)**: Qué hacer cuando cambias seeders o migraciones (análisis de implementación)
 - **[guia-completa-entorno-sail-windows.md](./21-instrucciones/guia-completa-entorno-sail-windows.md)**: Guía completa Sail + Windows/WSL (seeders, frontend, troubleshooting)
@@ -154,7 +154,7 @@ Documentación de referencia técnica:
 - **[99-Glosario.md](./30-referencia/99-Glosario.md)**: Glosario de términos técnicos y de negocio
 - **[100-Rendimiento-Endpoints.md](./30-referencia/100-Rendimiento-Endpoints.md)**, **[101-Plan-Mejoras-GET-orders-id.md](./30-referencia/101-Plan-Mejoras-GET-orders-id.md)**, **[102-Plan-Mejoras-GET-orders-active.md](./30-referencia/102-Plan-Mejoras-GET-orders-active.md)**: Planes de mejora
 - **[ANALISIS-API-FRONTEND-BACKEND.md](./30-referencia/ANALISIS-API-FRONTEND-BACKEND.md)**: Análisis API frontend-backend
-- **[PLAN-ELIMINACION-ARTICLE.md](./30-referencia/PLAN-ELIMINACION-ARTICLE.md)**: Plan eliminación Article (referenciado en PROBLEMAS-CRITICOS)
+- **Plan eliminación Article** (completado): archivado en [\_archivo/planes-completados/](./_archivo/planes-completados/).
 
 ---
 
@@ -176,7 +176,7 @@ Ver [README de ejemplos](./32-ejemplos/README.md) para la lista completa.
 
 Para un resumen ejecutivo de los problemas más críticos del sistema:
 
-**📄 [PROBLEMAS-CRITICOS.md](./PROBLEMAS-CRITICOS.md)**
+**📄 [PROBLEMAS-CRITICOS.md](./audits/PROBLEMAS-CRITICOS.md)**
 
 Este documento resume los **25 problemas más críticos** organizados por prioridad:
 - 🔴 **Crítico**: Seguridad y datos (funcionalidad rota, vulnerabilidades)
@@ -192,7 +192,7 @@ Para ver todos los problemas detallados (59 en total), consultar [`referencia/98
 1. **Para desarrolladores nuevos**: Comienza por [Fundamentos](./20-fundamentos/) y [Instrucciones](./21-instrucciones/) (deploy con Sail).
 2. **Para trabajar en un módulo específico**: Navega a la carpeta correspondiente o a [API References](./31-api-references/).
 3. **Para frontend (Production Tree)**: Consulta [Producción > Frontend](./25-produccion/frontend/); para auth/roles/email, [Frontend](./33-frontend/).
-4. **Para entender problemas**: Revisa [PROBLEMAS-CRITICOS.md](./PROBLEMAS-CRITICOS.md) y la sección "Observaciones Críticas" al final de cada archivo.
+4. **Para entender problemas**: Revisa [PROBLEMAS-CRITICOS.md](./audits/PROBLEMAS-CRITICOS.md) y la sección "Observaciones Críticas" al final de cada archivo.
 5. **Para referencia rápida**: Usa los archivos en [Referencia](./30-referencia/).
 6. **Para ejemplos de respuestas**: Consulta [Ejemplos](./32-ejemplos/).
 7. **Para agentes IA (Cursor)** — Sistema de memoria de trabajo: **`.ai_standards/`** en la raíz del proyecto (README y QUICK_START_GUIDE).

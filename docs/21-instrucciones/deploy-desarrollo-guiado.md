@@ -1,5 +1,7 @@
 # Deploy en desarrollo – Guía paso a paso (primera vez)
 
+**Documento principal de deploy en desarrollo.** Para pasos resumidos y re-deploy, ver también [_archivo/deploy-desarrollo.md](_archivo/deploy-desarrollo.md).
+
 Sigue cada paso en orden. Después de cada uno, comprueba el resultado antes de pasar al siguiente.
 
 ---
@@ -202,4 +204,4 @@ curl -s http://localhost/api/health
 | `tenants:migrate` no hace nada | Que exista al menos un tenant activo en `tenants` y que su BD exista en MySQL. |
 | Error en seeders (ej. tabla no existe) | Ejecutar primero `tenants:migrate` sin `--seed` y luego `tenants:seed`. |
 
-Cuando hayas completado todos los pasos, tendrás el **deploy en desarrollo** listo para trabajar. Para más detalle, ver [deploy-desarrollo.md](./deploy-desarrollo.md).
+Cuando hayas completado todos los pasos, tendrás el **deploy en desarrollo** listo para trabajar. Para más detalle, ver [deploy-desarrollo.md](_archivo/deploy-desarrollo.md).

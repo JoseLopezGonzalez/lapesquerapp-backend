@@ -32,12 +32,12 @@ Equipo de desarrollo, responsables de seguridad y compliance.
 
 **Documentación técnica:**
 
-- [docs/fundamentos/02-Autenticacion-Autorizacion.md](docs/fundamentos/02-Autenticacion-Autorizacion.md) — Sanctum, magic link, OTP, flujos.
-- [docs/sistema/80-Usuarios.md](docs/sistema/80-Usuarios.md) — Usuarios.
-- [docs/sistema/81-Roles.md](docs/sistema/81-Roles.md) — Roles y permisos.
-- [docs/sistema/82-Sesiones.md](docs/sistema/82-Sesiones.md) — Sesiones activas.
-- [docs/sistema/88-Auth-Limpieza-Tokens-Reenvio-Invitacion.md](docs/sistema/88-Auth-Limpieza-Tokens-Reenvio-Invitacion.md) — Limpieza de tokens y reenvío de invitación.
-- [docs/sistema/89-Auth-Contrasenas-Eliminadas.md](docs/sistema/89-Auth-Contrasenas-Eliminadas.md) — Contexto de eliminación de contraseñas.
+- [docs/20-fundamentos/02-Autenticacion-Autorizacion.md](docs/20-fundamentos/02-Autenticacion-Autorizacion.md) — Sanctum, magic link, OTP, flujos.
+- [docs/28-sistema/80-Usuarios.md](docs/28-sistema/80-Usuarios.md) — Usuarios.
+- [docs/28-sistema/81-Roles.md](docs/28-sistema/81-Roles.md) — Roles y permisos.
+- [docs/28-sistema/82-Sesiones.md](docs/28-sistema/82-Sesiones.md) — Sesiones activas.
+- [docs/28-sistema/88-Auth-Limpieza-Tokens-Reenvio-Invitacion.md](docs/28-sistema/88-Auth-Limpieza-Tokens-Reenvio-Invitacion.md) — Limpieza de tokens y reenvío de invitación.
+- [docs/28-sistema/89-Auth-Contrasenas-Eliminadas.md](docs/28-sistema/89-Auth-Contrasenas-Eliminadas.md) — Contexto de eliminación de contraseñas.
 
 ---
 
@@ -45,7 +45,7 @@ Equipo de desarrollo, responsables de seguridad y compliance.
 
 - **Nunca** versionar `.env` ni incluir claves, contraseñas de BD o tokens en el repositorio.
 - Usar **.env.example** como plantilla sin valores sensibles; cada entorno (local, staging, producción) tiene su propio `.env`.
-- Variables críticas típicas: `APP_KEY`, `DB_*`, `REDIS_*`, claves de servicios externos (mail, Azure Document AI, etc.). Documentación de variables: [docs/02-ENVIRONMENT-VARIABLES.md](docs/02-ENVIRONMENT-VARIABLES.md) y [docs/fundamentos/03-Configuracion-Entorno.md](docs/fundamentos/03-Configuracion-Entorno.md).
+- Variables críticas típicas: `APP_KEY`, `DB_*`, `REDIS_*`, claves de servicios externos (mail, Azure Document AI, etc.). Documentación de variables: [docs/02-ENVIRONMENT-VARIABLES.md](docs/02-ENVIRONMENT-VARIABLES.md) y [docs/20-fundamentos/03-Configuracion-Entorno.md](docs/20-fundamentos/03-Configuracion-Entorno.md).
 - En producción, los secretos deben gestionarse mediante mecanismos seguros (variables de entorno del host o gestor de secretos), no en archivos commiteados.
 
 ---
@@ -53,7 +53,7 @@ Equipo de desarrollo, responsables de seguridad y compliance.
 ## Datos y multi-tenant
 
 - El sistema es **multi-tenant**: una base de datos central (empresas/tenants) y una base de datos por tenant para datos de negocio.
-- El aislamiento de datos entre tenants es un requisito de seguridad; la identificación del tenant (p. ej. subdominio o cabecera `X-Tenant`) y el uso correcto de la conexión de BD por tenant están documentados en [docs/15-MULTI-TENANT-SPECIFICS.md](docs/15-MULTI-TENANT-SPECIFICS.md) y [docs/fundamentos/01-Arquitectura-Multi-Tenant.md](docs/fundamentos/01-Arquitectura-Multi-Tenant.md).
+- El aislamiento de datos entre tenants es un requisito de seguridad; la identificación del tenant (p. ej. subdominio o cabecera `X-Tenant`) y el uso correcto de la conexión de BD por tenant están documentados en [docs/15-MULTI-TENANT-SPECIFICS.md](docs/15-MULTI-TENANT-SPECIFICS.md) y [docs/20-fundamentos/01-Arquitectura-Multi-Tenant.md](docs/20-fundamentos/01-Arquitectura-Multi-Tenant.md).
 - No exponer información de un tenant a otro; validar siempre el contexto tenant en endpoints y jobs.
 
 ---

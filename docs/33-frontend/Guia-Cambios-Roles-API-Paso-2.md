@@ -285,6 +285,6 @@ Ajustar todas las condiciones que usen `user.roles` para que usen **`user.role`*
 
 - Contrato detallado de usuarios y roles: `docs/31-api-references/sistema/README.md`.
 - Autenticación (login, me): `docs/31-api-references/autenticacion/README.md`.
-- Resumen de pasos pendientes (Paso 2 y 3): `docs/28-sistema/82-Roles-Pasos-2-y-3-Pendientes.md`.
+- Resumen de pasos pendientes (Paso 2 y 3): `docs/28-sistema/82b-Roles-Pasos-Pendientes.md`.
 
 Si algo no cuadra con lo que devuelve la API, comprobar que el backend esté actualizado con la migración de roles (enum y columna `users.role`).
