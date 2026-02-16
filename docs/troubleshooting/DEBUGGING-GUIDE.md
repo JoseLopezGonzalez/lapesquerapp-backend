@@ -38,5 +38,5 @@ Procedimientos para depurar el backend Laravel (local, Sail, o contenedor).
 ## Véase también
 
 - [COMMON-ERRORS.md](COMMON-ERRORS.md) — Errores frecuentes.
-- [../observability-monitoring.md](../observability-monitoring.md) — Observabilidad.
+- [../10-observability-monitoring.md](../10-observability-monitoring.md) — Observabilidad.
 - [../deployment/11e-RUNBOOK.md](../deployment/11e-RUNBOOK.md) — Runbook (logs, incidentes).

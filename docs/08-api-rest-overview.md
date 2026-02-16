@@ -22,7 +22,7 @@ audience: Backend Engineers, Frontend Engineers
 
 ## Contenido principal
 
-- **[API-references/README.md](./api-references/README.md)** — Índice por módulo (autenticación, catálogos, pedidos, inventario, producción, recepciones-despachos, utilidades, estadísticas, productos, sistema).
+- **[api-references/](api-references/)** — Índice por módulo (autenticación, catálogos, pedidos, inventario, producción, recepciones-despachos, utilidades, estadísticas, productos, sistema).
 - **[referencia/97-Rutas-Completas.md](./referencia/97-Rutas-Completas.md)** — Lista completa de rutas v2.
 - **[referencia/96-Recursos-API.md](./referencia/96-Recursos-API.md)** — Recursos API (transformación de modelos a JSON).
 - **[referencia/96-Restricciones-Entidades.md](./referencia/96-Restricciones-Entidades.md)** — Restricciones entre entidades.
@@ -35,5 +35,5 @@ Autenticación:
 
 ## Véase también
 
-- [architecture.md](./architecture.md) — Arquitectura.
+- [03-architecture-overview.md](./03-architecture-overview.md) — Arquitectura.
 - [troubleshooting/COMMON-ERRORS.md](./troubleshooting/COMMON-ERRORS.md) — Errores comunes de API.

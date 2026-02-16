@@ -24,21 +24,21 @@ audience: Backend Engineers, DevOps, Architects
 
 | Número | Tema | Documento | Contenido equivalente existente |
 |--------|------|-----------|----------------------------------|
-| 01 | Setup local | [setup-local.md](./setup-local.md) | [instrucciones/](./instrucciones/), [fundamentos/03-Configuracion-Entorno](./fundamentos/03-Configuracion-Entorno.md) |
-| 02 | Variables de entorno | [environment-variables.md](./environment-variables.md) | [fundamentos/03-Configuracion-Entorno](./fundamentos/03-Configuracion-Entorno.md) |
-| 03 | Arquitectura | [architecture.md](./architecture.md) | [fundamentos/00-Introduccion](./fundamentos/00-Introduccion.md), [01-Arquitectura-Multi-Tenant](./fundamentos/01-Arquitectura-Multi-Tenant.md) |
-| 04 | Base de datos | [database.md](./database.md) | [referencia/95-Modelos-Referencia](./referencia/95-Modelos-Referencia.md), migraciones |
-| 05 | Colas y jobs | [queues-jobs.md](./queues-jobs.md) | Por completar |
-| 06 | Scheduler / Cron | [scheduler-cron.md](./scheduler-cron.md) | Por completar |
-| 07 | Storage y archivos | [storage-files.md](./storage-files.md) | [utilidades/](./utilidades/) |
-| 08 | API REST | [api-rest.md](./api-rest.md) | [api-references/](./api-references/), [referencia/97-Rutas-Completas](./referencia/97-Rutas-Completas.md) |
-| 09 | Testing | [testing.md](./testing.md) | Por completar |
-| 10 | Observabilidad | [observability-monitoring.md](./observability-monitoring.md) | Por completar |
+| 01 | Setup local | [01-setup-local.md](./01-setup-local.md) | [instrucciones/](./instrucciones/), [fundamentos/03-Configuracion-Entorno](./fundamentos/03-Configuracion-Entorno.md) |
+| 02 | Variables de entorno | [02-environment-variables.md](./02-environment-variables.md) | [fundamentos/03-Configuracion-Entorno](./fundamentos/03-Configuracion-Entorno.md) |
+| 03 | Arquitectura | [03-architecture-overview.md](./03-architecture-overview.md) | [fundamentos/00-Introduccion](./fundamentos/00-Introduccion.md), [01-Arquitectura-Multi-Tenant](./fundamentos/01-Arquitectura-Multi-Tenant.md) |
+| 04 | Base de datos | [04-database-overview.md](./04-database-overview.md) | [referencia/95-Modelos-Referencia](./referencia/95-Modelos-Referencia.md), migraciones |
+| 05 | Colas y jobs | [05-queues-jobs.md](./05-queues-jobs.md) | Por completar |
+| 06 | Scheduler / Cron | [06-scheduler-cron.md](./06-scheduler-cron.md) | Por completar |
+| 07 | Storage y archivos | [07-storage-files.md](./07-storage-files.md) | [utilidades/](./utilidades/) |
+| 08 | API REST | [08-api-rest-overview.md](./08-api-rest-overview.md) | [api-references/](./api-references/), [referencia/97-Rutas-Completas](./referencia/97-Rutas-Completas.md) |
+| 09 | Testing | [09-testing.md](./09-testing.md) | Por completar |
+| 10 | Observabilidad | [10-observability-monitoring.md](./10-observability-monitoring.md) | Por completar |
 | 11 | Deployment | [deployment/](./deployment/) | [instrucciones/](./instrucciones/) |
 | 12 | Troubleshooting | [troubleshooting/](./troubleshooting/) | [referencia/98-Errores-Comunes](./referencia/98-Errores-Comunes.md), [PROBLEMAS-CRITICOS](./audits/PROBLEMAS-CRITICOS.md) |
 | 13 | Postmortems | [postmortems/](./postmortems/) | Carpeta para informes de incidentes (por documentar) |
 | 14 | Architecture Decisions | [architecture-decisions/](./architecture-decisions/) | ADR (por documentar) |
-| 15 | Multi-tenant | [multi-tenant-specs.md](./multi-tenant-specs.md) | [fundamentos/01-Arquitectura-Multi-Tenant](./fundamentos/01-Arquitectura-Multi-Tenant.md) |
+| 15 | Multi-tenant | [15-multi-tenant-specs.md](./15-multi-tenant-specs.md) | [fundamentos/01-Arquitectura-Multi-Tenant](./fundamentos/01-Arquitectura-Multi-Tenant.md) |
 
 ---
 
@@ -80,5 +80,5 @@ Artefactos de auditoría previa (2026-02-13) y actual: [audits/documentation/](.
 
 ## Véase también
 
-- [README.md](./README.md) — Índice detallado por carpetas (misma información, vista por dominio).
+- [00-docs-index.md](./00-docs-index.md) — Índice detallado por carpetas (vista por dominio).
 - **Agentes IA (Cursor)** — Sistema de memoria de trabajo: **`.ai_standards/`** en la raíz del proyecto.

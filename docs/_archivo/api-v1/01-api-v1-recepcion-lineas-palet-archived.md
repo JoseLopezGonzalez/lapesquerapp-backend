@@ -1,8 +1,8 @@
-> **⚠️ DEPRECADO — Solo histórico.** La API v1 fue eliminada del proyecto (2025-01-27). Este documento se conserva como referencia del diseño anterior. Para la API actual usar [API v2](../api-references/recepciones-despachos/README.md) y la documentación de [recepciones de materia prima](./60-Recepciones-Materia-Prima.md). Ver [ADR 0001 — API v2 única](../architecture-decisions/0001-API-v2-only.md).
+> **⚠️ ARCHIVADO — Solo histórico.** La API v1 fue eliminada (2025-01-27). Para la API actual: [recepciones-despachos](../recepciones-despachos/), [ADR 0001](../architecture-decisions/0001-API-v2-only.md).
 
 ---
 
-# Guía Backend v1: Recepción por Líneas con Palet Automático
+# Guía Backend v1: Recepción por Líneas con Palet Automático (archivado)
 
 ## 📋 Resumen
 

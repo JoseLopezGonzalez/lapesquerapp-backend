@@ -37,6 +37,6 @@ El backend exponía inicialmente rutas bajo `/api/v1/` y posteriormente se intro
 
 ## Referencias
 
-- [overview.md](../overview.md) — Sección "API v2 únicamente".
+- [00-overview.md](../00-overview.md) — Sección "API v2 únicamente".
 - [api-rest.md](../api-rest.md) — Referencia API v2.
 - [referencia/97-Rutas-Completas.md](../referencia/97-Rutas-Completas.md) — Rutas actuales.
