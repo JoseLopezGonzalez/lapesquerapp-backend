@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Http\Middleware;
 
 use Closure;
@@ -14,36 +13,20 @@ class TenantMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
-
-        $excluded = [
-            'api/v2/public/*',
-            'api/health', // health check sin X-Tenant (añadido tras d311027)
-        ];
-
-        foreach ($excluded as $route) {
-            if ($request->is($route)) {
-                return $next($request);
-            }
-        }
-
-
         $subdomain = $request->header('X-Tenant');
 
         if (!$subdomain) {
             return response()->json(['error' => 'Tenant not specified'], 400);
         }
 
-        // Buscamos el tenant en la base central
         $tenant = Tenant::where('subdomain', $subdomain)->where('active', true)->first();
 
         if (!$tenant) {
             return response()->json(['error' => 'Tenant not found or inactive'], 404);
         }
 
-        // Guardamos el subdominio actual globalmente
         app()->instance('currentTenant', $subdomain);
 
-        // Configuramos la conexión dinámica para el tenant
         config([
             'database.connections.tenant.database' => $tenant->database,
         ]);
@@ -51,11 +34,10 @@ class TenantMiddleware
         DB::purge('tenant');
         DB::reconnect('tenant');
 
-        // Log solo en debug para evitar I/O y volumen en producción
         if (config('app.debug')) {
-            Log::info('🔁 Conexión cambiada dinámicamente a tenant', [
+            Log::info('Tenant connection established', [
                 'subdomain' => $subdomain,
-                'database' => $tenant->database,
+                'database'  => $tenant->database,
             ]);
         }
 
