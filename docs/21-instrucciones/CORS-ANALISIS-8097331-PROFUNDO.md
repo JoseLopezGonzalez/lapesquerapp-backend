@@ -1,5 +1,17 @@
 # Análisis CORS: 8097331 (funcionaba) vs producción actual
 
+## Estado de referencia que funcionaba: d311027 (11 Feb 2026)
+
+Commit **d311027** fue el último desplegado entre el 11 y 15 de febrero con CORS funcionando correctamente. Después de ese despliegue, commits del día 15 introdujeron cambios que rompieron CORS.
+
+**Archivos restaurados a d311027:**
+- `config/cors.php` — orígenes, patrones, max_age=0
+- `config/sanctum.php` — `stateful => []`
+- `app/Http/Middleware/TenantMiddleware.php` — sin exclusión OPTIONS (se mantiene api/health para health checks actuales)
+- `Dockerfile` — solo `a2enmod rewrite` (sin headers/setenvif)
+
+---
+
 ## Hallazgo clave: Exception Handler (15 Feb 2026)
 
 **Síntoma:** `GET /api/v2/public/tenant/brisamar` devuelve CORS correctamente (200 OK). `POST /api/v2/auth/request-access` no devuelve `Access-Control-Allow-Origin` y el navegador bloquea.

@@ -24,11 +24,11 @@ return [
     // Permitir varios orígenes (especifica los dominios)
     'allowed_origins' => [
         'http://localhost:3000', // Origen local (por ejemplo, frontend en desarrollo)
+        'https://*.congeladosbrisamar.es', // Origen de producción
         'http://localhost:5173',
         'https://lapesquerapp.es',
-        'https://brisamar.lapesquerapp.es',
-        'https://test.lapesquerapp.es',
-        'https://pymcolorao.lapesquerapp.es',
+        'https://*.lapesquerapp.es', // permite todos los subdominios
+        /* 'https://brisamar.lapesquerapp.es', */
         'http://brisamar.localhost:3000',
         'http://test.localhost:3000',
         'http://pymcolorao.localhost:3000',
@@ -37,9 +37,6 @@ return [
 
     'allowed_origins_patterns' => [
         '/^https:\/\/[a-z0-9\-]+\.lapesquerapp\.es$/',
-        '/^https:\/\/[a-z0-9\-]+\.congeladosbrisamar\.es$/',
-        '/^http:\/\/[a-z0-9\-]+\.localhost(?::\d+)?$/',
-        '/^http:\/\/127\.0\.0\.1(?::\d+)?$/',
     ],
 
 
@@ -47,7 +44,7 @@ return [
 
     'exposed_headers' => [],
 
-    'max_age' => 86400,
+    'max_age' => 0,
 
     'supports_credentials' => true,
 
