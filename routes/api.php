@@ -211,17 +211,16 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
             /* Controladores Genericos */
             Route::apiResource('employees', EmployeeController::class);
             Route::delete('employees', [EmployeeController::class, 'destroyMultiple']);
-            // Rutas específicas de punches deben ir ANTES del apiResource
-            Route::get('punches/dashboard', [PunchController::class, 'dashboard'])->name('punches.dashboard');
-            Route::get('punches/statistics', [PunchController::class, 'statistics'])->name('punches.statistics');
-            Route::get('punches/calendar', [PunchController::class, 'calendar'])->name('punches.calendar');
-            // Fichajes manuales (requieren autenticación)
-            // Nota: POST /api/v2/punches detecta automáticamente si es manual (tiene timestamp/event_type) o NFC
-            // Las rutas bulk solo son para fichajes manuales
-            Route::post('punches/bulk/validate', [PunchController::class, 'bulkValidate'])->name('punches.bulk.validate');
-            Route::post('punches/bulk', [PunchController::class, 'bulkStore'])->name('punches.bulk.store');
-            Route::apiResource('punches', PunchController::class)->except(['store', 'create']);
-            Route::delete('punches', [PunchController::class, 'destroyMultiple']);
+            // Fichajes: solo tecnico, administrador, administracion y operario
+            Route::middleware(['role:tecnico,administrador,administracion,operario'])->group(function () {
+                Route::get('punches/dashboard', [PunchController::class, 'dashboard'])->name('punches.dashboard');
+                Route::get('punches/statistics', [PunchController::class, 'statistics'])->name('punches.statistics');
+                Route::get('punches/calendar', [PunchController::class, 'calendar'])->name('punches.calendar');
+                Route::post('punches/bulk/validate', [PunchController::class, 'bulkValidate'])->name('punches.bulk.validate');
+                Route::post('punches/bulk', [PunchController::class, 'bulkStore'])->name('punches.bulk.store');
+                Route::apiResource('punches', PunchController::class)->except(['store', 'create']);
+                Route::delete('punches', [PunchController::class, 'destroyMultiple']);
+            });
             Route::apiResource('orders', V2OrderController::class);
             Route::delete('orders', [V2OrderController::class, 'destroyMultiple']);
             Route::apiResource('order-planned-product-details', OrderPlannedProductDetailController::class);

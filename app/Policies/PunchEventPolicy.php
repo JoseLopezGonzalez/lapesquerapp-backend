@@ -11,9 +11,17 @@ class PunchEventPolicy
 {
     use HandlesAuthorization;
 
+    /**
+     * Roles autorizados para fichajes: técnico, administrador, administración y operario.
+     */
     protected function allowedRoles(): array
     {
-        return Role::values();
+        return [
+            Role::Tecnico->value,
+            Role::Administrador->value,
+            Role::Administracion->value,
+            Role::Operario->value,
+        ];
     }
 
     public function viewAny(User $user): bool
