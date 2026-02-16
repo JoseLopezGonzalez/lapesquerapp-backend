@@ -40,11 +40,12 @@ class Kernel extends HttpKernel
      */
     protected $middleware = [
         \App\Http\Middleware\TrustProxies::class,
-        \App\Http\Middleware\CustomCors::class,
+        \Illuminate\Http\Middleware\HandleCors::class,
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        \App\Http\Middleware\TenantMiddleware::class,
     ];
 
 
@@ -65,9 +66,11 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
+            \Illuminate\Http\Middleware\HandleCors::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\LogActivity::class,
+            \App\Http\Middleware\TenantMiddleware::class,
         ],
     ];
 
@@ -90,7 +93,8 @@ class Kernel extends HttpKernel
         'signed' => \App\Http\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-        'cors' => \App\Http\Middleware\CustomCors::class,
+        /* 'cors' => \App\Http\Middleware\Cors::class, */ // Añadido para CORS
+        'cors' => \Illuminate\Http\Middleware\HandleCors::class, // Middleware para CORS
         'role' => \App\Http\Middleware\RoleMiddleware::class, // Middleware para roles
     ];
 }

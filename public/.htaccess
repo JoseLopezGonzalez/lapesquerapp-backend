@@ -5,32 +5,6 @@
 
     RewriteEngine On
 
-    # ── CORS at Apache level ──
-    # OPTIONS never reaches PHP, so Apache must handle CORS for preflight.
-    # "Header setifempty" (without "always") uses the same header table as PHP,
-    # so it correctly skips when PHP already set the header on GET/POST responses.
-    # For OPTIONS (204 from Apache), PHP is not involved → Apache sets headers.
-    # For GET/POST (PHP), CustomCors sets headers → Apache skips (setifempty).
-    <IfModule mod_headers.c>
-        <IfModule mod_setenvif.c>
-            SetEnvIf Origin "^https://[a-z0-9-]+\.lapesquerapp\.es$" ORIGIN_ALLOWED=$0
-            SetEnvIf Origin "^https://lapesquerapp\.es$" ORIGIN_ALLOWED=$0
-            SetEnvIf Origin "^https://[a-z0-9-]+\.congeladosbrisamar\.es$" ORIGIN_ALLOWED=$0
-            SetEnvIf Origin "^http://localhost(:[0-9]+)?$" ORIGIN_ALLOWED=$0
-            SetEnvIf Origin "^http://127\.0\.0\.1(:[0-9]+)?$" ORIGIN_ALLOWED=$0
-
-            Header setifempty Access-Control-Allow-Origin "%{ORIGIN_ALLOWED}e" env=ORIGIN_ALLOWED
-            Header setifempty Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH" env=ORIGIN_ALLOWED
-            Header setifempty Access-Control-Allow-Headers "Authorization, Accept, Origin, Content-Type, X-Tenant" env=ORIGIN_ALLOWED
-            Header setifempty Access-Control-Allow-Credentials "true" env=ORIGIN_ALLOWED
-            Header setifempty Access-Control-Max-Age "86400" env=ORIGIN_ALLOWED
-        </IfModule>
-    </IfModule>
-
-    # Preflight OPTIONS → 204 (Apache handles it, PHP is not invoked)
-    RewriteCond %{REQUEST_METHOD} OPTIONS
-    RewriteRule ^ - [R=204,L]
-
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

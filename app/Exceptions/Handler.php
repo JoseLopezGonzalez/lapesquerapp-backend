@@ -43,29 +43,31 @@ class Handler extends ExceptionHandler
             if ($exception instanceof ValidationException) {
                 $errors = $exception->errors();
                 $userMessage = $this->formatValidationErrorsForUser($errors);
-                return $this->ensureCorsOnApiResponse($request, response()->json([
+
+                return response()->json([
                     'message' => 'Error de validación.',
                     'userMessage' => $userMessage,
                     'errors' => $errors, // Detalles técnicos para programadores
-                ], 422)); // 422 Unprocessable Entity
+                ], 422); // 422 Unprocessable Entity
             }
 
             // Manejar errores de autenticación
             if ($exception instanceof AuthenticationException) {
-                return $this->ensureCorsOnApiResponse($request, response()->json([
+                return response()->json([
                     'message' => 'No autenticado.',
                     'userMessage' => 'Debes iniciar sesión para acceder a este recurso.',
-                ], 401)); // 401 Unauthorized
+                ], 401); // 401 Unauthorized
             }
 
             // Manejar errores HTTP estándar (404, 403, etc.)
             if ($exception instanceof HttpException) {
                 $statusCode = $exception->getStatusCode();
                 $userMessage = $this->formatHttpExceptionMessage($statusCode, $exception->getMessage());
-                return $this->ensureCorsOnApiResponse($request, response()->json([
+
+                return response()->json([
                     'message' => $exception->getMessage() ?: 'Error HTTP.',
                     'userMessage' => $userMessage,
-                ], $statusCode));
+                ], $statusCode);
             }
 
             // Manejar errores de base de datos (QueryException)
@@ -86,85 +88,37 @@ class Handler extends ExceptionHandler
                     stripos($errorMessage, 'unique constraint') !== false) {
                     
                     $userMessage = $this->formatUniqueConstraintViolationForUser($errorMessage, $request);
-                    return $this->ensureCorsOnApiResponse($request, response()->json([
+
+                    return response()->json([
                         'message' => 'Error de validación.',
                         'userMessage' => $userMessage,
                         'error' => $errorMessage, // Detalles técnicos para programadores
-                    ], 422)); // 422 Unprocessable Entity
+                    ], 422); // 422 Unprocessable Entity
                 }
                 
                 // Otros errores de base de datos (foreign key, not null, etc.)
                 $userMessage = $this->formatQueryExceptionForUser($errorMessage, $request);
-                return $this->ensureCorsOnApiResponse($request, response()->json([
+
+                return response()->json([
                     'message' => 'Error de base de datos.',
                     'userMessage' => $userMessage,
                     'error' => $errorMessage, // Detalles técnicos para programadores
-                ], 500)); // 500 Internal Server Error
+                ], 500); // 500 Internal Server Error
             }
 
             // Manejar cualquier otra excepción como error interno del servidor
             $errorMessage = $exception->getMessage();
             $userMessage = $this->formatExceptionMessageForUser($errorMessage, $request);
-            return $this->ensureCorsOnApiResponse($request, response()->json([
+
+            return response()->json([
                 'message' => 'Ocurrió un error inesperado.',
                 'userMessage' => $userMessage,
                 'error' => $errorMessage, // Detalles técnicos para programadores
-            ], 500)); // 500 Internal Server Error
+            ], 500); // 500 Internal Server Error
         }
 
         // Si no es una API o no espera JSON, usar el manejo por defecto
         return parent::render($request, $exception);
-    }
-
-    /**
-     * Añade cabeceras CORS a respuestas de la API generadas por el Exception Handler.
-     * Las respuestas del Handler bypassan el middleware, por lo que HandleCors no se ejecuta.
-     * Sin esto, ValidationException, 404, 500, etc. devolverían JSON sin CORS → error en el navegador.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Symfony\Component\HttpFoundation\Response  $response
-     * @return \Symfony\Component\HttpFoundation\Response
-     */
-    protected function ensureCorsOnApiResponse($request, $response)
-    {
-        if (! $request->is('api/*')) {
-            return $response;
-        }
-
-        if ($response->headers->has('Access-Control-Allow-Origin')) {
-            return $response;
-        }
-
-        $origin = $request->header('Origin');
-        if (! $origin || ! $this->isOriginAllowedForCors($origin)) {
-            return $response;
-        }
-
-        $response->headers->set('Access-Control-Allow-Origin', $origin);
-        $response->headers->set('Access-Control-Allow-Methods', implode(', ', config('cors.allowed_methods', ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'])));
-        $response->headers->set('Access-Control-Allow-Headers', implode(', ', (array) config('cors.allowed_headers', ['*'])));
-        if (config('cors.supports_credentials', false)) {
-            $response->headers->set('Access-Control-Allow-Credentials', 'true');
-        }
-        $response->headers->set('Vary', trim(($response->headers->get('Vary') ? $response->headers->get('Vary') . ', ' : '') . 'Origin'));
-
-        return $response;
-    }
-
-    private function isOriginAllowedForCors(string $origin): bool
-    {
-        $allowed = config('cors.allowed_origins', []);
-        if (in_array($origin, $allowed, true)) {
-            return true;
-        }
-        $patterns = config('cors.allowed_origins_patterns', []);
-        foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $origin)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**
