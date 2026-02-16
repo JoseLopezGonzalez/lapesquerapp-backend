@@ -12,8 +12,8 @@ npx @anthropic-ai/claude-code \
   "LEE COMPLETAMENTE estos archivos EN ESTE ORDEN:
 
 1. CLAUDE.md (contexto del proyecto)
-2. docs/00_CORE CONSOLIDATION PLAN — ERP SaaS (Next.js + Laravel).md
-3. docs/35-prompts/01_Laravel incremental evolution prompt.md
+2. docs/core-consolidation-plan-erp-saas.md
+3. docs/prompts/01_Laravel incremental evolution prompt.md
 4. docs/audits/laravel-backend-global-audit.md
 5. docs/audits/laravel-evolution-log.md
 

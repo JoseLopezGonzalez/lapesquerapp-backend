@@ -10,7 +10,7 @@ La API de PesquerApp se documenta con **Scribe** (knuckleswtf/scribe), generando
 
 ## Cómo ver la documentación (UI)
 
-La documentación HTML está en `public/docs/`. En desarrollo el backend se levanta con **Docker Sail** (ver [Deploy en desarrollo](21-instrucciones/deploy-desarrollo.md)).
+La documentación HTML está en `public/docs/`. En desarrollo el backend se levanta con **Docker Sail** (ver [Deploy en desarrollo](instrucciones/deploy-desarrollo.md)).
 
 1. **Con Sail (entorno de desarrollo del proyecto)**:
    ```bash

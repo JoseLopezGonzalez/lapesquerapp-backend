@@ -818,8 +818,8 @@ Schema::dropIfExists('article_categories');
 ### Fase 10: Actualización de Documentación
 
 #### 10.1 Documentación de código
-- Actualizar `docs/24-catalogos/40-Productos.md`
-- Actualizar `docs/30-referencia/95-Modelos-Referencia.md`
+- Actualizar `docs/catalogos/40-Productos.md`
+- Actualizar `docs/referencia/95-Modelos-Referencia.md`
 - Eliminar referencias a Article
 
 #### 10.2 Actualizar PROBLEMAS-CRITICOS.md

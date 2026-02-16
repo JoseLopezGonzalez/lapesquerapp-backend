@@ -1,7 +1,7 @@
 # Laravel Evolution Log — PesquerApp Backend
 
 Registro de cambios aplicados en el marco de la evolución incremental (CORE v1.0).
-Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incremental evolution prompt.md`.
+Cada entrada sigue el formato definido en `docs/prompts/01_Laravel incremental evolution prompt.md`.
 
 ---
 
@@ -14,11 +14,11 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 1. **Refactorizar `tenantSetting()`** — Helper migrado de `DB::connection('tenant')->table('settings')` a `Setting::query()` para unificar punto de acceso. Cache por petición preservado.
 
-2. **Documentar convenciones de API** — Nuevo `docs/33-frontend/API-Conventions.md`: headers, paginación, filtrado, serialización, formato de errores, endpoints options.
+2. **Documentar convenciones de API** — Nuevo `docs/frontend/API-Conventions.md`: headers, paginación, filtrado, serialización, formato de errores, endpoints options.
 
-3. **Documentar convención tenant para jobs** — Nuevo `docs/20-fundamentos/02-Convencion-Tenant-Jobs.md`: payload con `tenant_subdomain`, configuración de conexión en worker, trait reutilizable.
+3. **Documentar convención tenant para jobs** — Nuevo `docs/fundamentos/02-Convencion-Tenant-Jobs.md`: payload con `tenant_subdomain`, configuración de conexión en worker, trait reutilizable.
 
-4. **Medir cobertura de tests** — Nuevo `docs/21-instrucciones/TESTING-Coverage.md`: comandos `php artisan test --coverage`, `--coverage-html`, requisitos (pcov/xdebug). Carpeta `coverage/` en `.gitignore`.
+4. **Medir cobertura de tests** — Nuevo `docs/instrucciones/TESTING-Coverage.md`: comandos `php artisan test --coverage`, `--coverage-html`, requisitos (pcov/xdebug). Carpeta `coverage/` en `.gitignore`.
 
 5. **Revisar índices en tablas críticas** — Nueva migración `2026_02_15_160000_add_indexes_for_audit_tables.php`: índice en `punch_events.timestamp`, índice en `productions.date`. Documento `docs/audits/indexes-audit-2026-02-15.md`.
 
@@ -27,9 +27,9 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 ### Archivos modificados/creados
 
 - `app/Support/helpers.php` — tenantSetting usa Setting::query()
-- `docs/33-frontend/API-Conventions.md` — nuevo
-- `docs/20-fundamentos/02-Convencion-Tenant-Jobs.md` — nuevo
-- `docs/21-instrucciones/TESTING-Coverage.md` — nuevo
+- `docs/frontend/API-Conventions.md` — nuevo
+- `docs/fundamentos/02-Convencion-Tenant-Jobs.md` — nuevo
+- `docs/instrucciones/TESTING-Coverage.md` — nuevo
 - `docs/audits/indexes-audit-2026-02-15.md` — nuevo
 - `database/migrations/companies/2026_02_15_160000_add_indexes_for_audit_tables.php` — nuevo
 - `tests/Feature/ProductionBlockApiTest.php` — nuevo
@@ -347,7 +347,7 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 - ✅ TenantBlockApiTest: 5 tests, 8 assertions, OK.
 - ✅ AuthBlockApiTest, ProductosBlockApiTest: OK (Tenant::create en tests con conexión mysql).
-- ⚠️ **Breaking change frontend:** Respuesta 200 ahora envuelve en `data` (convención API Resources). Doc: `docs/33-frontend/API-CAMBIO-Tenant-Endpoint-Data-Wrapper.md`.
+- ⚠️ **Breaking change frontend:** Respuesta 200 ahora envuelve en `data` (convención API Resources). Doc: `docs/frontend/API-CAMBIO-Tenant-Endpoint-Data-Wrapper.md`.
 
 ### Gap to 10/10
 
@@ -820,7 +820,7 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 - **UserPolicy**: delete solo administrador y tecnico; usuario no puede eliminarse a sí mismo. Resto de métodos sin cambio (todos los roles pueden viewAny, view, create, update).
 - **AuthServiceProvider**: registradas ActivityLogPolicy y SessionPolicy (PersonalAccessToken => SessionPolicy).
 - **Handler**: manejo de AuthorizationException → respuesta JSON 403 con userMessage "No tienes permisos para realizar esta acción."
-- **AuthBlockApiTest** (tests/Feature/AuthBlockApiTest.php): 21 tests con tenant + Sanctum. Auth: requestAccess (422 sin email, 200 con email), me (401 sin token, 200 con token), logout, verifyMagicLink/verifyOtp (400 token/código inválido). Users: list (401, 200 paginado), store, show, update, destroy (403 al eliminarse a sí mismo, 200 al eliminar otro como admin). Sessions: index (401, 200 rol permitido, 403 operario), destroy (200 propia sesión). Activity logs: index (401, 200 rol permitido, 403 operario). Documentación: docs/09-TESTING.md actualizado con AuthBlockApiTest.
+- **AuthBlockApiTest** (tests/Feature/AuthBlockApiTest.php): 21 tests con tenant + Sanctum. Auth: requestAccess (422 sin email, 200 con email), me (401 sin token, 200 con token), logout, verifyMagicLink/verifyOtp (400 token/código inválido). Users: list (401, 200 paginado), store, show, update, destroy (403 al eliminarse a sí mismo, 200 al eliminar otro como admin). Sessions: index (401, 200 rol permitido, 403 operario), destroy (200 propia sesión). Activity logs: index (401, 200 rol permitido, 403 operario). Documentación: docs/testing.md actualizado con AuthBlockApiTest.
 
 ### Verification Results
 
@@ -938,7 +938,7 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 - **ProductFamily**: list, options, store, show, update, destroy (éxito), destroy 400 cuando tiene productos.
 - **Product**: list, options, store, show, update, destroy (éxito), destroy 400 cuando está en uso (Box), destroyMultiple.
 - **Auth**: test_productos_endpoints_require_auth (401 sin token).
-- Documentación: docs/09-TESTING.md actualizado con ProductosBlockApiTest en el inventario.
+- Documentación: docs/testing.md actualizado con ProductosBlockApiTest en el inventario.
 
 ### Verification Results
 
@@ -951,7 +951,7 @@ Cada entrada sigue el formato definido en `docs/35-prompts/01_Laravel incrementa
 
 ### Rollback Plan
 
-Eliminar o revertir tests/Feature/ProductosBlockApiTest.php y entrada en 09-TESTING.md.
+Eliminar o revertir tests/Feature/ProductosBlockApiTest.php y entrada en testing.md.
 
 ### Next
 

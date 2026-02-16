@@ -25,7 +25,7 @@ npx @anthropic-ai/claude-code \
   --effort high \
   "LEE CLAUDE.md COMPLETAMENTE
 
-LUEGO LEE docs/35-prompts/01_Laravel incremental evolution prompt.md COMPLETAMENTE
+LUEGO LEE docs/prompts/01_Laravel incremental evolution prompt.md COMPLETAMENTE
 
 EJECUTA AUTOMATICAMENTE este workflow:
 

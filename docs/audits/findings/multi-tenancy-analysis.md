@@ -26,7 +26,7 @@
   - Configura: `config(['database.connections.tenant.database' => $tenant->database])`, `DB::purge('tenant')`, `DB::reconnect('tenant')`, y `app()->instance('currentTenant', $subdomain)`.
 - **Ruta pública**: `GET v2/public/tenant/{subdomain}` devuelve `active` y `name` del tenant (para que el frontend valide antes de login).
 
-**Hallazgo positivo**: El flujo está documentado en `docs/20-fundamentos/01-Arquitectura-Multi-Tenant.md` y es coherente con un frontend que envía siempre `X-Tenant`.
+**Hallazgo positivo**: El flujo está documentado en `docs/fundamentos/01-Arquitectura-Multi-Tenant.md` y es coherente con un frontend que envía siempre `X-Tenant`.
 
 ---
 

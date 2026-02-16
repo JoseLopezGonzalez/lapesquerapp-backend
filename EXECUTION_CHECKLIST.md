@@ -10,7 +10,7 @@
 - [ ] `./vendor/bin/phpstan analyse` → ✅ OK
 - [ ] CLAUDE.md existe
 - [ ] QUICK_START.md existe
-- [ ] `docs/35-prompts/01_Laravel incremental evolution prompt.md` existe
+- [ ] `docs/prompts/01_Laravel incremental evolution prompt.md` existe
 - [ ] `docs/audits/laravel-backend-global-audit.md` existe
 - [ ] `docs/audits/laravel-evolution-log.md` existe
 

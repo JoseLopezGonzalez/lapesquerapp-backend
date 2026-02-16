@@ -29,14 +29,14 @@
 | Acción | Detalle |
 |--------|---------|
 | Archivo | `SECURITY.md` (raíz) |
-| Cambio | `docs/fundamentos/` → `docs/20-fundamentos/` en todas las referencias |
+| Cambio | `docs/fundamentos/` → `docs/fundamentos/` en todas las referencias |
 
 ### 1.3 Completar stubs operativos críticos
 
 | Archivo | Acción |
 |---------|--------|
-| `docs/11-DEPLOYMENT/11d-ROLLBACK-PROCEDURES.md` | Poblar con procedimientos de rollback multi-tenant |
-| `docs/11-DEPLOYMENT/11e-RUNBOOK.md` | Poblar con runbook operativo básico |
+| `docs/deployment/11d-ROLLBACK-PROCEDURES.md` | Poblar con procedimientos de rollback multi-tenant |
+| `docs/deployment/11e-RUNBOOK.md` | Poblar con runbook operativo básico |
 
 ---
 
@@ -44,7 +44,7 @@
 
 ### 2.1 Consolidar 9 archivos CORS
 
-**Crear:** `docs/21-instrucciones/CORS-GUIA-DEFINITIVA.md`
+**Crear:** `docs/instrucciones/CORS-GUIA-DEFINITIVA.md`
 
 Contenido consolidado de:
 - Sección 1: Diagnóstico (de CORS-DIAGNOSTICO-Y-OPCIONES.md + CORS-PRODUCCION-TROUBLESHOOTING.md)
@@ -56,7 +56,7 @@ Contenido consolidado de:
 
 **Mover a archivo:**
 ```
-docs/21-instrucciones/_archivo-cors/
+docs/instrucciones/_archivo-cors/
 ├── APACHE-CORS-INSTRUCCIONES.md
 ├── CORS-ANALISIS-8097331-PROFUNDO.md
 ├── CORS-ANALISIS-COMMIT-8097331.md
@@ -70,8 +70,8 @@ docs/21-instrucciones/_archivo-cors/
 
 ### 2.2 Consolidar documentos de deploy desarrollo
 
-**Mantener:** `docs/21-instrucciones/deploy-desarrollo-guiado.md` (más completo, 205 líneas)
-**Archivar:** `docs/21-instrucciones/_archivo/deploy-desarrollo.md`
+**Mantener:** `docs/instrucciones/deploy-desarrollo-guiado.md` (más completo, 205 líneas)
+**Archivar:** `docs/instrucciones/_archivo/deploy-desarrollo.md`
 
 O bien fusionar ambos en un único `deploy-desarrollo.md` con secciones "primera vez" y "re-deploy".
 
@@ -80,7 +80,7 @@ O bien fusionar ambos en un único `deploy-desarrollo.md` con secciones "primera
 | Archivo actual | Acción | Destino |
 |----------------|--------|---------|
 | CHANGELOG.md (7 líneas) | Poblar desde git tags o eliminar | Mantener si se puebla; eliminar si se usa `git log` |
-| ROADMAP.md (7 líneas) | Fusionar con docs/34-por-hacer/ o eliminar | `docs/34-por-hacer/ROADMAP.md` |
+| ROADMAP.md (7 líneas) | Fusionar con docs/por-hacer/ o eliminar | `docs/por-hacer/ROADMAP.md` |
 | TECH_DEBT.md (7 líneas) | Fusionar con docs/PROBLEMAS-CRITICOS.md o eliminar | `docs/PROBLEMAS-CRITICOS.md` ya cubre esto |
 
 ---
@@ -89,7 +89,7 @@ O bien fusionar ambos en un único `deploy-desarrollo.md` con secciones "primera
 
 ### 3.1 Crear documento de estado actual
 
-**Crear:** `docs/25-produccion/00-ESTADO-ACTUAL.md`
+**Crear:** `docs/produccion/00-ESTADO-ACTUAL.md`
 
 Resumen ejecutivo del módulo de producción con:
 - Estructura actual de entidades (Production, ProductionRecord, inputs, outputs, consumptions)
@@ -99,7 +99,7 @@ Resumen ejecutivo del módulo de producción con:
 
 ### 3.2 Archivar propuestas y análisis implementados
 
-**Mover a:** `docs/25-produccion/_archivo/`
+**Mover a:** `docs/produccion/_archivo/`
 
 | Archivo | Razón |
 |---------|-------|
@@ -109,7 +109,7 @@ Resumen ejecutivo del módulo de producción con:
 | RESUMEN-Implementacion-Multiples.md | Resumen de implementación pasada |
 | ANALISIS-ERRORES-IMPLEMENTACION-COSTES.md | Errores ya corregidos |
 
-**Mover a:** `docs/25-produccion/analisis/_archivo/`
+**Mover a:** `docs/produccion/analisis/_archivo/`
 
 | Archivo | Razón |
 |---------|-------|
@@ -119,7 +119,7 @@ Resumen ejecutivo del módulo de producción con:
 | Todos los DISENO-*.md | Diseños ya implementados |
 | Todos los IMPLEMENTACION-*.md | Implementaciones completadas |
 
-**Mover a:** `docs/25-produccion/cambios/_archivo/`
+**Mover a:** `docs/produccion/cambios/_archivo/`
 
 | Archivo | Razón |
 |---------|-------|
@@ -129,13 +129,13 @@ Resumen ejecutivo del módulo de producción con:
 
 ### 3.3 Mover documentos frontend a ubicación centralizada
 
-**Considerar mover a `docs/33-frontend/produccion/`:**
+**Considerar mover a `docs/frontend/produccion/`:**
 - DOCUMENTACION-FRONTEND-Trazabilidad-Costes.md
 - FRONTEND-Consumos-Outputs-Padre.md
 - FRONTEND-Salidas-y-Consumos-Multiples.md
-- docs/25-produccion/frontend/* (todo el subdirectorio)
+- docs/produccion/frontend/* (todo el subdirectorio)
 
-*Alternativa: mantener en 25-produccion pero con referencia cruzada clara desde 33-frontend.*
+*Alternativa: mantener en produccion pero con referencia cruzada clara desde frontend.*
 
 ---
 
@@ -147,8 +147,8 @@ Resumen ejecutivo del módulo de producción con:
 
 | Origen | Destino |
 |--------|---------|
-| docs/26-recepciones-despachos/67-Guia-Backend-v1-*.md | docs/_archivo/api-v1/ |
-| docs/26-recepciones-despachos/68-Analisis-Cambios-API-v1-*.md | docs/_archivo/api-v1/ |
+| docs/recepciones-despachos/67-Guia-Backend-v1-*.md | docs/_archivo/api-v1/ |
+| docs/recepciones-despachos/68-Analisis-Cambios-API-v1-*.md | docs/_archivo/api-v1/ |
 
 ### 4.2 Planes ya completados
 
@@ -156,9 +156,9 @@ Resumen ejecutivo del módulo de producción con:
 
 | Origen | Destino | Razón |
 |--------|---------|-------|
-| docs/30-referencia/PLAN-ELIMINACION-ARTICLE.md | _archivo/ | Plan completado (Article → Product) |
-| docs/26-recepciones-despachos/62-Plan-Implementacion-*.md | _archivo/ | Plan completado |
-| docs/28-sistema/87-Plan-Auth-Magic-Link-OTP.md | _archivo/ | Plan implementado |
+| docs/referencia/PLAN-ELIMINACION-ARTICLE.md | _archivo/ | Plan completado (Article → Product) |
+| docs/recepciones-despachos/62-Plan-Implementacion-*.md | _archivo/ | Plan completado |
+| docs/sistema/87-Plan-Auth-Magic-Link-OTP.md | _archivo/ | Plan implementado |
 
 ### 4.3 Artefactos de auditoría previa
 
@@ -185,15 +185,15 @@ Resumen ejecutivo del módulo de producción con:
 
 | Actual | Propuesto | Razón |
 |--------|-----------|-------|
-| docs/20-fundamentos/02-Convencion-Tenant-Jobs.md | docs/20-fundamentos/02b-Convencion-Tenant-Jobs.md | Dos archivos con prefijo 02- |
-| docs/23-inventario/31-Palets-Estados-Fijos.md | docs/23-inventario/31b-Palets-Estados-Fijos.md | Dos archivos con prefijo 31- |
-| docs/28-sistema/82-Roles-Pasos-2-y-3-Pendientes.md | docs/28-sistema/82b-Roles-Pasos-Pendientes.md | Dos archivos con prefijo 82- |
+| docs/fundamentos/02-Convencion-Tenant-Jobs.md | docs/fundamentos/02b-Convencion-Tenant-Jobs.md | Dos archivos con prefijo 02- |
+| docs/inventario/31-Palets-Estados-Fijos.md | docs/inventario/31b-Palets-Estados-Fijos.md | Dos archivos con prefijo 31- |
+| docs/sistema/82-Roles-Pasos-2-y-3-Pendientes.md | docs/sistema/82b-Roles-Pasos-Pendientes.md | Dos archivos con prefijo 82- |
 
 ### 5.2 Mover documentos mal ubicados
 
 | Archivo | Ubicación actual | Ubicación propuesta | Razón |
 |---------|------------------|---------------------|-------|
-| docs/28-sistema/86-Control-Horario-FRONTEND.md | 28-sistema | docs/33-frontend/Control-Horario-FRONTEND.md | Es documentación frontend |
+| docs/sistema/86-Control-Horario-FRONTEND.md | sistema | docs/frontend/Control-Horario-FRONTEND.md | Es documentación frontend |
 | docs/00_ POR IMPLEMENTAR/README.md | docs/00_ | docs/por-implementar/ | Ya existe la carpeta destino |
 | docs/PROBLEMAS-CRITICOS.md | docs/ raíz | docs/audits/PROBLEMAS-CRITICOS.md | Encaja mejor con auditorías |
 
@@ -201,9 +201,9 @@ Resumen ejecutivo del módulo de producción con:
 
 | Origen | Destino | Razón |
 |--------|---------|-------|
-| docs/35-prompts/*.md | .agents/prompts/*.md | Separar prompts IA de documentación del proyecto |
+| docs/prompts/*.md | .agents/prompts/*.md | Separar prompts IA de documentación del proyecto |
 
-*Alternativa: mantener en docs/35-prompts si se quiere que los prompts estén versionados junto al código.*
+*Alternativa: mantener en docs/prompts si se quiere que los prompts estén versionados junto al código.*
 
 ### 5.4 Política para `.ai_work_context/`
 
@@ -220,11 +220,11 @@ Resumen ejecutivo del módulo de producción con:
 
 | Documento | Ubicación | Prioridad | Descripción |
 |-----------|-----------|-----------|-------------|
-| CORS-GUIA-DEFINITIVA.md | docs/21-instrucciones/ | P1 | Consolidación de 9 documentos CORS |
-| 00-ESTADO-ACTUAL.md | docs/25-produccion/ | P1 | Resumen estado actual del módulo producción |
-| 11b-STAGING.md (contenido) | docs/11-DEPLOYMENT/ | P2 | Procedimientos staging |
-| DEBUGGING-GUIDE.md (contenido) | docs/12-TROUBLESHOOTING/ | P3 | Guía de depuración |
-| Postmortem template | docs/13-POSTMORTEMS/ | P3 | Plantilla para postmortems |
+| CORS-GUIA-DEFINITIVA.md | docs/instrucciones/ | P1 | Consolidación de 9 documentos CORS |
+| 00-ESTADO-ACTUAL.md | docs/produccion/ | P1 | Resumen estado actual del módulo producción |
+| 11b-STAGING.md (contenido) | docs/deployment/ | P2 | Procedimientos staging |
+| DEBUGGING-GUIDE.md (contenido) | docs/troubleshooting/ | P3 | Guía de depuración |
+| Postmortem template | docs/postmortems/ | P3 | Plantilla para postmortems |
 
 ---
 

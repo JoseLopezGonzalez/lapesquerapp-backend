@@ -41,14 +41,14 @@
   grep -rn '\]\(.*\.md' docs/ | grep -v node_modules | grep -v vendor
   ```
 - [ ] Todos los enlaces relativos apuntan a archivos existentes
-- [ ] No hay enlaces a `docs/fundamentos/` (debe ser `docs/20-fundamentos/`)
+- [ ] Enlaces a docs usan rutas sin número y en minúsculas (ej. `docs/fundamentos/`, no `docs/20-fundamentos/`)
 - [ ] No hay enlaces a archivos movidos sin actualizar
 
 ### Referencias cruzadas
 - [ ] CLAUDE.md: todas las referencias a docs/ son válidas
 - [ ] README.md: todas las referencias a docs/ son válidas
 - [ ] SECURITY.md: todas las referencias a docs/ son válidas
-- [ ] docs/00-OVERVIEW.md: todos los enlaces funcionan
+- [ ] docs/overview.md: todos los enlaces funcionan
 - [ ] docs/README.md: todos los enlaces funcionan
 
 ---
@@ -74,7 +74,7 @@
 ### Duplicaciones
 - [ ] No hay más de 1 documento CORS activo (los demás archivados)
 - [ ] No hay más de 1 documento deploy-desarrollo activo
-- [ ] Documentación API no está duplicada entre 22-28 y 31-api-references sin justificación
+- [ ] Documentación API no está duplicada entre carpetas de dominio (pedidos, inventario, …) y api-references sin justificación
 
 ---
 
@@ -83,21 +83,21 @@
 ### FASE 1 — Correcciones Inmediatas
 
 - [x] README.md dice "Laravel 10" (no "Laravel 11")
-- [x] SECURITY.md usa `docs/20-fundamentos/` (no `docs/fundamentos/`)
+- [x] SECURITY.md usa rutas estándar (docs/fundamentos/, docs/sistema/, etc.)
 - [x] 11d-ROLLBACK-PROCEDURES.md tiene contenido real (> 30 líneas)
 - [x] 11e-RUNBOOK.md tiene contenido real (> 30 líneas)
 
 ### FASE 2 — Consolidación de Duplicados
 
-- [x] Existe `docs/21-instrucciones/CORS-GUIA-DEFINITIVA.md`
+- [x] Existe `docs/instrucciones/CORS-GUIA-DEFINITIVA.md`
 - [x] Los 9 archivos CORS originales están en `_archivo-cors/`
 - [x] deploy-desarrollo en _archivo; canónico: deploy-desarrollo-guiado
 - [x] CHANGELOG.md con referencia a tags
-- [x] ROADMAP.md y TECH_DEBT.md en docs/34-por-hacer/
+- [x] ROADMAP.md y TECH_DEBT.md en docs/por-hacer/
 
 ### FASE 3 — Reorganización de Producción
 
-- [x] Existe `docs/25-produccion/00-ESTADO-ACTUAL.md`
+- [x] Existe `docs/produccion/00-ESTADO-ACTUAL.md`
 - [x] Propuestas implementadas movidas a `_archivo/` (raíz, analisis, cambios)
 - [ ] README en cada subdirectorio de producción actualizado (parcial)
 
@@ -106,14 +106,14 @@
 - [x] Documentos v1 movidos a `docs/_archivo/api-v1/`
 - [x] Planes completados movidos a `docs/_archivo/planes-completados/`
 - [x] Artefactos auditoría 2026-02-13 movidos a `docs/audits/documentation/2026-02-13/`
-- [x] Carpeta `docs/00_ POR IMPLEMENTAR/` consolidada (por-implementar/00-POR-IMPLEMENTAR-README.md)
+- [x] Carpeta `docs/00_ POR IMPLEMENTAR/` eliminada. `por-implementar/` integrada en `por-hacer/`. Una sola carpeta de backlog.
 
 ### FASE 5 — Mejoras Estructurales
 
 - [x] No hay dos archivos con mismo prefijo numérico (02b, 31b, 82b)
-- [x] Control-Horario-FRONTEND en `docs/33-frontend/`
+- [x] Control-Horario-FRONTEND en `docs/frontend/`
 - [x] `.ai_work_context/` en .gitignore
-- [ ] Decisión tomada sobre `docs/35-prompts/` (mantener en docs por ahora)
+- [ ] Decisión tomada sobre `docs/prompts/` (mantener en docs por ahora)
 
 ### FASE 6 — Documentos Nuevos
 
@@ -137,8 +137,8 @@
 ### Multi-Tenant
 - [ ] Documentación multi-tenant es consistente entre:
   - CLAUDE.md (sección 2)
-  - docs/20-fundamentos/01-Arquitectura-Multi-Tenant.md
-  - docs/15-MULTI-TENANT-SPECIFICS.md
+  - docs/fundamentos/01-Arquitectura-Multi-Tenant.md
+  - docs/multi-tenant-specs.md
 - [ ] No hay instrucciones que mezclen conexión `mysql` con datos de negocio
 
 ### API v2
@@ -160,11 +160,11 @@
 - [ ] No hay archivos sueltos en `docs/` raíz que deberían estar en subdirectorio
 
 ### Nombres de archivo
-- [ ] No hay espacios en nombres de archivo (excepto `00_CORE CONSOLIDATION PLAN...md` - legacy)
+- [ ] No hay espacios en nombres de archivo (todos en minúsculas/kebab-case)
 - [ ] No hay caracteres especiales problemáticos (acentos, ñ) en nombres de archivo
 - [ ] Verificación:
   ```bash
-  find docs/ -name "*.md" | grep -P '[áéíóúñÁÉÍÓÚÑ ]' | grep -v "00_CORE"
+  find docs/ -name "*.md" | grep -P '[áéíóúñÁÉÍÓÚÑ ]'
   ```
 
 ---
@@ -199,7 +199,7 @@
 | FASE 2 | Plan pendientes (FASE A) | 2026-02-16 | ✅ |
 | FASE 3 | Plan pendientes (FASE A) | 2026-02-16 | ✅ |
 | FASE 4 | Plan pendientes (FASE A) | 2026-02-16 | ✅ |
-| FASE 5 | Plan pendientes (FASE A) | 2026-02-16 | ✅ (35-prompts pendiente decisión) |
+| FASE 5 | Plan pendientes (FASE A) | 2026-02-16 | ✅ (prompts pendiente decisión) |
 | FASE 6 | Plan pendientes (FASE A) | 2026-02-16 | ✅ (MANIFEST pendiente FASE F) |
 | **FINAL** | | | 🔄 En progreso (plan pendientes FASE B–F) |
 

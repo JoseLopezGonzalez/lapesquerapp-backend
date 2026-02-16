@@ -9,7 +9,7 @@
 
 ## 📋 Visión General
 
-Este documento resume los **problemas más críticos pendientes** identificados en el código del sistema v2, organizados por prioridad. Para información detallada de todos los problemas, consultar [`referencia/98-Errores-Comunes.md`](30-referencia/98-Errores-Comunes.md).
+Este documento resume los **problemas más críticos pendientes** identificados en el código del sistema v2, organizados por prioridad. Para información detallada de todos los problemas, consultar [`referencia/98-Errores-Comunes.md`](referencia/98-Errores-Comunes.md).
 
 **Nota Importante**: Este documento **NO propone soluciones**, solo documenta los problemas tal como están en el código actual.
 
@@ -30,7 +30,7 @@ Este documento resume los **problemas más críticos pendientes** identificados 
 
 Para información detallada de cada problema:
 
-- **Documentación completa**: [`referencia/98-Errores-Comunes.md`](30-referencia/98-Errores-Comunes.md) - 59 problemas documentados
+- **Documentación completa**: [`referencia/98-Errores-Comunes.md`](referencia/98-Errores-Comunes.md) - 59 problemas documentados
 - **Documentación por módulo**: Cada archivo tiene sección "Observaciones Críticas y Mejoras Recomendadas"
 
 ---
@@ -71,4 +71,4 @@ Para información detallada de cada problema:
 **Archivos modificados**: 
 - Eliminado: `app/Models/Article.php`, `app/Models/ArticleCategory.php`
 - Actualizado: `app/Models/Product.php`, `app/Http/Controllers/v2/ProductController.php`, y múltiples exports
-- Ver: `docs/30-referencia/PLAN-ELIMINACION-ARTICLE.md` para detalles completos
+- Ver: `docs/referencia/PLAN-ELIMINACION-ARTICLE.md` para detalles completos

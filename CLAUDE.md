@@ -22,7 +22,7 @@ Este archivo es leído por el agente de IA al inicio de cada sesión. Describe e
 - **Validaciones**: Reglas que comprueban existencia en tablas del tenant deben usar `exists:tenant.{table},columna` (ej. `exists:tenant.products,id`).
 - **Seguridad**: NUNCA hacer queries cross-tenant. Evitar `DB::connection('tenant')->table(...)` sin encapsular en modelo o servicio; preferir Eloquent para mantener un solo punto de configuración de conexión. Si en el futuro se usan Jobs, el payload debe incluir identificador de tenant y configurar la conexión al arrancar el job.
 
-Documentación: `docs/20-fundamentos/01-Arquitectura-Multi-Tenant.md`.
+Documentación: `docs/fundamentos/01-Arquitectura-Multi-Tenant.md`.
 
 ---
 
@@ -111,7 +111,7 @@ No se usa capa Repository ni DDD estricto; identidad: **Laravel idiomático + ca
 | A.13 Configuración (Settings) | 9/10 | ✅ |
 | A.14 Sistema | 9/10 | ✅ (comparte A.1) |
 
-Detalle por bloque y sub-bloques en `docs/00_CORE CONSOLIDATION PLAN — ERP SaaS (Next.js + Laravel).md` (ANEXO A) y en `docs/audits/laravel-evolution-log.md`.
+Detalle por bloque y sub-bloques en `docs/core-consolidation-plan-erp-saas.md` (ANEXO A) y en `docs/audits/laravel-evolution-log.md`.
 
 ---
 
@@ -212,17 +212,17 @@ Detalle por bloque y sub-bloques en `docs/00_CORE CONSOLIDATION PLAN — ERP Saa
 
 **Rating**: 1–10 (1–2 crítico, 3–4 pobre, 5–6 aceptable, 7–8 bueno, 9–10 excelente). No dar por cerrado un módulo hasta Rating ≥ 9 o bloqueo por decisión de negocio. Si Rating después < 9, documentar "Gap to 10/10" y proponer siguiente sub-bloque.
 
-Documento maestro: `docs/35-prompts/01_Laravel incremental evolution prompt.md`.
+Documento maestro: `docs/prompts/01_Laravel incremental evolution prompt.md`.
 
 ---
 
 ## 19. Referencias Importantes
 
-- **Plan CORE**: `docs/00_CORE CONSOLIDATION PLAN — ERP SaaS (Next.js + Laravel).md`
-- **Workflow evolución**: `docs/35-prompts/01_Laravel incremental evolution prompt.md`
+- **Plan CORE**: `docs/core-consolidation-plan-erp-saas.md`
+- **Workflow evolución**: `docs/prompts/01_Laravel incremental evolution prompt.md`
 - **Auditoría global**: `docs/audits/laravel-backend-global-audit.md`
 - **Evolution log**: `docs/audits/laravel-evolution-log.md`
-- **Arquitectura multi-tenant**: `docs/20-fundamentos/01-Arquitectura-Multi-Tenant.md`
+- **Arquitectura multi-tenant**: `docs/fundamentos/01-Arquitectura-Multi-Tenant.md`
 - **Hallazgos**: `docs/audits/findings/` (domain-model-review, multi-tenancy-analysis, structural-components-usage, security-concerns, integration-patterns)
 
 ---

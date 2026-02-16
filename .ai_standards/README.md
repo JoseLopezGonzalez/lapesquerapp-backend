@@ -27,4 +27,4 @@ Alternativa (si prefieres el documento largo):
 - **Memoria de sesión**: `.ai_work_context/[TIMESTAMP]/` (creada por el agente en cada sesión).
 - **Entregables y reporte**: `.ai_work_context/[TIMESTAMP]/05_outputs/`, incluyendo `FINAL_REPORT.md`.
 
-En la documentación del proyecto: `docs/README.md` y `docs/00-OVERVIEW.md` enlazan aquí.
+En la documentación del proyecto: `docs/README.md` y `docs/overview.md` enlazan aquí.

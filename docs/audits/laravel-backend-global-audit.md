@@ -32,7 +32,7 @@ La identidad es **Laravel estándar con servicios** y multi-tenant por base de d
 ## 3. Fortalezas
 
 - **Aislamiento multi-tenant**: Una base de datos por tenant y conexión dinámica bien documentada reducen el riesgo de fuga de datos entre empresas.
-- **Documentación de arquitectura**: `docs/20-fundamentos/01-Arquitectura-Multi-Tenant.md` describe flujo, middleware, trait y uso de conexiones.
+- **Documentación de arquitectura**: `docs/fundamentos/01-Arquitectura-Multi-Tenant.md` describe flujo, middleware, trait y uso de conexiones.
 - **Form Requests extensivos**: 137 clases en `Http/Requests/v2/` cubriendo prácticamente toda la API v2; validación en frontera HTTP coherente.
 - **Policies aplicadas**: AuthServiceProvider registra ~30 políticas; la mayoría de controladores llaman a `authorize()` (Order, Customer, Pallet, Punch, Production, Setting, Supplier, Employee, etc.).
 - **Modelo Setting**: `Setting` con `UsesTenantConnection` y `SettingService` encapsulan configuración; ofuscación de contraseña de correo en respuestas.

@@ -137,7 +137,7 @@ Documento de referencia del plan acordado para pasar de autenticación por contr
 | 7. Rutas, throttle, documentación frontend | ✅ Hecho |
 
 **Implementado además:**
-- Comando `auth:cleanup-magic-tokens` y programación diaria (03:00). Ver `docs/28-sistema/88-Auth-Limpieza-Tokens-Reenvio-Invitacion.md`.
+- Comando `auth:cleanup-magic-tokens` y programación diaria (03:00). Ver `docs/sistema/88-Auth-Limpieza-Tokens-Reenvio-Invitacion.md`.
 - Endpoint `POST /v2/users/{user}/resend-invitation` para reenviar magic link desde el panel. Ver misma doc y guía frontend.
 
 **Pendiente por tu parte:**

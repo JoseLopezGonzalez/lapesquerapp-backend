@@ -31,42 +31,42 @@
 | SECURITY.md | 84 | ✅ | Crítico |
 | QUICK_START.md | 69 | ✅ | Importante |
 | EXECUTION_CHECKLIST.md | 39 | ✅ | Importante |
-| CHANGELOG.md | 7 | 🗑️ Stub | Importante |
-| ROADMAP.md | 7 | 🗑️ Stub | Importante |
-| TECH_DEBT.md | 7 | 🗑️ Stub | Importante |
+| CHANGELOG.md | 7 | Stub (ref. tags) | Importante |
+| ROADMAP.md | — | Movido a docs/por-hacer/ | — |
+| TECH_DEBT.md | — | Movido a docs/por-hacer/ | — |
 
 ### 2. docs/ — Estructura Canónica (00-15)
 
 | Archivo | Líneas | Estado |
 |---------|--------|--------|
-| docs/00-OVERVIEW.md | 90 | ✅ |
-| docs/00_CORE CONSOLIDATION PLAN...md | 544 | ✅ |
-| docs/01-SETUP-LOCAL.md | 36 | ✅ |
-| docs/02-ENVIRONMENT-VARIABLES.md | 29 | ✅ |
-| docs/03-ARCHITECTURE.md | 28 | ✅ |
-| docs/04-DATABASE.md | 34 | ✅ |
-| docs/05-QUEUES-JOBS.md | 62 | ✅ |
-| docs/06-SCHEDULER-CRON.md | 68 | ✅ |
-| docs/07-STORAGE-FILES.md | 29 | ✅ |
-| docs/08-API-REST.md | 39 | ✅ |
-| docs/09-TESTING.md | 244 | ✅ |
-| docs/10-OBSERVABILITY-MONITORING.md | 48 | ⚠️ Genérico |
-| docs/11-DEPLOYMENT/11a-DEVELOPMENT.md | 13 | ✅ |
-| docs/11-DEPLOYMENT/11b-STAGING.md | 3 | 🗑️ Stub |
-| docs/11-DEPLOYMENT/11c-PRODUCTION.md | 110 | ✅ |
-| docs/11-DEPLOYMENT/11d-ROLLBACK-PROCEDURES.md | 3 | 🗑️ Stub |
-| docs/11-DEPLOYMENT/11e-RUNBOOK.md | 3 | 🗑️ Stub |
-| docs/12-TROUBLESHOOTING/COMMON-ERRORS.md | 9 | ✅ |
-| docs/12-TROUBLESHOOTING/DEBUGGING-GUIDE.md | 5 | 🗑️ Stub |
-| docs/12-TROUBLESHOOTING/PERFORMANCE-ISSUES.md | 7 | ✅ |
-| docs/13-POSTMORTEMS/README.md | 5 | 🗑️ Stub |
-| docs/14-ARCHITECTURE-DECISIONS/README.md | 18 | ✅ |
-| docs/14-ARCHITECTURE-DECISIONS/0000-ADR-TEMPLATE.md | 36 | ✅ |
-| docs/14-ARCHITECTURE-DECISIONS/0001-API-v2-only.md | 42 | ✅ |
-| docs/15-MULTI-TENANT-SPECIFICS.md | 25 | ✅ |
+| docs/overview.md | 90 | ✅ |
+| docs/core-consolidation-plan-erp-saas.md | 544 | ✅ |
+| docs/setup-local.md | 36 | ✅ |
+| docs/environment-variables.md | 29 | ✅ |
+| docs/architecture.md | 28 | ✅ |
+| docs/database.md | 34 | ✅ |
+| docs/queues-jobs.md | 62 | ✅ |
+| docs/scheduler-cron.md | 68 | ✅ |
+| docs/storage-files.md | 29 | ✅ |
+| docs/api-rest.md | 39 | ✅ |
+| docs/testing.md | 244 | ✅ |
+| docs/observability-monitoring.md | 48 | ⚠️ Genérico |
+| docs/deployment/11a-DEVELOPMENT.md | 13 | ✅ |
+| docs/deployment/11b-STAGING.md | 3 | 🗑️ Stub |
+| docs/deployment/11c-PRODUCTION.md | 110 | ✅ |
+| docs/deployment/11d-ROLLBACK-PROCEDURES.md | 3 | 🗑️ Stub |
+| docs/deployment/11e-RUNBOOK.md | 3 | 🗑️ Stub |
+| docs/troubleshooting/COMMON-ERRORS.md | 9 | ✅ |
+| docs/troubleshooting/DEBUGGING-GUIDE.md | 5 | 🗑️ Stub |
+| docs/troubleshooting/PERFORMANCE-ISSUES.md | 7 | ✅ |
+| docs/postmortems/README.md | 5 | 🗑️ Stub |
+| docs/architecture-decisions/README.md | 18 | ✅ |
+| docs/architecture-decisions/0000-ADR-TEMPLATE.md | 36 | ✅ |
+| docs/architecture-decisions/0001-API-v2-only.md | 42 | ✅ |
+| docs/multi-tenant-specs.md | 25 | ✅ |
 | docs/README.md | 211 | ✅ |
 
-### 3. docs/20-fundamentos (5 archivos)
+### 3. docs/fundamentos (5 archivos)
 
 | Archivo | Líneas | Estado |
 |---------|--------|--------|
@@ -76,7 +76,7 @@
 | 02-Convencion-Tenant-Jobs.md | 154 | ✅ |
 | 03-Configuracion-Entorno.md | 491 | ✅ |
 
-### 4. docs/21-instrucciones (19 archivos)
+### 4. docs/instrucciones (19 archivos)
 
 | Archivo | Líneas | Estado | Notas |
 |---------|--------|--------|-------|
@@ -100,7 +100,7 @@
 | guia-completa-entorno-sail-windows.md | 983 | ✅ | |
 | instalar-docker-wsl.md | 114 | ✅ | |
 
-### 5. docs/22-pedidos (5 archivos, 1.964 líneas)
+### 5. docs/pedidos (5 archivos, 1.964 líneas)
 
 | Archivo | Líneas |
 |---------|--------|
@@ -110,7 +110,7 @@
 | 23-Pedidos-Incidentes.md | 429 |
 | 24-Pedidos-Estadisticas.md | 459 |
 
-### 6. docs/23-inventario (5 archivos, 2.273 líneas)
+### 6. docs/inventario (5 archivos, 2.273 líneas)
 
 | Archivo | Líneas |
 |---------|--------|
@@ -120,7 +120,7 @@
 | 32-Cajas.md | 431 |
 | 33-Estadisticas-Stock.md | 300 |
 
-### 7. docs/24-catalogos (15 archivos, 4.376 líneas)
+### 7. docs/catalogos (15 archivos, 4.376 líneas)
 
 | Archivo | Líneas |
 |---------|--------|
@@ -141,7 +141,7 @@
 | 53-Procesos.md | 235 |
 | 54-Productos-Variantes-GS1-Resumen.md | 244 |
 
-### 8. docs/25-produccion (46 archivos, ~20.300 líneas)
+### 8. docs/produccion (46 archivos, ~20.300 líneas)
 
 #### Raíz (16 archivos)
 | Archivo | Líneas | Tipo |
@@ -208,7 +208,7 @@
 | RESUMEN-Documentacion-Frontend-v4.md | 112 | Frontend |
 | VERIFICACION-DOCS-FRONTEND.md | 144 | Histórico |
 
-### 9. docs/26-recepciones-despachos (15 archivos, 7.487 líneas)
+### 9. docs/recepciones-despachos (15 archivos, 7.487 líneas)
 
 | Archivo | Líneas | Estado |
 |---------|--------|--------|
@@ -231,13 +231,13 @@
 | 69-Diseno-Edicion-Cajas-Disponibles-Recepciones.md | 781 | ✅ |
 | 70-Guia-Frontend-Edicion-Cajas-Disponibles.md | 655 | ✅ Frontend |
 
-### 10. docs/27-etiquetas (1 archivo)
+### 10. docs/etiquetas (1 archivo)
 
 | Archivo | Líneas |
 |---------|--------|
 | 70-Etiquetas.md | 290 |
 
-### 11. docs/28-sistema (11 archivos, 3.771 líneas)
+### 11. docs/sistema (11 archivos, 3.771 líneas)
 
 | Archivo | Líneas | Estado |
 |---------|--------|--------|
@@ -255,7 +255,7 @@
 | 89-Auth-Contrasenas-Eliminadas.md | 53 | ✅ |
 | 90-Analisis-Sin-Rastro-Password.md | 56 | ⚠️ Histórico |
 
-### 12. docs/29-utilidades (4 archivos, 1.999 líneas)
+### 12. docs/utilidades (4 archivos, 1.999 líneas)
 
 | Archivo | Líneas |
 |---------|--------|
@@ -264,7 +264,7 @@
 | 92-Extraccion-Documentos-AI.md | 412 |
 | 93-Plan-Integracion-Tesseract-OCR.md | 667 |
 
-### 13. docs/30-referencia (8 archivos, 5.304 líneas)
+### 13. docs/referencia (8 archivos, 5.304 líneas)
 
 | Archivo | Líneas | Estado |
 |---------|--------|--------|
@@ -280,7 +280,7 @@
 | ANALISIS-API-FRONTEND-BACKEND.md | 569 | ⚠️ Histórico |
 | PLAN-ELIMINACION-ARTICLE.md | 1.140 | ⚠️ Completado |
 
-### 14. docs/31-api-references (12 archivos, 6.435 líneas)
+### 14. docs/api-references (12 archivos, 6.435 líneas)
 
 | Archivo | Líneas |
 |---------|--------|
@@ -297,7 +297,7 @@
 | sistema/README.md | 807 |
 | utilidades/README.md | 527 |
 
-### 15. docs/32-ejemplos (6 archivos, 1.457 líneas)
+### 15. docs/ejemplos (6 archivos, 1.457 líneas)
 
 | Archivo | Líneas | Estado |
 |---------|--------|--------|
@@ -308,7 +308,7 @@
 | EJEMPLO-RESPUESTA-process-tree-v5-con-conciliacion.md | 265 | ✅ Vigente |
 | EJEMPLO-RESPUESTA-production-record-completo.md | 270 | ✅ |
 
-### 16. docs/33-frontend (6 archivos, 1.300 líneas)
+### 16. docs/frontend (6 archivos, 1.300 líneas)
 
 | Archivo | Líneas |
 |---------|--------|
@@ -319,15 +319,15 @@
 | SETTINGS-EMAIL-CONFIGURATION.md | 421 |
 | SETTINGS-EMAIL-RESUMEN.md | 90 |
 
-### 17. docs/34-por-hacer, 35-prompts, audits, tasks, etc.
+### 17. docs/por-hacer, prompts, audits, tasks, etc.
 
 | Carpeta | Archivos | Líneas |
 |---------|----------|--------|
-| docs/34-por-hacer/ | 2 | 223 |
-| docs/35-prompts/ | 12 | 4.533 |
+| docs/por-hacer/ | 2 | 223 |
+| docs/prompts/ | 12 | 4.533 |
 | docs/audits/ | 8 | 2.352 |
 | docs/audits/documentation/ | (esta auditoría) | — |
-| docs/por-implementar/ | 2 | 213 |
+| docs/por-hacer/ (incl. ex por-implementar) | 6 | — |
 | docs/tasks/ | 2 | 74 |
 | docs/ raíz (artefactos auditoría) | 10 | 1.459 |
 
@@ -337,23 +337,23 @@
 
 ```
 CLAUDE.md (canónico)
-├── docs/00_CORE CONSOLIDATION PLAN.md
-├── docs/35-prompts/01_Laravel incremental evolution prompt.md
+├── docs/core-consolidation-plan-erp-saas.md
+├── docs/prompts/01_Laravel incremental evolution prompt.md
 ├── docs/audits/laravel-backend-global-audit.md
 ├── docs/audits/laravel-evolution-log.md
-├── docs/20-fundamentos/01-Arquitectura-Multi-Tenant.md
+├── docs/fundamentos/01-Arquitectura-Multi-Tenant.md
 └── docs/audits/findings/*
 
 README.md
-├── docs/00-OVERVIEW.md
-├── docs/PROBLEMAS-CRITICOS.md
+├── docs/overview.md
+├── docs/audits/PROBLEMAS-CRITICOS.md
 ├── docs/README.md
-├── docs/20-fundamentos/03-Configuracion-Entorno.md
-└── docs/21-instrucciones/guia-completa-entorno-sail-windows.md
+├── docs/fundamentos/03-Configuracion-Entorno.md
+└── docs/instrucciones/guia-completa-entorno-sail-windows.md
 
-docs/00-OVERVIEW.md → docs/01-15 (estructura canónica)
+docs/overview.md → docs/01-15 (estructura canónica)
 docs/README.md → docs/20-35 (estructura por dominio)
-docs/31-api-references/* ↔ docs/22-28/* (potencial duplicación)
+docs/api-references/* ↔ docs/22-28/* (complementarios: API vs dominio; ver FASE-C-DUPLICADOS-RESULTADOS.md)
 ```
 
 ---

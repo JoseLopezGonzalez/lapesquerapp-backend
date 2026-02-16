@@ -27,13 +27,13 @@ phase: 0
 │       └── companies/
 │           └── README.md
 ├── docs/
-│   ├── 00-OVERVIEW.md
+│   ├── overview.md
 │   ├── 00_ POR IMPLEMENTAR/
-│   ├── 01-SETUP-LOCAL.md … 15-MULTI-TENANT-SPECIFICS.md
-│   ├── 11-DEPLOYMENT/
-│   ├── 12-TROUBLESHOOTING/
-│   ├── 13-POSTMORTEMS/
-│   ├── 14-ARCHITECTURE-DECISIONS/
+│   ├── setup-local.md … multi-tenant-specs.md
+│   ├── deployment/
+│   ├── troubleshooting/
+│   ├── postmortems/
+│   ├── architecture-decisions/
 │   ├── API-references/
 │   ├── catalogos/
 │   ├── ejemplos/
@@ -78,10 +78,10 @@ phase: 0
 - README.md, CHANGELOG.md, ROADMAP.md, SECURITY.md, TECH_DEBT.md
 
 ### En docs/
-- **Raíz docs/:** 00-OVERVIEW, 01–15 (numeración estándar), README, CLASSIFICATION_MATRIX, DOCUMENTATION_AUDIT_REPORT, DOCUMENTATION_TODO_FLOW, GAPS_ANALYSIS, INVENTORY, PROBLEMAS-CRITICOS, más auditoría/índices.
-- **11-DEPLOYMENT/:** 11a–11e (DEVELOPMENT, STAGING, PRODUCTION, ROLLBACK-PROCEDURES, RUNBOOK).
-- **12-TROUBLESHOOTING/:** COMMON-ERRORS, DEBUGGING-GUIDE, PERFORMANCE-ISSUES.
-- **13-POSTMORTEMS/, 14-ARCHITECTURE-DECISIONS/:** README por carpeta.
+- **Raíz docs/:** overview, 01–15 (numeración estándar), README, CLASSIFICATION_MATRIX, DOCUMENTATION_AUDIT_REPORT, DOCUMENTATION_TODO_FLOW, GAPS_ANALYSIS, INVENTORY, PROBLEMAS-CRITICOS, más auditoría/índices.
+- **deployment/:** 11a–11e (DEVELOPMENT, STAGING, PRODUCTION, ROLLBACK-PROCEDURES, RUNBOOK).
+- **troubleshooting/:** COMMON-ERRORS, DEBUGGING-GUIDE, PERFORMANCE-ISSUES.
+- **postmortems/, architecture-decisions/:** README por carpeta.
 - **API-references/:** README por módulo (autenticación, catálogos, pedidos, inventario, producción, etc.).
 - **Dominio/negocio:** catalogos/, ejemplos/, etiquetas/, frontend/, fundamentos/, instrucciones/, inventario/, pedidos/, produccion/, recepciones-despachos/, referencia/, sistema/, utilidades/, por-hacer/.
 - **prompts/:** PESQUERAPP_DOCUMENTATION_AUDIT_PROMPT, Pesquerapp seeder agent, Automatizacion AI/*.
@@ -95,11 +95,11 @@ phase: 0
 
 ## Observaciones Iniciales
 
-- **Patrón de carpetas:** Conviven dos esquemas: (1) estructura estándar 00–15 con 11-DEPLOYMENT, 12-TROUBLESHOOTING, etc., y (2) estructura por dominio (fundamentos, instrucciones, catalogos, produccion, sistema, referencia). La numeración 00–15 está ya presente junto a la organización por dominio.
+- **Patrón de carpetas:** Conviven dos esquemas: (1) estructura estándar 00–15 con deployment, troubleshooting, etc., y (2) estructura por dominio (fundamentos, instrucciones, catalogos, produccion, sistema, referencia). La numeración 00–15 está ya presente junto a la organización por dominio.
 - **Nomenclatura:** Mezcla de prefijos numéricos (00–15, 20–24 pedidos, 30–33 inventario, 40–53 catálogos, etc.) y nombres temáticos (GUIA-*, FRONTEND-*, ANALISIS-*, PLAN-*). En inglés: COMMON-ERRORS, DEBUGGING-GUIDE, RUNBOOK.
 - **Antigüedad relativa:** Muchos documentos con última modificación 2025-12 – 2026-02; algunos README o planes en 2025-08 – 2025-12. Documentos de auditoría (INVENTORY, CLASSIFICATION_MATRIX, DOCUMENTATION_AUDIT_REPORT) recientes (2026-02).
 - **Documentación inline:** No se ha detectado documentación formal externa (Notion/Confluence) referenciada en el repo. Comentarios y docblocks en código existen pero no forman parte del inventario de artefactos .md.
-- **Cobertura:** La estructura objetivo del prompt (RAÍZ + docs/00–16) está parcialmente implementada: existen 00–15, 11-DEPLOYMENT, 12-TROUBLESHOOTING, 13-POSTMORTEMS, 14-ARCHITECTURE-DECISIONS; no existe carpeta 16-OPERATIONS. Hay gran volumen adicional en carpetas por dominio (fundamentos, produccion, referencia, etc.) que deberá mapearse en fases posteriores.
+- **Cobertura:** La estructura objetivo del prompt (RAÍZ + docs/00–16) está parcialmente implementada: existen 00–15, deployment, troubleshooting, postmortems, architecture-decisions; no existe carpeta 16-OPERATIONS. Hay gran volumen adicional en carpetas por dominio (fundamentos, produccion, referencia, etc.) que deberá mapearse en fases posteriores.
 
 ---
 

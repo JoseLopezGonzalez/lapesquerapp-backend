@@ -1020,8 +1020,8 @@ Cuando se implementen costes de producción, los productos generados tendrán co
 ## 🔗 Referencias
 
 - [Documentación de Recepciones](./60-Recepciones-Materia-Prima.md)
-- [Documentación de Palets](../23-inventario/31-Palets.md)
-- [Documentación de Cajas](../23-inventario/32-Cajas.md)
+- [Documentación de Palets](../inventario/31-Palets.md)
+- [Documentación de Cajas](../inventario/32-Cajas.md)
 - Modelos: `app/Models/RawMaterialReception.php`, `app/Models/Pallet.php`, `app/Models/Box.php`
 - Controladores: `app/Http/Controllers/v2/RawMaterialReceptionController.php`, `app/Http/Controllers/v2/PalletController.php`
 

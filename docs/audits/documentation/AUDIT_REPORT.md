@@ -5,6 +5,8 @@
 **Auditor:** Claude Code (Opus 4.6)
 **Alcance:** Todos los archivos `.md`, `.txt` en el repositorio (excluye `vendor/`, `node_modules/`, `.git/`)
 
+> **Actualización 2026-02-16:** Las acciones recomendadas en este informe (README Laravel 10, SECURITY paths, consolidación CORS, archivado deprecados, rollback/runbook, etc.) fueron ejecutadas según REORGANIZATION_PLAN y PLAN-PENDIENTES-DOCUMENTACION. MANIFEST y STRUCTURE_DIAGRAM se actualizarán en FASE F.
+
 ---
 
 ## Resumen Ejecutivo
@@ -31,7 +33,7 @@
 Existe una auditoría previa (2026-02-13) en `docs/DOCUMENTATION_AUDIT_REPORT.md` que reportó 203 archivos. El proyecto ha crecido a **312 archivos** (+109) en 3 días, principalmente por:
 - Adición de `.ai_work_context/` (67 archivos de sesiones de trabajo IA)
 - Adición de `.agents/skills/` (11 archivos)
-- Nuevos documentos en `docs/35-prompts/`
+- Nuevos documentos en `docs/prompts/`
 - Adición de `CLAUDE.md`, `QUICK_START.md`, `EXECUTION_CHECKLIST.md` en raíz
 
 ---
@@ -64,7 +66,7 @@ Existe una auditoría previa (2026-02-13) en `docs/DOCUMENTATION_AUDIT_REPORT.md
 | CORS-proxy-Origin.md | 63 | Proxy y Origin |
 
 **Impacto:** Medio. Fragmentación extrema; difícil saber cuál es el documento vigente.
-**Acción:** Consolidar en **un único** `docs/21-instrucciones/CORS-SOLUCION-DEFINITIVA.md` con secciones para Apache, Traefik/Coolify y troubleshooting. Mover los 9 originales a `docs/21-instrucciones/_archivo-cors/` como referencia histórica.
+**Acción:** Consolidar en **un único** `docs/instrucciones/CORS-SOLUCION-DEFINITIVA.md` con secciones para Apache, Traefik/Coolify y troubleshooting. Mover los 9 originales a `docs/instrucciones/_archivo-cors/` como referencia histórica.
 
 ### 3. Archivos stub vacíos (3-7 líneas, sin contenido real)
 
@@ -77,7 +79,7 @@ Existe una auditoría previa (2026-02-13) en `docs/DOCUMENTATION_AUDIT_REPORT.md
 | 11d-ROLLBACK-PROCEDURES.md | 3 | Stub "Por completar" |
 | 11e-RUNBOOK.md | 3 | Stub "Por completar" |
 | 12-DEBUGGING-GUIDE.md | 5 | Stub "Por completar" |
-| 13-POSTMORTEMS/README.md | 5 | Stub "Por documentar" |
+| postmortems/README.md | 5 | Stub "Por documentar" |
 
 **Impacto:** Medio. Los stubs de operaciones (rollback, runbook) son brechas de seguridad operativa.
 **Acción:** Priorizar 11d-ROLLBACK y 11e-RUNBOOK (P0); eliminar o poblar CHANGELOG/ROADMAP/TECH_DEBT (P1).
@@ -88,7 +90,7 @@ Existe una auditoría previa (2026-02-13) en `docs/DOCUMENTATION_AUDIT_REPORT.md
 |---------|--------|--------|
 | 67-Guia-Backend-v1-Recepcion-Lineas-Palet-Automatico.md | 538 | Deprecado (marcado ⚠️) |
 | 68-Analisis-Cambios-API-v1-Migraciones.md | 381 | Deprecado implícito |
-| 30-referencia/PLAN-ELIMINACION-ARTICLE.md | 1.140 | Plan completado |
+| referencia/PLAN-ELIMINACION-ARTICLE.md | 1.140 | Plan completado |
 
 **Impacto:** Bajo. Marcados como deprecados pero ocupan espacio y pueden confundir.
 **Acción:** Mover a `docs/_archivo/` o eliminar si la información ya no es relevante.
@@ -120,7 +122,7 @@ Existe una auditoría previa (2026-02-13) en `docs/DOCUMENTATION_AUDIT_REPORT.md
 |---------|--------|--------|------------|--------|--------|
 | **CLAUDE.md** | 230 | ✅ Actualizado | Crítico | 10/10 | Mantener (canónico) |
 | **README.md** | 108 | ⚠️ Parcial | Crítico | 7/10 | Corregir versión Laravel |
-| **SECURITY.md** | 84 | ✅ Actualizado | Crítico | 8/10 | Corregir path `docs/fundamentos/` → `docs/20-fundamentos/` |
+| **SECURITY.md** | 84 | ✅ Actualizado | Crítico | 8/10 | Corregir path `docs/fundamentos/` → `docs/fundamentos/` |
 | **QUICK_START.md** | 69 | ✅ Actualizado | Importante | 8/10 | Mantener |
 | **EXECUTION_CHECKLIST.md** | 39 | ✅ Activo | Importante | 7/10 | Considerar mover a `docs/` |
 | **CHANGELOG.md** | 7 | 🗑️ Stub | Importante | 2/10 | Poblar o eliminar |
@@ -129,11 +131,11 @@ Existe una auditoría previa (2026-02-13) en `docs/DOCUMENTATION_AUDIT_REPORT.md
 
 ### B. docs/00-15 — Estructura Canónica (26 archivos, ~1.450 líneas)
 
-**Calidad general: 8/10.** Estructura clara y bien organizada. Archivos numerados actúan como índices que delegan al contenido detallado en carpetas 20-35. Buenos documentos operativos (05-QUEUES, 06-SCHEDULER, 09-TESTING, 11c-PRODUCTION).
+**Calidad general: 8/10.** Estructura clara y bien organizada. Archivos en raíz (overview, setup-local, architecture, etc.) actúan como índices que delegan al contenido detallado en carpetas por dominio. Buenos documentos operativos (queues-jobs, scheduler-cron, testing, 11c-PRODUCTION).
 
-**Brechas:** 5 stubs sin contenido (11b, 11d, 11e, 12-DEBUGGING, 13-POSTMORTEMS).
+**Brechas:** 5 stubs sin contenido (11b, 11d, 11e, 12-DEBUGGING, postmortems).
 
-### C. docs/20-fundamentos (5 archivos, ~1.931 líneas)
+### C. docs/fundamentos (5 archivos, ~1.931 líneas)
 
 | Archivo | Líneas | Estado | Relevancia |
 |---------|--------|--------|------------|
@@ -145,7 +147,7 @@ Existe una auditoría previa (2026-02-13) en `docs/DOCUMENTATION_AUDIT_REPORT.md
 
 **Calidad: 9/10.** Documentos fundacionales sólidos y actualizados. Numeración inconsistente (dos archivos `02-*`).
 
-### D. docs/21-instrucciones (19 archivos, ~3.241 líneas)
+### D. docs/instrucciones (19 archivos, ~3.241 líneas)
 
 **Calidad: 5/10.** Mezclado de contenido valioso con duplicaciones masivas (9 archivos CORS). Documentos de deploy duplicados (`deploy-desarrollo.md` vs `deploy-desarrollo-guiado.md`). La guía Sail/Windows (983 líneas) es exhaustiva pero podría modularizarse.
 
@@ -153,21 +155,21 @@ Existe una auditoría previa (2026-02-13) en `docs/DOCUMENTATION_AUDIT_REPORT.md
 - 9 archivos CORS → consolidar en 1
 - 2 archivos deploy desarrollo → consolidar en 1
 - `EXECUTION_CHECKLIST.md` duplica parcialmente el de raíz
-- `ENV-REFERENCIA-COMPLETA.md` solapa con `20-fundamentos/03-Configuracion-Entorno.md`
+- `ENV-REFERENCIA-COMPLETA.md` solapa con `fundamentos/03-Configuracion-Entorno.md`
 
-### E. docs/22-pedidos (5 archivos, ~1.964 líneas)
+### E. docs/pedidos (5 archivos, ~1.964 líneas)
 
 **Calidad: 8/10.** Módulo bien documentado con separación clara (general, detalles planificados, documentos PDF, incidentes, estadísticas). Contenido enfocado en API endpoints y lógica de negocio.
 
-### F. docs/23-inventario (5 archivos, ~2.273 líneas)
+### F. docs/inventario (5 archivos, ~2.273 líneas)
 
 **Calidad: 8/10.** Buen desglose (almacenes, palets, cajas, estadísticas). Nota: `31-Palets.md` (745 líneas) y `31-Palets-Estados-Fijos.md` (254 líneas) tienen numeración duplicada (31-*); considerar renombrar a 31a/31b.
 
-### G. docs/24-catalogos (15 archivos, ~4.376 líneas)
+### G. docs/catalogos (15 archivos, ~4.376 líneas)
 
-**Calidad: 8/10.** Cobertura exhaustiva de todos los maestros (productos, especies, clientes, proveedores, etc.). `40-Productos-EJEMPLOS.md` (530 líneas) podría consolidarse con `40-Productos.md` o moverse a `32-ejemplos/`.
+**Calidad: 8/10.** Cobertura exhaustiva de todos los maestros (productos, especies, clientes, proveedores, etc.). `40-Productos-EJEMPLOS.md` (530 líneas) podría consolidarse con `40-Productos.md` o moverse a `ejemplos/`.
 
-### H. docs/25-produccion (16 + 13 + 7 + 10 = 46 archivos, ~20.300+ líneas)
+### H. docs/produccion (16 + 13 + 7 + 10 = 46 archivos, ~20.300+ líneas)
 
 **Calidad: 6/10.** Zona más problemática del proyecto:
 - **Mega-documentos**: 6 archivos con > 1.000 líneas
@@ -175,45 +177,45 @@ Existe una auditoría previa (2026-02-13) en `docs/DOCUMENTATION_AUDIT_REPORT.md
 - **Mezcla de propuestas/análisis/implementación**: Difícil distinguir qué es estado actual vs. histórico
 - **Subdirectorios bien intencionados** (`analisis/`, `cambios/`, `frontend/`) pero con solapamiento entre ellos
 
-**Acción prioritaria:** Crear un `docs/25-produccion/ESTADO-ACTUAL.md` que resuma el estado vigente, y mover propuestas/análisis ya implementados a `docs/25-produccion/_archivo/`.
+**Acción prioritaria:** Crear un `docs/produccion/ESTADO-ACTUAL.md` que resuma el estado vigente, y mover propuestas/análisis ya implementados a `docs/produccion/_archivo/`.
 
-### I. docs/26-recepciones-despachos (15 archivos, ~7.487 líneas)
+### I. docs/recepciones-despachos (15 archivos, ~7.487 líneas)
 
 **Calidad: 6/10.** Buena documentación base (60-61-62) pero proliferación de guías frontend/backend y documentos de implementación que mezclan estado actual con historial. Dos archivos explícitamente deprecados (v1).
 
-### J. docs/27-etiquetas (1 archivo, 290 líneas)
+### J. docs/etiquetas (1 archivo, 290 líneas)
 
 **Calidad: 9/10.** Conciso y enfocado. Bien estructurado.
 
-### K. docs/28-sistema (11 archivos, ~3.771 líneas)
+### K. docs/sistema (11 archivos, ~3.771 líneas)
 
-**Calidad: 7/10.** Buenos documentos base (usuarios, roles, sesiones, configuración, fichajes). Algunos documentos de transición (81-Roles-Plan-Migracion-Enum, 82-Roles-Pasos-2-y-3-Pendientes) podrían archivarse si ya se implementaron. `86-Control-Horario-FRONTEND.md` (1.437 líneas) debería estar en `docs/33-frontend/`.
+**Calidad: 7/10.** Buenos documentos base (usuarios, roles, sesiones, configuración, fichajes). Algunos documentos de transición (81-Roles-Plan-Migracion-Enum, 82-Roles-Pasos-2-y-3-Pendientes) podrían archivarse si ya se implementaron. `86-Control-Horario-FRONTEND.md` (1.437 líneas) debería estar en `docs/frontend/`.
 
-### L. docs/29-utilidades (4 archivos, ~1.999 líneas)
+### L. docs/utilidades (4 archivos, ~1.999 líneas)
 
 **Calidad: 8/10.** Bien cubierto (PDF, Excel, IA, OCR). El plan de Tesseract (667 líneas) es extenso; verificar si se implementó.
 
-### M. docs/30-referencia (8 archivos, ~5.304 líneas)
+### M. docs/referencia (8 archivos, ~5.304 líneas)
 
 **Calidad: 7/10.** Documentos de referencia sólidos pero `PLAN-ELIMINACION-ARTICLE.md` (1.140 líneas) es un plan ya completado que debería archivarse.
 
-### N. docs/31-api-references (12 archivos, ~6.435 líneas)
+### N. docs/api-references (12 archivos, ~6.435 líneas)
 
 **Calidad: 8/10.** Buena estructura por módulo. Potencial duplicación con documentos en 22-28 (API endpoints documentados en ambos sitios).
 
-### O. docs/32-ejemplos (6 archivos, ~1.457 líneas)
+### O. docs/ejemplos (6 archivos, ~1.457 líneas)
 
 **Calidad: 7/10.** Útil pero versiones supersedidas (process-tree v3, v4, v5) deberían limpiarse. Mantener solo la última versión.
 
-### P. docs/33-frontend (6 archivos, ~1.300 líneas)
+### P. docs/frontend (6 archivos, ~1.300 líneas)
 
 **Calidad: 8/10.** Guías frontend bien enfocadas. Podrían absorber docs de frontend dispersos en otros módulos.
 
-### Q. docs/34-por-hacer (2 archivos, 223 líneas)
+### Q. docs/por-hacer (2 archivos, 223 líneas)
 
 **Calidad: 7/10.** Funcional. Podría consolidarse con ROADMAP.md si este se poblara.
 
-### R. docs/35-prompts (12 archivos, ~4.533 líneas)
+### R. docs/prompts (12 archivos, ~4.533 líneas)
 
 **Calidad: 6/10.** Prompts para diferentes agentes IA. Incluye el propio prompt que generó esta auditoría. Podrían moverse a `.agents/prompts/` para separar de documentación del proyecto.
 
@@ -288,7 +290,7 @@ Existe una auditoría previa (2026-02-13) en `docs/DOCUMENTATION_AUDIT_REPORT.md
 | # | Problema | Impacto | Esfuerzo |
 |---|----------|---------|----------|
 | 1 | README.md declara Laravel 11 (es 10) | Alto | 5 min |
-| 2 | 9 archivos CORS en `21-instrucciones/` | Medio | 2h |
+| 2 | 9 archivos CORS en `instrucciones/` | Medio | 2h |
 | 3 | Stubs vacíos en operaciones (rollback, runbook) | Alto | 4h |
 | 4 | Producción: 46 archivos, 20K+ líneas sin guía de estado actual | Medio | 3h |
 | 5 | Artefactos auditoría previa sueltos en `docs/` raíz | Bajo | 30 min |
@@ -311,21 +313,21 @@ Existe una auditoría previa (2026-02-13) en `docs/DOCUMENTATION_AUDIT_REPORT.md
 ### P1 — Alto (hacer esta semana)
 
 4. **Consolidar 9 archivos CORS** en uno definitivo
-5. **Crear `docs/25-produccion/ESTADO-ACTUAL.md`** como referencia vigente
+5. **Crear `docs/produccion/ESTADO-ACTUAL.md`** como referencia vigente
 6. **Mover artefactos de auditoría previa** a `docs/audits/documentation/`
 7. **Archivar documentación v1 deprecada** en `docs/_archivo/`
 
 ### P2 — Medio (hacer este mes)
 
 8. **Decidir sobre CHANGELOG/ROADMAP/TECH_DEBT**: poblar o eliminar
-9. **Consolidar deploy-desarrollo duplicados** en `21-instrucciones/`
-10. **Mover documentos frontend** dispersos a `docs/33-frontend/`
+9. **Consolidar deploy-desarrollo duplicados** en `instrucciones/`
+10. **Mover documentos frontend** dispersos a `docs/frontend/`
 11. **Archivar propuestas ya implementadas** en producción y recepciones
-12. **Evaluar duplicación** 22-28 vs 31-api-references
+12. **Evaluar duplicación** 22-28 vs api-references
 
 ### P3 — Bajo (hacer cuando convenga)
 
-13. **Limpiar ejemplos versionados** en `32-ejemplos/` (mantener solo última versión)
+13. **Limpiar ejemplos versionados** en `ejemplos/` (mantener solo última versión)
 14. **Mover prompts** a `.agents/prompts/`
 15. **Añadir `.ai_work_context/` a `.gitignore`** o definir política de limpieza
 16. **Verificar skills** de Laravel 11/12 contra versión actual

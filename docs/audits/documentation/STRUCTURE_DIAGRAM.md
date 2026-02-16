@@ -51,50 +51,50 @@ lapesquerapp-backend/
     ├── ─── ESTRUCTURA CANÓNICA (00-15) ───
     │
     ├── README.md ...................... (211 líneas) ✅ Índice por dominio
-    ├── 00-OVERVIEW.md ................. (90 líneas)  ✅ Índice por número
-    ├── 00_CORE CONSOLIDATION PLAN.md .. (544 líneas) ✅ Plan estratégico
-    ├── 01-SETUP-LOCAL.md .............. (36 líneas)  ✅ → instrucciones
-    ├── 02-ENVIRONMENT-VARIABLES.md .... (29 líneas)  ✅ → fundamentos
-    ├── 03-ARCHITECTURE.md ............. (28 líneas)  ✅ → fundamentos
-    ├── 04-DATABASE.md ................. (34 líneas)  ✅ → modelos
-    ├── 05-QUEUES-JOBS.md .............. (62 líneas)  ✅ Operativo
-    ├── 06-SCHEDULER-CRON.md ........... (68 líneas)  ✅ Operativo
-    ├── 07-STORAGE-FILES.md ............ (29 líneas)  ✅ → utilidades
-    ├── 08-API-REST.md ................. (39 líneas)  ✅ → api-references
-    ├── 09-TESTING.md .................. (244 líneas) ✅ Exhaustivo
-    ├── 10-OBSERVABILITY-MONITORING.md . (48 líneas)  ⚠️ Genérico
-    ├── 15-MULTI-TENANT-SPECIFICS.md ... (25 líneas)  ✅ → fundamentos
+    ├── overview.md ................. (90 líneas)  ✅ Índice por número
+    ├── core-consolidation-plan-erp-saas.md .. (544 líneas) ✅ Plan estratégico
+    ├── setup-local.md .............. (36 líneas)  ✅ → instrucciones
+    ├── environment-variables.md .... (29 líneas)  ✅ → fundamentos
+    ├── architecture.md ............. (28 líneas)  ✅ → fundamentos
+    ├── database.md ................. (34 líneas)  ✅ → modelos
+    ├── queues-jobs.md .............. (62 líneas)  ✅ Operativo
+    ├── scheduler-cron.md ........... (68 líneas)  ✅ Operativo
+    ├── storage-files.md ............ (29 líneas)  ✅ → utilidades
+    ├── api-rest.md ................. (39 líneas)  ✅ → api-references
+    ├── testing.md .................. (244 líneas) ✅ Exhaustivo
+    ├── observability-monitoring.md . (48 líneas)  ⚠️ Genérico
+    ├── multi-tenant-specs.md ... (25 líneas)  ✅ → fundamentos
     │
-    ├── 11-DEPLOYMENT/
+    ├── deployment/
     │   ├── 11a-DEVELOPMENT.md ......... (13 líneas)  ✅
     │   ├── 11b-STAGING.md ............. (3 líneas)   🗑️ STUB
     │   ├── 11c-PRODUCTION.md .......... (110 líneas) ✅
     │   ├── 11d-ROLLBACK-PROCEDURES.md . (3 líneas)   🗑️ STUB CRÍTICO
     │   └── 11e-RUNBOOK.md ............. (3 líneas)   🗑️ STUB CRÍTICO
     │
-    ├── 12-TROUBLESHOOTING/
+    ├── troubleshooting/
     │   ├── COMMON-ERRORS.md ........... (9 líneas)   ✅ → referencia
     │   ├── DEBUGGING-GUIDE.md ......... (5 líneas)   🗑️ STUB
     │   └── PERFORMANCE-ISSUES.md ...... (7 líneas)   ✅ → referencia
     │
-    ├── 13-POSTMORTEMS/
+    ├── postmortems/
     │   └── README.md .................. (5 líneas)   🗑️ STUB
     │
-    ├── 14-ARCHITECTURE-DECISIONS/
+    ├── architecture-decisions/
     │   ├── README.md .................. (18 líneas)  ✅
     │   ├── 0000-ADR-TEMPLATE.md ....... (36 líneas)  ✅
     │   └── 0001-API-v2-only.md ........ (42 líneas)  ✅ Ejemplar
     │
     ├── ─── DOCUMENTACIÓN POR DOMINIO (20-35) ───
     │
-    ├── 20-fundamentos/ ................ (5 archivos, 1.931 líneas) ✅ SÓLIDO
+    ├── fundamentos/ ................ (5 archivos, 1.931 líneas) ✅ SÓLIDO
     │   ├── 00-Introduccion.md
     │   ├── 01-Arquitectura-Multi-Tenant.md
     │   ├── 02-Autenticacion-Autorizacion.md
     │   ├── 02-Convencion-Tenant-Jobs.md  ⚠️ Numeración duplicada
     │   └── 03-Configuracion-Entorno.md
     │
-    ├── 21-instrucciones/ .............. (19 archivos, 3.241 líneas) ⚠️ DUPLICACIONES
+    ├── instrucciones/ .............. (19 archivos, 3.241 líneas) ⚠️ DUPLICACIONES
     │   ├── 🔴 9× CORS-*.md ........... (808 líneas) → CONSOLIDAR EN 1
     │   ├── ENV-REFERENCIA-COMPLETA.md
     │   ├── EXECUTION_CHECKLIST.md ..... Docker Sail
@@ -107,21 +107,21 @@ lapesquerapp-backend/
     │   ├── guia-completa-entorno-sail-windows.md (983 líneas)
     │   └── instalar-docker-wsl.md
     │
-    ├── 22-pedidos/ .................... (5 archivos, 1.964 líneas) ✅ BIEN
+    ├── pedidos/ .................... (5 archivos, 1.964 líneas) ✅ BIEN
     │   ├── 20-Pedidos-General.md
     │   ├── 21-Pedidos-Detalles-Planificados.md
     │   ├── 22-Pedidos-Documentos.md
     │   ├── 23-Pedidos-Incidentes.md
     │   └── 24-Pedidos-Estadisticas.md
     │
-    ├── 23-inventario/ ................. (5 archivos, 2.273 líneas) ✅ BIEN
+    ├── inventario/ ................. (5 archivos, 2.273 líneas) ✅ BIEN
     │   ├── 30-Almacenes.md
     │   ├── 31-Palets.md
     │   ├── 31-Palets-Estados-Fijos.md . ⚠️ Numeración duplicada
     │   ├── 32-Cajas.md
     │   └── 33-Estadisticas-Stock.md
     │
-    ├── 24-catalogos/ .................. (16 archivos, 4.376 líneas) ✅ EXHAUSTIVO
+    ├── catalogos/ .................. (16 archivos, 4.376 líneas) ✅ EXHAUSTIVO
     │   ├── 40-Productos.md + 40-Productos-EJEMPLOS.md
     │   ├── 41 a 54: Categorías, Familias, Especies, Zonas,
     │   │   Clientes, Proveedores, Transportes, Vendedores,
@@ -129,7 +129,7 @@ lapesquerapp-backend/
     │   │   Impuestos, Procesos, Variantes GS1
     │   └── (cobertura completa de todos los maestros)
     │
-    ├── 25-produccion/ ................. (46 archivos, ~20.300 líneas) 🔴 PROBLEMÁTICO
+    ├── produccion/ ................. (46 archivos, ~20.300 líneas) 🔴 PROBLEMÁTICO
     │   │
     │   ├── REFERENCIA VIGENTE (7):
     │   │   ├── 10-Produccion-General.md .......... (415)
@@ -140,7 +140,7 @@ lapesquerapp-backend/
     │   │   ├── 14-Produccion-Salidas.md .......... (547)
     │   │   └── 15-Produccion-Consumos-Outputs-Padre.md (652)
     │   │
-    │   ├── FRONTEND (para mover a 33-frontend/):
+    │   ├── FRONTEND (para mover a frontend/):
     │   │   ├── DOCUMENTACION-FRONTEND-*.md
     │   │   ├── FRONTEND-*.md (3 archivos)
     │   │   └── frontend/ (10 archivos)
@@ -158,7 +158,7 @@ lapesquerapp-backend/
     │   └── cambios/ ................... (7 archivos) → MAYORMENTE HISTÓRICO
     │       └── (fixes, cambios, migraciones completadas)
     │
-    ├── 26-recepciones-despachos/ ...... (15 archivos, 7.487 líneas) ⚠️ MIXTO
+    ├── recepciones-despachos/ ...... (15 archivos, 7.487 líneas) ⚠️ MIXTO
     │   ├── ✅ 60-Recepciones-Materia-Prima.md
     │   ├── ✅ 61-Despachos-Cebo.md
     │   ├── ✅ 62-Liquidacion-Proveedores.md (+ FRONTEND, SELECCION-PDF, PAGOS-GASTOS)
@@ -168,54 +168,54 @@ lapesquerapp-backend/
     │   ├── ❌ 68-Analisis-Cambios-API-v1-*.md (DEPRECADO)
     │   └── ✅ 69-70: Diseño y guía cajas disponibles
     │
-    ├── 27-etiquetas/ .................. (1 archivo, 290 líneas) ✅ CONCISO
+    ├── etiquetas/ .................. (1 archivo, 290 líneas) ✅ CONCISO
     │   └── 70-Etiquetas.md
     │
-    ├── 28-sistema/ .................... (11 archivos, 3.771 líneas) ✅ BUENO
+    ├── sistema/ .................... (11 archivos, 3.771 líneas) ✅ BUENO
     │   ├── 80-Usuarios.md
     │   ├── 81-Roles.md + 81-Roles-Plan-Migracion-Enum.md
     │   ├── 82-Sesiones.md + 82-Roles-Pasos-2-y-3-Pendientes.md
     │   ├── 83-Logs-Actividad.md
     │   ├── 84-Configuracion.md
     │   ├── 85-Control-Horario.md
-    │   ├── 86-Control-Horario-FRONTEND.md ..... ⚠️ Debería ir en 33-frontend
+    │   ├── 86-Control-Horario-FRONTEND.md ..... ⚠️ Debería ir en frontend
     │   ├── 87-89: Auth magic link, tokens, contraseñas
     │   └── 90-Analisis-Sin-Rastro-Password.md
     │
-    ├── 29-utilidades/ ................. (4 archivos, 1.999 líneas) ✅ BIEN
+    ├── utilidades/ ................. (4 archivos, 1.999 líneas) ✅ BIEN
     │   ├── 90-Generacion-PDF.md
     │   ├── 91-Exportacion-Excel.md
     │   ├── 92-Extraccion-Documentos-AI.md
     │   └── 93-Plan-Integracion-Tesseract-OCR.md
     │
-    ├── 30-referencia/ ................. (11 archivos, 5.304 líneas) ✅ SÓLIDO
+    ├── referencia/ ................. (11 archivos, 5.304 líneas) ✅ SÓLIDO
     │   ├── 95-99: Modelos, Recursos API, Restricciones, Rutas, Errores, Glosario
     │   ├── 100-102: Rendimiento endpoints, Planes mejora orders
     │   ├── ⚠️ PLAN-ELIMINACION-ARTICLE.md (1.140 líneas, completado)
     │   └── ⚠️ ANALISIS-API-FRONTEND-BACKEND.md (histórico)
     │
-    ├── 31-api-references/ ............. (12 archivos, 6.435 líneas) ✅ ESTRUCTURADO
+    ├── api-references/ ............. (12 archivos, 6.435 líneas) ✅ ESTRUCTURADO
     │   ├── README.md (índice)
     │   └── */README.md: autenticacion, catalogos, estadisticas,
     │       inventario, pedidos, produccion, produccion-costos,
     │       productos, recepciones-despachos, sistema, utilidades
     │
-    ├── 32-ejemplos/ ................... (6 archivos, 1.457 líneas) ⚠️ VERSIONES
+    ├── ejemplos/ ................... (6 archivos, 1.457 líneas) ⚠️ VERSIONES
     │   ├── EJEMPLO-RESPUESTA-PALLET.md
     │   ├── ⚠️ process-tree-v3.md (supersedido)
     │   ├── ⚠️ process-tree-v4.md (supersedido)
     │   ├── ✅ process-tree-v5-con-conciliacion.md (vigente)
     │   └── EJEMPLO-RESPUESTA-production-record-completo.md
     │
-    ├── 33-frontend/ ................... (6 archivos, 1.300 líneas) ✅ ENFOCADO
+    ├── frontend/ ................... (6 archivos, 1.300 líneas) ✅ ENFOCADO
     │   ├── API-Conventions.md
     │   ├── API-CAMBIO-Tenant-Endpoint-Data-Wrapper.md
     │   ├── Guia-Auth-Magic-Link-OTP.md
     │   ├── Guia-Cambios-Roles-API-Paso-2.md
     │   └── SETTINGS-EMAIL-*.md (2 archivos)
     │
-    ├── 34-por-hacer/ .................. (2 archivos, 223 líneas) ✅
-    ├── 35-prompts/ .................... (12 archivos, 4.533 líneas) ⚠️ EVALUAR UBICACIÓN
+    ├── por-hacer/ .................. (2 archivos, 223 líneas) ✅
+    ├── prompts/ .................... (12 archivos, 4.533 líneas) ⚠️ EVALUAR UBICACIÓN
     │
     ├── ─── AUDITORÍAS Y META-DOCUMENTACIÓN ───
     │
@@ -237,10 +237,15 @@ lapesquerapp-backend/
     │   ├── GAPS_ANALYSIS.md
     │   └── API_DOCUMENTATION_GUIDE.md
     │
-    ├── por-implementar/ ............... (2 archivos, 213 líneas)
     ├── tasks/ ......................... (2 archivos, 74 líneas)
-    ├── 00_ POR IMPLEMENTAR/ ........... (1 archivo, 10 líneas) ⚠️ REDUNDANTE
-    └── PROBLEMAS-CRITICOS.md .......... (74 líneas)
+    │
+    └── audits/
+    │   ├── PROBLEMAS-CRITICOS.md ...... (74 líneas)
+    │   ├── POLITICA-DEPRECADOS.md ..... Política archivado
+    │   ├── CONVENCIONES-DOCUMENTACION.md
+    │   ├── findings/
+    │   ├── laravel-*.md
+    │   └── documentation/ ............. MANIFEST, REORGANIZATION_PLAN, etc.
 ```
 
 ---
@@ -258,7 +263,7 @@ lapesquerapp-backend/
 │
 ├── .agents/
 │   ├── skills/ ........................ Sin cambios
-│   └── prompts/ ....................... (movidos desde docs/35-prompts/) [opcional]
+│   └── prompts/ ....................... (movidos desde docs/prompts/) [opcional]
 │
 ├── .ai_standards/ ..................... Sin cambios
 ├── .ai_work_context/ .................. En .gitignore [recomendado]
@@ -266,54 +271,55 @@ lapesquerapp-backend/
 └── docs/
     │
     ├── README.md
-    ├── 00-OVERVIEW.md
-    ├── 00_CORE CONSOLIDATION PLAN.md
+    ├── overview.md
+    ├── core-consolidation-plan-erp-saas.md
     ├── 01 a 15 ........................ Sin cambios (stubs poblados)
-    ├── PROBLEMAS-CRITICOS.md
     │
-    ├── 20-fundamentos/ ................ Sin cambios
+    ├── fundamentos/ ................ Sin cambios
     │
-    ├── 21-instrucciones/
+    ├── instrucciones/
     │   ├── CORS-GUIA-DEFINITIVA.md .... NUEVO (consolidado)
     │   ├── deploy-desarrollo.md ....... CONSOLIDADO
     │   ├── (resto sin cambios)
     │   └── _archivo-cors/ ............. 9 archivos CORS originales
     │
-    ├── 22-pedidos/ .................... Sin cambios
-    ├── 23-inventario/ ................. Sin cambios
-    ├── 24-catalogos/ .................. Sin cambios
+    ├── pedidos/ .................... Sin cambios
+    ├── inventario/ ................. Sin cambios
+    ├── catalogos/ .................. Sin cambios
     │
-    ├── 25-produccion/
+    ├── produccion/
     │   ├── 00-ESTADO-ACTUAL.md ........ NUEVO
     │   ├── 10-15 (referencia vigente) . Sin cambios
     │   ├── ENDPOINT-*.md .............. Sin cambios
     │   └── _archivo/ .................. Propuestas/análisis implementados
     │
-    ├── 26-recepciones-despachos/ ...... Sin cambios (deprecados archivados)
-    ├── 27-etiquetas/ .................. Sin cambios
-    ├── 28-sistema/ .................... Sin cambios (86-FRONTEND movido)
-    ├── 29-utilidades/ ................. Sin cambios
-    ├── 30-referencia/ ................. Sin cambios (PLAN-ARTICLE archivado)
-    ├── 31-api-references/ ............. Sin cambios
-    ├── 32-ejemplos/ ................... v3/v4 eliminados, solo v5
+    ├── recepciones-despachos/ ...... Sin cambios (deprecados archivados)
+    ├── etiquetas/ .................. Sin cambios
+    ├── sistema/ .................... Sin cambios (86-FRONTEND movido)
+    ├── utilidades/ ................. Sin cambios
+    ├── referencia/ ................. Sin cambios (PLAN-ARTICLE archivado)
+    ├── api-references/ ............. Sin cambios
+    ├── ejemplos/ ................... v3/v4 eliminados, solo v5
     │
-    ├── 33-frontend/
+    ├── frontend/
     │   ├── (existentes)
-    │   ├── Control-Horario-FRONTEND.md  (movido desde 28-sistema)
-    │   └── produccion/ ................ (movido desde 25-produccion/frontend)
+    │   ├── Control-Horario-FRONTEND.md  (movido desde sistema)
+    │   └── produccion/ ................ (opcional; frontend en produccion/frontend)
     │
-    ├── 34-por-hacer/ .................. Sin cambios
-    ├── 35-prompts/ .................... Sin cambios (o movido a .agents/)
+    ├── por-hacer/ .................. ROADMAP, TECH_DEBT, por-implementar (unificado)
+    ├── prompts/ .................... Mantener en docs (DECISIONES-F1)
     │
     ├── audits/
+    │   ├── PROBLEMAS-CRITICOS.md ...... Resumen problemas críticos
+    │   ├── POLITICA-DEPRECADOS.md ..... No eliminar archivados
+    │   ├── CONVENCIONES-DOCUMENTACION.md
     │   ├── findings/
     │   ├── documentation/
     │   │   ├── 2026-02-13/ ............ Auditoría previa (movida)
-    │   │   ├── AUDIT_REPORT.md ........ Esta auditoría
-    │   │   ├── MANIFEST.md
-    │   │   ├── REORGANIZATION_PLAN.md
-    │   │   ├── STRUCTURE_DIAGRAM.md
-    │   │   └── VALIDATION_CHECKLIST.md
+    │   │   ├── AUDIT_REPORT.md, MANIFEST.md, REORGANIZATION_PLAN.md
+    │   │   ├── STRUCTURE_DIAGRAM.md, VALIDATION_CHECKLIST.md
+    │   │   ├── PLAN-PENDIENTES-DOCUMENTACION.md, DECISIONES-F1.md
+    │   │   └── FASE-A/B/C/E resultados, etc.
     │   ├── laravel-backend-global-audit.md
     │   ├── laravel-evolution-log.md
     │   └── indexes-audit-2026-02-15.md
@@ -322,7 +328,6 @@ lapesquerapp-backend/
     │   ├── api-v1/ .................... Docs deprecados v1
     │   └── planes-completados/ ........ Planes ya ejecutados
     │
-    ├── por-implementar/ ............... Sin cambios
     └── tasks/ ......................... Sin cambios
 ```
 

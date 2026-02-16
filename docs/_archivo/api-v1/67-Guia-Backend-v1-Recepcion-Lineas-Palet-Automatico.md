@@ -1,4 +1,4 @@
-> **⚠️ DEPRECADO — Solo histórico.** La API v1 fue eliminada del proyecto (2025-01-27). Este documento se conserva como referencia del diseño anterior. Para la API actual usar [API v2](../31-api-references/recepciones-despachos/README.md) y la documentación de [recepciones de materia prima](./60-Recepciones-Materia-Prima.md). Ver [ADR 0001 — API v2 única](../14-ARCHITECTURE-DECISIONS/0001-API-v2-only.md).
+> **⚠️ DEPRECADO — Solo histórico.** La API v1 fue eliminada del proyecto (2025-01-27). Este documento se conserva como referencia del diseño anterior. Para la API actual usar [API v2](../api-references/recepciones-despachos/README.md) y la documentación de [recepciones de materia prima](./60-Recepciones-Materia-Prima.md). Ver [ADR 0001 — API v2 única](../architecture-decisions/0001-API-v2-only.md).
 
 ---
 
