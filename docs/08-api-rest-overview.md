@@ -23,17 +23,17 @@ audience: Backend Engineers, Frontend Engineers
 ## Contenido principal
 
 - **[api-references/](api-references/)** — Índice por módulo (autenticación, catálogos, pedidos, inventario, producción, recepciones-despachos, utilidades, estadísticas, productos, sistema).
-- **[referencia/97-Rutas-Completas.md](./referencia/97-Rutas-Completas.md)** — Lista completa de rutas v2.
-- **[referencia/96-Recursos-API.md](./referencia/96-Recursos-API.md)** — Recursos API (transformación de modelos a JSON).
-- **[referencia/96-Restricciones-Entidades.md](./referencia/96-Restricciones-Entidades.md)** — Restricciones entre entidades.
+- **[referencia/97-rutas-completas.md](./referencia/97-rutas-completas.md)** — Lista completa de rutas v2.
+- **[referencia/96-recursos-api.md](./referencia/96-recursos-api.md)** — Recursos API (transformación de modelos a JSON).
+- **[referencia/96-restricciones-entidades.md](./referencia/96-restricciones-entidades.md)** — Restricciones entre entidades.
 
 Autenticación:
 
-- [fundamentos/02-Autenticacion-Autorizacion.md](./fundamentos/02-Autenticacion-Autorizacion.md) — Sanctum, magic link, OTP, roles.
+- [fundamentos/02-autenticacion-autorizacion.md](./fundamentos/02-autenticacion-autorizacion.md) — Sanctum, magic link, OTP, roles.
 
 ---
 
 ## Véase también
 
 - [03-architecture-overview.md](./03-architecture-overview.md) — Arquitectura.
-- [troubleshooting/COMMON-ERRORS.md](./troubleshooting/COMMON-ERRORS.md) — Errores comunes de API.
+- [troubleshooting/common-errors.md](./troubleshooting/common-errors.md) — Errores comunes de API.

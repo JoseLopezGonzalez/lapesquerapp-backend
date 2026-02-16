@@ -26,10 +26,10 @@ Esta documentación cubre **EXCLUSIVAMENTE la API v2**, que es la versión activ
 ### Fundamentos ([./fundamentos/](./fundamentos/))
 
 Documentación esencial para entender la arquitectura:
-- [00-Introduccion.md](./fundamentos/00-Introduccion.md): Visión general, arquitectura, principios
+- [00-introduccion.md](./fundamentos/00-introduccion.md): Visión general, arquitectura, principios
 - [01-Arquitectura-Multi-Tenant.md](./fundamentos/01-Arquitectura-Multi-Tenant.md): Multi-tenant, middleware, conexiones BD
-- [02-Autenticacion-Autorizacion.md](./fundamentos/02-Autenticacion-Autorizacion.md): Sanctum, roles, permisos, sesiones
-- [03-Configuracion-Entorno.md](./fundamentos/03-Configuracion-Entorno.md): Variables de entorno, configuración
+- [02-autenticacion-autorizacion.md](./fundamentos/02-autenticacion-autorizacion.md): Sanctum, roles, permisos, sesiones
+- [03-configuracion-entorno.md](./fundamentos/03-configuracion-entorno.md): Variables de entorno, configuración
 
 > **Empieza aquí si eres nuevo en el proyecto**
 
@@ -40,9 +40,9 @@ Despliegue y entorno de desarrollo:
 - [actualizacion-seeders-migraciones.md](./instrucciones/actualizacion-seeders-migraciones.md): Seeders y migraciones
 - [guia-completa-entorno-sail-windows.md](./instrucciones/guia-completa-entorno-sail-windows.md): Sail + Windows/WSL
 - [instalar-docker-wsl.md](./instrucciones/instalar-docker-wsl.md): Docker en WSL
-- [IMPLEMENTATION_PLAN_DOCKER_SAIL.md](./instrucciones/IMPLEMENTATION_PLAN_DOCKER_SAIL.md): Plan Sail
-- [EXECUTION_CHECKLIST.md](./instrucciones/EXECUTION_CHECKLIST.md): Checklist de ejecución
-- [FINAL_VALIDATION_REPORT.md](./instrucciones/FINAL_VALIDATION_REPORT.md): Validación final
+- [implementation-plan-docker-sail.md](./instrucciones/implementation-plan-docker-sail.md): Plan Sail
+- [execution-checklist.md](./instrucciones/execution-checklist.md): Checklist de ejecución
+- [final-validation-report.md](./instrucciones/final-validation-report.md): Validación final
 
 ### Frontend ([./frontend/](./frontend/))
 
@@ -50,13 +50,13 @@ Guías para integración: auth, roles, configuración. Guia-Auth-Magic-Link-OTP,
 
 ### API References ([./api-references/](./api-references/))
 
-Referencia por módulo. Ver [README](./api-references/README.md).
+Referencia por módulo. Ver [readme](./api-references/readme.md).
 
 ### Producción ([./produccion/](./produccion/))
 
 Módulo de producción pesquera (el más complejo):
-- [10-Produccion-General.md](./produccion/10-Produccion-General.md), [11-Produccion-Lotes.md](./produccion/11-Produccion-Lotes.md), [12-Produccion-Procesos.md](./produccion/12-Produccion-Procesos.md)
-- [13-Produccion-Entradas.md](./produccion/13-Produccion-Entradas.md), [14-Produccion-Salidas.md](./produccion/14-Produccion-Salidas.md), [15-Produccion-Consumos-Outputs-Padre.md](./produccion/15-Produccion-Consumos-Outputs-Padre.md)
+- [10-produccion-general.md](./produccion/10-produccion-general.md), [11-produccion-lotes.md](./produccion/11-produccion-lotes.md), [12-produccion-procesos.md](./produccion/12-produccion-procesos.md)
+- [13-produccion-entradas.md](./produccion/13-produccion-entradas.md), [14-produccion-salidas.md](./produccion/14-produccion-salidas.md), [15-produccion-consumos-outputs-padre.md](./produccion/15-produccion-consumos-outputs-padre.md)
 - Subcarpetas: [frontend/](./produccion/frontend/), [analisis/](./produccion/analisis/), [cambios/](./produccion/cambios/)
 
 ### Pedidos ([./pedidos/](./pedidos/))
@@ -66,7 +66,7 @@ Módulo de producción pesquera (el más complejo):
 
 ### Inventario ([./inventario/](./inventario/))
 
-- [30-Almacenes.md](./inventario/30-Almacenes.md), [31-Palets.md](./inventario/31-Palets.md), [32-Cajas.md](./inventario/32-Cajas.md), [33-Estadisticas-Stock.md](./inventario/33-Estadisticas-Stock.md)
+- [30-almacenes.md](./inventario/30-almacenes.md), [31-palets.md](./inventario/31-palets.md), [32-cajas.md](./inventario/32-cajas.md), [33-estadisticas-stock.md](./inventario/33-estadisticas-stock.md)
 
 ### Catálogos ([./catalogos/](./catalogos/))
 
@@ -74,40 +74,40 @@ Módulo de producción pesquera (el más complejo):
 
 ### Recepciones y Despachos ([./recepciones-despachos/](./recepciones-despachos/))
 
-- [60-Recepciones-Materia-Prima.md](./recepciones-despachos/60-Recepciones-Materia-Prima.md), [61-Despachos-Cebo.md](./recepciones-despachos/61-Despachos-Cebo.md)
+- [60-recepciones-materia-prima.md](./recepciones-despachos/60-recepciones-materia-prima.md), [61-despachos-cebo.md](./recepciones-despachos/61-despachos-cebo.md)
 
 ### Etiquetas ([./etiquetas/](./etiquetas/))
 
-- [70-Etiquetas.md](./etiquetas/70-Etiquetas.md)
+- [70-etiquetas.md](./etiquetas/70-etiquetas.md)
 
 ### Sistema ([./sistema/](./sistema/))
 
-- [80-Usuarios.md](./sistema/80-Usuarios.md), [81-Roles.md](./sistema/81-Roles.md), [82-Sesiones.md](./sistema/82-Sesiones.md)
-- [83-Logs-Actividad.md](./sistema/83-Logs-Actividad.md), [84-Configuracion.md](./sistema/84-Configuracion.md)
+- [80-usuarios.md](./sistema/80-usuarios.md), [81-roles.md](./sistema/81-roles.md), [82-sesiones.md](./sistema/82-sesiones.md)
+- [83-logs-actividad.md](./sistema/83-logs-actividad.md), [84-configuracion.md](./sistema/84-configuracion.md)
 
 ### Utilidades ([./utilidades/](./utilidades/))
 
-- [90-Generacion-PDF.md](./utilidades/90-Generacion-PDF.md), [91-Exportacion-Excel.md](./utilidades/91-Exportacion-Excel.md)
-- [92-Extraccion-Documentos-AI.md](./utilidades/92-Extraccion-Documentos-AI.md), [93-Plan-Integracion-Tesseract-OCR.md](./utilidades/93-Plan-Integracion-Tesseract-OCR.md)
+- [90-generacion-pdf.md](./utilidades/90-generacion-pdf.md), [91-exportacion-excel.md](./utilidades/91-exportacion-excel.md)
+- [92-extraccion-documentos-ai.md](./utilidades/92-extraccion-documentos-ai.md), [93-plan-integracion-tesseract-ocr.md](./utilidades/93-plan-integracion-tesseract-ocr.md)
 
 ### Referencia ([./referencia/](./referencia/))
 
-- [95-Modelos-Referencia.md](./referencia/95-Modelos-Referencia.md), [96-Recursos-API.md](./referencia/96-Recursos-API.md), [96-Restricciones-Entidades.md](./referencia/96-Restricciones-Entidades.md)
-- [97-Rutas-Completas.md](./referencia/97-Rutas-Completas.md), [98-Errores-Comunes.md](./referencia/98-Errores-Comunes.md), [99-Glosario.md](./referencia/99-Glosario.md)
-- [100-Rendimiento-Endpoints.md](./referencia/100-Rendimiento-Endpoints.md), 101/102 planes de mejora
-- [ANALISIS-API-FRONTEND-BACKEND.md](./referencia/ANALISIS-API-FRONTEND-BACKEND.md)
+- [95-modelos-referencia.md](./referencia/95-modelos-referencia.md), [96-recursos-api.md](./referencia/96-recursos-api.md), [96-restricciones-entidades.md](./referencia/96-restricciones-entidades.md)
+- [97-rutas-completas.md](./referencia/97-rutas-completas.md), [98-errores-comunes.md](./referencia/98-errores-comunes.md), [99-glosario.md](./referencia/99-glosario.md)
+- [100-rendimiento-endpoints.md](./referencia/100-rendimiento-endpoints.md), 101/102 planes de mejora
+- [analisis-api-frontend-backend.md](./referencia/analisis-api-frontend-backend.md)
 
 ### Ejemplos ([./ejemplos/](./ejemplos/))
 
-Ejemplos JSON (process-tree, producción, palets). Ver [README](./ejemplos/README.md).
+Ejemplos JSON (process-tree, producción, palets). Ver [readme](./ejemplos/readme.md).
 
 ---
 
 ## Problemas críticos
 
-**Resumen ejecutivo:** [PROBLEMAS-CRITICOS.md](./audits/PROBLEMAS-CRITICOS.md) — 25 problemas prioritarios.
+**Resumen ejecutivo:** [problemas-criticos.md](./audits/problemas-criticos.md) — 25 problemas prioritarios.
 
-**Detalle completo:** [referencia/98-Errores-Comunes.md](./referencia/98-Errores-Comunes.md) — 59 problemas.
+**Detalle completo:** [referencia/98-errores-comunes.md](./referencia/98-errores-comunes.md) — 59 problemas.
 
 ---
 
@@ -116,7 +116,7 @@ Ejemplos JSON (process-tree, producción, palets). Ver [README](./ejemplos/READM
 1. **Desarrolladores nuevos:** Fundamentos + Instrucciones (Sail).
 2. **Módulo específico:** Carpeta correspondiente o API References.
 3. **Frontend (Production Tree):** Producción > frontend/; auth/roles: Frontend.
-4. **Problemas:** PROBLEMAS-CRITICOS.md y "Observaciones Críticas" en cada archivo.
+4. **Problemas:** problemas-criticos.md y "Observaciones Críticas" en cada archivo.
 5. **Referencia rápida:** Referencia/.
 6. **Ejemplos JSON:** Ejemplos/.
 7. **Agentes IA:** `.ai_standards/` en la raíz (PROTOCOLO_PARA_CHAT, QUICK_START_GUIDE).

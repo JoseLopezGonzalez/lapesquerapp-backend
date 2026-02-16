@@ -20,16 +20,16 @@ La documentación de setup y despliegue en desarrollo está en:
 - **[instrucciones/deploy-desarrollo-guiado.md](./instrucciones/deploy-desarrollo-guiado.md)** — Guía paso a paso (primera vez).
 - **[instrucciones/instalar-docker-wsl.md](./instrucciones/instalar-docker-wsl.md)** — Instalar Docker y Docker Compose en WSL (Ubuntu).
 - **[instrucciones/guia-completa-entorno-sail-windows.md](./instrucciones/guia-completa-entorno-sail-windows.md)** — Guía completa Sail + Windows/WSL (primera vez, seeders, frontend, troubleshooting).
-- **[fundamentos/03-Configuracion-Entorno.md](./fundamentos/03-Configuracion-Entorno.md)** — Configuración del entorno y variables.
+- **[fundamentos/03-configuracion-entorno.md](./fundamentos/03-configuracion-entorno.md)** — Configuración del entorno y variables.
 
 Para plan y checklist Sail:
 
-- [instrucciones/IMPLEMENTATION_PLAN_DOCKER_SAIL.md](./instrucciones/IMPLEMENTATION_PLAN_DOCKER_SAIL.md)
-- [instrucciones/EXECUTION_CHECKLIST.md](./instrucciones/EXECUTION_CHECKLIST.md)
+- [instrucciones/implementation-plan-docker-sail.md](./instrucciones/implementation-plan-docker-sail.md)
+- [instrucciones/execution-checklist.md](./instrucciones/execution-checklist.md)
 
 ---
 
 ## Véase también
 
-- [environment-variables.md](./environment-variables.md) — Variables de entorno.
-- [deployment/11a-DEVELOPMENT.md](./deployment/11a-DEVELOPMENT.md) — Deployment desarrollo (estructura estándar).
+- [02-environment-variables.md](./02-environment-variables.md) — Variables de entorno.
+- [deployment/11a-development.md](./deployment/11a-development.md) — Deployment desarrollo (estructura estándar).

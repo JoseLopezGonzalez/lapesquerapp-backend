@@ -28,3 +28,30 @@ Registro incremental de cambios por archivo. Formato: `ruta original → nuevo n
 | docs/testing.md | docs/09-testing.md | RENAME | Formato NN-topic |
 | docs/observability-monitoring.md | docs/10-observability-monitoring.md | RENAME | Formato NN-topic |
 | docs/multi-tenant-specs.md | docs/15-multi-tenant-specs.md | RENAME | Formato NN-topic |
+
+---
+
+## Batch Fase 1 continuación (2026-02-16)
+
+| Carpeta | Acción | Archivos |
+|---------|--------|----------|
+| catalogos/ | RENAME lowercase | 16 archivos |
+| fundamentos/ | RENAME lowercase | 5 archivos |
+| inventario/ | RENAME lowercase | 5 archivos |
+| pedidos/ | RENAME lowercase | 5 archivos |
+| recepciones-despachos/ | RENAME lowercase | 14 archivos |
+| instrucciones/ | RENAME lowercase + kebab | 7 + _archivo-cors 9 |
+| sistema/ | RENAME lowercase | 11 archivos |
+| utilidades/ | RENAME lowercase | 4 archivos |
+| etiquetas/ | RENAME lowercase | 1 archivo |
+| ejemplos/ | RENAME lowercase | 6 archivos |
+| frontend/ | RENAME lowercase | 7 archivos |
+| por-hacer/ | RENAME lowercase | 6 archivos |
+| referencia/ | RENAME lowercase | 10 archivos |
+| troubleshooting/ | RENAME lowercase | 3 archivos |
+| architecture-decisions/ | RENAME lowercase | 3 archivos |
+| produccion/ | RENAME lowercase recursivo | ~55 archivos |
+| api-references/ | RENAME readme→readme | 12 READMEs |
+| audits/ | RENAME lowercase + kebab | ~26 archivos |
+| tasks/ | RENAME lowercase + kebab | 2 archivos |
+| prompts/ | RENAME lowercase + kebab | 13 archivos |

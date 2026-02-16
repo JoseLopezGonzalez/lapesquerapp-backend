@@ -1,30 +1,19 @@
-# Renombrados pendientes (Fase 1 — batch)
+# Renombrados — Completados (sesión 2026-02-16)
 
-Archivos que aún requieren renombrar a formato `NN-topic[-scope].md` (kebab-case, sin mayúsculas).
+Todos los archivos de /docs han sido renombrados a formato `NN-topic[-scope].md` (kebab-case, lowercase).
 
-**Regla:** Convertir a minúsculas el topic; preservar NN si ya existe.
+## Carpetas procesadas
 
-## Por carpeta
+- catalogos/, fundamentos/, inventario/, pedidos/, recepciones-despachos/
+- instrucciones/, instrucciones/_archivo-cors/, instrucciones/_archivo/
+- sistema/, utilidades/, etiquetas/, ejemplos/, frontend/, por-hacer/
+- referencia/, troubleshooting/, architecture-decisions/
+- produccion/ (recursivo: raíz, frontend/, analisis/, cambios/, _archivo/)
+- api-references/, audits/, audits/documentation/, audits/documentation/2026-02-13/
+- tasks/, prompts/
 
-### catalogos/
-- 40-Productos.md → 40-productos.md
-- 41-Categorias-Familias-Productos.md → 41-categorias-familias-productos.md
-- 42-Especies.md → 42-especies.md
-- (y resto 43–54)
+## Enlaces actualizados
 
-### fundamentos/
-- 00-Introduccion.md → 00-introduccion.md
-- 01-Arquitectura-Multi-Tenant.md → 01-arquitectura-multi-tenant.md
-- 02-Autenticacion-Autorizacion.md → 02-autenticacion-autorizacion.md
-- 02b-Convencion-Tenant-Jobs.md → 02b-convencion-tenant-jobs.md
-- 03-Configuracion-Entorno.md → 03-configuracion-entorno.md
-
-### instrucciones/, ejemplos/, inventario/, pedidos/, etc.
-Aplicar mismo criterio: topic en kebab-case lowercase.
-
-### audits/documentation/
-Muchos con MAYÚSCULAS — convertir a kebab-case.
-
----
-
-**Nota:** Se han procesado y renombrado los archivos raíz, _archivo/*, deployment/, y corregido enlaces críticos. El resto puede ejecutarse en batch en una siguiente iteración.
+- 00-docs-index.md, 00-overview.md
+- troubleshooting/debugging-guide.md
+- README raíz del proyecto

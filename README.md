@@ -38,7 +38,7 @@ La documentación incluye:
 - Utilidades (PDF, Excel, IA)
 - Referencia técnica (Modelos, Rutas, Errores, Glosario)
 
-**📋 Resumen de problemas críticos**: Ver [`docs/audits/PROBLEMAS-CRITICOS.md`](docs/audits/PROBLEMAS-CRITICOS.md) para los 25 problemas más críticos.
+**📋 Resumen de problemas críticos**: Ver [`docs/audits/problemas-criticos.md`](docs/audits/problemas-criticos.md) para los 25 problemas más críticos.
 
 - **Índice estándar (00-15):** [`docs/00-overview.md`](docs/00-overview.md)
 - **Índice por dominio:** [`docs/00-docs-index.md`](docs/00-docs-index.md)

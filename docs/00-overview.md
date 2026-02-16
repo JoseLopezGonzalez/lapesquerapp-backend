@@ -31,14 +31,14 @@ audience: Backend Engineers, DevOps, Architects
 | 05 | Colas y jobs | [05-queues-jobs.md](./05-queues-jobs.md) | Por completar |
 | 06 | Scheduler / Cron | [06-scheduler-cron.md](./06-scheduler-cron.md) | Por completar |
 | 07 | Storage y archivos | [07-storage-files.md](./07-storage-files.md) | [utilidades/](./utilidades/) |
-| 08 | API REST | [08-api-rest-overview.md](./08-api-rest-overview.md) | [api-references/](./api-references/), [referencia/97-Rutas-Completas](./referencia/97-Rutas-Completas.md) |
+| 08 | API REST | [08-api-rest-overview.md](./08-api-rest-overview.md) | [api-references/](./api-references/), [referencia/97-rutas-completas](./referencia/97-rutas-completas.md) |
 | 09 | Testing | [09-testing.md](./09-testing.md) | Por completar |
 | 10 | Observabilidad | [10-observability-monitoring.md](./10-observability-monitoring.md) | Por completar |
 | 11 | Deployment | [deployment/](./deployment/) | [instrucciones/](./instrucciones/) |
 | 12 | Troubleshooting | [troubleshooting/](./troubleshooting/) | [referencia/98-Errores-Comunes](./referencia/98-Errores-Comunes.md), [PROBLEMAS-CRITICOS](./audits/PROBLEMAS-CRITICOS.md) |
 | 13 | Postmortems | [postmortems/](./postmortems/) | Carpeta para informes de incidentes (por documentar) |
 | 14 | Architecture Decisions | [architecture-decisions/](./architecture-decisions/) | ADR (por documentar) |
-| 15 | Multi-tenant | [15-multi-tenant-specs.md](./15-multi-tenant-specs.md) | [fundamentos/01-Arquitectura-Multi-Tenant](./fundamentos/01-Arquitectura-Multi-Tenant.md) |
+| 15 | Multi-tenant | [15-multi-tenant-specs.md](./15-multi-tenant-specs.md) | [fundamentos/01-arquitectura-multi-tenant](./fundamentos/01-arquitectura-multi-tenant.md) |
 
 ---
 
