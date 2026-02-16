@@ -13,13 +13,13 @@ trait ConfiguresTenantConnection
      */
     protected function ensureDatabaseReachable(): void
     {
-        // Mismo host que config/database.php: si testing fuera de Sail y DB_HOST=mysql, usar 127.0.0.1
-        $dbHost = getenv('DB_HOST') ?: '127.0.0.1';
-        if (getenv('APP_ENV') === 'testing' && ! getenv('LARAVEL_SAIL') && $dbHost === 'mysql') {
+        // Requiere que la app exista (llamar después de parent::setUp()) para usar config en Sail
+        $dbHost = config('database.connections.mysql.host', getenv('DB_HOST') ?: '127.0.0.1');
+        if (config('app.env') === 'testing' && ! getenv('LARAVEL_SAIL') && $dbHost === 'mysql') {
             $dbHost = '127.0.0.1';
         }
         $host = $dbHost;
-        $port = (int) (getenv('DB_PORT') ?: '3306');
+        $port = (int) config('database.connections.mysql.port', getenv('DB_PORT') ?: '3306');
         $errno = 0;
         $errstr = '';
         $timeout = 2;

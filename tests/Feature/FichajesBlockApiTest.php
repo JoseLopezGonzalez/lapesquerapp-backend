@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Models\Employee;
+use App\Models\PunchEvent;
 use App\Models\Tenant;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\ConfiguresTenantConnection;
 use Tests\TestCase;
@@ -22,7 +25,6 @@ class FichajesBlockApiTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->ensureDatabaseReachable();
         parent::setUp();
         $this->setUpTenantConnection();
         $this->createTenantAndUser();
@@ -128,5 +130,39 @@ class FichajesBlockApiTest extends TestCase
             ->getJson('/api/v2/employees');
 
         $response->assertUnauthorized();
+    }
+
+    /**
+     * Cada día se trata por separado: si ayer el empleado quedó con entrada sin salida,
+     * el primer fichaje de hoy debe ser entrada (IN), no salida.
+     */
+    public function test_first_punch_of_day_is_entrada_when_previous_day_has_unclosed_entrada(): void
+    {
+        $createEmployee = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/employees', [
+                'name' => 'Empleado Fichaje Día',
+                'nfc_uid' => 'NFC-' . uniqid(),
+            ]);
+        $createEmployee->assertCreated();
+        $employeeId = $createEmployee->json('data.id');
+
+        $yesterday = Carbon::yesterday(config('app.timezone'))->setTime(8, 0, 0);
+        PunchEvent::create([
+            'employee_id' => $employeeId,
+            'event_type' => PunchEvent::TYPE_IN,
+            'device_id' => 'test-device',
+            'timestamp' => $yesterday,
+        ]);
+
+        $response = $this->withHeaders([
+            'X-Tenant' => $this->tenantSubdomain,
+            'Accept' => 'application/json',
+        ])->postJson('/api/v2/punches', [
+            'employee_id' => $employeeId,
+            'device_id' => 'test-nfc',
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.event_type', 'IN');
     }
 }
