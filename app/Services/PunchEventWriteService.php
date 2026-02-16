@@ -217,7 +217,9 @@ class PunchEventWriteService
                         throw new \Exception('Ya existe un fichaje con los mismos datos.');
                     }
 
+                    $startOfDay = $this->startOfDayFor($timestamp);
                     $lastPunchInDb = PunchEvent::where('employee_id', $punch['employee_id'])
+                        ->where('timestamp', '>=', $startOfDay)
                         ->where('timestamp', '<', $timestamp)
                         ->orderBy('timestamp', 'desc')
                         ->first();
@@ -228,7 +230,8 @@ class PunchEventWriteService
                         if (($prevResult['success'] ?? false) && isset($prevResult['punch']['employee_id']) && $prevResult['punch']['employee_id'] === $punch['employee_id']) {
                             try {
                                 $prevTimestamp = Carbon::parse($prevResult['punch']['timestamp']);
-                                if ($prevTimestamp->lt($timestamp) && (!$lastPunchInBatchTimestamp || $prevTimestamp->gt($lastPunchInBatchTimestamp))) {
+                                $sameDay = $this->startOfDayFor($prevTimestamp)->eq($startOfDay);
+                                if ($sameDay && $prevTimestamp->lt($timestamp) && (!$lastPunchInBatchTimestamp || $prevTimestamp->gt($lastPunchInBatchTimestamp))) {
                                     $lastPunchInBatch = $prevResult['punch'];
                                     $lastPunchInBatchTimestamp = $prevTimestamp;
                                 }
@@ -242,6 +245,9 @@ class PunchEventWriteService
                         $relevantLastPunch = (object)['event_type' => $lastPunchInBatch['event_type'], 'timestamp' => $lastPunchInBatchTimestamp];
                     }
 
+                    if (!$relevantLastPunch && ($punch['event_type'] ?? null) === PunchEvent::TYPE_OUT) {
+                        throw new \Exception('El primer fichaje del día debe ser una entrada.');
+                    }
                     if ($relevantLastPunch && $relevantLastPunch->event_type === $punch['event_type']) {
                         throw new \Exception('No se puede registrar fichajes consecutivos del mismo tipo.');
                     }
@@ -308,45 +314,79 @@ class PunchEventWriteService
         }
     }
 
+    /**
+     * Inferir tipo de evento (IN/OUT) para fichajes sin tipo (p. ej. NFC).
+     * Solo se considera la secuencia del mismo día natural: el primer fichaje del día es siempre entrada.
+     */
     private function determineEventType(Employee $employee, Carbon $timestamp): string
     {
-        $lastEvent = PunchEvent::where('employee_id', $employee->id)
+        $startOfDay = $this->startOfDayFor($timestamp);
+        $endOfDay = $this->endOfDayFor($timestamp);
+
+        $lastEventSameDay = PunchEvent::where('employee_id', $employee->id)
+            ->where('timestamp', '>=', $startOfDay)
+            ->where('timestamp', '<=', $endOfDay)
             ->orderBy('timestamp', 'desc')
             ->first();
 
-        if (!$lastEvent || $lastEvent->event_type === PunchEvent::TYPE_OUT) {
+        if (!$lastEventSameDay || $lastEventSameDay->event_type === PunchEvent::TYPE_OUT) {
             return PunchEvent::TYPE_IN;
         }
         return PunchEvent::TYPE_OUT;
     }
 
+    private function startOfDayFor(Carbon $timestamp): Carbon
+    {
+        return $timestamp->copy()->timezone(config('app.timezone'))->startOfDay();
+    }
+
+    private function endOfDayFor(Carbon $timestamp): Carbon
+    {
+        return $timestamp->copy()->timezone(config('app.timezone'))->endOfDay();
+    }
+
+    /**
+     * Validar secuencia entrada/salida. Solo se considera el mismo día natural:
+     * el primer fichaje del día debe ser entrada.
+     */
     private function validatePunchSequence(Employee $employee, string $eventType, Carbon $timestamp): array
     {
-        $lastPunch = PunchEvent::where('employee_id', $employee->id)
+        $startOfDay = $this->startOfDayFor($timestamp);
+
+        $lastPunchSameDay = PunchEvent::where('employee_id', $employee->id)
+            ->where('timestamp', '>=', $startOfDay)
             ->where('timestamp', '<', $timestamp)
             ->orderBy('timestamp', 'desc')
             ->first();
 
-        if (!$lastPunch) {
+        if (!$lastPunchSameDay) {
+            // Primer fichaje del día: solo se permite entrada
+            if ($eventType === PunchEvent::TYPE_OUT) {
+                return [
+                    'valid' => false,
+                    'userMessage' => 'No se puede registrar una salida sin una entrada previa',
+                    'errors' => ['event_type' => ['El primer fichaje del día debe ser una entrada']],
+                ];
+            }
             return ['valid' => true, 'userMessage' => '', 'errors' => []];
         }
 
-        if ($lastPunch->event_type === $eventType) {
+        if ($lastPunchSameDay->event_type === $eventType) {
             if ($eventType === PunchEvent::TYPE_IN) {
                 return [
                     'valid' => false,
                     'userMessage' => 'No se puede registrar una entrada sin una salida previa',
-                    'errors' => ['event_type' => ['El último fichaje del empleado es una entrada, no se puede registrar otra entrada']],
+                    'errors' => ['event_type' => ['El último fichaje del empleado hoy es una entrada, no se puede registrar otra entrada']],
                 ];
             }
             return [
                 'valid' => false,
                 'userMessage' => 'No se puede registrar una salida sin una entrada previa',
-                'errors' => ['event_type' => ['El último fichaje del empleado es una salida, no se puede registrar otra salida']],
+                'errors' => ['event_type' => ['El último fichaje del empleado hoy es una salida, no se puede registrar otra salida']],
             ];
         }
 
-        if ($eventType === PunchEvent::TYPE_OUT && $lastPunch->event_type === PunchEvent::TYPE_IN && $timestamp->lte($lastPunch->timestamp)) {
+        if ($eventType === PunchEvent::TYPE_OUT && $lastPunchSameDay->event_type === PunchEvent::TYPE_IN && $timestamp->lte($lastPunchSameDay->timestamp)) {
             return [
                 'valid' => false,
                 'userMessage' => 'La salida debe ser posterior a la entrada correspondiente',
@@ -385,7 +425,9 @@ class PunchEventWriteService
             return $errors;
         }
 
+        $startOfDay = $this->startOfDayFor($timestamp);
         $lastPunchInDb = PunchEvent::where('employee_id', $punch['employee_id'])
+            ->where('timestamp', '>=', $startOfDay)
             ->where('timestamp', '<', $timestamp)
             ->orderBy('timestamp', 'desc')
             ->first();
@@ -400,7 +442,8 @@ class PunchEventWriteService
                 if ($prevPunch && ($prevPunch['employee_id'] ?? null) === $punch['employee_id']) {
                     try {
                         $prevTimestamp = Carbon::parse($prevPunch['timestamp']);
-                        if ($prevTimestamp->lt($timestamp) && (!$lastPunchInBatchTimestamp || $prevTimestamp->gt($lastPunchInBatchTimestamp))) {
+                        $sameDay = $this->startOfDayFor($prevTimestamp)->eq($startOfDay);
+                        if ($sameDay && $prevTimestamp->lt($timestamp) && (!$lastPunchInBatchTimestamp || $prevTimestamp->gt($lastPunchInBatchTimestamp))) {
                             $lastPunchInBatch = $prevPunch;
                             $lastPunchInBatchTimestamp = $prevTimestamp;
                         }
@@ -423,7 +466,12 @@ class PunchEventWriteService
             }
         }
 
-        if ($relevantLastPunch) {
+        if (!$relevantLastPunch) {
+            // Primer fichaje del día: solo se permite entrada
+            if (($punch['event_type'] ?? null) === PunchEvent::TYPE_OUT) {
+                $errors[] = 'El primer fichaje del día debe ser una entrada.';
+            }
+        } else {
             if ($relevantLastPunch->event_type === $punch['event_type']) {
                 if ($punch['event_type'] === PunchEvent::TYPE_IN) {
                     $errors[] = 'No se puede registrar una entrada sin una salida previa.';
