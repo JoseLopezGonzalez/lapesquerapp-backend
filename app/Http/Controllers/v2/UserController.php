@@ -102,7 +102,8 @@ class UserController extends Controller
 
         if (!$user->active) {
             return response()->json([
-                'message' => 'No se puede reenviar la invitación a un usuario desactivado.',
+                'message' => 'Acción no autorizada.',
+                'userMessage' => 'No se puede reenviar la invitación a un usuario desactivado.',
             ], 403);
         }
 

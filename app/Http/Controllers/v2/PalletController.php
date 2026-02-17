@@ -51,7 +51,10 @@ class PalletController extends Controller
 
         $error = PalletWriteService::validateUpdatePermissions($pallet);
         if ($error !== null) {
-            return response()->json(['error' => $error], 403);
+            return response()->json([
+                'message' => 'Acción no autorizada.',
+                'userMessage' => $error,
+            ], 403);
         }
 
         $updatedPallet = PalletWriteService::update($request, $pallet, $request->validated());
@@ -64,7 +67,10 @@ class PalletController extends Controller
         $pallet = Pallet::findOrFail($id);
         $this->authorize('delete', $pallet);
         if ($pallet->reception_id !== null) {
-            return response()->json(['error' => 'No se puede eliminar un palet que proviene de una recepción. Elimine la recepción o modifique desde la recepción.'], 403);
+            return response()->json([
+                'message' => 'Acción no autorizada.',
+                'userMessage' => 'No se puede eliminar un palet que proviene de una recepción. Elimine la recepción o modifique desde la recepción.',
+            ], 403);
         }
         PalletWriteService::destroy($pallet);
 
@@ -78,7 +84,10 @@ class PalletController extends Controller
         if ($palletsWithReception->isNotEmpty()) {
             $ids = $palletsWithReception->pluck('id')->implode(', ');
 
-            return response()->json(['error' => "No se pueden eliminar palets que provienen de una recepción. Los siguientes palets pertenecen a una recepción: {$ids}."], 403);
+            return response()->json([
+                'message' => 'Acción no autorizada.',
+                'userMessage' => "No se pueden eliminar palets que provienen de una recepción. Los siguientes palets pertenecen a una recepción: {$ids}.",
+            ], 403);
         }
         PalletWriteService::destroyMultiple($palletIds);
 

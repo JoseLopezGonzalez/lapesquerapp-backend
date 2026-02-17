@@ -74,9 +74,13 @@ class Handler extends ExceptionHandler
             if ($exception instanceof HttpException) {
                 $statusCode = $exception->getStatusCode();
                 $userMessage = $this->formatHttpExceptionMessage($statusCode, $exception->getMessage());
+                $message = $exception->getMessage() ?: 'Error HTTP.';
+                if ($statusCode === 403) {
+                    $message = $exception->getMessage() ?: 'Acción no autorizada.';
+                }
 
                 return response()->json([
-                    'message' => $exception->getMessage() ?: 'Error HTTP.',
+                    'message' => $message,
                     'userMessage' => $userMessage,
                 ], $statusCode);
             }

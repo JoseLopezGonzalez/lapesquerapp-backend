@@ -116,7 +116,8 @@ class AuthController extends Controller
 
         if (!$user || !$user->active) {
             return response()->json([
-                'message' => 'El usuario no existe o está desactivado.',
+                'message' => 'Acción no autorizada.',
+                'userMessage' => 'El usuario no existe o está desactivado.',
             ], 403);
         }
 
@@ -155,7 +156,8 @@ class AuthController extends Controller
 
         if (!$user || !$user->active) {
             return response()->json([
-                'message' => 'El usuario no existe o está desactivado.',
+                'message' => 'Acción no autorizada.',
+                'userMessage' => 'El usuario no existe o está desactivado.',
             ], 403);
         }
 

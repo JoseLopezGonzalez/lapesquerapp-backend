@@ -91,6 +91,8 @@ Los controladores usan clases `*Resource` para serializar. La estructura depende
 
 ## 5. Formato de errores
 
+Todas las respuestas de error de la API (cuando `Accept: application/json` o ruta `api/*`) siguen un contrato unificado.
+
 ### Validación (422)
 
 ```json
@@ -103,29 +105,29 @@ Los controladores usan clases `*Resource` para serializar. La estructura depende
 }
 ```
 
-### No autorizado (401)
+### No autenticado (401)
+
+Cuando no hay token, el token es inválido o ha expirado:
 
 ```json
 {
-  "message": "Unauthenticated."
+  "message": "No autenticado.",
+  "userMessage": "Debes iniciar sesión para acceder a este recurso."
 }
 ```
 
 ### Prohibido (403)
 
-```json
-{
-  "message": "This action is unauthorized."
-}
-```
-
-O con estructura propia del controlador:
+Cuando el usuario está autenticado pero no tiene permiso (Policy, rol, o regla de negocio). **Formato estándar unificado:**
 
 ```json
 {
-  "error": "Descripción del error."
+  "message": "Acción no autorizada.",
+  "userMessage": "Mensaje concreto para el usuario (ej. motivo del rechazo o texto genérico)."
 }
 ```
+
+En respuestas 403 generadas por Policies (Handler), puede aparecer además la clave opcional `error` con el mensaje técnico de la excepción. El frontend debe usar **`userMessage`** para mostrar el texto al usuario.
 
 ### No encontrado (404)
 

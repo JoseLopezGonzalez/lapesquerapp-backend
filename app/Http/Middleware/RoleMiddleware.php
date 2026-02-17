@@ -25,7 +25,8 @@ class RoleMiddleware
         // Verificar si el usuario tiene uno de los roles requeridos
         if (!$user || !$user->hasAnyRole($roles)) {
             return response()->json([
-                'message' => 'No tienes permiso para acceder a esta ruta.'
+                'message' => 'Acción no autorizada.',
+                'userMessage' => 'No tienes permiso para acceder a esta ruta.',
             ], Response::HTTP_FORBIDDEN);
         }
 
