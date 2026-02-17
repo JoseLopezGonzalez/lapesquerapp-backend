@@ -12,9 +12,9 @@ class SettingPolicy
     use HandlesAuthorization;
 
     /**
-     * Roles que pueden ver y actualizar la configuración del tenant.
+     * Roles que pueden actualizar la configuración del tenant.
      */
-    protected function rolesAllowed(): array
+    protected function rolesAllowedToUpdate(): array
     {
         return [
             Role::Administrador->value,
@@ -24,10 +24,11 @@ class SettingPolicy
 
     /**
      * Determine if the user can list/view settings.
+     * Cualquier usuario autenticado puede ver la configuración (necesaria en varias pantallas).
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole($this->rolesAllowed());
+        return true;
     }
 
     /**
@@ -35,6 +36,6 @@ class SettingPolicy
      */
     public function update(User $user): bool
     {
-        return $user->hasAnyRole($this->rolesAllowed());
+        return $user->hasAnyRole($this->rolesAllowedToUpdate());
     }
 }
