@@ -35,6 +35,7 @@ return [
         'http://localhost:3000',
         'http://localhost:5173',
         'https://lapesquerapp.es',
+        'https://brisamar.congeladosbrisamar.es',
     ],
 
     /*
