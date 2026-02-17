@@ -11,7 +11,6 @@ use App\Http\Resources\v2\CeboDispatchResource;
 use App\Models\CeboDispatch;
 use App\Services\v2\CeboDispatchListService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request;
 
 class CeboDispatchController extends Controller
 {
@@ -22,35 +21,37 @@ class CeboDispatchController extends Controller
 
     public function store(StoreCeboDispatchRequest $request)
     {
-        $dispatch = new CeboDispatch();
-        $dispatch->supplier_id = $request->input('supplier.id');
-        $dispatch->date = $request->date;
+        $validated = $request->validated();
 
-        if ($request->has('notes')) {
-            $dispatch->notes = $request->notes;
-        }
+        return DB::transaction(function () use ($validated) {
+            $dispatch = new CeboDispatch;
+            $dispatch->supplier_id = (int) $validated['supplier']['id'];
+            $dispatch->date = $validated['date'];
+            $dispatch->notes = $validated['notes'] ?? null;
+            $dispatch->save();
 
-        $dispatch->save();
-
-        if ($request->has('details')) {
-            foreach ($request->details as $detail) {
+            foreach ($validated['details'] as $detail) {
                 $dispatch->products()->create([
-                    'product_id' => $detail['product']['id'],
-                    'net_weight' => $detail['netWeight']
+                    'product_id' => (int) $detail['product']['id'],
+                    'net_weight' => (float) $detail['netWeight'],
+                    'price' => isset($detail['price']) ? (float) $detail['price'] : null,
                 ]);
             }
-        }
 
-        return response()->json([
-            'message' => 'Despacho de cebo creado correctamente.',
-            'data' => new CeboDispatchResource($dispatch),
-        ], 201);
+            $dispatch->load('supplier', 'products.product');
+
+            return response()->json([
+                'message' => 'Despacho de cebo creado correctamente.',
+                'data' => new CeboDispatchResource($dispatch),
+            ], 201);
+        });
     }
 
     public function show($id)
     {
         $dispatch = CeboDispatch::with('supplier', 'products.product')->findOrFail($id);
         $this->authorize('view', $dispatch);
+
         return response()->json([
             'data' => new CeboDispatchResource($dispatch),
         ]);
@@ -61,10 +62,10 @@ class CeboDispatchController extends Controller
         $validated = $request->validated();
         $dispatch = CeboDispatch::findOrFail($id);
         $this->authorize('update', $dispatch);
-        
-        DB::transaction(function () use ($dispatch, $validated) {
+
+        return DB::transaction(function () use ($dispatch, $validated) {
             $dispatch->update([
-                'supplier_id' => $validated['supplier']['id'],
+                'supplier_id' => (int) $validated['supplier']['id'],
                 'date' => $validated['date'],
                 'notes' => $validated['notes'] ?? null,
             ]);
@@ -72,17 +73,19 @@ class CeboDispatchController extends Controller
             $dispatch->products()->delete();
             foreach ($validated['details'] as $detail) {
                 $dispatch->products()->create([
-                    'product_id' => $detail['product']['id'],
-                    'net_weight' => $detail['netWeight']
+                    'product_id' => (int) $detail['product']['id'],
+                    'net_weight' => (float) $detail['netWeight'],
+                    'price' => isset($detail['price']) ? (float) $detail['price'] : null,
                 ]);
             }
-        });
 
-        $dispatch->refresh();
-        return response()->json([
-            'message' => 'Despacho de cebo actualizado correctamente.',
-            'data' => new CeboDispatchResource($dispatch),
-        ]);
+            $dispatch->load('supplier', 'products.product');
+
+            return response()->json([
+                'message' => 'Despacho de cebo actualizado correctamente.',
+                'data' => new CeboDispatchResource($dispatch),
+            ]);
+        });
     }
 
     public function destroy($id)
@@ -93,6 +96,7 @@ class CeboDispatchController extends Controller
         // Eliminar el despacho - las líneas (cebo_dispatch_products) se eliminarán automáticamente
         // por cascade, pero los productos en sí NO se eliminarán
         $dispatch->delete();
+
         return response()->json(['message' => 'Despacho de cebo eliminado correctamente'], 200);
     }
 

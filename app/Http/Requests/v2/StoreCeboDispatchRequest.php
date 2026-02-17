@@ -25,6 +25,11 @@ class StoreCeboDispatchRequest extends FormRequest
             'details' => 'required|array|min:1',
             'details.*.product.id' => 'required|exists:tenant.products,id',
             'details.*.netWeight' => 'required|numeric|min:0',
+            'details.*.price' => 'nullable|numeric|min:0',
+            'details.*.lot' => 'nullable|string|max:255',
+            'details.*.boxes' => 'nullable|integer|min:0',
+            'pallets' => 'prohibited',
+            'creationMode' => 'prohibited',
         ];
     }
 
@@ -45,6 +50,8 @@ class StoreCeboDispatchRequest extends FormRequest
             'details.*.netWeight.required' => 'El peso neto es obligatorio en cada detalle.',
             'details.*.netWeight.numeric' => 'El peso neto debe ser un número.',
             'details.*.netWeight.min' => 'El peso neto debe ser mayor que 0.',
+            'pallets.prohibited' => 'Los despachos de cebo solo se gestionan por líneas; no se permite enviar palets.',
+            'creationMode.prohibited' => 'Los despachos de cebo solo se gestionan por líneas; no se permite creationMode.',
         ];
     }
 }

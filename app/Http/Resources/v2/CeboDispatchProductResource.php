@@ -16,8 +16,9 @@ class CeboDispatchProductResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'product' => new ProductResource($this->product), // Asumiendo que tienes un resource para Product
+            'product' => $this->whenLoaded('product', fn () => new ProductResource($this->product)),
             'netWeight' => $this->net_weight,
+            'price' => $this->price !== null ? round((float) $this->price, 2) : null,
         ];
     }
 }

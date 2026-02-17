@@ -7,7 +7,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class CeboDispatchResource extends JsonResource
 {
-     /**
+    /**
      * Transform the resource into an array.
      *
      * @return array<string, mixed>
@@ -16,11 +16,11 @@ class CeboDispatchResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'supplier' => new SupplierResource($this->supplier), // Asumiendo que tienes un resource para Supplier
+            'supplier' => $this->whenLoaded('supplier', fn () => new SupplierResource($this->supplier)),
             'date' => $this->date,
             'notes' => $this->notes,
             'netWeight' => $this->netWeight,
-            'details' => CeboDispatchProductResource::collection($this->products) // Asumiendo que tienes un resource para CeboDispatchProduct
+            'details' => $this->whenLoaded('products', fn () => CeboDispatchProductResource::collection($this->products)),
         ];
     }
 }
