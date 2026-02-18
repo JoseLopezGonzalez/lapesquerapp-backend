@@ -130,7 +130,7 @@ class PaymentTermController extends Controller
 
     public function options(): JsonResponse
     {
-        $this->authorize('viewAny', PaymentTerm::class);
+        $this->authorize('viewOptions', PaymentTerm::class);
 
         $paymentTerms = PaymentTerm::select('id', 'name')->orderBy('name', 'asc')->get();
 

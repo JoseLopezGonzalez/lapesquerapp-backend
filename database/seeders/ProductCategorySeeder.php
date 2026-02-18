@@ -6,11 +6,12 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\ProductCategory;
 
+/**
+ * Categorías de producto de desarrollo (Fresco, Congelado).
+ * Depende de: ninguno.
+ */
 class ProductCategorySeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $categories = [

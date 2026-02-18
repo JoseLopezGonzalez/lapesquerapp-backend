@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 
 /**
  * Incoterms (menú). Datos de desarrollo.
+ * Depende de: ninguno.
  */
 class IncotermsSeeder extends Seeder
 {

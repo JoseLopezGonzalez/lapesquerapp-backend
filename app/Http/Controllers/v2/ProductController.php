@@ -172,7 +172,7 @@ class ProductController extends Controller
      */
     public function options()
     {
-        $this->authorize('viewAny', Product::class);
+        $this->authorize('viewOptions', Product::class);
         $products = Product::select('id', 'name', 'box_gtin as boxGtin')
             ->orderBy('name', 'asc')
             ->get();

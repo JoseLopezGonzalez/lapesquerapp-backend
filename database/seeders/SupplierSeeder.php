@@ -10,7 +10,7 @@ use Faker\Factory as Faker;
  * Proveedores de desarrollo ? entorno tipo producci?n.
  * Inspirado en patrones reales: cebo_export_type (facilcom/a3erp), type (raw_material o vac?o),
  * combinaciones de facil_com_code, a3erp_cebo_code, facilcom_cebo_code; algunos sin contacto.
- * Datos generados con Faker (no datos reales). Idempotente: firstOrCreate por nombre, solo añade los que no existan.
+ * Datos generados con Faker (no datos reales). Idempotente: firstOrCreate por nombre, solo a?ade los que no existan.
  */
 class SupplierSeeder extends Seeder
 {
@@ -19,7 +19,20 @@ class SupplierSeeder extends Seeder
         $faker = Faker::create('es_ES');
         $faker->seed(4301);
 
-        // Patrones inspirados en producci?n: facilcom (con/sin c?digos), a3erp (con c?digos), type raw_material o ''
+        $names = [
+            'Cebo Galicia S.L.',
+            'Suministros Pesqueros del Sur S.L.',
+            'Materias Primas Costa Norte S.L.',
+            'Cebo y Congelados Atlantico S.L.',
+            'Proveedora Mar de Cadiz S.L.',
+            'Suministros Facilcom Costa S.L.',
+            'Cebo A3ERP Mediterraneo S.L.',
+            'Materias Primas Cantabrico S.L.',
+            'Cebo y Descargas Huelva S.L.',
+            'Suministros Pesqueros Levante S.L.',
+        ];
+
+        // Patrones inspirados en producción: facilcom (con/sin códigos), a3erp (con códigos), type raw_material o ''
         $patterns = [
             ['cebo_export_type' => 'facilcom', 'facil_com_code' => true, 'facilcom_cebo_code' => true, 'type' => 'raw_material'],
             ['cebo_export_type' => 'facilcom', 'facil_com_code' => true, 'facilcom_cebo_code' => true, 'type' => 'raw_material'],
@@ -34,7 +47,7 @@ class SupplierSeeder extends Seeder
         ];
 
         foreach ($patterns as $i => $pattern) {
-            $name = 'Proveedor desarrollo ' . ($i + 1);
+            $name = $names[$i];
             $facilCom = $pattern['facil_com_code'] ?? false ? (string) $faker->numberBetween(1, 99) : null;
             $facilcomCebo = isset($pattern['facilcom_cebo_code']) && $pattern['facilcom_cebo_code']
                 ? (string) $faker->numberBetween(1, 99)

@@ -3,11 +3,11 @@
 namespace App\Policies;
 
 use App\Enums\Role;
-use App\Models\ProductCategory;
+use App\Models\CaptureZone;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class ProductCategoryPolicy
+class CaptureZonePolicy
 {
     use HandlesAuthorization;
 
@@ -16,9 +16,6 @@ class ProductCategoryPolicy
         return Role::values();
     }
 
-    /**
-     * Determine if the user can view any product categories.
-     */
     public function viewAny(User $user): bool
     {
         if ($user->hasRole(Role::Comercial->value)) {
@@ -27,10 +24,7 @@ class ProductCategoryPolicy
         return $user->hasAnyRole($this->allowedRoles());
     }
 
-    /**
-     * Determine if the user can view the product category.
-     */
-    public function view(User $user, ProductCategory $productCategory): bool
+    public function view(User $user, CaptureZone $captureZone): bool
     {
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
@@ -43,26 +37,17 @@ class ProductCategoryPolicy
         return true;
     }
 
-    /**
-     * Determine if the user can create product categories.
-     */
     public function create(User $user): bool
     {
         return $user->hasAnyRole($this->allowedRoles());
     }
 
-    /**
-     * Determine if the user can update the product category.
-     */
-    public function update(User $user, ProductCategory $productCategory): bool
+    public function update(User $user, CaptureZone $captureZone): bool
     {
         return $user->hasAnyRole($this->allowedRoles());
     }
 
-    /**
-     * Determine if the user can delete the product category.
-     */
-    public function delete(User $user, ProductCategory $productCategory): bool
+    public function delete(User $user, CaptureZone $captureZone): bool
     {
         return $user->hasAnyRole($this->allowedRoles());
     }

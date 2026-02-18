@@ -14,6 +14,8 @@ class ProcessController extends Controller
 {
     public function index(IndexProcessRequest $request)
     {
+        $this->authorize('viewAny', Process::class);
+
         $query = Process::query();
 
         if ($request->filled('type')) {
@@ -75,6 +77,8 @@ class ProcessController extends Controller
 
     public function options(ProcessOptionsRequest $request)
     {
+        $this->authorize('viewOptions', Process::class);
+
         $query = Process::query();
 
         if ($request->filled('type')) {

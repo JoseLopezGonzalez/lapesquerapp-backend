@@ -15,6 +15,7 @@ use Faker\Factory as Faker;
  * Pedidos de desarrollo (estados pending, finished, incident).
  * Fuente: Análisis backup tenant Brisamar — buyer_reference '-', 'Cliente Nº127', REF-####; fechas hoy y próximos 3 días.
  * Depende de: Customers, PaymentTerms, Salespeople, Transports, Incoterms.
+ * Asigna pedidos al comercial con usuario (rol comercial) para pruebas de scoping.
  */
 class OrderSeeder extends Seeder
 {
@@ -31,12 +32,13 @@ class OrderSeeder extends Seeder
         }
 
         $paymentTerm = PaymentTerm::first();
-        $salesperson = Salesperson::first();
+        // Preferir el comercial vinculado a un User (rol comercial) para que tenga pedidos en pruebas
+        $salesperson = Salesperson::whereNotNull('user_id')->first() ?? Salesperson::first();
         $transport = Transport::first();
         $incoterm = Incoterm::first();
 
-        if (!$paymentTerm || !$salesperson || !$transport) {
-            $this->command->warn('OrderSeeder: Faltan PaymentTerms, Salespeople o Transports.');
+        if (! $paymentTerm || ! $salesperson || ! $transport || ! $incoterm) {
+            $this->command->warn('OrderSeeder: Faltan PaymentTerms, Salespeople, Transports o Incoterms.');
             return;
         }
 
@@ -85,6 +87,8 @@ class OrderSeeder extends Seeder
         for ($i = 0; $i < 8 && $created < $toCreate; $i++) {
             $loadDate = $today->copy()->subDays($i);
             $entryDate = $loadDate->copy()->subDays($faker->numberBetween(0, 2));
+            // Parte de los pedidos adicionales del comercial con usuario (pruebas de scoping)
+            $salespersonId = ($i < 3) ? $salesperson->id : Salesperson::inRandomOrder()->first()->id;
             Order::create([
                 'customer_id' => $customers->random()->id,
                 'payment_term_id' => PaymentTerm::inRandomOrder()->first()->id,
@@ -93,7 +97,7 @@ class OrderSeeder extends Seeder
                 'transportation_notes' => null,
                 'production_notes' => null,
                 'accounting_notes' => null,
-                'salesperson_id' => Salesperson::inRandomOrder()->first()->id,
+                'salesperson_id' => $salespersonId,
                 'emails' => json_encode([$faker->companyEmail()]),
                 'transport_id' => Transport::inRandomOrder()->first()->id,
                 'entry_date' => $entryDate,

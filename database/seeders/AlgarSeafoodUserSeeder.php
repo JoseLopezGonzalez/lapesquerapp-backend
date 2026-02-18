@@ -5,17 +5,18 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 
+/**
+ * Usuario específico tenant Algar Seafood (demo).
+ * Depende de: ninguno.
+ */
 class AlgarSeafoodUserSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $user = User::firstOrCreate(
             ['email' => 'app@algarseafood.pt'],
             [
-                'name' => 'Algarseafood',
+                'name' => 'Algar Seafood (Operario)',
                 'role' => 'operario',
                 'assigned_store_id' => 1,
                 'company_name' => 'Algar Seafood',

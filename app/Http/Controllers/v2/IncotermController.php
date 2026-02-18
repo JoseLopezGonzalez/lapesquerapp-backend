@@ -112,7 +112,7 @@ class IncotermController extends Controller
 
     public function options(): JsonResponse
     {
-        $this->authorize('viewAny', Incoterm::class);
+        $this->authorize('viewOptions', Incoterm::class);
 
         $incoterms = Incoterm::select('id', 'code', 'description')->get()
             ->map(fn ($i) => ['id' => $i->id, 'name' => "{$i->code} - {$i->description}"]);

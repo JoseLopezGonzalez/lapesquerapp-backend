@@ -14,6 +14,8 @@ class SpeciesController extends Controller
      */
     public function index()
     {
+        $this->authorize('viewAny', Species::class);
+
         $query = Species::query();
 
         /* id */
@@ -245,6 +247,8 @@ class SpeciesController extends Controller
      */
     public function options()
     {
+        $this->authorize('viewOptions', Species::class);
+
         $species = Species::select('id', 'name', 'scientific_name', 'fao')
             ->orderBy('name', 'asc')
             ->get()

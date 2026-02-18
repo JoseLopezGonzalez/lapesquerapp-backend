@@ -103,7 +103,7 @@ class ProductFamilyController extends Controller
 
     public function options(): JsonResponse
     {
-        $this->authorize('viewAny', ProductFamily::class);
+        $this->authorize('viewOptions', ProductFamily::class);
         $families = ProductFamily::where('active', true)
             ->with('category:id,name')
             ->select('id', 'name', 'description', 'category_id')

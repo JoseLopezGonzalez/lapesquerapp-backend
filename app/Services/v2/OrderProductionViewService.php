@@ -2,7 +2,9 @@
 
 namespace App\Services\v2;
 
+use App\Enums\Role;
 use App\Models\Order;
+use App\Models\User;
 use Carbon\Carbon;
 
 class OrderProductionViewService
@@ -12,13 +14,20 @@ class OrderProductionViewService
      * Misma lógica que OrderController::productionView().
      *
      * @param Carbon|null $date Fecha de carga (por defecto hoy)
+     * @param User|null $user Usuario actual (para filtrar por salesperson si es comercial)
      * @return array{data: array<int, array{id: int, name: string, orders: array<int, array>}>}
      */
-    public static function getData(?Carbon $date = null): array
+    public static function getData(?Carbon $date = null, ?User $user = null): array
     {
         $date = $date ?? Carbon::today();
+        $user = $user ?? auth()->user();
 
-        $orders = Order::whereDate('load_date', $date)
+        $query = Order::whereDate('load_date', $date);
+        if ($user && $user->hasRole(Role::Comercial->value) && $user->salesperson) {
+            $query->where('salesperson_id', $user->salesperson->id);
+        }
+
+        $orders = $query
             ->with([
                 'plannedProductDetails' => function ($q) {
                     $q->select(['id', 'order_id', 'product_id', 'quantity', 'boxes']);

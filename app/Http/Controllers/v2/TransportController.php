@@ -159,7 +159,7 @@ class TransportController extends Controller
 
     public function options(): JsonResponse
     {
-        $this->authorize('viewAny', Transport::class);
+        $this->authorize('viewOptions', Transport::class);
 
         $transports = Transport::select('id', 'name')
             ->orderBy('name', 'asc')

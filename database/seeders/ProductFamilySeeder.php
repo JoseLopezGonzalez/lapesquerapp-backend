@@ -7,16 +7,22 @@ use Illuminate\Database\Seeder;
 use App\Models\ProductFamily;
 use App\Models\ProductCategory;
 
+/**
+ * Familias de producto de desarrollo (Fresco entero, Congelado eviscerado, etc.).
+ * Origen: nomenclatura sector.
+ * Depende de: ProductCategorySeeder.
+ */
 class ProductFamilySeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // Obtener las categorías
         $frescoCategory = ProductCategory::where('name', 'Fresco')->first();
         $congeladoCategory = ProductCategory::where('name', 'Congelado')->first();
+
+        if (! $frescoCategory || ! $congeladoCategory) {
+            $this->command->warn('ProductFamilySeeder: Ejecuta antes ProductCategorySeeder.');
+            return;
+        }
 
         $families = [
             // Familias de productos frescos

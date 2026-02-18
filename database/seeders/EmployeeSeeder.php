@@ -9,12 +9,13 @@ use Illuminate\Database\Seeder;
  * Empleados de desarrollo — entorno tipo producción.
  * Inspirado en patrones reales: name (corto), nfc_uid (numérico string, único).
  * Solo añade los que no existan (firstOrCreate por nfc_uid).
+ * Depende de: ninguno.
  */
 class EmployeeSeeder extends Seeder
 {
     public function run(): void
     {
-        $names = ['Lolo', 'Jose', 'Pedro', 'Antonio', 'Adan', 'Maria', 'Carlos'];
+        $names = ['Lolo', 'José', 'Pedro', 'Antonio', 'Adán', 'María', 'Carlos'];
 
         foreach ($names as $i => $name) {
             $nfcUid = (string) (1600000000 + 5600 + $i);

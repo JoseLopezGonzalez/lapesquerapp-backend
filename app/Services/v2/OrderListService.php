@@ -2,14 +2,27 @@
 
 namespace App\Services\v2;
 
+use App\Enums\Role;
 use App\Models\Order;
 use App\Models\Pallet;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 class OrderListService
 {
+    /**
+     * Scope query to current user's orders when user is comercial.
+     */
+    private static function scopeForComercial(Builder $query, User $user): void
+    {
+        if ($user->hasRole(Role::Comercial->value) && $user->salesperson) {
+            $query->where('salesperson_id', $user->salesperson->id);
+        }
+    }
+
     /**
      * Listado de pedidos: rama active (true/false) sin paginar, o listado filtrado paginado.
      * Misma lógica que OrderController::index().
@@ -18,22 +31,27 @@ class OrderListService
      */
     public static function list(Request $request): Collection|LengthAwarePaginator
     {
+        $user = $request->user();
+
         if ($request->has('active')) {
             if ($request->active == 'true') {
-                return Order::withTotals()
+                $query = Order::withTotals()
                     ->with(['customer', 'salesperson', 'transport', 'incoterm'])
                     ->where('status', 'pending')
-                    ->orWhereDate('load_date', '>=', now())
-                    ->get();
+                    ->orWhereDate('load_date', '>=', now());
+                self::scopeForComercial($query, $user);
+                return $query->get();
             }
-            return Order::withTotals()
+            $query = Order::withTotals()
                 ->with(['customer', 'salesperson', 'transport', 'incoterm'])
                 ->where('status', 'finished')
-                ->whereDate('load_date', '<', now())
-                ->get();
+                ->whereDate('load_date', '<', now());
+            self::scopeForComercial($query, $user);
+            return $query->get();
         }
 
         $query = Order::withTotals()->with(['customer', 'salesperson', 'transport', 'incoterm']);
+        self::scopeForComercial($query, $user);
 
         if ($request->has('customers')) {
             $query->whereIn('customer_id', $request->customers);
@@ -134,16 +152,17 @@ class OrderListService
      *
      * @return Collection<int, Order>
      */
-    public static function active(): Collection
+    public static function active(?User $user = null): Collection
     {
-        return Order::select('id', 'status', 'load_date', 'customer_id')
+        $user = $user ?? auth()->user();
+        $query = Order::select('id', 'status', 'load_date', 'customer_id')
             ->with(['customer' => fn ($q) => $q->select('id', 'name')])
             ->where(function ($query) {
                 $query->where('status', 'pending')
                     ->orWhereDate('load_date', '>=', now());
-            })
-            ->orderBy('load_date', 'desc')
-            ->get();
+            });
+        self::scopeForComercial($query, $user);
+        return $query->orderBy('load_date', 'desc')->get();
     }
 
     /**
@@ -151,13 +170,14 @@ class OrderListService
      *
      * @return Collection<int, object>
      */
-    public static function activeOrdersOptions(): Collection
+    public static function activeOrdersOptions(?User $user = null): Collection
     {
-        return Order::where('status', 'pending')
+        $user = $user ?? auth()->user();
+        $query = Order::where('status', 'pending')
             ->orWhereDate('load_date', '>=', now())
-            ->select('id', 'id as name', 'load_date')
-            ->orderBy('load_date', 'desc')
-            ->get();
+            ->select('id', 'id as name', 'load_date');
+        self::scopeForComercial($query, $user);
+        return $query->orderBy('load_date', 'desc')->get();
     }
 
     /**
@@ -165,10 +185,11 @@ class OrderListService
      *
      * @return Collection<int, object>
      */
-    public static function options(): Collection
+    public static function options(?User $user = null): Collection
     {
-        return Order::select('id', 'id as name')
-            ->orderBy('id')
-            ->get();
+        $user = $user ?? auth()->user();
+        $query = Order::select('id', 'id as name');
+        self::scopeForComercial($query, $user);
+        return $query->orderBy('id')->get();
     }
 }

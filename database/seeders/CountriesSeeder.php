@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 
 /**
  * Países (menú Clientes). Datos de desarrollo.
+ * Depende de: ninguno.
  */
 class CountriesSeeder extends Seeder
 {

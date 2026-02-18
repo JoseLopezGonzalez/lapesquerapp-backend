@@ -14,6 +14,7 @@ class CaptureZoneController extends Controller
      */
     public function index(Request $request)
     {
+        $this->authorize('viewAny', CaptureZone::class);
 
         $query = CaptureZone::query();
 
@@ -213,6 +214,8 @@ class CaptureZoneController extends Controller
      */
     public function options()
     {
+        $this->authorize('viewOptions', CaptureZone::class);
+
         $captureZones = CaptureZone::select('id', 'name') // Selecciona solo los campos necesarios
             ->orderBy('name', 'asc') // Ordena por nombre, opcional
             ->get();

@@ -30,6 +30,11 @@ class UsersSeeder extends Seeder
                 'email' => 'operator@pesquerapp.com',
                 'role' => Role::Operario->value,
             ],
+            [
+                'name' => 'Laura Comercial',
+                'email' => 'comercial@pesquerapp.com',
+                'role' => Role::Comercial->value,
+            ],
         ];
 
         foreach ($users as $data) {
@@ -44,11 +49,18 @@ class UsersSeeder extends Seeder
         }
 
         // 5 usuarios adicionales de prueba (rol operario)
+        $operatorNames = [
+            'Operario Planta 1',
+            'Operario Planta 2',
+            'Operario Recepción',
+            'Operario Almacén',
+            'Operario Producción',
+        ];
         for ($i = 1; $i <= 5; $i++) {
             User::firstOrCreate(
                 ['email' => "operator{$i}@pesquerapp.com"],
                 [
-                    'name' => "Operador Prueba {$i}",
+                    'name' => $operatorNames[$i - 1],
                     'role' => Role::Operario->value,
                     'active' => true,
                 ]

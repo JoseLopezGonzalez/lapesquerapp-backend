@@ -10,6 +10,7 @@ use Illuminate\Database\Seeder;
  * Inspirado en patrones reales: name (Cámara, Container, Almacén), temperature (-25 a 4 °C), capacity (kg),
  * map (JSON mínimo con posiciones para que el mapa no falle).
  * Solo añade los que no existan (firstOrCreate por nombre).
+ * Depende de: ninguno.
  */
 class StoreSeeder extends Seeder
 {

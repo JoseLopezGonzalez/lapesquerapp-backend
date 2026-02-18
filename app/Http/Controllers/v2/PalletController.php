@@ -20,6 +20,7 @@ use App\Http\Resources\v2\PalletResource;
 use App\Services\v2\PalletActionService;
 use App\Services\v2\PalletListService;
 use App\Services\v2\PalletWriteService;
+use App\Models\Order;
 use App\Models\Pallet;
 
 class PalletController extends Controller
@@ -244,6 +245,9 @@ class PalletController extends Controller
 
     public function availableForOrder(AvailableForOrderPalletRequest $request, int $orderId)
     {
+        $order = Order::findOrFail($orderId);
+        $this->authorize('update', $order);
+
         $v = $request->validated();
         $result = PalletListService::availableForOrder(
             $v['orderId'],

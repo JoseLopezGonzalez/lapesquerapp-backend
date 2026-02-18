@@ -79,6 +79,14 @@ class User extends Authenticatable
         return in_array($this->role, $roles, true);
     }
 
+    /**
+     * Salesperson linked to this user (for role comercial). One-to-one; user_id on salespeople.
+     */
+    public function salesperson()
+    {
+        return $this->hasOne(Salesperson::class);
+    }
+
     /* toasocArray */
     public function activityLogs()
     {

@@ -91,7 +91,7 @@ class SupplierController extends Controller
 
     public function options(): JsonResponse
     {
-        $this->authorize('viewAny', Supplier::class);
+        $this->authorize('viewOptions', Supplier::class);
 
         $suppliers = Supplier::select('id', 'name')
             ->orderBy('name', 'asc')

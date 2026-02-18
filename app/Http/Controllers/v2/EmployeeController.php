@@ -59,7 +59,7 @@ class EmployeeController extends Controller
      */
     public function options(Request $request)
     {
-        $this->authorize('viewAny', Employee::class);
+        $this->authorize('viewOptions', Employee::class);
 
         $query = Employee::query();
 

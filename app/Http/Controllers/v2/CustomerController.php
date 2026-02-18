@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Enums\Role;
 use App\Http\Requests\v2\DestroyMultipleCustomersRequest;
 use App\Http\Requests\v2\IndexCustomerRequest;
 use App\Http\Requests\v2\StoreCustomerRequest;
@@ -33,6 +34,10 @@ class CustomerController extends Controller
         $this->authorize('create', Customer::class);
 
         $validated = $request->validated();
+
+        if ($request->user()->hasRole(Role::Comercial->value) && $request->user()->salesperson) {
+            $validated['salesperson_id'] = $request->user()->salesperson->id;
+        }
 
         $allEmails = [];
         foreach ($validated['emails'] ?? [] as $email) {
@@ -192,13 +197,16 @@ class CustomerController extends Controller
     /**
      * Get all options for the customers select box.
      */
-    public function options()
+    public function options(Request $request)
     {
         $this->authorize('viewAny', Customer::class);
 
-        $customers = Customer::select('id', 'name')
-            ->orderBy('name', 'asc')
-            ->get();
+        $query = Customer::select('id', 'name')->orderBy('name', 'asc');
+        $user = $request->user();
+        if ($user->hasRole(Role::Comercial->value) && $user->salesperson) {
+            $query->where('salesperson_id', $user->salesperson->id);
+        }
+        $customers = $query->get();
 
         return response()->json($customers);
     }

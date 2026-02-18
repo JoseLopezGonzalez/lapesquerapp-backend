@@ -120,7 +120,7 @@ class FishingGearController extends Controller
 
     public function options(): JsonResponse
     {
-        $this->authorize('viewAny', FishingGear::class);
+        $this->authorize('viewOptions', FishingGear::class);
 
         $fishingGears = FishingGear::select('id', 'name')->orderBy('name', 'asc')->get();
 

@@ -18,12 +18,23 @@ class CountryPolicy
 
     public function viewAny(User $user): bool
     {
+        if ($user->hasRole(Role::Comercial->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
     public function view(User $user, Country $country): bool
     {
+        if ($user->hasRole(Role::Comercial->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
+    }
+
+    public function viewOptions(User $user): bool
+    {
+        return true;
     }
 
     public function create(User $user): bool

@@ -2,6 +2,7 @@
 
 namespace App\Exports\v2;
 
+use App\Enums\Role;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Concerns\FromQuery;
@@ -23,6 +24,11 @@ class OrderExport implements FromQuery, WithHeadings, WithMapping
     public function query()
     {
         $query = Order::query();
+
+        $user = auth()->user();
+        if ($user && $user->hasRole(Role::Comercial->value) && $user->salesperson) {
+            $query->where('salesperson_id', $user->salesperson->id);
+        }
 
         if (!empty($this->filters['customers'])) {
             $query->whereIn('customer_id', $this->filters['customers']);

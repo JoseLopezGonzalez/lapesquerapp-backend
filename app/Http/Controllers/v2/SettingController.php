@@ -14,11 +14,11 @@ class SettingController extends Controller
         private SettingService $settingService
     ) {}
 
-    public function index(): JsonResponse
+    public function index(\Illuminate\Http\Request $request): JsonResponse
     {
         $this->authorize('viewAny', Setting::class);
 
-        return response()->json($this->settingService->getAllKeyValue());
+        return response()->json($this->settingService->getAllKeyValue($request->user()));
     }
 
     public function update(UpdateSettingsRequest $request): JsonResponse

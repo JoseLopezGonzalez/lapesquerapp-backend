@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 
 /**
  * Calibres por especie (guía entorno desarrollo PesquerApp).
+ * Depende de: ninguno.
  */
 class CalibersSeeder extends Seeder
 {

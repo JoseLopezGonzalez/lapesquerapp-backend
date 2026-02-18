@@ -12,7 +12,12 @@ class Salesperson extends Model
     use UsesTenantConnection;
     use HasFactory;
 
-    protected $fillable = ['name', 'emails'];
+    protected $fillable = ['name', 'emails', 'user_id'];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function customers()
     {

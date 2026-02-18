@@ -2,6 +2,7 @@
 
 namespace App\Services\v2;
 
+use App\Enums\Role;
 use App\Models\Customer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
@@ -16,8 +17,13 @@ class CustomerListService
      */
     public static function list(Request $request): LengthAwarePaginator
     {
+        $user = $request->user();
         $query = Customer::query()
             ->with(['payment_term', 'salesperson', 'country', 'transport']);
+
+        if ($user->hasRole(Role::Comercial->value) && $user->salesperson) {
+            $query->where('salesperson_id', $user->salesperson->id);
+        }
 
         if ($request->filled('id')) {
             $query->where('id', $request->input('id'));

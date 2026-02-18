@@ -10,7 +10,7 @@ class TaxController extends Controller
 {
     public function options(): JsonResponse
     {
-        $this->authorize('viewAny', Tax::class);
+        $this->authorize('viewOptions', Tax::class);
 
         $taxes = Tax::select('id', 'name', 'rate')
             ->orderBy('rate', 'asc')

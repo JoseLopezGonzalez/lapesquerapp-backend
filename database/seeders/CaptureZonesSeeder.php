@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 
 /**
  * Zonas de captura (menú Productos). Datos de desarrollo.
+ * Depende de: ninguno.
  */
 class CaptureZonesSeeder extends Seeder
 {

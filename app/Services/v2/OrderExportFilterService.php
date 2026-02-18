@@ -2,6 +2,7 @@
 
 namespace App\Services\v2;
 
+use App\Enums\Role;
 use App\Models\Order;
 use App\Models\Pallet;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,6 +17,11 @@ class OrderExportFilterService
     public function applyFilters(Request $request): Builder
     {
         $query = Order::query();
+
+        $user = $request->user();
+        if ($user && $user->hasRole(Role::Comercial->value) && $user->salesperson) {
+            $query->where('salesperson_id', $user->salesperson->id);
+        }
 
         if ($request->has('active')) {
             if ($request->active === 'true') {

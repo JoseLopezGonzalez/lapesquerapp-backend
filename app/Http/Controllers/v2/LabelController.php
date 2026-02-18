@@ -90,7 +90,7 @@ class LabelController extends Controller
 
     public function options()
     {
-        $this->authorize('viewAny', Label::class);
+        $this->authorize('viewOptions', Label::class);
 
         $labels = Label::orderBy('name')->get();
 

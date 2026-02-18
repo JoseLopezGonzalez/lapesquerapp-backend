@@ -22,17 +22,25 @@ class OrderPolicy
 
     /**
      * Determine if the user can view any orders.
+     * Comercial: only if linked to a Salesperson (data scoping is applied in services).
      */
     public function viewAny(User $user): bool
     {
+        if ($user->hasRole(Role::Comercial->value)) {
+            return $user->salesperson !== null;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
     /**
      * Determine if the user can view the order.
+     * Comercial: only their own orders (salesperson_id matches).
      */
     public function view(User $user, Order $order): bool
     {
+        if ($user->hasRole(Role::Comercial->value)) {
+            return $user->salesperson && $order->salesperson_id === $user->salesperson->id;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -46,33 +54,49 @@ class OrderPolicy
 
     /**
      * Determine if the user can update the order.
+     * Comercial: cannot update.
      */
     public function update(User $user, Order $order): bool
     {
+        if ($user->hasRole(Role::Comercial->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
     /**
      * Determine if the user can delete the order.
+     * Comercial: cannot delete.
      */
     public function delete(User $user, Order $order): bool
     {
+        if ($user->hasRole(Role::Comercial->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
     /**
      * Determine if the user can restore the order.
+     * Comercial: cannot restore.
      */
     public function restore(User $user, Order $order): bool
     {
+        if ($user->hasRole(Role::Comercial->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
     /**
      * Determine if the user can permanently delete the order.
+     * Comercial: cannot force delete.
      */
     public function forceDelete(User $user, Order $order): bool
     {
+        if ($user->hasRole(Role::Comercial->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 }

@@ -189,6 +189,9 @@ php artisan key:generate
 # 5. Migrar y sembrar tenant
 ./vendor/bin/sail artisan tenants:migrate --seed
 
+# Alternativa (Sail dev): migrar la BD por defecto como tenant sin registrar tenant
+./vendor/bin/sail artisan tenants:dev-migrate --seed
+
 # 6. Comprobar
 curl -s http://localhost/api/health
 ```
@@ -201,7 +204,8 @@ curl -s http://localhost/api/health
 |----------|--------------|
 | `sail up` o `sail ps` falla | Docker Desktop en ejecución; puertos 80, 3306, 6379, 8025 libres. |
 | Error de conexión a MySQL en migrate | `.env` con `DB_HOST=mysql`, contenedor mysql en Running. |
-| `tenants:migrate` no hace nada | Que exista al menos un tenant activo en `tenants` y que su BD exista en MySQL. |
+| `tenants:migrate` no hace nada | Que exista al menos un tenant activo en `tenants` y que su BD exista en MySQL. Si prefieres no crear tenant aún, usa `tenants:dev-migrate --seed` para migrar la BD por defecto. |
+| "No database selected" al usar `migrate --database=tenant` | Usar `tenants:dev-migrate` en lugar de migrar a mano; ese comando configura la conexión tenant con `DB_DATABASE`. |
 | Error en seeders (ej. tabla no existe) | Ejecutar primero `tenants:migrate` sin `--seed` y luego `tenants:seed`. |
 
 Cuando hayas completado todos los pasos, tendrás el **deploy en desarrollo** listo para trabajar. Para más detalle, ver [deploy-desarrollo.md](_archivo/deploy-desarrollo.md).

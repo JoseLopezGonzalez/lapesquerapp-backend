@@ -167,7 +167,7 @@ class StoreController extends Controller
     /* Options */
     public function options()
     {
-        $this->authorize('viewAny', Store::class);
+        $this->authorize('viewOptions', Store::class);
         $stores = Store::select('id', 'name')
             ->orderBy('name', 'asc')
             ->get();

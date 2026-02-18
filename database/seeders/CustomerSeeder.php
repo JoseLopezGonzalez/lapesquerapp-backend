@@ -13,6 +13,7 @@ use Faker\Factory as Faker;
 /**
  * Clientes de desarrollo.
  * Fuente: Análisis esquema tenant. Depende de: Countries, PaymentTerms, Salespeople, Transports.
+ * Asigna clientes al comercial con usuario (rol comercial) para pruebas de scoping.
  */
 class CustomerSeeder extends Seeder
 {
@@ -22,7 +23,8 @@ class CustomerSeeder extends Seeder
 
         $country = Country::first();
         $paymentTerm = PaymentTerm::first();
-        $salesperson = Salesperson::first();
+        // Preferir el comercial vinculado a un User (rol comercial) para que tenga clientes en pruebas
+        $salesperson = Salesperson::whereNotNull('user_id')->first() ?? Salesperson::first();
         $transport = Transport::first();
 
         if (!$country || !$paymentTerm || !$salesperson || !$transport) {
@@ -106,7 +108,11 @@ class CustomerSeeder extends Seeder
             );
         }
 
+        // Parte de los clientes aleatorios también del comercial con usuario (más datos para pruebas)
         for ($i = 0; $i < 5; $i++) {
+            $salespersonId = ($i < 2)
+                ? $salesperson->id
+                : Salesperson::inRandomOrder()->first()->id;
             Customer::firstOrCreate(
                 ['vat_number' => 'B' . $faker->unique()->numerify('########')],
                 [
@@ -115,7 +121,7 @@ class CustomerSeeder extends Seeder
                     'payment_term_id' => PaymentTerm::inRandomOrder()->first()->id,
                     'billing_address' => $faker->address(),
                     'shipping_address' => $faker->address(),
-                    'salesperson_id' => Salesperson::inRandomOrder()->first()->id,
+                    'salesperson_id' => $salespersonId,
                     'emails' => json_encode([$faker->companyEmail()]),
                     'contact_info' => $faker->name() . ', ' . $faker->phoneNumber(),
                     'country_id' => Country::inRandomOrder()->first()->id,

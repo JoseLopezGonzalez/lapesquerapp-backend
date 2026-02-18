@@ -8,6 +8,7 @@ use Illuminate\Database\Seeder;
 /**
  * Impuestos para líneas de pedido (order_planned_product_details.tax_id).
  * Fuente: Análisis esquema tenant / desarrollo.
+ * Depende de: ninguno.
  */
 class TaxSeeder extends Seeder
 {

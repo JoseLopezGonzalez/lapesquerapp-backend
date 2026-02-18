@@ -2,17 +2,36 @@
 
 namespace App\Services\v2;
 
+use App\Enums\Role;
 use App\Models\Setting;
+use App\Models\User;
 
 class SettingService
 {
     /**
+     * Keys permitidos para rol comercial (solo lectura; excluye company.mail.* y otros sensibles).
+     */
+    private const COMERCIAL_SETTINGS_WHITELIST = [
+        'company.name',
+        'company.logo_url',
+        'company.frontend_url',
+    ];
+
+    /**
      * Devuelve todos los settings key=>value del tenant.
      * Ofusca company.mail.password (devuelve ******** si existe).
+     * Si el usuario es comercial, devuelve solo la whitelist (keys permitidos).
+     *
+     * @param User|null $user Usuario actual (para restringir a whitelist si es comercial)
      */
-    public function getAllKeyValue(): array
+    public function getAllKeyValue(?User $user = null): array
     {
+        $user = $user ?? auth()->user();
         $all = Setting::getAllKeyValue();
+
+        if ($user && $user->hasRole(Role::Comercial->value)) {
+            $all = array_intersect_key($all, array_flip(self::COMERCIAL_SETTINGS_WHITELIST));
+        }
 
         if (array_key_exists(Setting::SENSITIVE_KEY_PASSWORD, $all)) {
             $all[Setting::SENSITIVE_KEY_PASSWORD] = '********';

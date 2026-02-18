@@ -18,6 +18,14 @@ class TaxPolicy
 
     public function viewAny(User $user): bool
     {
+        if ($user->hasRole(Role::Comercial->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
+    }
+
+    public function viewOptions(User $user): bool
+    {
+        return true;
     }
 }

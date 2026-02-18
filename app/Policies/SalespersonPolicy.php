@@ -18,9 +18,14 @@ class SalespersonPolicy
 
     /**
      * Determine if the user can view any salespeople.
+     * Comercial cannot list salespeople (options returns only their own record).
      */
     public function viewAny(User $user): bool
     {
+        if ($user->hasRole(Role::Comercial->value)) {
+            return false;
+        }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 

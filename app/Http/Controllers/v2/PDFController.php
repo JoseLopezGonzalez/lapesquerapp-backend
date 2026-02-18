@@ -5,6 +5,7 @@ namespace App\Http\Controllers\v2;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\v2\Traits\HandlesChromiumConfig;
 use App\Http\Requests\v2\OrderFilteredExportRequest;
+use App\Enums\Role;
 use App\Models\Order;
 use App\Services\v2\OrderExportFilterService;
 use Beganovich\Snappdf\Snappdf;
@@ -48,6 +49,9 @@ class PDFController extends Controller
     public function generateOrderSigns(int|string $orderId): StreamedResponse
     {
         $order = $this->getAuthorizedOrder($orderId);
+        if (auth()->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
 
         return $this->generatePdf($order, 'pdf.v2.orders.order_signs', 'Letreros_transporte_' . $order->formattedId);
     }
@@ -55,6 +59,9 @@ class PDFController extends Controller
     public function generateOrderPackingList(int|string $orderId): StreamedResponse
     {
         $order = $this->getAuthorizedOrder($orderId);
+        if (auth()->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
 
         return $this->generatePdf($order, 'pdf.v2.orders.order_packing_list', 'Packing_list_' . $order->formattedId);
     }
@@ -69,6 +76,9 @@ class PDFController extends Controller
     public function generateRestrictedLoadingNote(int|string $orderId): StreamedResponse
     {
         $order = $this->getAuthorizedOrder($orderId);
+        if (auth()->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
 
         return $this->generatePdf($order, 'pdf.v2.orders.restricted_loading_note', 'Nota_de_carga_restringida_' . $order->formattedId);
     }
@@ -76,6 +86,9 @@ class PDFController extends Controller
     public function generateOrderCMR(int|string $orderId): StreamedResponse
     {
         $order = $this->getAuthorizedOrder($orderId);
+        if (auth()->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
 
         return $this->generatePdf($order, 'pdf.v2.orders.CMR', 'CMR_' . $order->formattedId);
     }
@@ -83,6 +96,9 @@ class PDFController extends Controller
     public function generateDeliveryNote(int|string $orderId): StreamedResponse
     {
         $order = $this->getAuthorizedOrder($orderId);
+        if (auth()->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
 
         return $this->generatePdf($order, 'pdf.v2.orders.delivery_note', 'Nota_de_entrega_' . $order->formattedId);
     }
@@ -90,6 +106,9 @@ class PDFController extends Controller
     public function generateInvoice(int|string $orderId): StreamedResponse
     {
         $order = $this->getAuthorizedOrder($orderId);
+        if (auth()->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
 
         return $this->generatePdf($order, 'pdf.v2.orders.invoice', 'Factura_' . $order->formattedId);
     }
@@ -104,6 +123,9 @@ class PDFController extends Controller
     public function generateOrderConfirmation(int|string $orderId): StreamedResponse
     {
         $order = $this->getAuthorizedOrder($orderId);
+        if (auth()->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
 
         return $this->generatePdf($order, 'pdf.v2.orders.order_confirmation', 'Confirmacion_de_pedido_' . $order->formattedId);
     }
@@ -111,6 +133,9 @@ class PDFController extends Controller
     public function generateTransportPickupRequest(int|string $orderId): StreamedResponse
     {
         $order = $this->getAuthorizedOrder($orderId);
+        if (auth()->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
 
         return $this->generatePdf($order, 'pdf.v2.orders.transport_pickup_request', 'Solicitud_de_recogida_' . $order->formattedId);
     }
@@ -118,12 +143,19 @@ class PDFController extends Controller
     public function generateIncident(int|string $orderId): StreamedResponse
     {
         $order = $this->getAuthorizedOrder($orderId);
+        if (auth()->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
 
         return $this->generatePdf($order, 'pdf.v2.orders.incident', 'Incidencia_' . $order->formattedId);
     }
 
     public function generateOrderSheetsWithFilters(OrderFilteredExportRequest $request): StreamedResponse|\Illuminate\Http\JsonResponse
     {
+        if ($request->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
+
         ini_set('memory_limit', '512M');
         ini_set('max_execution_time', '300');
 

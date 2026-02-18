@@ -190,8 +190,15 @@ class SalespersonController extends Controller
 
 
 
-    public function options()
+    public function options(\Illuminate\Http\Request $request)
     {
+        $user = $request->user();
+        if ($user->hasRole(\App\Enums\Role::Comercial->value) && $user->salesperson) {
+            return response()->json([
+                ['id' => $user->salesperson->id, 'name' => $user->salesperson->name],
+            ]);
+        }
+
         $this->authorize('viewAny', Salesperson::class);
 
         $salespeople = Salesperson::select('id', 'name')

@@ -28,6 +28,10 @@ class OrderPlannedProductDetailSeeder extends Seeder
             return;
         }
 
+        if (! $tax) {
+            $this->command->warn('OrderPlannedProductDetailSeeder: opcional TaxSeeder para tax_id.');
+        }
+
         foreach ($orders as $order) {
             $numLines = $faker->numberBetween(1, 4);
             $usedProducts = $products->random(min($numLines, $products->count()));

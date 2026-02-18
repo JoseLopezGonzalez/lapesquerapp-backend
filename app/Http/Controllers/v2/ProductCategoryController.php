@@ -95,7 +95,7 @@ class ProductCategoryController extends Controller
 
     public function options(): JsonResponse
     {
-        $this->authorize('viewAny', ProductCategory::class);
+        $this->authorize('viewOptions', ProductCategory::class);
         $categories = ProductCategory::where('active', true)
             ->select('id', 'name', 'description')
             ->orderBy('name', 'asc')

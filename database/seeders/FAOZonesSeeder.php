@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 
 /**
  * Zonas FAO (guía entorno desarrollo PesquerApp).
+ * Depende de: ninguno.
  */
 class FAOZonesSeeder extends Seeder
 {

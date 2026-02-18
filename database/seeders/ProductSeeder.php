@@ -25,6 +25,9 @@ class ProductSeeder extends Seeder
         $families = ProductFamily::all();
         $pulpo = $species->firstWhere('name', 'Pulpo común') ?? $species->firstWhere('name', 'Pulpo') ?? $species->first();
         $caballa = $species->firstWhere('name', 'Caballa') ?? $species->first();
+        $merluza = $species->firstWhere('name', 'Merluza') ?? $species->first();
+        $calamar = $species->firstWhere('name', 'Calamar') ?? $species->first();
+        $sepia = $species->firstWhere('name', 'Sepia') ?? $species->first();
         $zone = $zones->first();
         $frescoEntero = $families->firstWhere('name', 'Fresco entero');
         $frescoEviscerado = $families->firstWhere('name', 'Fresco eviscerado');
@@ -80,20 +83,31 @@ class ProductSeeder extends Seeder
             );
         }
 
-        // Productos genéricos adicionales si se desea más variedad
+        // Productos extra con nombres realistas (Merluza, Calamar, Sepia)
         $currentCount = Product::count();
         if ($currentCount >= 25) {
             $this->command->info('ProductSeeder: Ya existen suficientes productos. Omitiendo productos extra.');
             return;
         }
-        $extraToCreate = min(5, 25 - $currentCount);
-        for ($i = 0; $i < $extraToCreate; $i++) {
+        $extraProducts = [
+            ['name' => 'Merluza fresca', 'species' => $merluza, 'family' => $frescoEntero],
+            ['name' => 'Merluza congelada', 'species' => $merluza, 'family' => $congeladoEntero],
+            ['name' => 'Calamar fresco', 'species' => $calamar, 'family' => $frescoEntero],
+            ['name' => 'Calamar congelado', 'species' => $calamar, 'family' => $congeladoEntero],
+            ['name' => 'Sepia fresca', 'species' => $sepia, 'family' => $frescoEntero],
+        ];
+        foreach ($extraProducts as $row) {
+            if (Product::count() >= 25) {
+                break;
+            }
+            $familyId = $row['family']?->id ?? $families->random()->id;
+            $speciesId = $row['species']?->id ?? $species->random()->id;
             Product::firstOrCreate(
-                ['name' => 'Producto desarrollo ' . $faker->unique()->numerify('P###')],
+                ['name' => $row['name']],
                 [
-                    'species_id' => $species->random()->id,
-                    'capture_zone_id' => $zones->random()->id,
-                    'family_id' => $families->random()->id,
+                    'species_id' => $speciesId,
+                    'capture_zone_id' => $zone->id,
+                    'family_id' => $familyId,
                     'article_gtin' => $faker->optional(0.6)->numerify('84#############'),
                     'box_gtin' => null,
                     'pallet_gtin' => null,

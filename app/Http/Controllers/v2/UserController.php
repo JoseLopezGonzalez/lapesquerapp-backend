@@ -130,7 +130,7 @@ class UserController extends Controller
     /* options */
     public function options()
     {
-        $this->authorize('viewAny', User::class);
+        $this->authorize('viewOptions', User::class);
 
         $users = User::select('id', 'name')->get();
         return response()->json($users);

@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 
 /**
  * Artes de pesca (menú Productos). Datos de desarrollo.
+ * Depende de: ninguno.
  */
 class FishingGearSeeder extends Seeder
 {

@@ -38,6 +38,7 @@ Documentación esencial para entender la arquitectura:
 Despliegue y entorno de desarrollo:
 - [deploy-desarrollo-guiado.md](./instrucciones/deploy-desarrollo-guiado.md): Guía paso a paso (primera vez)
 - [actualizacion-seeders-migraciones.md](./instrucciones/actualizacion-seeders-migraciones.md): Seeders y migraciones
+- [seeders-estandares-desarrollo.md](./instrucciones/seeders-estandares-desarrollo.md): Estándares de seeders para desarrollo (datos realistas, idempotencia, cobertura)
 - [guia-completa-entorno-sail-windows.md](./instrucciones/guia-completa-entorno-sail-windows.md): Sail + Windows/WSL
 - [instalar-docker-wsl.md](./instrucciones/instalar-docker-wsl.md): Docker en WSL
 - [implementation-plan-docker-sail.md](./instrucciones/implementation-plan-docker-sail.md): Plan Sail

@@ -109,7 +109,7 @@ class CountryController extends Controller
 
     public function options(): JsonResponse
     {
-        $this->authorize('viewAny', Country::class);
+        $this->authorize('viewOptions', Country::class);
 
         $countries = Country::select('id', 'name')->orderBy('name', 'asc')->get();
 

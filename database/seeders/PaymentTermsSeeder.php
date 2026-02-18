@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 
 /**
  * Formas de pago (menú Clientes). Datos de desarrollo.
+ * Depende de: ninguno.
  */
 class PaymentTermsSeeder extends Seeder
 {

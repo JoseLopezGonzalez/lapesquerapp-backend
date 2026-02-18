@@ -25,6 +25,23 @@ php artisan tenants:migrate --fresh
 php artisan tenants:migrate --fresh --seed
 ```
 
+### Desarrollo con Sail (migraciones tenant sobre la BD por defecto)
+
+Cuando trabajas en local con Sail y quieres ejecutar las migraciones de companies **sin tener tenants registrados** en la base central (o usando la misma BD que `DB_DATABASE`), usa:
+
+```bash
+# Con Sail
+./vendor/bin/sail artisan tenants:dev-migrate
+
+# Con seed
+./vendor/bin/sail artisan tenants:dev-migrate --seed
+
+# Desde cero (fresh) y seed
+./vendor/bin/sail artisan tenants:dev-migrate --fresh --seed
+```
+
+El comando configura la conexión `tenant` con la base de datos por defecto (`DB_DATABASE`) y ejecuta las migraciones de `database/migrations/companies`. **Solo para desarrollo**; en producción usar `tenants:migrate`.
+
 ### Ejecutar Migraciones en un Tenant Específico
 
 ```bash

@@ -13,6 +13,8 @@ use App\Http\Requests\v2\UpdateOrderStatusRequest;
 use App\Http\Resources\v2\ActiveOrderCardResource;
 use App\Http\Resources\v2\OrderDetailsResource;
 use App\Http\Resources\v2\OrderResource;
+use App\Enums\Role;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Services\v2\OrderDetailService;
 use App\Services\v2\OrderListService;
@@ -39,8 +41,23 @@ class OrderController extends Controller
     {
         $this->authorize('create', Order::class);
 
+        $validated = $request->validated();
+        $user = $request->user();
+
+        if ($user->hasRole(Role::Comercial->value) && $user->salesperson) {
+            $customerOwned = Customer::where('id', $validated['customer'])
+                ->where('salesperson_id', $user->salesperson->id)
+                ->exists();
+            if (! $customerOwned) {
+                throw ValidationException::withMessages([
+                    'customer' => ['Solo puede crear pedidos para clientes asignados a usted.'],
+                ]);
+            }
+            $validated['salesperson'] = $user->salesperson->id;
+        }
+
         try {
-            $order = OrderStoreService::store($request->validated());
+            $order = OrderStoreService::store($validated, $user);
             $order = OrderDetailService::getOrderForDetail((string) $order->id);
             return response()->json([
                 'message' => 'Pedido creado correctamente.',
@@ -148,31 +165,31 @@ class OrderController extends Controller
     /**
      * Options.
      */
-    public function options()
+    public function options(\Illuminate\Http\Request $request)
     {
         $this->authorize('viewAny', Order::class);
 
-        return response()->json(OrderListService::options());
+        return response()->json(OrderListService::options($request->user()));
     }
 
     /**
      * List active orders for Order Manager.
      */
-    public function active()
+    public function active(\Illuminate\Http\Request $request)
     {
         $this->authorize('viewAny', Order::class);
 
-        return ActiveOrderCardResource::collection(OrderListService::active());
+        return ActiveOrderCardResource::collection(OrderListService::active($request->user()));
     }
 
     /**
      * Active Orders Options.
      */
-    public function activeOrdersOptions()
+    public function activeOrdersOptions(\Illuminate\Http\Request $request)
     {
         $this->authorize('viewAny', Order::class);
 
-        return response()->json(OrderListService::activeOrdersOptions());
+        return response()->json(OrderListService::activeOrdersOptions($request->user()));
     }
 
     /**
@@ -214,7 +231,8 @@ class OrderController extends Controller
             $validated = $request->validated();
             $data = OrderStatisticsService::getSalesBySalesperson(
                 $validated['dateFrom'],
-                $validated['dateTo']
+                $validated['dateTo'],
+                $request->user()
             );
 
             return response()->json($data);
@@ -235,7 +253,8 @@ class OrderController extends Controller
             $validated = $request->validated();
             $result = OrderStatisticsService::getTransportChartData(
                 $validated['dateFrom'],
-                $validated['dateTo']
+                $validated['dateTo'],
+                $request->user()
             );
 
             return response()->json($result);
@@ -251,12 +270,12 @@ class OrderController extends Controller
     /**
      * Vista de producción - Pedidos agrupados por producto (día actual).
      */
-    public function productionView()
+    public function productionView(\Illuminate\Http\Request $request)
     {
         $this->authorize('viewAny', Order::class);
 
         try {
-            return response()->json(OrderProductionViewService::getData());
+            return response()->json(OrderProductionViewService::getData(null, $request->user()));
         } catch (\Exception $e) {
             \Log::error('Error in productionView: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),

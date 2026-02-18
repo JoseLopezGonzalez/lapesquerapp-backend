@@ -2,8 +2,10 @@
 
 namespace App\Services\v2;
 
+use App\Enums\Role;
 use App\Models\Order;
 use App\Models\Pallet;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -301,14 +303,16 @@ class OrderStatisticsService
      *
      * @param string $dateFrom Fecha inicio (Y-m-d)
      * @param string $dateTo   Fecha fin (Y-m-d)
+     * @param User|null $user Usuario actual (para filtrar por salesperson si es comercial)
      * @return Collection<int, array{name: string, quantity: float}>
      */
-    public static function getSalesBySalesperson(string $dateFrom, string $dateTo): Collection
+    public static function getSalesBySalesperson(string $dateFrom, string $dateTo, ?User $user = null): Collection
     {
+        $user = $user ?? auth()->user();
         $dateFrom = $dateFrom . ' 00:00:00';
         $dateTo = $dateTo . ' 23:59:59';
 
-        $results = Order::query()
+        $query = Order::query()
             ->join('pallets', 'pallets.order_id', '=', 'orders.id')
             ->join('pallet_boxes', 'pallet_boxes.pallet_id', '=', 'pallets.id')
             ->join('boxes', 'boxes.id', '=', 'pallet_boxes.box_id')
@@ -320,7 +324,13 @@ class OrderStatisticsService
                 Pallet::STATE_REGISTERED,
                 Pallet::STATE_STORED,
                 Pallet::STATE_SHIPPED,
-            ])
+            ]);
+
+        if ($user && $user->hasRole(Role::Comercial->value) && $user->salesperson) {
+            $query->where('orders.salesperson_id', $user->salesperson->id);
+        }
+
+        $results = $query
             ->selectRaw('COALESCE(salespeople.name, "Sin comercial") as name, SUM(boxes.net_weight) as quantity')
             ->groupBy('salespeople.id', 'salespeople.name')
             ->get();
@@ -337,14 +347,16 @@ class OrderStatisticsService
      *
      * @param string $dateFrom Fecha inicio (Y-m-d)
      * @param string $dateTo   Fecha fin (Y-m-d)
+     * @param User|null $user Usuario actual (para filtrar por salesperson si es comercial)
      * @return Collection<int, array{name: string, netWeight: float}>
      */
-    public static function getTransportChartData(string $dateFrom, string $dateTo): Collection
+    public static function getTransportChartData(string $dateFrom, string $dateTo, ?User $user = null): Collection
     {
+        $user = $user ?? auth()->user();
         $from = $dateFrom . ' 00:00:00';
         $to = $dateTo . ' 23:59:59';
 
-        $results = Order::query()
+        $query = Order::query()
             ->join('transports', 'transports.id', '=', 'orders.transport_id')
             ->join('pallets', 'pallets.order_id', '=', 'orders.id')
             ->join('pallet_boxes', 'pallet_boxes.pallet_id', '=', 'pallets.id')
@@ -357,7 +369,13 @@ class OrderStatisticsService
                 Pallet::STATE_REGISTERED,
                 Pallet::STATE_STORED,
                 Pallet::STATE_SHIPPED,
-            ])
+            ]);
+
+        if ($user && $user->hasRole(Role::Comercial->value) && $user->salesperson) {
+            $query->where('orders.salesperson_id', $user->salesperson->id);
+        }
+
+        $results = $query
             ->selectRaw('transports.name, SUM(boxes.net_weight) as netWeight')
             ->groupBy('transports.id', 'transports.name')
             ->get();
