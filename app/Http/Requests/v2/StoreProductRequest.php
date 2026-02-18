@@ -51,8 +51,8 @@ class StoreProductRequest extends FormRequest
             'speciesId' => 'required|exists:tenant.species,id',
             'captureZoneId' => 'required|exists:tenant.capture_zones,id',
             'familyId' => 'nullable|exists:tenant.product_families,id',
-            'articleGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/|max:14|unique:tenant.products,article_gtin',
-            'boxGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/|max:14|unique:tenant.products,box_gtin',
+            'articleGtin' => 'nullable|string|regex:/^[0-9]{13}$/|size:13|unique:tenant.products,article_gtin',
+            'boxGtin' => 'nullable|string|regex:/^[0-9]{14}$/|size:14|unique:tenant.products,box_gtin',
             'palletGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/|max:14|unique:tenant.products,pallet_gtin',
             'a3erp_code' => 'nullable|string|max:255',
             'facil_com_code' => 'nullable|string|max:255',
@@ -66,9 +66,9 @@ class StoreProductRequest extends FormRequest
     {
         return [
             'name.unique' => 'Ya existe un producto con este nombre.',
-            'articleGtin.regex' => 'El GTIN del artículo debe tener entre 8 y 14 dígitos numéricos.',
+            'articleGtin.regex' => 'El GTIN del artículo debe tener exactamente 13 dígitos.',
             'articleGtin.unique' => 'Ya existe un producto con este GTIN de artículo.',
-            'boxGtin.regex' => 'El GTIN de la caja debe tener entre 8 y 14 dígitos numéricos.',
+            'boxGtin.regex' => 'El GTIN de la caja debe tener exactamente 14 dígitos.',
             'boxGtin.unique' => 'Ya existe un producto con este GTIN de caja.',
             'palletGtin.regex' => 'El GTIN del palet debe tener entre 8 y 14 dígitos numéricos.',
             'palletGtin.unique' => 'Ya existe un producto con este GTIN de palet.',

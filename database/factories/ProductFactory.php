@@ -19,9 +19,9 @@ class ProductFactory extends Factory
         return [
             'species_id' => $this->faker->numberBetween(1, 5),
             'capture_zone_id' => $this->faker->numberBetween(1, 3),
-            'article_gtin' => $this->faker->numerify('84#############'),
-            'box_gtin' => $this->faker->numerify('984#############'),
-            'pallet_gtin' => $this->faker->numerify('984#############'),
+            'article_gtin' => $this->faker->numerify('84' . str_repeat('#', 11)),
+            'box_gtin' => $this->faker->numerify('984' . str_repeat('#', 11)),
+            'pallet_gtin' => $this->faker->numerify('984' . str_repeat('#', 11)),
         ];
     }
 }

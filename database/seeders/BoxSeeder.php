@@ -46,8 +46,8 @@ class BoxSeeder extends Seeder
                 $lot .= 'OCC' . $faker->numerify('#####');
             }
 
-            // GS1-128 opcional: (01)GTIN(3100)peso_centésimas(10)lot
-            $gtin = $product->article_gtin ?? $faker->numerify('984366139#####');
+            // GS1-128 opcional: (01)GTIN(3100)peso_centésimas(10)lot. Fallback: GTIN-14 (984 + 11 dígitos).
+            $gtin = $product->article_gtin ?? $faker->numerify('984' . str_repeat('#', 11));
             $weightCentesimas = (int) round($netWeight * 100);
             $gs1_128 = "(01){$gtin}(3100)" . str_pad((string) $weightCentesimas, 6, '0', STR_PAD_LEFT) . "(10){$lot}";
 
