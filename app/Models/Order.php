@@ -21,6 +21,12 @@ class Order extends Model
     const STATUS_INCIDENT = 'incident';
 
     /**
+     * Tipos de pedido
+     */
+    const ORDER_TYPE_STANDARD = 'standard';
+    const ORDER_TYPE_AUTOVENTA = 'autoventa';
+
+    /**
      * Lista de todos los estados válidos
      */
     public static function getValidStatuses(): array
@@ -29,6 +35,17 @@ class Order extends Model
             self::STATUS_PENDING,
             self::STATUS_FINISHED,
             self::STATUS_INCIDENT,
+        ];
+    }
+
+    /**
+     * Lista de tipos de pedido válidos
+     */
+    public static function getValidOrderTypes(): array
+    {
+        return [
+            self::ORDER_TYPE_STANDARD,
+            self::ORDER_TYPE_AUTOVENTA,
         ];
     }
 
@@ -46,6 +63,7 @@ class Order extends Model
         'entry_date',
         'load_date',
         'status',
+        'order_type',
         'buyer_reference',
         'incoterm_id'
     ];
@@ -85,6 +103,22 @@ class Order extends Model
     public function pallets()
     {
         return $this->hasMany(Pallet::class);
+    }
+
+    /**
+     * Scope para filtrar solo pedidos de tipo autoventa.
+     */
+    public function scopeAutoventas($query)
+    {
+        return $query->where('order_type', self::ORDER_TYPE_AUTOVENTA);
+    }
+
+    /**
+     * Indica si el pedido es una autoventa.
+     */
+    public function getIsAutoventaAttribute(): bool
+    {
+        return $this->order_type === self::ORDER_TYPE_AUTOVENTA;
     }
 
     //Resumen productos pedido

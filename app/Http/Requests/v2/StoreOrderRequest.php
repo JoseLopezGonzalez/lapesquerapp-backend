@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests\v2;
 
+use App\Models\Order;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
+ * @bodyParam orderType string Tipo de pedido: 'standard' o 'autoventa'. No-example
  * @bodyParam customer integer required ID del cliente (tenant). Example: 1
  * @bodyParam entryDate string required Fecha de entrada (Y-m-d). Example: 2025-02-14
  * @bodyParam loadDate string required Fecha de carga (Y-m-d). Example: 2025-02-15
@@ -12,12 +14,16 @@ use Illuminate\Foundation\Http\FormRequest;
  * @bodyParam payment integer ID de condición de pago. No-example
  * @bodyParam incoterm integer ID de incoterm. No-example
  * @bodyParam buyerReference string Referencia del comprador. No-example
- * @bodyParam plannedProducts array Líneas planificadas. No-example
+ * @bodyParam plannedProducts array Líneas planificadas (requerido si orderType no es autoventa). No-example
  * @bodyParam plannedProducts.*.product integer required ID del producto. Example: 1
  * @bodyParam plannedProducts.*.quantity number required Cantidad. Example: 100
  * @bodyParam plannedProducts.*.boxes integer required Número de cajas. Example: 10
  * @bodyParam plannedProducts.*.unitPrice number required Precio unitario. Example: 5.50
  * @bodyParam plannedProducts.*.tax integer required ID del impuesto. Example: 1
+ * @bodyParam invoiceRequired boolean Requerido si orderType=autoventa. Con factura sí/no. No-example
+ * @bodyParam observations string Observaciones (autoventa). No-example
+ * @bodyParam items array Líneas por producto (autoventa). items.*.productId, boxesCount, totalWeight, unitPrice. No-example
+ * @bodyParam boxes array Cajas a crear en el palet (autoventa). boxes.*.productId, lot, netWeight, gs1128. No-example
  */
 class StoreOrderRequest extends FormRequest
 {
@@ -36,7 +42,10 @@ class StoreOrderRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $isAutoventa = $this->input('orderType') === Order::ORDER_TYPE_AUTOVENTA;
+
+        $rules = [
+            'orderType' => 'nullable|string|in:standard,autoventa',
             'customer' => 'required|integer|exists:tenant.customers,id',
             'entryDate' => 'required|date',
             'loadDate' => 'required|date',
@@ -57,13 +66,33 @@ class StoreOrderRequest extends FormRequest
             'emails.*' => 'string|email:rfc,dns|distinct',
             'ccEmails' => 'nullable|array',
             'ccEmails.*' => 'string|email:rfc,dns|distinct',
-            'plannedProducts' => 'nullable|array',
-            'plannedProducts.*.product' => 'required|integer|exists:tenant.products,id',
-            'plannedProducts.*.quantity' => 'required|numeric',
-            'plannedProducts.*.boxes' => 'required|integer',
-            'plannedProducts.*.unitPrice' => 'required|numeric',
-            'plannedProducts.*.tax' => 'required|integer|exists:tenant.taxes,id',
+            'plannedProducts' => $isAutoventa ? 'nullable|array' : 'nullable|array',
+            'plannedProducts.*.product' => 'required_with:plannedProducts|integer|exists:tenant.products,id',
+            'plannedProducts.*.quantity' => 'required_with:plannedProducts|numeric',
+            'plannedProducts.*.boxes' => 'required_with:plannedProducts|integer',
+            'plannedProducts.*.unitPrice' => 'required_with:plannedProducts|numeric',
+            'plannedProducts.*.tax' => 'required_with:plannedProducts|integer|exists:tenant.taxes,id',
         ];
+
+        if ($isAutoventa) {
+            $rules['invoiceRequired'] = 'required|boolean';
+            $rules['observations'] = 'nullable|string|max:1000';
+            $rules['items'] = 'required|array|min:1';
+            $rules['items.*.productId'] = 'required|integer|exists:tenant.products,id';
+            $rules['items.*.boxesCount'] = 'required|integer|min:1';
+            $rules['items.*.totalWeight'] = 'required|numeric|min:0';
+            $rules['items.*.unitPrice'] = 'required|numeric|min:0';
+            $rules['items.*.subtotal'] = 'nullable|numeric|min:0';
+            $rules['items.*.tax'] = 'nullable|integer|exists:tenant.taxes,id';
+            $rules['boxes'] = 'required|array|min:1';
+            $rules['boxes.*.productId'] = 'required|integer|exists:tenant.products,id';
+            $rules['boxes.*.lot'] = 'nullable|string|max:255';
+            $rules['boxes.*.netWeight'] = 'required|numeric|min:0.01';
+            $rules['boxes.*.gs1128'] = 'nullable|string|max:255';
+            $rules['boxes.*.grossWeight'] = 'nullable|numeric|min:0';
+        }
+
+        return $rules;
     }
 
     /**
@@ -119,6 +148,23 @@ class StoreOrderRequest extends FormRequest
             'plannedProducts.*.tax.required' => 'El impuesto es obligatorio en cada línea.',
             'plannedProducts.*.tax.integer' => 'El impuesto debe ser un número entero.',
             'plannedProducts.*.tax.exists' => 'Uno o más impuestos seleccionados no existen.',
+            'orderType.in' => 'El tipo de pedido debe ser standard o autoventa.',
+            'invoiceRequired.required' => 'Debe indicar si la autoventa lleva factura.',
+            'invoiceRequired.boolean' => 'El campo factura debe ser sí o no.',
+            'items.required' => 'Debe incluir al menos una línea de producto en la autoventa.',
+            'items.min' => 'Debe incluir al menos una línea de producto.',
+            'items.*.productId.required' => 'El producto es obligatorio en cada línea.',
+            'items.*.productId.exists' => 'Uno o más productos no existen.',
+            'items.*.boxesCount.required' => 'El número de cajas es obligatorio en cada línea.',
+            'items.*.boxesCount.min' => 'Debe haber al menos una caja por línea.',
+            'items.*.totalWeight.required' => 'El peso total es obligatorio en cada línea.',
+            'items.*.unitPrice.required' => 'El precio unitario es obligatorio en cada línea.',
+            'boxes.required' => 'Debe incluir al menos una caja en la autoventa.',
+            'boxes.min' => 'Debe incluir al menos una caja.',
+            'boxes.*.productId.required' => 'El producto es obligatorio en cada caja.',
+            'boxes.*.productId.exists' => 'Uno o más productos de las cajas no existen.',
+            'boxes.*.netWeight.required' => 'El peso neto es obligatorio en cada caja.',
+            'boxes.*.netWeight.min' => 'El peso neto debe ser mayor que 0.',
         ];
     }
 

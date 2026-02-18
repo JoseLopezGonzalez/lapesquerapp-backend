@@ -43,6 +43,15 @@ class OrderController extends Controller
 
         $validated = $request->validated();
         $user = $request->user();
+        $isAutoventa = ($validated['orderType'] ?? null) === 'autoventa';
+
+        if ($isAutoventa) {
+            if (! $user->hasRole(Role::Comercial->value) || ! $user->salesperson) {
+                throw ValidationException::withMessages([
+                    'orderType' => ['Solo los usuarios con rol comercial pueden crear autoventas.'],
+                ]);
+            }
+        }
 
         if ($user->hasRole(Role::Comercial->value) && $user->salesperson) {
             $customerOwned = Customer::where('id', $validated['customer'])

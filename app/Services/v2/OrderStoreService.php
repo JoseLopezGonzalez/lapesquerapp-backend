@@ -12,6 +12,7 @@ class OrderStoreService
 {
     /**
      * Crea un pedido y sus líneas planificadas. Transacción única.
+     * Si orderType es 'autoventa', delega en AutoventaStoreService.
      *
      * @param array<string, mixed> $validated Datos validados (StoreOrderRequest)
      * @param User|null $user Usuario actual (para forzar salesperson_id si es comercial)
@@ -21,6 +22,11 @@ class OrderStoreService
     public static function store(array $validated, ?User $user = null): Order
     {
         $user = $user ?? auth()->user();
+
+        if (($validated['orderType'] ?? null) === Order::ORDER_TYPE_AUTOVENTA) {
+            return AutoventaStoreService::store($validated, $user);
+        }
+
         $salespersonId = $validated['salesperson'] ?? null;
         if ($user && $user->hasRole(Role::Comercial->value) && $user->salesperson) {
             $salespersonId = $user->salesperson->id;
@@ -53,6 +59,7 @@ class OrderStoreService
                 'accounting_notes' => $validated['accountingNotes'] ?? null,
                 'emails' => $formattedEmails ?? '',
                 'status' => 'pending',
+                'order_type' => Order::ORDER_TYPE_STANDARD,
             ]);
 
             if (!empty($validated['plannedProducts'])) {

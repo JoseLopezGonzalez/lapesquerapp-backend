@@ -16,6 +16,7 @@ class OrderResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'orderType' => $this->order_type ?? 'standard',
             'customer' => $this->customer->toArrayAssoc(),
             'buyerReference' => $this->buyer_reference,
             'status' => $this->status,

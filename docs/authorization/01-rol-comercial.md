@@ -87,6 +87,12 @@ Este documento define de forma **persistente** las restricciones de autorizació
 - **Implementación**: Autorizar en el controlador de PDF por tipo de documento cuando el usuario es comercial; para los tres permitidos, comprobar que el pedido es suyo (`order.salesperson_id = $user->salesperson->id`).
 - **Recordatorio futuro**: Valorar si añadir más documentos (CMR, confirmación, etc.) para uso diario del comercial.
 
+#### 3.1.11 Autoventas
+
+- **Regla**: Las **autoventas** son pedidos con `order_type = 'autoventa'`. Solo los usuarios con rol **comercial** pueden crear autoventas (`POST /api/v2/orders` con `orderType: 'autoventa'`).
+- **Mismas restricciones**: Crear solo para clientes suyos; listar y ver detalle solo sus pedidos (las autoventas aparecen en el listado de pedidos y pueden filtrarse con `orderType=autoventa`). El comercial no puede editar, borrar ni cambiar estado de una autoventa, igual que con el resto de pedidos.
+- **Implementación**: `OrderController::store` valida que, si `orderType === 'autoventa'`, el usuario tenga rol comercial y Salesperson asociado; `AutoventaStoreService` crea el Order con `order_type = 'autoventa'`, las líneas planificadas, un palet en estado enviado y las cajas asociadas.
+
 ---
 
 ### 3.2 Clientes (Customer)

@@ -75,6 +75,10 @@ class OrderListService
             $query->where('status', $request->status);
         }
 
+        if ($request->has('orderType')) {
+            $query->where('order_type', $request->orderType);
+        }
+
         if ($request->has('loadDate')) {
             $loadDate = $request->input('loadDate');
             if (isset($loadDate['start'])) {

@@ -23,6 +23,7 @@ class IndexOrderRequest extends FormRequest
             'customers.*' => 'integer',
             'buyerReference' => 'sometimes|string',
             'status' => 'sometimes|string|in:pending,finished,incident',
+            'orderType' => 'sometimes|string|in:standard,autoventa',
             'loadDate' => 'sometimes|array',
             'loadDate.start' => 'sometimes|date',
             'loadDate.end' => 'sometimes|date',
