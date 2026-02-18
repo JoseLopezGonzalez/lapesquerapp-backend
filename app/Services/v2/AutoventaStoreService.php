@@ -10,6 +10,7 @@ use App\Models\PalletBox;
 use App\Models\Tax;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AutoventaStoreService
 {
@@ -26,12 +27,16 @@ class AutoventaStoreService
     {
         $salespersonId = $user->salesperson?->id;
         if (! $salespersonId) {
-            throw new \InvalidArgumentException('El usuario debe tener un comercial (Salesperson) asociado para crear autoventas.');
+            throw ValidationException::withMessages([
+                'orderType' => ['Solo los usuarios con rol comercial pueden crear autoventas.'],
+            ]);
         }
 
         $defaultTaxId = Tax::query()->value('id');
         if (! $defaultTaxId) {
-            throw new \RuntimeException('No existe ningún impuesto en el tenant. Cree al menos uno para poder registrar autoventas.');
+            throw ValidationException::withMessages([
+                'general' => ['No hay ningún impuesto configurado. Cree al menos uno en Catálogos para poder registrar autoventas.'],
+            ]);
         }
 
         $accountingNotes = self::buildAccountingNotes(

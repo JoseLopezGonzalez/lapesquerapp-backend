@@ -165,6 +165,16 @@ class StoreOrderRequest extends FormRequest
             'boxes.*.productId.exists' => 'Uno o más productos de las cajas no existen.',
             'boxes.*.netWeight.required' => 'El peso neto es obligatorio en cada caja.',
             'boxes.*.netWeight.min' => 'El peso neto debe ser mayor que 0.',
+            'boxes.*.netWeight.numeric' => 'El peso neto debe ser un número.',
+            'boxes.*.grossWeight.numeric' => 'El peso bruto debe ser un número.',
+            'boxes.*.grossWeight.min' => 'El peso bruto debe ser mayor o igual a 0.',
+            'boxes.*.lot.max' => 'El lote no puede superar los 255 caracteres.',
+            'boxes.*.gs1128.max' => 'El código GS1-128 no puede superar los 255 caracteres.',
+            'observations.max' => 'Las observaciones no pueden superar los 1000 caracteres.',
+            'items.*.totalWeight.numeric' => 'El peso total debe ser un número.',
+            'items.*.totalWeight.min' => 'El peso total debe ser mayor o igual a 0.',
+            'items.*.unitPrice.numeric' => 'El precio unitario debe ser un número.',
+            'items.*.unitPrice.min' => 'El precio unitario debe ser mayor o igual a 0.',
         ];
     }
 

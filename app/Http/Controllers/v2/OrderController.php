@@ -75,6 +75,7 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error al crear el pedido',
+                'userMessage' => 'Ocurrió un error al crear el pedido. Por favor, intente de nuevo.',
                 'error' => $e->getMessage(),
             ], 500);
         }

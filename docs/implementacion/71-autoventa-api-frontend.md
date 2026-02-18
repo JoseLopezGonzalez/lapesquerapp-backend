@@ -220,21 +220,27 @@ En autoventa, `orderType` será siempre `"autoventa"` y se crea un único palet 
 
 ### Respuestas error
 
+El frontend debe mostrar al usuario el contenido de `userMessage` (o los mensajes en `errors` por campo). No exponer el contenido de `error` en respuestas 500.
+
 **401 Unauthorized** (token ausente o inválido):
 
 ```json
 {
-  "message": "No autenticado."
+  "message": "No autenticado.",
+  "userMessage": "Debes iniciar sesión para acceder a este recurso."
 }
 ```
 
 **422 Unprocessable Entity (validación):**
 
+En todas las respuestas 422 el cuerpo incluye `message`, `userMessage` (resumen legible para el usuario) y `errors` (detalle por campo).
+
 - Rol no comercial al intentar crear autoventa:
 
 ```json
 {
-  "message": "The given data was invalid.",
+  "message": "Error de validación.",
+  "userMessage": "Solo los usuarios con rol comercial pueden crear autoventas.",
   "errors": {
     "orderType": ["Solo los usuarios con rol comercial pueden crear autoventas."]
   }
@@ -245,9 +251,22 @@ En autoventa, `orderType` será siempre `"autoventa"` y se crea un único palet 
 
 ```json
 {
-  "message": "The given data was invalid.",
+  "message": "Error de validación.",
+  "userMessage": "Solo puede crear pedidos para clientes asignados a usted.",
   "errors": {
     "customer": ["Solo puede crear pedidos para clientes asignados a usted."]
+  }
+}
+```
+
+- Sin impuestos configurados en el tenant:
+
+```json
+{
+  "message": "Error de validación.",
+  "userMessage": "No hay ningún impuesto configurado. Cree al menos uno en Catálogos para poder registrar autoventas.",
+  "errors": {
+    "general": ["No hay ningún impuesto configurado. Cree al menos uno en Catálogos para poder registrar autoventas."]
   }
 }
 ```
@@ -256,7 +275,8 @@ En autoventa, `orderType` será siempre `"autoventa"` y se crea un único palet 
 
 ```json
 {
-  "message": "The given data was invalid.",
+  "message": "Error de validación.",
+  "userMessage": "Debe incluir al menos una línea de producto en la autoventa. y Debe incluir al menos una caja en la autoventa.",
   "errors": {
     "items": ["Debe incluir al menos una línea de producto en la autoventa."],
     "boxes": ["Debe incluir al menos una caja en la autoventa."],
@@ -272,6 +292,7 @@ En autoventa, `orderType` será siempre `"autoventa"` y se crea un único palet 
 ```json
 {
   "message": "Error al crear el pedido",
+  "userMessage": "Ocurrió un error al crear el pedido. Por favor, intente de nuevo.",
   "error": "Mensaje técnico del servidor (no mostrar tal cual al usuario)."
 }
 ```
@@ -490,7 +511,8 @@ Tras crear, el frontend puede usar `data.id` como `customer` en el body de la au
 
 ```json
 {
-  "message": "The given data was invalid.",
+  "message": "Error de validación.",
+  "userMessage": "El nombre del cliente es obligatorio.",
   "errors": {
     "name": ["El nombre del cliente es obligatorio."]
   }
@@ -505,13 +527,13 @@ Tras crear, el frontend puede usar `data.id` como `customer` en el body de la au
 |--------|-------------|----------------------------|
 | **200** | OK (listado, detalle, options) | `data` o array según endpoint |
 | **201** | Created (crear pedido, crear cliente) | `message` + `data` |
-| **401** | No autenticado | `{ "message": "No autenticado." }` |
-| **403** | No autorizado | `{ "message": "..." }` (o mensaje de policy) |
+| **401** | No autenticado | `{ "message": "No autenticado.", "userMessage": "..." }` |
+| **403** | No autorizado | `{ "message": "...", "userMessage": "..." }` (o mensaje de policy) |
 | **404** | Recurso no encontrado | `{ "message": "..." }` |
-| **422** | Validación fallida | `{ "message": "...", "errors": { "campo": ["mensaje1", "mensaje2"] } }`; a veces `userMessage` |
-| **500** | Error interno | `{ "message": "Error al crear el pedido", "error": "detalle técnico" }` |
+| **422** | Validación fallida | `{ "message": "Error de validación.", "userMessage": "...", "errors": { "campo": ["mensaje1", "mensaje2"] } }` |
+| **500** | Error interno | `{ "message": "Error al crear el pedido", "userMessage": "...", "error": "detalle técnico" }` |
 
-Para **422**, el frontend debe mostrar al usuario los mensajes de `errors` (por campo o concatenados). No exponer el contenido de `error` de un **500** como mensaje principal al usuario.
+Para **422** y **500**, el frontend debe mostrar al usuario el contenido de `userMessage` (o los mensajes en `errors` por campo). No exponer el contenido de `error` de un **500** como mensaje principal al usuario.
 
 ---
 
