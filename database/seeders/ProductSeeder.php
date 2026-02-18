@@ -75,6 +75,7 @@ class ProductSeeder extends Seeder
                     'capture_zone_id' => $zone->id,
                     'family_id' => $familyId,
                     'article_gtin' => $faker->optional(0.7)->numerify('84#############'),
+                    // GTIN de caja: GTIN-14 (14 dígitos), prefijo 984 típico España para cajas (GS1).
                     'box_gtin' => $faker->optional(0.7)->numerify('984#############'),
                     'pallet_gtin' => null,
                     'facil_com_code' => $faker->optional(0.4)->numerify('##'),
