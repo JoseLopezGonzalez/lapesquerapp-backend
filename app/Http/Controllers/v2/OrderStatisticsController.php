@@ -40,7 +40,8 @@ class OrderStatisticsController extends Controller
         $result = OrderStatisticsService::getNetWeightStatsComparedToLastYear(
             $validated['dateFrom'],
             $validated['dateTo'],
-            $validated['speciesId'] ?? null
+            $validated['speciesId'] ?? null,
+            $request->user()
         );
 
         return response()->json($result);
@@ -88,7 +89,8 @@ class OrderStatisticsController extends Controller
         $stats = OrderStatisticsService::getAmountStatsComparedToLastYear(
             $validated['dateFrom'],
             $validated['dateTo'],
-            $validated['speciesId'] ?? null
+            $validated['speciesId'] ?? null,
+            $request->user()
         );
 
         return response()->json($stats);
@@ -143,7 +145,8 @@ class OrderStatisticsController extends Controller
             $validated['valueType'],
             $validated['dateFrom'] . ' 00:00:00',
             $validated['dateTo'] . ' 23:59:59',
-            $validated['speciesId'] ?? null
+            $validated['speciesId'] ?? null,
+            $request->user()
         );
 
         return response()->json($results);

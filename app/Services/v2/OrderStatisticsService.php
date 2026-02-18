@@ -28,13 +28,18 @@ class OrderStatisticsService
         ];
     }
 
-    public static function calculateTotalNetWeight(string $from, string $to, ?int $speciesId = null): float
+    public static function calculateTotalNetWeight(string $from, string $to, ?int $speciesId = null, ?User $user = null): float
     {
+        $user = $user ?? auth()->user();
         $query = Order::query()
             ->joinBoxesAndArticles()
             ->whereBoxArticleSpecies($speciesId)
             ->betweenLoadDates($from, $to)
             ->where('orders.status', Order::STATUS_FINISHED); // Solo pedidos terminados
+
+        if ($user && $user->hasRole(Role::Comercial->value) && $user->salesperson) {
+            $query->where('orders.salesperson_id', $user->salesperson->id);
+        }
 
         return Order::executeNetWeightSum($query);
     }
@@ -49,12 +54,12 @@ class OrderStatisticsService
         return (($current - $previous) / $previous) * 100;
     }
 
-    public static function getNetWeightStatsComparedToLastYear(string $dateFrom, string $dateTo, ?int $speciesId = null): array
+    public static function getNetWeightStatsComparedToLastYear(string $dateFrom, string $dateTo, ?int $speciesId = null, ?User $user = null): array
     {
         $range = self::prepareDateRangeAndPrevious($dateFrom, $dateTo);
 
-        $totalCurrent = self::calculateTotalNetWeight($range['from'], $range['to'], $speciesId);
-        $totalPrevious = self::calculateTotalNetWeight($range['fromPrev'], $range['toPrev'], $speciesId);
+        $totalCurrent = self::calculateTotalNetWeight($range['from'], $range['to'], $speciesId, $user);
+        $totalPrevious = self::calculateTotalNetWeight($range['fromPrev'], $range['toPrev'], $speciesId, $user);
 
         return [
             'value' => round($totalCurrent, 2),
@@ -92,8 +97,9 @@ class OrderStatisticsService
             ->sum(fn($order) => $order->subtotalAmount);
     } */
 
-    public static function calculateAmountDetails(string $from, string $to, ?int $speciesId = null): array
+    public static function calculateAmountDetails(string $from, string $to, ?int $speciesId = null, ?User $user = null): array
     {
+        $user = $user ?? auth()->user();
         // Optimización: usar consultas SQL directas en lugar de cargar todos los datos en memoria
         $query = Order::query()
             ->join('order_planned_product_details', 'orders.id', '=', 'order_planned_product_details.order_id')
@@ -104,6 +110,10 @@ class OrderStatisticsService
 
         if ($speciesId) {
             $query->where('products.species_id', $speciesId);
+        }
+
+        if ($user && $user->hasRole(Role::Comercial->value) && $user->salesperson) {
+            $query->where('orders.salesperson_id', $user->salesperson->id);
         }
 
         $result = $query->selectRaw('
@@ -125,12 +135,12 @@ class OrderStatisticsService
 
 
 
-    public static function getAmountStatsComparedToLastYear(string $dateFrom, string $dateTo, ?int $speciesId = null): array
+    public static function getAmountStatsComparedToLastYear(string $dateFrom, string $dateTo, ?int $speciesId = null, ?User $user = null): array
     {
         $range = self::prepareDateRangeAndPrevious($dateFrom, $dateTo);
 
-        $current = self::calculateAmountDetails($range['from'], $range['to'], $speciesId);
-        $previous = self::calculateAmountDetails($range['fromPrev'], $range['toPrev'], $speciesId);
+        $current = self::calculateAmountDetails($range['from'], $range['to'], $speciesId, $user);
+        $previous = self::calculateAmountDetails($range['fromPrev'], $range['toPrev'], $speciesId, $user);
 
         return [
             'value' => round($current['total'], 2),
@@ -150,8 +160,9 @@ class OrderStatisticsService
     }
 
 
-    public static function getOrderRankingStats(string $groupBy, string $valueType, string $dateFrom, string $dateTo, ?int $speciesId = null): \Illuminate\Support\Collection
+    public static function getOrderRankingStats(string $groupBy, string $valueType, string $dateFrom, string $dateTo, ?int $speciesId = null, ?User $user = null): \Illuminate\Support\Collection
     {
+        $user = $user ?? auth()->user();
         // Optimización: usar consultas SQL directas en lugar de cargar todos los datos en memoria
         $query = Order::query()
             ->join('order_planned_product_details', 'orders.id', '=', 'order_planned_product_details.order_id')
@@ -164,6 +175,10 @@ class OrderStatisticsService
 
         if ($speciesId) {
             $query->where('products.species_id', $speciesId);
+        }
+
+        if ($user && $user->hasRole(Role::Comercial->value) && $user->salesperson) {
+            $query->where('orders.salesperson_id', $user->salesperson->id);
         }
 
         $groupByField = match ($groupBy) {
