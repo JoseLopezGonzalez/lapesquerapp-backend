@@ -515,7 +515,41 @@ Para **422**, el frontend debe mostrar al usuario los mensajes de `errors` (por 
 
 ---
 
-## 8. Referencias
+## 8. Restricciones actualizadas (autoventa)
+
+Resumen de qué campos **no** son obligatorios en el flujo autoventa para que el frontend no exija datos que el backend no usa.
+
+### 8.1 Crear autoventa (POST /api/v2/orders con orderType: "autoventa")
+
+Para crear una autoventa, el backend **no exige** ni utiliza:
+
+- Condición de pago (`payment_term_id`)
+- Transporte (`transport_id`)
+- Dirección de facturación / envío
+- Emails del pedido
+
+El frontend no debe enviar estos campos en el body de autoventa (o puede omitirlos). Las columnas correspondientes en la tabla `orders` son nullable; no se introducen nuevos requisitos para el frontend.
+
+### 8.2 Crear cliente en autoventa (POST /api/v2/customers — cliente in situ)
+
+Para el flujo “Nuevo cliente” en el paso 1 de autoventa (registro in situ), el backend **solo exige el nombre** del cliente. El comercial se asigna automáticamente al usuario logueado.
+
+Los siguientes campos son **opcionales** y pueden omitirse al crear el cliente desde autoventa:
+
+- NIF/CIF (`vatNumber`)
+- Dirección de facturación y de envío
+- Emails y información de contacto
+- País (`country_id`)
+- Condición de pago (`payment_term_id`)
+- Transporte (`transport_id`)
+
+El frontend puede enviar solo `name` (y opcionalmente el resto si el usuario los rellena). Las columnas correspondientes en la tabla `customers` son nullable para reflejar este uso.
+
+Ningún otro endpoint del flujo autoventa (listado, detalle, options) cambia; solo se aclara el contrato de creación de pedido y de cliente.
+
+---
+
+## 9. Referencias
 
 - **Implementación backend**: [70-autoventa-backend-implementacion.md](70-autoventa-backend-implementacion.md)
 - **Especificación funcional y flujo UI**: [69-autoventa-rol-comercial-especificacion.md](../por-hacer/69-autoventa-rol-comercial-especificacion.md)
