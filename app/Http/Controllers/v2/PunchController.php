@@ -319,20 +319,19 @@ class PunchController extends Controller
     private function authenticateManualRequest(Request $request)
     {
         $token = $request->bearerToken();
-        
+
         if ($token) {
             // Buscar el token en la base de datos
             $accessToken = PersonalAccessToken::findToken($token);
-            
+
             if ($accessToken) {
                 // Autenticar al usuario asociado al token
                 $user = $accessToken->tokenable;
                 if ($user) {
                     Auth::guard('sanctum')->setUser($user);
-                    // También establecer el usuario en la request para que $request->user() funcione
-                    $request->setUserResolver(function () use ($user) {
-                        return $user;
-                    });
+                    // Que el Gate use este usuario: el guard por defecto es 'web', y authorize() usa Auth::user()
+                    Auth::setUser($user);
+                    $request->setUserResolver(fn () => $user);
                 }
             }
         }
