@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\DailyCalibersBySpeciesRequest;
 use App\Http\Requests\v2\ReceptionChartDataRequest;
 use App\Models\RawMaterialReception;
 use App\Services\v2\RawMaterialReceptionStatisticsService;
@@ -52,6 +53,29 @@ class RawMaterialReceptionStatisticsController extends Controller
             $validated['speciesId'] ?? null,
             $validated['familyId'] ?? null,
             $validated['categoryId'] ?? null
+        );
+
+        return response()->json($results);
+    }
+
+    /**
+     * Devuelve el desglose diario de pesos por producto (calibre) para una especie y fecha.
+     * Para el componente "Calibres diarios por especie" (gráfico de anillos + leyenda).
+     *
+     * Parámetros (query): date (Y-m-d), speciesId (int, tenant).
+     * Respuesta: { total_weight_kg, calibers: [ { product_id, name, weight_kg, percentage }, ... ] }
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function dailyCalibersBySpecies(DailyCalibersBySpeciesRequest $request)
+    {
+        $this->authorize('viewAny', RawMaterialReception::class);
+
+        $validated = $request->validated();
+
+        $results = RawMaterialReceptionStatisticsService::getDailyCalibersBySpecies(
+            $validated['date'],
+            (int) $validated['speciesId']
         );
 
         return response()->json($results);

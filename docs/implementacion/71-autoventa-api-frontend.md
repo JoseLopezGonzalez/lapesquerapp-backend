@@ -432,6 +432,34 @@ Mismo formato que el objeto `data` del **201** de crear autoventa (OrderDetailsR
 
 ---
 
+## 5.5 Actualizar pedido (orderType)
+
+El endpoint de actualización de pedido acepta el campo **orderType** para cambiar el tipo entre `standard` y `autoventa`. La respuesta incluye siempre el pedido actualizado con `orderType` en el objeto `data`.
+
+**Request**
+
+```http
+PUT /api/v2/orders/{id}
+```
+o
+```http
+PATCH /api/v2/orders/{id}
+```
+
+**Headers:** `Authorization: Bearer {token}`, `X-Tenant: {subdomain}`, `Content-Type: application/json`
+
+**Body (todos los campos opcionales):** Puede incluir `orderType` con valor `"standard"` o `"autoventa"`. El resto de campos del update (buyerReference, payment, transport, entryDate, loadDate, status, incoterm, etc.) siguen siendo opcionales.
+
+**Ejemplo:** `{ "orderType": "autoventa" }` o `{ "orderType": "standard", "loadDate": "2026-02-20" }`
+
+**Respuesta 200:** `message` y `data` con el pedido actualizado (OrderDetailsResource). El objeto tiene siempre el campo `orderType` con el valor actual.
+
+**Validación 422:** Si se envía un valor distinto de `standard` o `autoventa`, el backend responde con mensaje en `errors.orderType`.
+
+**Permisos:** Solo usuarios con permiso para actualizar el pedido (policy `update`); el rol comercial no tiene permiso de actualización en el backend.
+
+---
+
 ## 6. Clientes: selector y creación rápida
 
 ### 6.1 Opciones de clientes (selector)

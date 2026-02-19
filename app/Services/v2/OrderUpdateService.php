@@ -86,6 +86,9 @@ class OrderUpdateService
                 $validated['ccEmails'] ?? []
             );
         }
+        if (array_key_exists('orderType', $validated)) {
+            $order->order_type = $validated['orderType'];
+        }
 
         $order->updated_at = now();
         $order->save();
