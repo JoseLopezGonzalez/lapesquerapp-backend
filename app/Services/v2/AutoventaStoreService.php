@@ -12,6 +12,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+use function normalizeDateToBusiness;
+
 class AutoventaStoreService
 {
     /**
@@ -49,8 +51,8 @@ class AutoventaStoreService
         try {
             $order = Order::create([
                 'customer_id' => $validated['customer'],
-                'entry_date' => $validated['entryDate'],
-                'load_date' => $validated['loadDate'],
+                'entry_date' => normalizeDateToBusiness($validated['entryDate']),
+                'load_date' => normalizeDateToBusiness($validated['loadDate']),
                 'salesperson_id' => $salespersonId,
                 'order_type' => Order::ORDER_TYPE_AUTOVENTA,
                 'accounting_notes' => $accountingNotes,

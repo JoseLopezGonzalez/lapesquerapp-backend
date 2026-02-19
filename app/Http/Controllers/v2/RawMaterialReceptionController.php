@@ -16,6 +16,8 @@ use App\Services\v2\RawMaterialReceptionWriteService;
 use App\Models\RawMaterialReception;
 use Illuminate\Support\Facades\DB;
 
+use function normalizeDateToBusiness;
+
 class RawMaterialReceptionController extends Controller
 {
     public function index(IndexRawMaterialReceptionRequest $request)
@@ -133,7 +135,7 @@ class RawMaterialReceptionController extends Controller
         $receptions = collect($request->validated('receptions'))->map(function (array $r): array {
             return [
                 'supplier_id' => (int) $r['supplier_id'],
-                'date' => $r['date'],
+                'date' => normalizeDateToBusiness($r['date']),
                 'declared_total_amount' => isset($r['declared_total_amount']) ? (float) $r['declared_total_amount'] : null,
                 'declared_total_net_weight' => isset($r['declared_total_net_weight']) ? (float) $r['declared_total_net_weight'] : null,
             ];

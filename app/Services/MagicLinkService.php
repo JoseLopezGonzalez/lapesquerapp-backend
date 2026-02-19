@@ -33,7 +33,7 @@ class MagicLinkService
 
         $token = Str::random(64);
         $code = (string) random_int(100000, 999999);
-        $expiresAt = now()->addMinutes($this->expiresMinutes());
+        $expiresAt = now('UTC')->addMinutes($this->expiresMinutes());
 
         MagicLinkToken::create([
             'email' => $user->email,
@@ -44,7 +44,7 @@ class MagicLinkService
 
         MagicLinkToken::create([
             'email' => $user->email,
-            'token' => hash('sha256', $code . $user->email . now()->timestamp),
+            'token' => hash('sha256', $code . $user->email . now('UTC')->timestamp),
             'type' => MagicLinkToken::TYPE_OTP,
             'otp_code' => $code,
             'expires_at' => $expiresAt,

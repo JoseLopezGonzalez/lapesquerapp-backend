@@ -66,6 +66,7 @@ trait ConfiguresTenantConnection
         $this->app['config']->set('database.connections.tenant.database', $database);
         DB::purge('tenant');
         DB::reconnect('tenant');
+        DB::connection('tenant')->statement("SET time_zone = '+00:00'");
 
         Artisan::call('migrate', [
             '--path' => 'database/migrations/companies',

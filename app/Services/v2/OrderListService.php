@@ -6,10 +6,13 @@ use App\Enums\Role;
 use App\Models\Order;
 use App\Models\Pallet;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+
+use function normalizeDateToBusiness;
 
 class OrderListService
 {
@@ -38,14 +41,14 @@ class OrderListService
                 $query = Order::withTotals()
                     ->with(['customer', 'salesperson', 'transport', 'incoterm'])
                     ->where('status', 'pending')
-                    ->orWhereDate('load_date', '>=', now());
+                    ->orWhereDate('load_date', '>=', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
                 self::scopeForComercial($query, $user);
                 return $query->get();
             }
             $query = Order::withTotals()
                 ->with(['customer', 'salesperson', 'transport', 'incoterm'])
                 ->where('status', 'finished')
-                ->whereDate('load_date', '<', now());
+                ->whereDate('load_date', '<', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
             self::scopeForComercial($query, $user);
             return $query->get();
         }
@@ -82,24 +85,20 @@ class OrderListService
         if ($request->has('loadDate')) {
             $loadDate = $request->input('loadDate');
             if (isset($loadDate['start'])) {
-                $startDate = date('Y-m-d 00:00:00', strtotime($loadDate['start']));
-                $query->where('load_date', '>=', $startDate);
+                $query->where('load_date', '>=', normalizeDateToBusiness($loadDate['start']));
             }
             if (isset($loadDate['end'])) {
-                $endDate = date('Y-m-d 23:59:59', strtotime($loadDate['end']));
-                $query->where('load_date', '<=', $endDate);
+                $query->where('load_date', '<=', normalizeDateToBusiness($loadDate['end']));
             }
         }
 
         if ($request->has('entryDate')) {
             $entryDate = $request->input('entryDate');
             if (isset($entryDate['start'])) {
-                $startDate = date('Y-m-d 00:00:00', strtotime($entryDate['start']));
-                $query->where('entry_date', '>=', $startDate);
+                $query->where('entry_date', '>=', normalizeDateToBusiness($entryDate['start']));
             }
             if (isset($entryDate['end'])) {
-                $endDate = date('Y-m-d 23:59:59', strtotime($entryDate['end']));
-                $query->where('entry_date', '<=', $endDate);
+                $query->where('entry_date', '<=', normalizeDateToBusiness($entryDate['end']));
             }
         }
 
@@ -163,7 +162,7 @@ class OrderListService
             ->with(['customer' => fn ($q) => $q->select('id', 'name')])
             ->where(function ($query) {
                 $query->where('status', 'pending')
-                    ->orWhereDate('load_date', '>=', now());
+                    ->orWhereDate('load_date', '>=', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
             });
         self::scopeForComercial($query, $user);
         return $query->orderBy('load_date', 'desc')->get();

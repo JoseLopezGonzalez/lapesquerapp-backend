@@ -76,6 +76,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Business Timezone (for "day" boundaries)
+    |--------------------------------------------------------------------------
+    |
+    | Used for startOfDay/endOfDay in punches, reports, and date filters.
+    | Instants are stored in UTC; this zone defines the "business day".
+    |
+    */
+
+    'business_timezone' => env('APP_BUSINESS_TIMEZONE', 'Europe/Madrid'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

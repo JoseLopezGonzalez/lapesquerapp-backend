@@ -69,7 +69,7 @@ class IncidentController extends Controller
             'status' => 'resolved',
             'resolution_type' => $validated['resolution_type'],
             'resolution_notes' => $validated['resolution_notes'] ?? null,
-            'resolved_at' => now(),
+            'resolved_at' => now('UTC'),
         ]);
 
         return response()->json($incident->toArrayAssoc());

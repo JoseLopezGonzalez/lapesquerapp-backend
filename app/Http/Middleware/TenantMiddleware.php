@@ -33,6 +33,7 @@ class TenantMiddleware
 
         DB::purge('tenant');
         DB::reconnect('tenant');
+        DB::connection('tenant')->statement("SET time_zone = '+00:00'");
 
         if (config('app.debug')) {
             Log::info('Tenant connection established', [

@@ -12,6 +12,8 @@ use App\Models\CeboDispatch;
 use App\Services\v2\CeboDispatchListService;
 use Illuminate\Support\Facades\DB;
 
+use function normalizeDateToBusiness;
+
 class CeboDispatchController extends Controller
 {
     public function index(IndexCeboDispatchRequest $request)
@@ -26,7 +28,7 @@ class CeboDispatchController extends Controller
         return DB::transaction(function () use ($validated) {
             $dispatch = new CeboDispatch;
             $dispatch->supplier_id = (int) $validated['supplier']['id'];
-            $dispatch->date = $validated['date'];
+            $dispatch->date = normalizeDateToBusiness($validated['date']);
             $dispatch->notes = $validated['notes'] ?? null;
             $dispatch->save();
 
@@ -66,7 +68,7 @@ class CeboDispatchController extends Controller
         return DB::transaction(function () use ($dispatch, $validated) {
             $dispatch->update([
                 'supplier_id' => (int) $validated['supplier']['id'],
-                'date' => $validated['date'],
+                'date' => normalizeDateToBusiness($validated['date']),
                 'notes' => $validated['notes'] ?? null,
             ]);
 

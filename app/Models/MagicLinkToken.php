@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateTimeUtcCast;
 use App\Traits\UsesTenantConnection;
 use Illuminate\Database\Eloquent\Model;
 
@@ -22,13 +23,13 @@ class MagicLinkToken extends Model
     ];
 
     protected $casts = [
-        'expires_at' => 'datetime',
-        'used_at' => 'datetime',
+        'expires_at' => DateTimeUtcCast::class,
+        'used_at' => DateTimeUtcCast::class,
     ];
 
     public function scopeValid($query)
     {
-        return $query->whereNull('used_at')->where('expires_at', '>', now());
+        return $query->whereNull('used_at')->where('expires_at', '>', now('UTC'));
     }
 
     public function scopeMagicLink($query)
@@ -43,7 +44,7 @@ class MagicLinkToken extends Model
 
     public function markAsUsed(): void
     {
-        $this->update(['used_at' => now()]);
+        $this->update(['used_at' => now('UTC')]);
     }
 
     public function isValid(): bool

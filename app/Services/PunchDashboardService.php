@@ -111,7 +111,7 @@ class PunchDashboardService
             if ($isWorking && $lastEventData) {
                 $currentSessionMinutes = now()->diffInMinutes($lastEventData->timestamp);
                 $currentSessionFormatted = $this->formatTime($currentSessionMinutes);
-                $currentEntryTimestamp = $lastEventData->timestamp->format('Y-m-d H:i:s');
+                $currentEntryTimestamp = $lastEventData->timestamp->toIso8601String();
                 $currentEntryDeviceId = $lastEventData->device_id;
             }
 
@@ -121,8 +121,8 @@ class PunchDashboardService
                 'nfcUid' => $employee->nfc_uid,
                 'status' => $status,
                 'isWorking' => $isWorking,
-                'firstEntryTimestamp' => $firstEntryTimestamp ? $firstEntryTimestamp->format('Y-m-d H:i:s') : null,
-                'lastExitTimestamp' => $lastExitTimestamp ? $lastExitTimestamp->format('Y-m-d H:i:s') : null,
+                'firstEntryTimestamp' => $firstEntryTimestamp ? $firstEntryTimestamp->toIso8601String() : null,
+                'lastExitTimestamp' => $lastExitTimestamp ? $lastExitTimestamp->toIso8601String() : null,
                 'todayTotalHours' => $todayTotalHours,
                 'todayTotalMinutes' => $todayTotalMinutes,
                 'todayTotalHoursFormatted' => $todayTotalHoursFormatted,
@@ -161,7 +161,7 @@ class PunchDashboardService
                 'id' => $event->id,
                 'employeeName' => $event->employee->name,
                 'eventType' => $event->event_type,
-                'timestamp' => $event->timestamp->format('Y-m-d H:i:s'),
+                'timestamp' => $event->timestamp->toIso8601String(),
                 'deviceId' => $event->device_id,
             ])
             ->values();
@@ -209,7 +209,7 @@ class PunchDashboardService
             ->groupBy('employee_id');
 
         return PunchEvent::query()
-            ->whereIn('employee_id', $employeeIds)
+            ->whereIn('punch_events.employee_id', $employeeIds)
             ->joinSub($sub, 'latest', function ($join) {
                 $join->on('punch_events.employee_id', '=', 'latest.employee_id')
                     ->on('punch_events.timestamp', '=', 'latest.max_ts');
@@ -260,7 +260,7 @@ class PunchDashboardService
                             'daysAgo' => $daysAgo,
                             'type' => 'entry_without_exit',
                             'typeLabel' => 'Entrada sin salida',
-                            'entryTimestamp' => $inEvent->timestamp->format('Y-m-d H:i:s'),
+                            'entryTimestamp' => $inEvent->timestamp->toIso8601String(),
                             'entryDeviceId' => $inEvent->device_id,
                             'hoursOpen' => round(now()->diffInHours($inEvent->timestamp), 1),
                         ];
@@ -299,7 +299,7 @@ class PunchDashboardService
                             'daysAgo' => $daysAgo,
                             'type' => 'exit_without_entry',
                             'typeLabel' => 'Salida sin entrada',
-                            'exitTimestamp' => $outEvent->timestamp->format('Y-m-d H:i:s'),
+                            'exitTimestamp' => $outEvent->timestamp->toIso8601String(),
                             'exitDeviceId' => $outEvent->device_id,
                         ];
                     }

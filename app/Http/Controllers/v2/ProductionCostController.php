@@ -9,6 +9,8 @@ use App\Http\Requests\v2\UpdateProductionCostRequest;
 use App\Models\ProductionCost;
 use Illuminate\Http\JsonResponse;
 
+use function normalizeDateToBusiness;
+
 class ProductionCostController extends Controller
 {
     /**
@@ -43,7 +45,11 @@ class ProductionCostController extends Controller
      */
     public function store(StoreProductionCostRequest $request): JsonResponse
     {
-        $cost = ProductionCost::create($request->validated());
+        $validated = $request->validated();
+        if (isset($validated['cost_date'])) {
+            $validated['cost_date'] = normalizeDateToBusiness($validated['cost_date']);
+        }
+        $cost = ProductionCost::create($validated);
 
         return response()->json([
             'message' => 'Coste creado correctamente.',
@@ -73,7 +79,11 @@ class ProductionCostController extends Controller
     {
         $cost = ProductionCost::findOrFail($id);
         $this->authorize('update', $cost);
-        $cost->update($request->validated());
+        $validated = $request->validated();
+        if (isset($validated['cost_date'])) {
+            $validated['cost_date'] = normalizeDateToBusiness($validated['cost_date']);
+        }
+        $cost->update($validated);
 
         return response()->json([
             'message' => 'Coste actualizado correctamente.',

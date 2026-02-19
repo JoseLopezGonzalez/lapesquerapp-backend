@@ -26,7 +26,7 @@ class PunchEventResource extends JsonResource
             'employeeId' => $this->employee_id,
             'eventType' => $this->event_type,
             'deviceId' => $this->device_id,
-            'timestamp' => $this->timestamp->format('Y-m-d H:i:s'),
+            'timestamp' => $this->timestamp->toIso8601String(),
             'createdAt' => $this->created_at,
             'updatedAt' => $this->updated_at,
         ];

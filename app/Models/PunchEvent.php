@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateTimeUtcCast;
 use App\Traits\UsesTenantConnection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,7 +23,7 @@ class PunchEvent extends Model
     ];
 
     protected $casts = [
-        'timestamp' => 'datetime',
+        'timestamp' => DateTimeUtcCast::class,
     ];
 
     /**

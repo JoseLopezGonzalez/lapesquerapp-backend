@@ -4,6 +4,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateTimeUtcCast;
 use App\Traits\UsesTenantConnection;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,6 +15,10 @@ class Incident extends Model
 {
     use UsesTenantConnection;
     use HasFactory;
+
+    protected $casts = [
+        'resolved_at' => DateTimeUtcCast::class,
+    ];
 
     /**
      * Estados válidos del incidente
@@ -73,9 +78,9 @@ class Incident extends Model
             'status' => $this->status,
             'resolutionType' => $this->resolution_type,
             'resolutionNotes' => $this->resolution_notes,
-            'resolvedAt' => $this->resolved_at,
-            'createdAt' => $this->created_at,
-            'updatedAt' => $this->updated_at,
+            'resolvedAt' => $this->resolved_at?->toIso8601String(),
+            'createdAt' => $this->created_at?->toIso8601String(),
+            'updatedAt' => $this->updated_at?->toIso8601String(),
         ];
     }
 

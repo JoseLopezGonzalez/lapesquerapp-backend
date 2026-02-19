@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateTimeUtcCast;
 use App\Traits\UsesTenantConnection;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,8 +27,8 @@ class Production extends Model
     protected $casts = [
         'diagram_data' => 'array', // Casteo para manipular JSON como array
         'date' => 'date',
-        'opened_at' => 'datetime',
-        'closed_at' => 'datetime',
+        'opened_at' => DateTimeUtcCast::class,
+        'closed_at' => DateTimeUtcCast::class,
     ];
 
     /**
@@ -307,7 +308,7 @@ class Production extends Model
     public function open()
     {
         if ($this->opened_at === null) {
-            $this->update(['opened_at' => now()]);
+            $this->update(['opened_at' => now('UTC')]);
         }
         return $this;
     }
@@ -318,7 +319,7 @@ class Production extends Model
     public function close()
     {
         if ($this->closed_at === null) {
-            $this->update(['closed_at' => now()]);
+            $this->update(['closed_at' => now('UTC')]);
         }
         return $this;
     }

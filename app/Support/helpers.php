@@ -1,6 +1,25 @@
 <?php
 
 use App\Models\Setting;
+use Carbon\Carbon;
+
+if (! function_exists('normalizeDateToBusiness')) {
+    /**
+     * Normalize a date/datetime input to Y-m-d in the business timezone.
+     * Accepts ISO date (YYYY-MM-DD) or ISO datetime (with or without zone).
+     */
+    function normalizeDateToBusiness(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if ($value instanceof Carbon) {
+            return $value->copy()->timezone(config('app.business_timezone', 'Europe/Madrid'))->format('Y-m-d');
+        }
+
+        return Carbon::parse($value)->timezone(config('app.business_timezone', 'Europe/Madrid'))->format('Y-m-d');
+    }
+}
 
 if (! function_exists('tenantSetting')) {
     function tenantSetting(string $key, mixed $default = null): mixed

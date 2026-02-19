@@ -146,7 +146,7 @@ class FichajesBlockApiTest extends TestCase
         $createEmployee->assertCreated();
         $employeeId = $createEmployee->json('data.id');
 
-        $yesterday = Carbon::yesterday(config('app.timezone'))->setTime(8, 0, 0);
+        $yesterday = Carbon::yesterday(config('app.business_timezone', 'Europe/Madrid'))->setTime(8, 0, 0)->utc();
         PunchEvent::create([
             'employee_id' => $employeeId,
             'event_type' => PunchEvent::TYPE_IN,
@@ -164,5 +164,42 @@ class FichajesBlockApiTest extends TestCase
 
         $response->assertCreated();
         $response->assertJsonPath('data.event_type', 'IN');
+    }
+
+    /**
+     * Manual punch with UTC timestamp is stored and returned as ISO 8601 with timezone.
+     */
+    public function test_manual_punch_accepts_utc_timestamp_and_returns_iso8601_with_zone(): void
+    {
+        $createEmployee = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/employees', [
+                'name' => 'Empleado UTC Test',
+                'nfc_uid' => 'NFC-UTC-' . uniqid(),
+            ]);
+        $createEmployee->assertCreated();
+        $employeeId = $createEmployee->json('data.id');
+
+        $utcTimestamp = '2024-06-15T09:30:00.000Z';
+        $response = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/punches', [
+                'employee_id' => $employeeId,
+                'event_type' => PunchEvent::TYPE_IN,
+                'timestamp' => $utcTimestamp,
+                'device_id' => 'manual-test',
+            ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.event_type', 'IN');
+        $returnedTimestamp = $response->json('data.timestamp');
+        $this->assertNotEmpty($returnedTimestamp);
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/', $returnedTimestamp, 'Timestamp should be ISO 8601');
+        $this->assertTrue(str_contains($returnedTimestamp, 'Z') || preg_match('/[+-]\d{2}:\d{2}$/', $returnedTimestamp), 'Timestamp should include timezone (Z or offset)');
+
+        $id = $response->json('data.id');
+        $getResponse = $this->withHeaders($this->authHeaders())->getJson("/api/v2/punches/{$id}");
+        $getResponse->assertOk();
+        $getTimestamp = $getResponse->json('data.timestamp');
+        $this->assertNotEmpty($getTimestamp);
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/', $getTimestamp);
     }
 }

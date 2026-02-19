@@ -8,6 +8,8 @@ use App\Models\OrderPlannedProductDetail;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
+use function normalizeDateToBusiness;
+
 class OrderStoreService
 {
     /**
@@ -42,8 +44,8 @@ class OrderStoreService
         try {
             $order = Order::create([
                 'customer_id' => $validated['customer'],
-                'entry_date' => $validated['entryDate'],
-                'load_date' => $validated['loadDate'],
+                'entry_date' => normalizeDateToBusiness($validated['entryDate']),
+                'load_date' => normalizeDateToBusiness($validated['loadDate']),
                 'salesperson_id' => $salespersonId,
                 'payment_term_id' => $validated['payment'] ?? null,
                 'incoterm_id' => $validated['incoterm'] ?? null,

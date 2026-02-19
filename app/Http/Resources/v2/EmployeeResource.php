@@ -21,7 +21,7 @@ class EmployeeResource extends JsonResource
             'lastPunchEvent' => $this->whenLoaded('lastPunchEvent', function () {
                 return $this->lastPunchEvent ? [
                     'event_type' => $this->lastPunchEvent->event_type,
-                    'timestamp' => $this->lastPunchEvent->timestamp->format('Y-m-d H:i:s'),
+                    'timestamp' => $this->lastPunchEvent->timestamp->toIso8601String(),
                 ] : null;
             }),
             'createdAt' => $this->created_at,

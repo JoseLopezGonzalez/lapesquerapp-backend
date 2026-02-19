@@ -34,7 +34,7 @@ class CleanupMagicLinkTokens extends Command
         $totalDeleted = 0;
         $deleteExpired = config('magic_link.cleanup.delete_expired', true);
         $usedOlderThanDays = (int) config('magic_link.cleanup.used_older_than_days', 1);
-        $cutoffUsed = $usedOlderThanDays > 0 ? now()->subDays($usedOlderThanDays) : null;
+        $cutoffUsed = $usedOlderThanDays > 0 ? now('UTC')->subDays($usedOlderThanDays) : null;
 
         foreach ($tenants as $tenant) {
             config(['database.connections.tenant.database' => $tenant->database]);
@@ -70,7 +70,7 @@ class CleanupMagicLinkTokens extends Command
 
         $query = MagicLinkToken::query()->where(function ($q) use ($deleteExpired, $cutoffUsed) {
             if ($deleteExpired) {
-                $q->where('expires_at', '<', now());
+                $q->where('expires_at', '<', now('UTC'));
             }
             if ($cutoffUsed !== null) {
                 $q->orWhere(function ($q2) use ($cutoffUsed) {

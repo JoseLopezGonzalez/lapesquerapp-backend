@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
+use function normalizeDateToBusiness;
+
 class ProductionService
 {
     /**
@@ -43,6 +45,9 @@ class ProductionService
      */
     public function create(array $data): Production
     {
+        if (isset($data['date'])) {
+            $data['date'] = normalizeDateToBusiness($data['date']);
+        }
         $production = Production::create($data);
         $production->open();
         $production->load(['species', 'captureZone', 'records.process']);
@@ -55,6 +60,9 @@ class ProductionService
      */
     public function update(Production $production, array $data): Production
     {
+        if (isset($data['date'])) {
+            $data['date'] = normalizeDateToBusiness($data['date']);
+        }
         $production->update($data);
         $production->load(['species', 'captureZone', 'records.process']);
 

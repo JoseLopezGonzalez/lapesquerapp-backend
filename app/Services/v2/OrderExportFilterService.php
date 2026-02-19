@@ -5,9 +5,12 @@ namespace App\Services\v2;
 use App\Enums\Role;
 use App\Models\Order;
 use App\Models\Pallet;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+
+use function normalizeDateToBusiness;
 
 class OrderExportFilterService
 {
@@ -27,11 +30,11 @@ class OrderExportFilterService
             if ($request->active === 'true') {
                 $query->where(function ($q) {
                     $q->where('status', 'pending')
-                        ->orWhereDate('load_date', '>=', now());
+                        ->orWhereDate('load_date', '>=', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
                 });
             } else {
                 $query->where('status', 'finished')
-                    ->whereDate('load_date', '<', now());
+                    ->whereDate('load_date', '<', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
             }
         }
 
@@ -64,20 +67,20 @@ class OrderExportFilterService
         if ($request->has('loadDate')) {
             $loadDate = $request->loadDate;
             if (isset($loadDate['start'])) {
-                $query->where('load_date', '>=', date('Y-m-d 00:00:00', strtotime($loadDate['start'])));
+                $query->where('load_date', '>=', normalizeDateToBusiness($loadDate['start']));
             }
             if (isset($loadDate['end'])) {
-                $query->where('load_date', '<=', date('Y-m-d 23:59:59', strtotime($loadDate['end'])));
+                $query->where('load_date', '<=', normalizeDateToBusiness($loadDate['end']));
             }
         }
 
         if ($request->has('entryDate')) {
             $entryDate = $request->entryDate;
             if (isset($entryDate['start'])) {
-                $query->where('entry_date', '>=', date('Y-m-d 00:00:00', strtotime($entryDate['start'])));
+                $query->where('entry_date', '>=', normalizeDateToBusiness($entryDate['start']));
             }
             if (isset($entryDate['end'])) {
-                $query->where('entry_date', '<=', date('Y-m-d 23:59:59', strtotime($entryDate['end'])));
+                $query->where('entry_date', '<=', normalizeDateToBusiness($entryDate['end']));
             }
         }
 

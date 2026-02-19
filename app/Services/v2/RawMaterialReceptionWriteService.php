@@ -10,6 +10,8 @@ use App\Models\RawMaterialReception;
 use App\Models\StoredPallet;
 use Illuminate\Database\Eloquent\Model;
 
+use function normalizeDateToBusiness;
+
 class RawMaterialReceptionWriteService
 {
     /**
@@ -22,7 +24,7 @@ class RawMaterialReceptionWriteService
     {
         $reception = new RawMaterialReception();
         $reception->supplier_id = $data['supplier']['id'];
-        $reception->date = $data['date'];
+        $reception->date = normalizeDateToBusiness($data['date']);
         $reception->notes = $data['notes'] ?? null;
         $reception->declared_total_amount = $data['declaredTotalAmount'] ?? null;
         $reception->declared_total_net_weight = $data['declaredTotalNetWeight'] ?? null;
@@ -56,7 +58,7 @@ class RawMaterialReceptionWriteService
 
         $reception->update([
             'supplier_id' => $data['supplier']['id'],
-            'date' => $data['date'],
+            'date' => normalizeDateToBusiness($data['date']),
             'notes' => $data['notes'] ?? null,
             'declared_total_amount' => $data['declaredTotalAmount'] ?? null,
             'declared_total_net_weight' => $data['declaredTotalNetWeight'] ?? null,

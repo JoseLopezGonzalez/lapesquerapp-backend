@@ -113,7 +113,7 @@ class PunchController extends Controller
             'data' => [
                 'employee_name' => $employee->name,
                 'event_type' => $result['event_type'],
-                'timestamp' => $punchEvent->timestamp->format('Y-m-d H:i:s'),
+                'timestamp' => $punchEvent->timestamp->toIso8601String(),
                 'device_id' => $punchEvent->device_id,
             ],
         ], 201);
@@ -146,7 +146,7 @@ class PunchController extends Controller
             }
 
             if (isset($validated['timestamp'])) {
-                $punchEvent->timestamp = Carbon::parse($validated['timestamp']);
+                $punchEvent->timestamp = Carbon::parse($validated['timestamp'])->utc();
             }
 
             $punchEvent->save();

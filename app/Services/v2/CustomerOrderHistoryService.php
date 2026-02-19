@@ -7,6 +7,8 @@ use App\Models\Order;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
+use function normalizeDateToBusiness;
+
 class CustomerOrderHistoryService
 {
     /**
@@ -190,8 +192,8 @@ class CustomerOrderHistoryService
     private static function applyOrderHistoryFilters($query, Request $request): void
     {
         if ($request->has('date_from') && $request->has('date_to')) {
-            $dateFrom = date('Y-m-d 00:00:00', strtotime($request->date_from));
-            $dateTo = date('Y-m-d 23:59:59', strtotime($request->date_to));
+            $dateFrom = normalizeDateToBusiness($request->date_from);
+            $dateTo = normalizeDateToBusiness($request->date_to);
             $query->whereBetween('load_date', [$dateFrom, $dateTo]);
             return;
         }
@@ -204,7 +206,7 @@ class CustomerOrderHistoryService
 
         if ($request->has('period')) {
             $period = $request->period;
-            $now = Carbon::now();
+            $now = Carbon::now(config('app.business_timezone', 'Europe/Madrid'));
 
             switch ($period) {
                 case 'month':
@@ -253,7 +255,7 @@ class CustomerOrderHistoryService
         }
 
         if ($request->has('period')) {
-            $now = Carbon::now();
+            $now = Carbon::now(config('app.business_timezone', 'Europe/Madrid'));
             switch ($request->period) {
                 case 'month':
                     $prev = $now->copy()->subMonth();

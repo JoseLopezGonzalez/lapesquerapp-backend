@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateTimeUtcCast;
 use App\Traits\UsesTenantConnection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,8 +22,8 @@ class ProductionRecord extends Model
     ];
 
     protected $casts = [
-        'started_at' => 'datetime',
-        'finished_at' => 'datetime',
+        'started_at' => DateTimeUtcCast::class,
+        'finished_at' => DateTimeUtcCast::class,
     ];
 
     /**

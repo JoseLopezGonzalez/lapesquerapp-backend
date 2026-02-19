@@ -52,6 +52,7 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter(array_merge(
                 [1002 => (int) env('DB_CONNECT_TIMEOUT', 10)], // 1002 = PDO::MYSQL_ATTR_CONNECT_TIMEOUT (segundos)
+                [1003 => "SET time_zone = '+00:00'"], // 1003 = PDO::MYSQL_ATTR_INIT_COMMAND
                 array_filter([
                     PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
                 ])
@@ -83,6 +84,7 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter(array_merge(
                 [1002 => (int) env('DB_CONNECT_TIMEOUT', 10)], // 1002 = PDO::MYSQL_ATTR_CONNECT_TIMEOUT (segundos)
+                [1003 => "SET time_zone = '+00:00'"], // 1003 = PDO::MYSQL_ATTR_INIT_COMMAND
                 array_filter([
                     PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
                 ])

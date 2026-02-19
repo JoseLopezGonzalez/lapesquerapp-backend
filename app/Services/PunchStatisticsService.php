@@ -113,7 +113,7 @@ class PunchStatisticsService
                         'date' => $day,
                         'type' => 'entry_without_exit',
                         'type_label' => 'Entrada sin salida',
-                        'entry_timestamp' => $openSessionEntry->timestamp->format('Y-m-d H:i:s'),
+                        'entry_timestamp' => $openSessionEntry->timestamp->toIso8601String(),
                         'entry_time' => $openSessionEntry->timestamp->format('H:i:s'),
                         'device_id' => $openSessionEntry->device_id,
                     ];
@@ -126,7 +126,7 @@ class PunchStatisticsService
                         'date' => $day,
                         'type' => 'exit_without_entry',
                         'type_label' => 'Salida sin entrada',
-                        'exit_timestamp' => $orphanExit->timestamp->format('Y-m-d H:i:s'),
+                        'exit_timestamp' => $orphanExit->timestamp->toIso8601String(),
                         'exit_time' => $orphanExit->timestamp->format('H:i:s'),
                         'device_id' => $orphanExit->device_id,
                     ];

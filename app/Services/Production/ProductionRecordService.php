@@ -101,7 +101,7 @@ class ProductionRecordService
             throw new \Exception('El proceso ya está finalizado.');
         }
 
-        $record->update(['finished_at' => now()]);
+        $record->update(['finished_at' => now('UTC')]);
         $record->load(['production', 'parent', 'process', 'inputs', 'outputs']);
 
         return $record;

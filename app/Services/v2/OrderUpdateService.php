@@ -5,6 +5,8 @@ namespace App\Services\v2;
 use App\Models\Order;
 use Illuminate\Validation\ValidationException;
 
+use function normalizeDateToBusiness;
+
 class OrderUpdateService
 {
     /**
@@ -16,8 +18,8 @@ class OrderUpdateService
      */
     public static function update(Order $order, array $validated): Order
     {
-        $entryDate = array_key_exists('entryDate', $validated) ? $validated['entryDate'] : $order->entry_date;
-        $loadDate = array_key_exists('loadDate', $validated) ? $validated['loadDate'] : $order->load_date;
+        $entryDate = array_key_exists('entryDate', $validated) ? normalizeDateToBusiness($validated['entryDate']) : $order->entry_date;
+        $loadDate = array_key_exists('loadDate', $validated) ? normalizeDateToBusiness($validated['loadDate']) : $order->load_date;
 
         if ($entryDate && $loadDate && $entryDate > $loadDate) {
             throw ValidationException::withMessages([
@@ -53,10 +55,10 @@ class OrderUpdateService
             $order->transport_id = $validated['transport'];
         }
         if (array_key_exists('entryDate', $validated)) {
-            $order->entry_date = $validated['entryDate'];
+            $order->entry_date = normalizeDateToBusiness($validated['entryDate']);
         }
         if (array_key_exists('loadDate', $validated)) {
-            $order->load_date = $validated['loadDate'];
+            $order->load_date = normalizeDateToBusiness($validated['loadDate']);
         }
         if (array_key_exists('status', $validated)) {
             $previousStatus = $order->status;

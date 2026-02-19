@@ -26,7 +26,7 @@ class PunchEventWriteService
             return ['success' => false, 'error' => 'EMPLOYEE_NOT_FOUND'];
         }
 
-        $timestamp = now();
+        $timestamp = now('UTC');
         $eventType = $this->determineEventType($employee, $timestamp);
 
         DB::beginTransaction();
@@ -59,7 +59,7 @@ class PunchEventWriteService
         $deviceId = $validated['device_id'] ?? 'manual-admin';
 
         try {
-            $timestamp = Carbon::parse($validated['timestamp']);
+            $timestamp = Carbon::parse($validated['timestamp'])->utc();
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -96,7 +96,7 @@ class PunchEventWriteService
 
         $duplicate = PunchEvent::where('employee_id', $employee->id)
             ->where('event_type', $validated['event_type'])
-            ->where('timestamp', $timestamp->format('Y-m-d H:i:s'))
+            ->where('timestamp', $timestamp->copy()->format('Y-m-d H:i:s'))
             ->first();
 
         if ($duplicate) {
@@ -175,7 +175,7 @@ class PunchEventWriteService
         foreach ($validated['punches'] as $index => $punch) {
             $errors = $this->validateSinglePunchForBulk($punch, $index, $validated['punches'], $validationResults, $employees);
             try {
-                $timestamp = Carbon::parse($punch['timestamp']);
+                $timestamp = Carbon::parse($punch['timestamp'])->utc();
             } catch (\Exception $e) {
                 $timestamp = null;
             }
@@ -229,7 +229,7 @@ class PunchEventWriteService
                     foreach ($results as $prevResult) {
                         if (($prevResult['success'] ?? false) && isset($prevResult['punch']['employee_id']) && $prevResult['punch']['employee_id'] === $punch['employee_id']) {
                             try {
-                                $prevTimestamp = Carbon::parse($prevResult['punch']['timestamp']);
+                                $prevTimestamp = Carbon::parse($prevResult['punch']['timestamp'])->utc();
                                 $sameDay = $this->startOfDayFor($prevTimestamp)->eq($startOfDay);
                                 if ($sameDay && $prevTimestamp->lt($timestamp) && (!$lastPunchInBatchTimestamp || $prevTimestamp->gt($lastPunchInBatchTimestamp))) {
                                     $lastPunchInBatch = $prevResult['punch'];
@@ -337,12 +337,16 @@ class PunchEventWriteService
 
     private function startOfDayFor(Carbon $timestamp): Carbon
     {
-        return $timestamp->copy()->timezone(config('app.timezone'))->startOfDay();
+        $tz = config('app.business_timezone', 'Europe/Madrid');
+
+        return $timestamp->copy()->timezone($tz)->startOfDay()->utc();
     }
 
     private function endOfDayFor(Carbon $timestamp): Carbon
     {
-        return $timestamp->copy()->timezone(config('app.timezone'))->endOfDay();
+        $tz = config('app.business_timezone', 'Europe/Madrid');
+
+        return $timestamp->copy()->timezone($tz)->endOfDay()->utc();
     }
 
     /**
@@ -409,7 +413,7 @@ class PunchEventWriteService
     {
         $errors = [];
         try {
-            $timestamp = Carbon::parse($punch['timestamp']);
+            $timestamp = Carbon::parse($punch['timestamp'])->utc();
         } catch (\Exception $e) {
             $errors[] = 'El formato de fecha es inválido. Use formato ISO 8601.';
             return $errors;
@@ -441,7 +445,7 @@ class PunchEventWriteService
                 $prevPunch = $allPunches[$prevIndex] ?? null;
                 if ($prevPunch && ($prevPunch['employee_id'] ?? null) === $punch['employee_id']) {
                     try {
-                        $prevTimestamp = Carbon::parse($prevPunch['timestamp']);
+                        $prevTimestamp = Carbon::parse($prevPunch['timestamp'])->utc();
                         $sameDay = $this->startOfDayFor($prevTimestamp)->eq($startOfDay);
                         if ($sameDay && $prevTimestamp->lt($timestamp) && (!$lastPunchInBatchTimestamp || $prevTimestamp->gt($lastPunchInBatchTimestamp))) {
                             $lastPunchInBatch = $prevPunch;
@@ -501,7 +505,7 @@ class PunchEventWriteService
                 continue;
             }
             try {
-                $prevTimestamp = Carbon::parse($prevPunch['timestamp']);
+                $prevTimestamp = Carbon::parse($prevPunch['timestamp'])->utc();
                 if (($prevPunch['event_type'] ?? null) === $punch['event_type'] && $prevTimestamp->gt($timestamp)) {
                     $errors[] = 'Hay un fichaje del mismo tipo con fecha posterior en el mismo lote.';
                 }
