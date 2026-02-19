@@ -313,11 +313,22 @@ GET /api/v2/orders?orderType=autoventa&perPage=20&page=1
 
 | Parámetro | Tipo | Descripción |
 |-----------|------|-------------|
-| `orderType` | string | `autoventa` para listar solo autoventas |
+| `orderType` | string | Filtrar por tipo: `autoventa` (solo autoventas), `standard` (solo pedidos estándar). Si no se envía, se listan todos los pedidos. |
 | `perPage` | number | Elementos por página (p. ej. 10–100) |
 | `page` | number | Página (por defecto 1) |
 | `status` | string | Filtrar por estado: `pending`, `finished`, `incident` |
 | `loadDate` | object | Rango: `{ "start": "2026-01-01", "end": "2026-02-18" }` |
+
+### Uso en el frontend (filtro por tipo de pedido)
+
+- **Parámetro de query:** `orderType` (opcional).
+- **Valores válidos:** `standard` | `autoventa`. Un solo valor por petición.
+- **Comportamiento:** Si se omite `orderType`, el backend devuelve todos los pedidos (sin filtrar por tipo). Con `orderType=autoventa` solo autoventas; con `orderType=standard` solo pedidos estándar.
+- **Ejemplos de URL:**  
+  - Solo autoventas: `GET /api/v2/orders?orderType=autoventa&page=1&perPage=20`  
+  - Solo estándar: `GET /api/v2/orders?orderType=standard&status=pending`  
+  - Todos: `GET /api/v2/orders` (sin `orderType`).
+- **Respuesta:** Cada elemento del array `data` incluye el campo `orderType` (`"standard"` o `"autoventa"`) para mostrarlo en la UI (etiqueta, badge) o combinar con otros filtros en cliente si se desea. El filtro es combinable con `status`, `loadDate`, `page`, `perPage`, etc.
 
 ### Respuesta éxito (200 OK)
 
