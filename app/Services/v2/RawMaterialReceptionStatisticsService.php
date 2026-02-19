@@ -120,12 +120,13 @@ class RawMaterialReceptionStatisticsService
     /**
      * Obtiene el desglose diario de pesos por producto (calibre) para una especie y fecha.
      * Usado por el componente "Calibres diarios por especie" (gráfico + leyenda).
+     * Si $speciesId es null, se agregan todas las especies (opción "Todas las especies").
      *
      * @param string $date Fecha del día (formato: Y-m-d)
-     * @param int $speciesId ID de la especie (tenant)
+     * @param int|null $speciesId ID de la especie (tenant), o null para todas
      * @return array{total_weight_kg: float, calibers: array<int, array{product_id: int, name: string, weight_kg: float, percentage: float}>}
      */
-    public static function getDailyCalibersBySpecies(string $date, int $speciesId): array
+    public static function getDailyCalibersBySpecies(string $date, ?int $speciesId): array
     {
         $dateFrom = $date . ' 00:00:00';
         $dateTo = $date . ' 23:59:59';
@@ -139,7 +140,10 @@ class RawMaterialReceptionStatisticsService
         foreach ($receptions as $reception) {
             foreach ($reception->products as $receptionProduct) {
                 $product = $receptionProduct->product;
-                if (!$product || (int) $product->species_id !== $speciesId) {
+                if (!$product) {
+                    continue;
+                }
+                if ($speciesId !== null && (int) $product->species_id !== $speciesId) {
                     continue;
                 }
 

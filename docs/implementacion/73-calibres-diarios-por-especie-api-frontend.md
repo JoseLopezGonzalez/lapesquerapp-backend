@@ -43,12 +43,22 @@ Documento de referencia para el equipo frontend: uso del endpoint que alimenta e
 | Parámetro   | Tipo   | Obligatorio | Descripción |
 |------------|--------|-------------|-------------|
 | `date`     | string | Sí          | Fecha del día en formato `Y-m-d` (ej. `2026-02-18`) |
-| `speciesId`| number | Sí          | ID de la especie (tenant) |
+| `speciesId`| number | No          | ID de la especie (tenant). Si se omite, se devuelven datos agregados de **todas las especies** para esa fecha |
 
-### Ejemplo de request
+### Ejemplos de request
+
+**Una especie concreta:**
 
 ```http
 GET /api/v2/raw-material-receptions/daily-calibers-by-species?date=2026-02-18&speciesId=3
+Authorization: Bearer {token}
+X-Tenant: {subdomain}
+```
+
+**Todas las especies (un solo día):**
+
+```http
+GET /api/v2/raw-material-receptions/daily-calibers-by-species?date=2026-02-18
 Authorization: Bearer {token}
 X-Tenant: {subdomain}
 ```
@@ -63,7 +73,7 @@ El cuerpo es un objeto JSON con el total en kg y la lista de “calibres” (pro
 
 | Campo              | Tipo   | Descripción |
 |--------------------|--------|--------------|
-| `total_weight_kg`  | number | Suma de todos los pesos (kg) del día para esa especie; 2 decimales |
+| `total_weight_kg`  | number | Suma de todos los pesos (kg) del día (para la especie elegida o todas); 2 decimales |
 | `calibers`         | array  | Lista de objetos, ordenada por `weight_kg` descendente |
 
 Cada elemento de `calibers`:
@@ -128,7 +138,7 @@ Si no hay recepciones para esa fecha o no hay productos de esa especie ese día,
 |--------|-----------|-----------|
 | **401** | No autenticado o token inválido | Body estándar de error de API |
 | **403** | Usuario sin permiso para ver recepciones | Body estándar de error de API |
-| **422** | Validación fallida (`date` inválida o `speciesId` no existente en tenant) | Objeto con `message` y `errors` (clave por campo) |
+| **422** | Validación fallida (`date` inválida, o `speciesId` enviado pero no existente en tenant) | Objeto con `message` y `errors` (clave por campo) |
 
 ### Ejemplo de respuesta 422
 
@@ -145,8 +155,10 @@ Si no hay recepciones para esa fecha o no hay productos de esa especie ese día,
 
 ## 6. Uso en el componente "Calibres diarios por especie"
 
-- **Filtros**: el frontend debe tener un selector de **especie** (valores del catálogo de especies del tenant) y un selector de **fecha** (un solo día).
-- **Llamada**: al cambiar especie o fecha, hacer `GET` a este endpoint con `date` en `Y-m-d` y `speciesId` con el ID de la especie elegida.
+- **Filtros**: el frontend debe tener un selector de **especie** (valores del catálogo de especies del tenant, más opción "Todas las especies") y un selector de **fecha** (un solo día).
+- **Llamada**: al cambiar especie o fecha, hacer **una sola** llamada `GET` a este endpoint:
+  - Con **especie concreta**: enviar `date` (Y-m-d) y `speciesId` (ID de la especie).
+  - Con **"Todas las especies"**: enviar solo `date` (Y-m-d); no enviar `speciesId`. El backend devuelve el agregado de todas las especies en la misma estructura.
 - **Visualización**:
   - Mostrar `total_weight_kg` como total del día (ej. “1.789,50 kg” con formato local).
   - Usar `calibers` para el gráfico de anillos y la leyenda: cada ítem es un segmento (nombre, peso, porcentaje). El backend no devuelve color; el frontend puede asignar colores por índice o por `product_id` para mantener consistencia entre cargas.

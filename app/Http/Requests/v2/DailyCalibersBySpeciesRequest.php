@@ -19,7 +19,7 @@ class DailyCalibersBySpeciesRequest extends FormRequest
     {
         return [
             'date' => 'required|date',
-            'speciesId' => 'required|integer|exists:tenant.species,id',
+            'speciesId' => 'nullable|integer|exists:tenant.species,id',
         ];
     }
 }

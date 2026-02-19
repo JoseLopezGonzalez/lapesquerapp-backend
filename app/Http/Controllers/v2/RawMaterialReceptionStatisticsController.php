@@ -75,7 +75,7 @@ class RawMaterialReceptionStatisticsController extends Controller
 
         $results = RawMaterialReceptionStatisticsService::getDailyCalibersBySpecies(
             $validated['date'],
-            (int) $validated['speciesId']
+            isset($validated['speciesId']) ? (int) $validated['speciesId'] : null
         );
 
         return response()->json($results);
