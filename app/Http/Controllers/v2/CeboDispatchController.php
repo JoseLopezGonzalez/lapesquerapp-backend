@@ -21,11 +21,17 @@ class CeboDispatchController extends Controller
      * Precios por product_id de la última salida de cebo del proveedor.
      * Clave: product_id, valor: price (float). Solo líneas con price no nulo.
      *
+     * @param  int  $supplierId
+     * @param  int|null  $excludeDispatchId  Excluir este despacho (p. ej. el que se está editando en update).
      * @return array<int, float>
      */
-    private function getLastDispatchPricesByProduct(int $supplierId): array
+    private function getLastDispatchPricesByProduct(int $supplierId, ?int $excludeDispatchId = null): array
     {
-        $lastDispatch = CeboDispatch::where('supplier_id', $supplierId)
+        $query = CeboDispatch::where('supplier_id', $supplierId);
+        if ($excludeDispatchId !== null) {
+            $query->where('id', '!=', $excludeDispatchId);
+        }
+        $lastDispatch = $query
             ->orderByDesc('date')
             ->orderByDesc('id')
             ->with('products')
@@ -125,7 +131,7 @@ class CeboDispatchController extends Controller
                 'export_type' => $exportType,
             ]);
 
-            $lastPrices = $this->getLastDispatchPricesByProduct($supplierId);
+            $lastPrices = $this->getLastDispatchPricesByProduct($supplierId, $dispatch->id);
             $dispatch->products()->delete();
             foreach ($validated['details'] as $detail) {
                 $productId = (int) $detail['product']['id'];
