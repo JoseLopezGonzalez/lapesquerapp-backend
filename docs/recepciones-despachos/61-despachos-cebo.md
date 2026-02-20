@@ -219,36 +219,35 @@ POST /v2/cebo-dispatches
     'supplier.id' => 'required',
     'date' => 'required|date',
     'notes' => 'nullable|string',
+    'export_type' => 'nullable|string|in:a3erp,facilcom',
+    'exportType' => 'nullable|string|in:a3erp,facilcom',
     'details' => 'required|array',
     'details.*.product.id' => 'required|exists:tenant.products,id',
     'details.*.netWeight' => 'required|numeric',
+    'details.*.price' => 'nullable|numeric|min:0',
 ]
 ```
 
 **Request body**:
 ```json
 {
-    "supplier": {
-        "id": 1
-    },
+    "supplier": { "id": 1 },
     "date": "2025-01-15",
     "notes": "Despacho normal",
+    "exportType": "a3erp",
     "details": [
         {
-            "product": {
-                "id": 10
-            },
-            "netWeight": 500.25
+            "product": { "id": 10 },
+            "netWeight": 500.25,
+            "price": 2.50
         }
     ]
 }
 ```
 
 **Comportamiento**:
-- Crea el despacho
-- Crea los productos despachados (details)
-- **No guarda precios** (no están en la validación ni en la creación)
-- **No guarda export_type** (no está en la validación ni en la creación)
+- Crea el despacho. **Si no se envía** `export_type` ni `exportType`, el backend lo rellena con el del proveedor (`cebo_export_type`); si el proveedor no lo tiene, queda `null`.
+- Crea los productos despachados (details). **Si un detalle no lleva precio** (o viene vacío), el backend lo rellena con el precio de la última salida de cebo de ese proveedor para ese producto; si no hay anterior, queda `null`.
 
 #### `show($id)` - Mostrar Despacho
 ```php
@@ -262,11 +261,11 @@ GET /v2/cebo-dispatches/{id}
 PUT /v2/cebo-dispatches/{id}
 ```
 
-**Validación**: Igual que `store()`
+**Validación**: Igual que `store()` (incluye `export_type` / `exportType` opcional).
 
 **Comportamiento**:
-- Actualiza el despacho
-- **Elimina todos los productos** y los vuelve a crear
+- Actualiza el despacho. **Si no se envía** `export_type` ni `exportType`, el backend lo rellena con el del proveedor (`cebo_export_type`) o mantiene el actual si el proveedor no tiene tipo.
+- **Elimina todos los productos** y los vuelve a crear. **Si un detalle no lleva precio**, el backend lo rellena con el de la última salida de cebo de ese proveedor para ese producto.
 - **⚠️ No preserva IDs** de productos al actualizar
 
 #### `destroy($id)` - Eliminar Despacho
@@ -360,6 +359,7 @@ GET /v2/cebo-dispatches/a3erp2-xlsx
     "id": 1,
     "supplier": {...},
     "date": "2025-01-15",
+    "exportType": "a3erp",
     "notes": "...",
     "netWeight": 500.25,
     "details": [...]

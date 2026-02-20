@@ -26,6 +26,8 @@ class UpdateCeboDispatchRequest extends FormRequest
             'supplier.id' => 'required|exists:tenant.suppliers,id',
             'date' => 'required|date',
             'notes' => 'nullable|string|max:1000',
+            'export_type' => 'nullable|string|in:a3erp,facilcom',
+            'exportType' => 'nullable|string|in:a3erp,facilcom',
             'details' => 'required|array|min:1',
             'details.*.product.id' => 'required|exists:tenant.products,id',
             'details.*.netWeight' => 'required|numeric|min:0',

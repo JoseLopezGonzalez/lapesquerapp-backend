@@ -19,6 +19,7 @@ class CeboDispatchResource extends JsonResource
             'supplier' => $this->whenLoaded('supplier', fn () => new SupplierResource($this->supplier)),
             'date' => $this->date,
             'notes' => $this->notes,
+            'exportType' => $this->export_type,
             'netWeight' => $this->netWeight,
             'details' => $this->whenLoaded('products', fn () => CeboDispatchProductResource::collection($this->products)),
         ];
