@@ -38,10 +38,17 @@ if (! function_exists('tenantSetting')) {
             return $settingsCache[$normalizedKey];
         }
 
-        // Leer vía Setting model (usa UsesTenantConnection; unifica punto de acceso)
-        $value = Setting::query()
-            ->where('key', $normalizedKey)
-            ->value('value');
+        // Si no hay tenant activo, saltar la query (contexto superadmin, CLI sin tenant, etc.)
+        $value = null;
+        if (app()->bound('currentTenant') && app('currentTenant')) {
+            try {
+                $value = Setting::query()
+                    ->where('key', $normalizedKey)
+                    ->value('value');
+            } catch (\Throwable) {
+                $value = null;
+            }
+        }
 
         // Usar fallback si no existe o está vacío
         if (is_null($value) || $value === '') {

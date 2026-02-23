@@ -8,6 +8,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TenantManagementService
 {
@@ -29,8 +30,42 @@ class TenantManagementService
         return $query->paginate($perPage);
     }
 
+    /**
+     * Transiciones válidas de estado.
+     * - pending: solo puede pasar a cancelled (onboarding lo activa automáticamente al completarse).
+     * - active: puede suspenderse o cancelarse.
+     * - suspended: puede reactivarse o cancelarse.
+     * - cancelled: puede reactivarse (solo si completó onboarding).
+     */
+    private const ALLOWED_TRANSITIONS = [
+        'pending'   => ['cancelled'],
+        'active'    => ['suspended', 'cancelled'],
+        'suspended' => ['active', 'cancelled'],
+        'cancelled' => ['active'],
+    ];
+
+    /**
+     * @throws \InvalidArgumentException si la transición no es válida.
+     */
     public function changeStatus(Tenant $tenant, string $newStatus): Tenant
     {
+        $current = $tenant->status ?? 'pending';
+        $allowed = self::ALLOWED_TRANSITIONS[$current] ?? [];
+
+        if (!in_array($newStatus, $allowed, true)) {
+            throw new \InvalidArgumentException(
+                "No se puede cambiar de '{$current}' a '{$newStatus}'."
+            );
+        }
+
+        $onboardingComplete = ($tenant->onboarding_step ?? 0) >= TenantOnboardingService::TOTAL_STEPS;
+
+        if ($newStatus === 'active' && !$onboardingComplete) {
+            throw new \InvalidArgumentException(
+                "No se puede activar un tenant que no ha completado el onboarding (paso {$tenant->onboarding_step}/" . TenantOnboardingService::TOTAL_STEPS . ').'
+            );
+        }
+
         $tenant->update(['status' => $newStatus]);
 
         $this->invalidateCorsCache($tenant->subdomain);
@@ -47,17 +82,36 @@ class TenantManagementService
 
     /**
      * Read users from a tenant's database (cross-tenant read).
+     *
+     * @throws \InvalidArgumentException if tenant DB is not ready.
      */
     public function getTenantUsers(Tenant $tenant): Collection
     {
+        $this->ensureTenantDatabaseReady($tenant);
+
         config(['database.connections.tenant.database' => $tenant->database]);
         DB::purge('tenant');
         DB::reconnect('tenant');
 
         return User::on('tenant')
-            ->select('id', 'name', 'email', 'role', 'last_login_at', 'active')
+            ->select('id', 'name', 'email', 'role', 'active', 'created_at')
             ->orderBy('name')
             ->get();
+    }
+
+    /**
+     * Guard: throw if the tenant's database is not provisioned yet.
+     */
+    public function ensureTenantDatabaseReady(Tenant $tenant): void
+    {
+        $minStep = 5; // step 5 = admin user created → DB, migrations, seeder done
+
+        if (($tenant->onboarding_step ?? 0) < $minStep) {
+            throw new \InvalidArgumentException(
+                "La base de datos del tenant '{$tenant->subdomain}' aún no está disponible. "
+                . "Onboarding en paso {$tenant->onboarding_step}/" . TenantOnboardingService::TOTAL_STEPS . '.'
+            );
+        }
     }
 
     public function getDashboardStats(): array
@@ -86,6 +140,50 @@ class TenantManagementService
                 'created_at' => $lastOnboarding->created_at,
             ] : null,
         ];
+    }
+
+    /**
+     * Delete a tenant and optionally drop its database.
+     *
+     * @throws \InvalidArgumentException if the tenant is not in a deletable state.
+     */
+    public function deleteTenant(Tenant $tenant, bool $dropDatabase = false): array
+    {
+        $deletableStatuses = ['cancelled', 'pending'];
+
+        if (!in_array($tenant->status, $deletableStatuses, true)) {
+            throw new \InvalidArgumentException(
+                "Solo se pueden eliminar tenants en estado 'cancelled' o 'pending'. "
+                . "Estado actual: '{$tenant->status}'. Cancela el tenant primero."
+            );
+        }
+
+        $summary = [
+            'tenant' => $tenant->subdomain,
+            'database_dropped' => false,
+        ];
+
+        if ($dropDatabase && $tenant->database) {
+            $dbName = $tenant->database;
+
+            $exists = DB::connection('mysql')
+                ->select('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?', [$dbName]);
+
+            if (!empty($exists)) {
+                DB::connection('mysql')->statement("DROP DATABASE `{$dbName}`");
+                $summary['database_dropped'] = true;
+
+                Log::info("Tenant [{$tenant->subdomain}] database '{$dbName}' dropped.");
+            }
+        }
+
+        $this->invalidateCorsCache($tenant->subdomain);
+
+        Log::info("Tenant [{$tenant->subdomain}] (ID {$tenant->id}) deleted.", $summary);
+
+        $tenant->delete();
+
+        return $summary;
     }
 
     public function invalidateCorsCache(string $subdomain): void

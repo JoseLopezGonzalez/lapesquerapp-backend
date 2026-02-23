@@ -20,8 +20,17 @@ class TenantResource extends JsonResource
             'timezone' => $this->timezone,
             'branding_image_url' => $this->branding_image_url,
             'last_activity_at' => $this->last_activity_at,
-            'onboarding_step' => $this->onboarding_step,
             'admin_email' => $this->admin_email,
+
+            'onboarding' => [
+                'step' => $this->onboarding_step,
+                'total_steps' => \App\Services\Superadmin\TenantOnboardingService::TOTAL_STEPS,
+                'step_label' => $this->onboarding_step_label,
+                'status' => $this->onboarding_status,
+                'error' => $this->onboarding_error,
+                'failed_at' => $this->onboarding_failed_at,
+            ],
+
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

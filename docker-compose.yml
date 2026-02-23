@@ -25,6 +25,20 @@ services:
             - mysql
             - redis
             - mailpit
+    queue:
+        image: sail-8.3/app
+        command: php artisan queue:work --verbose --tries=3 --backoff=5 --sleep=3
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - mysql
+            - redis
+        restart: unless-stopped
     mysql:
         image: 'mysql/mysql-server:8.0'
         ports:
@@ -39,6 +53,7 @@ services:
         volumes:
             - 'sail-mysql:/var/lib/mysql'
             - './vendor/laravel/sail/database/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh'
+            - './docker/mysql/grant-create-db.sh:/docker-entrypoint-initdb.d/20-grant-create-db.sh'
         networks:
             - sail
         healthcheck:

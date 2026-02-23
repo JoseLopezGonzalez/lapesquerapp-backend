@@ -129,9 +129,11 @@ Route::prefix('v2/superadmin')->group(function () {
         Route::post('tenants', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'store']);
         Route::get('tenants/{tenant}', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'show']);
         Route::put('tenants/{tenant}', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'update']);
+        Route::delete('tenants/{tenant}', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'destroy']);
         Route::post('tenants/{tenant}/activate', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'activate']);
         Route::post('tenants/{tenant}/suspend', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'suspend']);
         Route::post('tenants/{tenant}/cancel', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'cancel']);
+        Route::get('tenants/{tenant}/onboarding-status', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'onboardingStatus']);
         Route::post('tenants/{tenant}/retry-onboarding', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'retryOnboarding']);
         Route::get('tenants/{tenant}/users', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'tenantUsers']);
 

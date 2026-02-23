@@ -15,7 +15,7 @@ class TenantUserResource extends JsonResource
             'email' => $this->email,
             'role' => $this->role,
             'active' => (bool) $this->active,
-            'last_login_at' => $this->last_login_at,
+            'created_at' => $this->created_at,
         ];
     }
 }

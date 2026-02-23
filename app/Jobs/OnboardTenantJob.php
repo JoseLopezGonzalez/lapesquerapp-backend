@@ -37,5 +37,13 @@ class OnboardTenantJob implements ShouldQueue
     public function failed(\Throwable $exception): void
     {
         Log::error("OnboardTenantJob FAILED for tenant ID {$this->tenantId}: {$exception->getMessage()}");
+
+        $tenant = Tenant::find($this->tenantId);
+        if ($tenant && !$tenant->onboarding_failed_at) {
+            $tenant->update([
+                'onboarding_error' => "Job agotó reintentos: {$exception->getMessage()}",
+                'onboarding_failed_at' => now(),
+            ]);
+        }
     }
 }

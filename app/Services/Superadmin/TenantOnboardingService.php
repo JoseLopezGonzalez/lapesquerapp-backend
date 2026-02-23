@@ -16,40 +16,72 @@ class TenantOnboardingService
 {
     public const TOTAL_STEPS = 8;
 
+    private const STEP_LABELS = [
+        0 => 'Pendiente',
+        1 => 'Registro de tenant',
+        2 => 'Creación de base de datos',
+        3 => 'Migraciones',
+        4 => 'Datos iniciales (seeder)',
+        5 => 'Usuario administrador',
+        6 => 'Configuración inicial',
+        7 => 'Activación',
+        8 => 'Email de bienvenida',
+    ];
+
+    private const STEPS = [
+        1 => 'stepCreateTenantRecord',
+        2 => 'stepCreateDatabase',
+        3 => 'stepRunMigrations',
+        4 => 'stepRunSeeder',
+        5 => 'stepCreateAdminUser',
+        6 => 'stepSaveSettings',
+        7 => 'stepActivate',
+        8 => 'stepSendWelcomeEmail',
+    ];
+
+    public static function stepLabel(int $step): string
+    {
+        return self::STEP_LABELS[$step] ?? "Paso {$step}";
+    }
+
     /**
      * Run the full onboarding pipeline for a tenant.
      * Resumes from onboarding_step + 1 (idempotent).
+     * Persists error info on the tenant record if a step fails.
      */
     public function run(Tenant $tenant): void
     {
         $startFrom = ($tenant->onboarding_step ?? 0) + 1;
 
-        $steps = [
-            1 => 'stepCreateTenantRecord',
-            2 => 'stepCreateDatabase',
-            3 => 'stepRunMigrations',
-            4 => 'stepRunSeeder',
-            5 => 'stepCreateAdminUser',
-            6 => 'stepSaveSettings',
-            7 => 'stepActivate',
-            8 => 'stepSendWelcomeEmail',
-        ];
+        $tenant->update([
+            'onboarding_error' => null,
+            'onboarding_failed_at' => null,
+        ]);
 
-        foreach ($steps as $stepNumber => $method) {
+        foreach (self::STEPS as $stepNumber => $method) {
             if ($stepNumber < $startFrom) {
                 continue;
             }
 
-            Log::info("Onboarding [{$tenant->subdomain}] step {$stepNumber}: {$method}");
+            $label = self::stepLabel($stepNumber);
+            Log::info("Onboarding [{$tenant->subdomain}] step {$stepNumber}/{$label}: {$method}");
 
             try {
                 $this->{$method}($tenant);
                 $tenant->update(['onboarding_step' => $stepNumber]);
             } catch (\Throwable $e) {
+                $errorMsg = "Paso {$stepNumber} ({$label}): {$e->getMessage()}";
+
                 Log::error("Onboarding [{$tenant->subdomain}] failed at step {$stepNumber}", [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
+
+                $tenant->update([
+                    'onboarding_error' => $errorMsg,
+                    'onboarding_failed_at' => now(),
+                ]);
+
                 throw $e;
             }
         }

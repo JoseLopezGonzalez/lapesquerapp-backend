@@ -67,45 +67,117 @@ class TenantController extends Controller
         return new TenantResource($updated);
     }
 
-    public function activate(Tenant $tenant): TenantResource
+    public function activate(Tenant $tenant): TenantResource|JsonResponse
     {
-        $updated = $this->service->changeStatus($tenant, 'active');
-
-        return new TenantResource($updated);
+        return $this->attemptStatusChange($tenant, 'active');
     }
 
-    public function suspend(Tenant $tenant): TenantResource
+    public function suspend(Tenant $tenant): TenantResource|JsonResponse
     {
-        $updated = $this->service->changeStatus($tenant, 'suspended');
-
-        return new TenantResource($updated);
+        return $this->attemptStatusChange($tenant, 'suspended');
     }
 
-    public function cancel(Tenant $tenant): TenantResource
+    public function cancel(Tenant $tenant): TenantResource|JsonResponse
     {
-        $updated = $this->service->changeStatus($tenant, 'cancelled');
+        return $this->attemptStatusChange($tenant, 'cancelled');
+    }
 
-        return new TenantResource($updated);
+    private function attemptStatusChange(Tenant $tenant, string $newStatus): TenantResource|JsonResponse
+    {
+        try {
+            $updated = $this->service->changeStatus($tenant, $newStatus);
+
+            return new TenantResource($updated);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'current_status' => $tenant->status,
+                'requested_status' => $newStatus,
+                'onboarding' => $this->onboardingPayload($tenant),
+            ], 422);
+        }
     }
 
     public function retryOnboarding(Tenant $tenant): JsonResponse
     {
-        if ($tenant->status !== 'pending' && $tenant->onboarding_step < 8) {
-            $tenant->update(['status' => 'pending']);
+        if ($tenant->onboarding_step >= \App\Services\Superadmin\TenantOnboardingService::TOTAL_STEPS) {
+            return response()->json([
+                'message' => 'El onboarding ya se completó.',
+                'onboarding' => $this->onboardingPayload($tenant),
+            ]);
         }
+
+        $tenant->update([
+            'status' => 'pending',
+            'onboarding_error' => null,
+            'onboarding_failed_at' => null,
+        ]);
 
         OnboardTenantJob::dispatch($tenant->id);
 
+        $tenant->refresh();
+
         return response()->json([
             'message' => 'Onboarding relanzado.',
-            'onboarding_step' => $tenant->onboarding_step,
+            'onboarding' => $this->onboardingPayload($tenant),
         ]);
     }
 
-    public function tenantUsers(Tenant $tenant): AnonymousResourceCollection
+    public function onboardingStatus(Tenant $tenant): JsonResponse
     {
-        $users = $this->service->getTenantUsers($tenant);
+        return response()->json([
+            'data' => $this->onboardingPayload($tenant),
+        ]);
+    }
 
-        return TenantUserResource::collection($users);
+    private function onboardingPayload(Tenant $tenant): array
+    {
+        return [
+            'step' => $tenant->onboarding_step,
+            'total_steps' => \App\Services\Superadmin\TenantOnboardingService::TOTAL_STEPS,
+            'step_label' => $tenant->onboarding_step_label,
+            'status' => $tenant->onboarding_status,
+            'error' => $tenant->onboarding_error,
+            'failed_at' => $tenant->onboarding_failed_at,
+        ];
+    }
+
+    public function destroy(Request $request, Tenant $tenant): JsonResponse
+    {
+        if ($request->query('confirm_delete') !== 'true') {
+            return response()->json([
+                'message' => 'Debes confirmar la eliminación añadiendo ?confirm_delete=true',
+                'tenant' => $tenant->subdomain,
+                'status' => $tenant->status,
+            ], 422);
+        }
+
+        try {
+            $dropDb = $request->boolean('drop_database', false);
+            $summary = $this->service->deleteTenant($tenant, $dropDb);
+
+            return response()->json([
+                'message' => 'Tenant eliminado correctamente.',
+                'details' => $summary,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    public function tenantUsers(Tenant $tenant): AnonymousResourceCollection|JsonResponse
+    {
+        try {
+            $users = $this->service->getTenantUsers($tenant);
+
+            return TenantUserResource::collection($users);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'onboarding' => $this->onboardingPayload($tenant),
+            ], 422);
+        }
     }
 }
