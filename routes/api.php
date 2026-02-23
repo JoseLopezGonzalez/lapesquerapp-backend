@@ -218,6 +218,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
                 Route::get('punches/calendar', [PunchController::class, 'calendar'])->name('punches.calendar');
                 Route::post('punches/bulk/validate', [PunchController::class, 'bulkValidate'])->name('punches.bulk.validate');
                 Route::post('punches/bulk', [PunchController::class, 'bulkStore'])->name('punches.bulk.store');
+                Route::post('punches/manual', [PunchController::class, 'storeManual'])->name('punches.manual');
                 Route::apiResource('punches', PunchController::class)->except(['store', 'create']);
                 Route::delete('punches', [PunchController::class, 'destroyMultiple']);
             });
@@ -339,6 +340,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
             /* Processes */
             Route::apiResource('processes', V2ProcessController::class);
+
+            /* Utilidades — Extracción de texto desde PDF */
+            Route::post('pdf-extract', [PdfExtractionController::class, 'extract'])->name('pdf-extract');
 
             /* order incidents */
             Route::get('orders/{orderId}/incident', [IncidentController::class, 'show']);
