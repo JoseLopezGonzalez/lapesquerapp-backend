@@ -41,7 +41,7 @@ class SettingsBlockApiTest extends TestCase
             'name' => 'Test Tenant Settings',
             'subdomain' => $slug,
             'database' => $database,
-            'active' => true,
+            'status' => 'active',
         ]);
 
         $this->authUser = User::create([

@@ -18,6 +18,7 @@ return new class extends Migration {
             $table->timestamp('last_activity_at')->nullable()->after('timezone');
             $table->tinyInteger('onboarding_step')->unsigned()->nullable()->after('last_activity_at');
             $table->string('admin_email')->nullable()->after('onboarding_step');
+            $table->string('branding_image_url')->nullable()->after('admin_email');
 
             $table->index('status', 'idx_tenants_status');
         });
@@ -46,6 +47,7 @@ return new class extends Migration {
             $table->dropColumn([
                 'status', 'plan', 'renewal_at', 'timezone',
                 'last_activity_at', 'onboarding_step', 'admin_email',
+                'branding_image_url',
             ]);
         });
     }

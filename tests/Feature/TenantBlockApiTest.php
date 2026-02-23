@@ -29,7 +29,7 @@ class TenantBlockApiTest extends TestCase
             'name' => 'Empresa Test S.L.',
             'subdomain' => 'empresa-test',
             'database' => $database,
-            'active' => true,
+            'status' => 'active',
         ]);
 
         $response = $this->getJson('/api/v2/public/tenant/empresa-test');
@@ -37,7 +37,7 @@ class TenantBlockApiTest extends TestCase
         $response->assertOk()
             ->assertJson([
                 'data' => [
-                    'active' => true,
+                    'status' => 'active',
                     'name' => 'Empresa Test S.L.',
                 ],
             ]);
@@ -50,7 +50,7 @@ class TenantBlockApiTest extends TestCase
             'name' => 'Empresa Inactiva',
             'subdomain' => 'inactiva',
             'database' => $database,
-            'active' => false,
+            'status' => 'suspended',
         ]);
 
         $response = $this->getJson('/api/v2/public/tenant/inactiva');
@@ -58,7 +58,7 @@ class TenantBlockApiTest extends TestCase
         $response->assertOk()
             ->assertJson([
                 'data' => [
-                    'active' => false,
+                    'status' => 'suspended',
                     'name' => 'Empresa Inactiva',
                 ],
             ]);

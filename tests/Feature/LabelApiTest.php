@@ -34,7 +34,7 @@ class LabelApiTest extends TestCase
             'name' => 'Test Tenant',
             'subdomain' => $slug,
             'database' => $database,
-            'active' => true,
+            'status' => 'active',
         ]);
 
         $user = User::create([

@@ -147,7 +147,7 @@ class StockBlockApiTest extends TestCase
             'name' => 'Test Tenant Stock',
             'subdomain' => $slug,
             'database' => $database,
-            'active' => true,
+            'status' => 'active',
         ]);
 
         $user = User::create([

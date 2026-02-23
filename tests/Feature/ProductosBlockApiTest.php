@@ -63,7 +63,7 @@ class ProductosBlockApiTest extends TestCase
             'name' => 'Test Tenant Productos',
             'subdomain' => $slug,
             'database' => $database,
-            'active' => true,
+            'status' => 'active',
         ]);
 
         $user = User::create([

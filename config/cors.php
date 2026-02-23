@@ -49,7 +49,7 @@ return [
     | DB; these patterns serve as fallback for local/testing environments.
     |
     */
-    'allowed_origins_patterns' => env('APP_ENV') === 'local' ? [
+    'allowed_origins_patterns' => in_array(env('APP_ENV'), ['local', 'testing']) ? [
         '#^https?://[a-z0-9\-]+\.lapesquerapp\.es\z#',
         '#^https?://[a-z0-9\-]+\.congeladosbrisamar\.es\z#',
         '#^http://[a-z0-9\-]+\.localhost:3000\z#',

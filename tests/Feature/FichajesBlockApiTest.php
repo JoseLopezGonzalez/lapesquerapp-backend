@@ -38,7 +38,7 @@ class FichajesBlockApiTest extends TestCase
             'name' => 'Test Tenant Fichajes',
             'subdomain' => $slug,
             'database' => $database,
-            'active' => true,
+            'status' => 'active',
         ]);
 
         $user = User::create([

@@ -40,7 +40,7 @@ class OrderApiTest extends TestCase
             'name' => 'Test Tenant Order',
             'subdomain' => $slug,
             'database' => $database,
-            'active' => true,
+            'status' => 'active',
         ]);
 
         $user = User::create([

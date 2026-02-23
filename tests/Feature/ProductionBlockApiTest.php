@@ -54,7 +54,7 @@ class ProductionBlockApiTest extends TestCase
             'name' => 'Test Tenant Production',
             'subdomain' => $slug,
             'database' => $database,
-            'active' => true,
+            'status' => 'active',
         ]);
 
         $user = User::create([

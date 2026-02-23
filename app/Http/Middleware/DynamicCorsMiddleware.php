@@ -32,11 +32,34 @@ class DynamicCorsMiddleware
             return $next($request);
         }
 
+        if (!$this->pathMatches($request)) {
+            $response = $next($request);
+            $response->headers->set('Vary', 'Origin');
+            return $response;
+        }
+
         if ($this->isLocalEnv()) {
             return $this->handleWithStatic($request, $next, $origin);
         }
 
         return $this->handleDynamic($request, $next, $origin);
+    }
+
+    /**
+     * Only apply CORS logic to paths configured in cors.php (e.g. api/*, sanctum/csrf-cookie).
+     */
+    private function pathMatches(Request $request): bool
+    {
+        $paths = $this->corsConfig['paths'] ?? [];
+        $requestPath = $request->path();
+
+        foreach ($paths as $pattern) {
+            if ($pattern === $requestPath || fnmatch($pattern, $requestPath)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function isLocalEnv(): bool
@@ -147,6 +170,7 @@ class DynamicCorsMiddleware
         $response->headers->set('Access-Control-Allow-Methods', implode(', ', $this->corsConfig['allowed_methods'] ?? ['*']));
         $response->headers->set('Access-Control-Allow-Headers', implode(', ', $this->corsConfig['allowed_headers'] ?? ['*']));
         $response->headers->set('Access-Control-Max-Age', (string) ($this->corsConfig['max_age'] ?? 0));
+        $response->headers->set('Vary', 'Origin');
 
         if ($this->corsConfig['supports_credentials'] ?? false) {
             $response->headers->set('Access-Control-Allow-Credentials', 'true');
