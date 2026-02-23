@@ -21,8 +21,8 @@ class CleanupMagicLinkTokens extends Command
         $dryRun = $this->option('dry-run');
 
         $tenants = $tenantSubdomain
-            ? Tenant::where('subdomain', $tenantSubdomain)->where('active', true)->get()
-            : Tenant::where('active', true)->get();
+            ? Tenant::active()->where('subdomain', $tenantSubdomain)->get()
+            : Tenant::active()->get();
 
         if ($tenants->isEmpty()) {
             $this->warn($tenantSubdomain

@@ -25,13 +25,13 @@
         <!-- ENCABEZADO -->
         <div class="flex justify-between items-end mb-2">
             <div>
-                <h1 class="text-md font-bold">{{ config('company.name') }}</h1>
-                <p>{{ config('company.address.street') }} - {{ config('company.address.postal_code') }}
-                    {{ config('company.address.city') }}
+                <h1 class="text-md font-bold">{{ tenantSetting('company.name') }}</h1>
+                <p>{{ tenantSetting('company.address.street') }} - {{ tenantSetting('company.address.postal_code') }}
+                    {{ tenantSetting('company.address.city') }}
                 </p>
-                <p>Tel: {{ config('company.contact.phone_admin') }}</p>
-                <p>{{ config('company.contact.email_admin') }}</p>
-                <p>{{ config('company.sanitary_number') }}</p>
+                <p>Tel: {{ tenantSetting('company.contact.phone_admin') }}</p>
+                <p>{{ tenantSetting('company.contact.email_admin') }}</p>
+                <p>{{ tenantSetting('company.sanitary_number') }}</p>
             </div>
 
             <div class="flex items-start gap-4">
@@ -176,8 +176,8 @@
             <div class="p-4 bg-gray-50 rounded-lg border text-xs space-y-3">
                 <p class="font-medium text-xs h-full">
                     Para la aprobación definitiva del pedido, es necesario enviar este documento firmado y sellado a
-                    {{ config('company.name') }} a la dirección de correo
-                    <strong>{{ config('company.contact.email_orders') }}</strong>.
+                    {{ tenantSetting('company.name') }} a la dirección de correo
+                    <strong>{{ tenantSetting('company.contact.email_orders') }}</strong>.
                 </p>
             </div>
 
@@ -208,10 +208,10 @@
         No se admitirán devoluciones ni reclamaciones relacionadas con la mercancía
         transcurridas 48 horas desde su recepción.
     </span><br>
-    {{ config('company.name') }} · CIF {{ config('company.cif') }} ·
-    {{ config('company.address.street') }} ·
-    {{ config('company.address.postal_code') }} {{ config('company.address.city') }},
-    {{ config('company.address.province') }} ·
+    {{ tenantSetting('company.name') }} · CIF {{ tenantSetting('company.cif') }} ·
+    {{ tenantSetting('company.address.street') }} ·
+    {{ tenantSetting('company.address.postal_code') }} {{ tenantSetting('company.address.city') }},
+    {{ tenantSetting('company.address.province') }} ·
     {{ tenantSetting('company.website_url') }}
 </footer>
 

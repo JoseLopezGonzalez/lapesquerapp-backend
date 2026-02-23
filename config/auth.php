@@ -44,6 +44,10 @@ return [
             'driver' => 'token',
             'provider' => 'users',
         ],
+        'superadmin' => [
+            'driver' => 'sanctum',
+            'provider' => 'superadmin_users',
+        ],
     ],
 
 
@@ -73,10 +77,10 @@ return [
             'model' => App\Models\User::class,
         ],
 
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+        'superadmin_users' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\SuperadminUser::class,
+        ],
     ],
 
     /*

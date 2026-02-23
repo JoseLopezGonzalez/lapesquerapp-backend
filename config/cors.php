@@ -35,6 +35,7 @@ return [
         'http://localhost:3000',
         'http://localhost:5173',
         'https://lapesquerapp.es',
+        'https://admin.lapesquerapp.es',
         'https://brisamar.congeladosbrisamar.es',
     ],
 
@@ -43,15 +44,23 @@ return [
     | Allowed Origin Patterns (regex)
     |--------------------------------------------------------------------------
     |
-    | Regex patterns for dynamic subdomains. These are checked when the
-    | origin does not match any exact entry in allowed_origins.
+    | Regex patterns for dynamic subdomains. In production the
+    | DynamicCorsMiddleware validates origins against active tenants in the
+    | DB; these patterns serve as fallback for local/testing environments.
     |
     */
-    'allowed_origins_patterns' => [
-        '#^https://[a-z0-9\-]+\.lapesquerapp\.es\z#',
-        '#^https://[a-z0-9\-]+\.congeladosbrisamar\.es\z#',
+    'allowed_origins_patterns' => env('APP_ENV') === 'local' ? [
+        '#^https?://[a-z0-9\-]+\.lapesquerapp\.es\z#',
+        '#^https?://[a-z0-9\-]+\.congeladosbrisamar\.es\z#',
         '#^http://[a-z0-9\-]+\.localhost:3000\z#',
-    ],
+    ] : [],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Base Domains (for dynamic CORS in production)
+    |--------------------------------------------------------------------------
+    */
+    'base_domains' => env('CORS_BASE_DOMAINS', 'lapesquerapp.es,congeladosbrisamar.es'),
 
     'allowed_headers' => ['*'],
 

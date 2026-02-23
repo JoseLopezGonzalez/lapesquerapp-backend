@@ -16,8 +16,9 @@ class TenantPublicResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'active' => (bool) $this->active,
             'name' => $this->name,
+            'status' => $this->status,
+            'branding_image_url' => $this->branding_image_url,
         ];
     }
 }

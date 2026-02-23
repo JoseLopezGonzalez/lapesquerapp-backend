@@ -19,10 +19,22 @@ class TenantMiddleware
             return response()->json(['error' => 'Tenant not specified'], 400);
         }
 
-        $tenant = Tenant::where('subdomain', $subdomain)->where('active', true)->first();
+        $tenant = Tenant::where('subdomain', $subdomain)->first();
 
         if (!$tenant) {
-            return response()->json(['error' => 'Tenant not found or inactive'], 404);
+            return response()->json(['error' => 'Tenant not found'], 404);
+        }
+
+        if ($tenant->status === 'suspended') {
+            return response()->json([
+                'error' => 'Cuenta suspendida',
+                'userMessage' => 'Tu cuenta está suspendida. Contacta con soporte.',
+                'status' => 'suspended',
+            ], 403);
+        }
+
+        if ($tenant->status !== 'active') {
+            return response()->json(['error' => 'Tenant not available'], 403);
         }
 
         app()->instance('currentTenant', $subdomain);

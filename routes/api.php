@@ -106,6 +106,50 @@ Route::get('/health', function () {
 /* IMPORTANTISIMO */
 Route::get('v2/public/tenant/{subdomain}', [TenantController::class, 'showBySubdomain']);
 
+/*
+|--------------------------------------------------------------------------
+| Superadmin routes — NO pasan por TenantMiddleware
+|--------------------------------------------------------------------------
+*/
+Route::prefix('v2/superadmin')->group(function () {
+    // Auth (público, con throttle)
+    Route::prefix('auth')->group(function () {
+        Route::post('request-access', [\App\Http\Controllers\v2\Superadmin\AuthController::class, 'requestAccess'])->middleware('throttle:5,1');
+        Route::post('verify-magic-link', [\App\Http\Controllers\v2\Superadmin\AuthController::class, 'verifyMagicLink'])->middleware('throttle:10,1');
+        Route::post('verify-otp', [\App\Http\Controllers\v2\Superadmin\AuthController::class, 'verifyOtp'])->middleware('throttle:10,1');
+    });
+
+    // Rutas protegidas por superadmin middleware
+    Route::middleware('superadmin')->group(function () {
+        Route::post('auth/logout', [\App\Http\Controllers\v2\Superadmin\AuthController::class, 'logout']);
+        Route::get('auth/me', [\App\Http\Controllers\v2\Superadmin\AuthController::class, 'me']);
+
+        // Tenants CRUD
+        Route::get('tenants', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'index']);
+        Route::post('tenants', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'store']);
+        Route::get('tenants/{tenant}', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'show']);
+        Route::put('tenants/{tenant}', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'update']);
+        Route::post('tenants/{tenant}/activate', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'activate']);
+        Route::post('tenants/{tenant}/suspend', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'suspend']);
+        Route::post('tenants/{tenant}/cancel', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'cancel']);
+        Route::post('tenants/{tenant}/retry-onboarding', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'retryOnboarding']);
+        Route::get('tenants/{tenant}/users', [\App\Http\Controllers\v2\Superadmin\TenantController::class, 'tenantUsers']);
+
+        // Dashboard
+        Route::get('dashboard', [\App\Http\Controllers\v2\Superadmin\DashboardController::class, 'index']);
+
+        // Impersonation
+        Route::post('tenants/{tenant}/impersonate/request', [\App\Http\Controllers\v2\Superadmin\ImpersonationController::class, 'requestAccess']);
+        Route::post('tenants/{tenant}/impersonate/silent', [\App\Http\Controllers\v2\Superadmin\ImpersonationController::class, 'silent']);
+        Route::post('tenants/{tenant}/impersonate/token', [\App\Http\Controllers\v2\Superadmin\ImpersonationController::class, 'generateToken']);
+        Route::post('impersonate/end', [\App\Http\Controllers\v2\Superadmin\ImpersonationController::class, 'end']);
+    });
+});
+
+// Public impersonation approval (signed URLs, no auth)
+Route::get('v2/public/impersonation/{token}/approve', [\App\Http\Controllers\Public\ImpersonationApprovalController::class, 'approve'])->name('impersonation.approve');
+Route::get('v2/public/impersonation/{token}/reject', [\App\Http\Controllers\Public\ImpersonationApprovalController::class, 'reject'])->name('impersonation.reject');
+
 /* Rutas multi-tenant: aplicar middleware tenant de forma explícita al grupo v2 */
 Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], function () {
     // Rutas públicas (sin autenticación)

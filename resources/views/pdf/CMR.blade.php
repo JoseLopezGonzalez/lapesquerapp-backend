@@ -36,7 +36,6 @@
 
     @php
         $imgs = ['cmr-page-1.png', 'cmr-page-2.png', 'cmr-page-3.png', 'cmr-page-4.png'];
-        $company = config('company');
     @endphp
 
 
@@ -52,10 +51,10 @@
 
                     </div>
                     <p style="text-align: left; font-size: 9pt; left: 90px; top: 70px; position: absolute;">
-                        {{ $company['name'] }}<br>
-                        {{ $company['address']['street'] }}<br>
-                        {{ $company['address']['postal_code'] }} {{ $company['address']['city'] }}<br>
-                        {{ $company['address']['province'] }} - {{ $company['address']['country'] }}
+                        {{ tenantSetting('company.name') }}<br>
+                        {{ tenantSetting('company.address.street') }}<br>
+                        {{ tenantSetting('company.address.postal_code') }} {{ tenantSetting('company.address.city') }}<br>
+                        {{ tenantSetting('company.address.province') }} - {{ tenantSetting('company.address.country') }}
                     </p>
                     <p
                         style="font-weight: bold; text-align: left; font-size: 9pt; left: 655px; top: 50px; position: absolute;">
@@ -126,7 +125,7 @@
                         {!! nl2br(e($modifiedAddress)) !!}
                     </p>
                     <p style="text-align: left; font-size: 9pt; left: 90px; top: 330px; position: absolute;">
-                        {{ config('company.loading_place') }}
+                        {{ tenantSetting('company.loading_place') }}
                     </p>
                     <p style="text-align: left; font-size: 9pt; left: 320px; top: 302px; position: absolute;">
                         {{ date('d/m/Y', strtotime($order->load_date)) }}
@@ -154,7 +153,7 @@
                         0 ºC
                     </p>
                     <p style="text-align: left; font-size: 9pt; left: 160px; top: 855px; position: absolute;">
-                        {{ config('company.signature_location') }}
+                        {{ tenantSetting('company.signature_location') }}
                     </p>
                     <p style="text-align: left; font-size: 9pt; left: 290px; top: 855px; position: absolute;">
                         {{ date('d/m/Y', strtotime($order->load_date)) }}

@@ -33,8 +33,8 @@ class CreateTenantUser extends Command
             return Command::FAILURE;
         }
 
-        if (!$tenant->active) {
-            $this->error("❌ El tenant {$subdomain} no está activo");
+        if (!$tenant->is_active) {
+            $this->error("❌ El tenant {$subdomain} no está activo (status: {$tenant->status})");
             return Command::FAILURE;
         }
 

@@ -15,7 +15,7 @@ class SeedTenants extends Command
 
     public function handle(): int
     {
-        $tenants = Tenant::where('active', true)->get();
+        $tenants = Tenant::active()->get();
 
         foreach ($tenants as $tenant) {
             $this->info("⏳ Ejecutando seeders en tenant: {$tenant->subdomain}");
