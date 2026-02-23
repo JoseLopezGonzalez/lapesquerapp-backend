@@ -16,6 +16,7 @@ class ImpersonationLog extends Model
         'tenant_id',
         'target_user_id',
         'mode',
+        'reason',
         'started_at',
         'ended_at',
     ];

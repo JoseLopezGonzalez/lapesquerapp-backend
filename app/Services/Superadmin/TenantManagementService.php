@@ -100,6 +100,65 @@ class TenantManagementService
     }
 
     /**
+     * List active Sanctum tokens for a tenant's users (cross-tenant read).
+     *
+     * @throws \InvalidArgumentException if tenant DB is not ready.
+     */
+    public function getActiveTokens(Tenant $tenant): Collection
+    {
+        $this->ensureTenantDatabaseReady($tenant);
+
+        config(['database.connections.tenant.database' => $tenant->database]);
+        DB::purge('tenant');
+        DB::reconnect('tenant');
+
+        return DB::connection('tenant')
+            ->table('personal_access_tokens')
+            ->select('id', 'tokenable_id', 'name', 'abilities', 'last_used_at', 'created_at', 'expires_at')
+            ->orderByDesc('created_at')
+            ->get();
+    }
+
+    /**
+     * Revoke a specific token from a tenant's DB.
+     *
+     * @throws \InvalidArgumentException if tenant DB is not ready.
+     */
+    public function revokeToken(Tenant $tenant, int $tokenId): bool
+    {
+        $this->ensureTenantDatabaseReady($tenant);
+
+        config(['database.connections.tenant.database' => $tenant->database]);
+        DB::purge('tenant');
+        DB::reconnect('tenant');
+
+        $deleted = DB::connection('tenant')
+            ->table('personal_access_tokens')
+            ->where('id', $tokenId)
+            ->delete();
+
+        return $deleted > 0;
+    }
+
+    /**
+     * Revoke all tokens from a tenant's DB.
+     *
+     * @throws \InvalidArgumentException if tenant DB is not ready.
+     */
+    public function revokeAllTokens(Tenant $tenant): int
+    {
+        $this->ensureTenantDatabaseReady($tenant);
+
+        config(['database.connections.tenant.database' => $tenant->database]);
+        DB::purge('tenant');
+        DB::reconnect('tenant');
+
+        return DB::connection('tenant')
+            ->table('personal_access_tokens')
+            ->delete();
+    }
+
+    /**
      * Guard: throw if the tenant's database is not provisioned yet.
      */
     public function ensureTenantDatabaseReady(Tenant $tenant): void

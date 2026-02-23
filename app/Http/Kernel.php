@@ -68,6 +68,7 @@ class Kernel extends HttpKernel
         'role'             => \App\Http\Middleware\RoleMiddleware::class,
         'tenant'           => \App\Http\Middleware\TenantMiddleware::class,
         'superadmin'       => \App\Http\Middleware\SuperadminMiddleware::class,
+        'feature'          => \App\Http\Middleware\CheckFeatureFlag::class,
     ];
 
     /**

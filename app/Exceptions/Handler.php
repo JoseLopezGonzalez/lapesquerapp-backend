@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use App\Models\TenantErrorLog;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
 
@@ -114,6 +115,8 @@ class Handler extends ExceptionHandler
                 // Otros errores de base de datos (foreign key, not null, etc.)
                 $userMessage = $this->formatQueryExceptionForUser($errorMessage, $request);
 
+                $this->logTenantError($request, $exception);
+
                 return response()->json([
                     'message' => 'Error de base de datos.',
                     'userMessage' => $userMessage,
@@ -124,6 +127,8 @@ class Handler extends ExceptionHandler
             // Manejar cualquier otra excepción como error interno del servidor
             $errorMessage = $exception->getMessage();
             $userMessage = $this->formatExceptionMessageForUser($errorMessage, $request);
+
+            $this->logTenantError($request, $exception);
 
             return response()->json([
                 'message' => 'Ocurrió un error inesperado.',
@@ -780,6 +785,39 @@ class Handler extends ExceptionHandler
                     return $message;
                 }
                 return 'Ocurrió un error al procesar la solicitud.';
+        }
+    }
+
+    /**
+     * Persist a 500-level error into the central tenant_error_logs table.
+     * Only runs when a tenant context is active and the request is an API call.
+     * Silently swallows any exceptions to never break error rendering.
+     */
+    private function logTenantError($request, Throwable $exception): void
+    {
+        try {
+            if (!$request->is('api/*')) {
+                return;
+            }
+
+            if (!app()->bound('currentTenant') || !app('currentTenant')) {
+                return;
+            }
+
+            $tenantSubdomain = app('currentTenant');
+            $tenant = \App\Models\Tenant::where('subdomain', $tenantSubdomain)->first();
+
+            TenantErrorLog::on('mysql')->create([
+                'tenant_id'     => $tenant?->id,
+                'user_id'       => $request->user()?->id,
+                'method'        => $request->method(),
+                'url'           => substr($request->fullUrl(), 0, 1000),
+                'error_class'   => get_class($exception),
+                'error_message' => substr($exception->getMessage(), 0, 10000),
+                'occurred_at'   => now('UTC'),
+            ]);
+        } catch (\Throwable) {
+            // Never break error rendering
         }
     }
 

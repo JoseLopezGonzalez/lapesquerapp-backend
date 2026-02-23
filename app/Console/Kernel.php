@@ -10,6 +10,9 @@ class Kernel extends ConsoleKernel
 
     protected $commands = [
         \App\Console\Commands\MigrateTenants::class,
+        \App\Console\Commands\DetectSuspiciousActivity::class,
+        \App\Console\Commands\CheckOnboardingStuck::class,
+        \App\Console\Commands\PruneLogs::class,
     ];
 
     /**
@@ -17,8 +20,11 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->command('app:clean-old-order-pdfs')->dailyAt('02:00'); // o cada hora: ->hourly()
+        $schedule->command('app:clean-old-order-pdfs')->dailyAt('02:00');
         $schedule->command('auth:cleanup-magic-tokens')->dailyAt('03:00');
+        $schedule->command('superadmin:detect-suspicious')->everyFifteenMinutes();
+        $schedule->command('superadmin:check-onboarding-stuck')->hourly();
+        $schedule->command('superadmin:prune-logs')->dailyAt('04:00');
     }
 
 

@@ -7,9 +7,14 @@ use App\Http\Requests\v2\RequestAccessRequest;
 use App\Http\Requests\v2\VerifyMagicLinkRequest;
 use App\Http\Requests\v2\VerifyOtpRequest;
 use App\Models\MagicLinkToken;
+use App\Models\Tenant;
+use App\Models\TenantBlocklist;
 use App\Models\User;
 use App\Services\MagicLinkService;
+use App\Services\Superadmin\FeatureFlagService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
@@ -39,17 +44,44 @@ class AuthController extends Controller
         $user = $request->user();
 
         return response()->json([
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
+            'id'                => $user->id,
+            'name'              => $user->name,
+            'email'             => $user->email,
             'assigned_store_id' => $user->assigned_store_id,
-            'company_name' => $user->company_name,
-            'company_logo_url' => $user->company_logo_url,
-            'active' => $user->active,
-            'role' => $user->role,
-            'created_at' => $user->created_at,
-            'updated_at' => $user->updated_at,
+            'company_name'      => $user->company_name,
+            'company_logo_url'  => $user->company_logo_url,
+            'active'            => $user->active,
+            'role'              => $user->role,
+            'created_at'        => $user->created_at,
+            'updated_at'        => $user->updated_at,
+            'features'          => $this->getActiveFeatures(),
         ]);
+    }
+
+    /**
+     * Get the effective feature flags for the current tenant.
+     * Returns a flat array of enabled flag keys, or empty array on error.
+     */
+    private function getActiveFeatures(): array
+    {
+        try {
+            if (!app()->bound('currentTenant') || !app('currentTenant')) {
+                return [];
+            }
+
+            $subdomain = app('currentTenant');
+            $tenant    = Tenant::where('subdomain', $subdomain)->first();
+
+            if (!$tenant) {
+                return [];
+            }
+
+            $flags = app(FeatureFlagService::class)->getEffectiveFlags($tenant);
+
+            return array_keys(array_filter($flags));
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /** Mensaje genérico para no revelar si el email existe. */
@@ -61,9 +93,15 @@ class AuthController extends Controller
      */
     public function requestAccess(RequestAccessRequest $request)
     {
+        if ($this->isBlocked($request->email, $request->ip())) {
+            return response()->json(['message' => self::REQUEST_ACCESS_MESSAGE], 200);
+        }
+
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !$user->active) {
+            $this->recordLoginAttempt($request, false);
+
             return response()->json(['message' => self::REQUEST_ACCESS_MESSAGE], 200);
         }
 
@@ -81,6 +119,8 @@ class AuthController extends Controller
                 'message' => 'Configuración de la aplicación incompleta. Contacte al administrador.',
             ], 500);
         }
+
+        $this->recordLoginAttempt($request, true);
 
         return response()->json(['message' => self::REQUEST_ACCESS_MESSAGE], 200);
     }
@@ -122,6 +162,7 @@ class AuthController extends Controller
         }
 
         $record->markAsUsed();
+        $this->recordLoginAttempt($request, true, $user->email);
 
         return $this->tokenResponse($user);
     }
@@ -162,8 +203,60 @@ class AuthController extends Controller
         }
 
         $record->markAsUsed();
+        $this->recordLoginAttempt($request, true, $record->email);
 
         return $this->tokenResponse($user);
+    }
+
+    /**
+     * Check if an email or IP is blocked for the current tenant.
+     * Results are cached for 5 minutes per tenant.
+     */
+    private function isBlocked(string $email, ?string $ip): bool
+    {
+        try {
+            $tenant = app()->bound('currentTenant') ? app('currentTenant') : null;
+            if (!$tenant) {
+                return false;
+            }
+
+            $tenantObj = \App\Models\Tenant::where('subdomain', $tenant)->first();
+            if (!$tenantObj) {
+                return false;
+            }
+
+            $cacheKey = "blocklist:{$tenantObj->id}:{$email}:{$ip}";
+
+            return Cache::remember($cacheKey, 300, function () use ($tenantObj, $email, $ip) {
+                $query = TenantBlocklist::where('tenant_id', $tenantObj->id)->active();
+
+                $emailBlocked = (clone $query)->where('type', 'email')->where('value', $email)->exists();
+                $ipBlocked    = $ip ? (clone $query)->where('type', 'ip')->where('value', $ip)->exists() : false;
+
+                return $emailBlocked || $ipBlocked;
+            });
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Record a login attempt in the tenant's login_attempts table.
+     * Silently ignores errors to never break the auth flow.
+     */
+    private function recordLoginAttempt(Request $request, bool $success, ?string $email = null): void
+    {
+        try {
+            DB::connection('tenant')->table('login_attempts')->insert([
+                'email'        => $email ?? ($request->email ?? ''),
+                'ip_address'   => $request->ip(),
+                'user_agent'   => substr((string) $request->userAgent(), 0, 500),
+                'success'      => $success,
+                'attempted_at' => now('UTC'),
+            ]);
+        } catch (\Throwable) {
+            // Never break auth flow due to logging errors
+        }
     }
 
     private function tokenResponse(User $user): \Illuminate\Http\JsonResponse

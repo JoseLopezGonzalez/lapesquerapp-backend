@@ -145,6 +145,43 @@ Route::prefix('v2/superadmin')->group(function () {
         Route::post('tenants/{tenant}/impersonate/silent', [\App\Http\Controllers\v2\Superadmin\ImpersonationController::class, 'silent']);
         Route::post('tenants/{tenant}/impersonate/token', [\App\Http\Controllers\v2\Superadmin\ImpersonationController::class, 'generateToken']);
         Route::post('impersonate/end', [\App\Http\Controllers\v2\Superadmin\ImpersonationController::class, 'end']);
+        Route::get('impersonation/logs', [\App\Http\Controllers\v2\Superadmin\ImpersonationController::class, 'logs']);
+        Route::get('impersonation/active', [\App\Http\Controllers\v2\Superadmin\ImpersonationController::class, 'activeSessions']);
+        Route::post('impersonation/logs/{log}/end', [\App\Http\Controllers\v2\Superadmin\ImpersonationController::class, 'endFromPanel']);
+
+        // Security — Tokens activos
+        Route::get('tenants/{tenant}/tokens', [\App\Http\Controllers\v2\Superadmin\SecurityController::class, 'tokens']);
+        Route::delete('tenants/{tenant}/tokens/{tokenId}', [\App\Http\Controllers\v2\Superadmin\SecurityController::class, 'revokeToken']);
+        Route::delete('tenants/{tenant}/tokens', [\App\Http\Controllers\v2\Superadmin\SecurityController::class, 'revokeAllTokens']);
+
+        // Security — Blocklist
+        Route::get('tenants/{tenant}/blocks', [\App\Http\Controllers\v2\Superadmin\SecurityController::class, 'listBlocks']);
+        Route::post('tenants/{tenant}/block', [\App\Http\Controllers\v2\Superadmin\SecurityController::class, 'block']);
+        Route::delete('tenants/{tenant}/blocks/{blockId}', [\App\Http\Controllers\v2\Superadmin\SecurityController::class, 'unblock']);
+
+        // Migrations panel
+        Route::get('tenants/{tenant}/migrations', [\App\Http\Controllers\v2\Superadmin\TenantMigrationController::class, 'status']);
+        Route::post('tenants/{tenant}/migrations/run', [\App\Http\Controllers\v2\Superadmin\TenantMigrationController::class, 'run']);
+        Route::get('tenants/{tenant}/migrations/history', [\App\Http\Controllers\v2\Superadmin\TenantMigrationController::class, 'history']);
+        Route::post('migrations/run-all', [\App\Http\Controllers\v2\Superadmin\TenantMigrationController::class, 'runAll']);
+
+        // Observability — Error logs
+        Route::get('tenants/{tenant}/error-logs', [\App\Http\Controllers\v2\Superadmin\ObservabilityController::class, 'tenantErrorLogs']);
+        Route::get('error-logs', [\App\Http\Controllers\v2\Superadmin\ObservabilityController::class, 'globalErrorLogs']);
+
+        // Observability — Activity feed & queue health
+        Route::get('dashboard/activity', [\App\Http\Controllers\v2\Superadmin\ObservabilityController::class, 'activityFeed']);
+        Route::get('system/queue-health', [\App\Http\Controllers\v2\Superadmin\ObservabilityController::class, 'queueHealth']);
+
+        // System alerts
+        Route::get('alerts', [\App\Http\Controllers\v2\Superadmin\ObservabilityController::class, 'alerts']);
+        Route::post('alerts/{alert}/resolve', [\App\Http\Controllers\v2\Superadmin\ObservabilityController::class, 'resolveAlert']);
+
+        // Feature flags
+        Route::get('feature-flags', [\App\Http\Controllers\v2\Superadmin\FeatureFlagController::class, 'planDefaults']);
+        Route::get('tenants/{tenant}/feature-flags', [\App\Http\Controllers\v2\Superadmin\FeatureFlagController::class, 'tenantFlags']);
+        Route::put('tenants/{tenant}/feature-flags/{flag}', [\App\Http\Controllers\v2\Superadmin\FeatureFlagController::class, 'setOverride']);
+        Route::delete('tenants/{tenant}/feature-flags/{flag}', [\App\Http\Controllers\v2\Superadmin\FeatureFlagController::class, 'removeOverride']);
     });
 });
 

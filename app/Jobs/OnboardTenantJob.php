@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\SystemAlert;
 use App\Models\Tenant;
 use App\Services\Superadmin\TenantOnboardingService;
 use Illuminate\Bus\Queueable;
@@ -41,9 +42,19 @@ class OnboardTenantJob implements ShouldQueue
         $tenant = Tenant::find($this->tenantId);
         if ($tenant && !$tenant->onboarding_failed_at) {
             $tenant->update([
-                'onboarding_error' => "Job agotó reintentos: {$exception->getMessage()}",
+                'onboarding_error'     => "Job agotó reintentos: {$exception->getMessage()}",
                 'onboarding_failed_at' => now(),
             ]);
+        }
+
+        if ($tenant) {
+            SystemAlert::createIfNotExists(
+                type: 'onboarding_failed',
+                severity: 'critical',
+                message: "El onboarding del tenant [{$tenant->subdomain}] ha fallado: {$exception->getMessage()}",
+                tenantId: $tenant->id,
+                metadata: ['error' => $exception->getMessage(), 'onboarding_step' => $tenant->onboarding_step]
+            );
         }
     }
 }
