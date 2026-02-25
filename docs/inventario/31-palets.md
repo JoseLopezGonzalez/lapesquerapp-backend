@@ -30,6 +30,8 @@ El modelo `Pallet` representa un **palet** que contiene múltiples cajas de prod
 | `observations` | text | YES | Observaciones sobre el palet |
 | `status` | bigint | NO | Estado del palet (1=registered, 2=stored, 3=shipped, 4=processed) |
 | `order_id` | bigint | YES | FK a `orders` - Pedido asignado (opcional) |
+| `reception_id` | bigint | YES | FK a `raw_material_receptions` - Recepción de origen (opcional) |
+| `timeline` | json | YES | Historial de modificaciones del palet (F-01) |
 | `created_at` | timestamp | NO | Fecha de creación |
 | `updated_at` | timestamp | NO | Fecha de última actualización |
 
@@ -52,8 +54,12 @@ El modelo `Pallet` representa un **palet** que contiene múltiples cajas de prod
 protected $fillable = [
     'observations',
     'status',
+    'reception_id',
+    'timeline',
 ];
 ```
+
+**Casts**: `timeline` → `array`
 
 **Nota**: `order_id` no está en fillable pero se puede asignar directamente.
 
@@ -317,6 +323,36 @@ GET /v2/pallets/{id}
 
 **Respuesta**: `PalletResource` completo
 
+#### `timeline(string $id)` - Timeline de modificaciones (F-01)
+```php
+GET /v2/pallets/{id}/timeline
+```
+
+**Autorización**: Misma política que `show` (view del palet).
+
+**Respuesta**: Lista cronológica de cambios (más reciente primero):
+```json
+{
+    "timeline": [
+        {
+            "timestamp": "2026-02-25T10:30:00.000000Z",
+            "userId": 5,
+            "userName": "José García",
+            "type": "state_changed",
+            "action": "Estado cambiado de Registrado a Almacenado",
+            "details": {
+                "fromId": 1,
+                "from": "registered",
+                "toId": 2,
+                "to": "stored"
+            }
+        }
+    ]
+}
+```
+
+**Descripción**: Historial ligero de cambios sobre el palet (quién lo movió, cuándo cambió de estado, vinculación a pedidos, cambios de cajas, etc.). No reemplaza el ActivityLog general; es específico y legible para el usuario final. Ver sección [Timeline de modificaciones (F-01)](#-timeline-de-modificaciones-f-01) para tipos de evento y formato completo.
+
 #### `update(Request $request, string $id)` - Actualizar Palet
 ```php
 PUT /v2/pallets/{id}
@@ -491,6 +527,67 @@ POST /v2/pallets/{id}/unlink-order
 ```
 
 Pone `order_id = null`.
+
+---
+
+## 📜 Timeline de modificaciones (F-01)
+
+**Estado**: Implementado  
+**Prioridad**: Media  
+**Complejidad**: Baja — autocontenida
+
+### Descripción
+
+Historial ligero de cambios sobre la entidad Palet. Cualquier usuario puede ver qué ha pasado con un palet a lo largo del tiempo: quién lo movió, cuándo cambió de estado, cuándo se vinculó o desvinculó de un pedido, cambios en cajas, etc.
+
+- **Campo**: `timeline` (JSON, nullable) en la tabla `pallets`.
+- **Lógica**: El backend detecta cambios en el palet y en sus relaciones; cada entrada se añade al array.
+- **Contenido por entrada**: `timestamp` (ISO 8601), `userId`, `userName`, `type`, `action` (texto en lenguaje natural), `details` (objeto según el tipo).
+- **Servicio**: `App\Services\v2\PalletTimelineService::record()`.
+- **No reemplaza** el ActivityLog general; es específico y legible para el usuario final.
+
+### Endpoint
+
+- **GET** `/api/v2/pallets/{id}/timeline` — Devuelve `{ "timeline": [...] }` (orden: más reciente primero).
+
+### Estructura común de cada entrada
+
+| Campo     | Tipo   | Descripción |
+|----------|--------|-------------|
+| `timestamp` | string | ISO 8601 (ej. `2026-02-25T10:30:00.000000Z`) |
+| `userId` | int \| null | ID del usuario; `null` si acción automática (Sistema) |
+| `userName` | string | Nombre del usuario o `"Sistema"` |
+| `type`    | string | Tipo de evento (ver tabla siguiente) |
+| `action`  | string | Descripción en lenguaje natural |
+| `details` | object | Datos específicos del tipo (ver por tipo) |
+
+### Tipos de evento y formato JSON de `details`
+
+| Tipo | Descripción | Detalles (resumen) |
+|------|-------------|--------------------|
+| `pallet_created` | Palet creado manualmente | `boxesCount`, `totalNetWeight`, `initialState`, `storeId`, `storeName`, `orderId` |
+| `pallet_created_from_reception` | Palet creado desde recepción | `receptionId`, `boxesCount`, `totalNetWeight` |
+| `state_changed` | Cambio de estado manual | `fromId`, `from`, `toId`, `to` |
+| `state_changed_auto` | Cambio automático (producción) | `fromId`, `from`, `toId`, `to`, `reason`, `usedBoxesCount`, `totalBoxesCount` |
+| `store_assigned` | Movido a almacén | `storeId`, `storeName`, `previousStoreId`, `previousStoreName` |
+| `store_removed` | Retirado del almacén | `previousStoreId`, `previousStoreName` |
+| `position_assigned` | Posición asignada | `positionId`, `positionName`, `storeId`, `storeName` |
+| `position_unassigned` | Posición eliminada | `previousPositionId`, `previousPositionName` |
+| `order_linked` | Vinculado a pedido | `orderId`, `orderReference` |
+| `order_unlinked` | Desvinculado de pedido | `orderId`, `orderReference` |
+| `box_added` | Caja añadida | `boxId`, `productId`, `productName`, `lot`, `gs1128`, `netWeight`, `grossWeight`, `newBoxesCount`, `newTotalNetWeight` |
+| `box_removed` | Caja eliminada | Igual que `box_added` + totales actuales |
+| `box_updated` | Caja modificada | `boxId`, `productId`, `productName`, `lot`, `changes` (objeto con `from`/`to` por campo) |
+| `observations_updated` | Observaciones cambiadas | `from`, `to` |
+
+**Valores de `reason`** (solo `state_changed_auto`): `all_boxes_in_production`, `boxes_released_from_production`, `partial_boxes_released`.
+
+### Dónde se registra
+
+- **PalletWriteService**: creación (`pallet_created`), actualización (diff de estado, almacén, pedido, observaciones, cajas).
+- **PalletActionService**: mover a almacén, asignar/desasignar posición, vincular/desvincular pedido, cambio de estado masivo.
+- **Pallet** (modelo): `changeToShipped()`, `updateStateBasedOnBoxes()` (cambios automáticos).
+- **RawMaterialReceptionWriteService**: palets creados desde recepción (`pallet_created_from_reception`).
 
 ---
 
@@ -739,7 +836,23 @@ Authorization: Bearer {token}
 
 ---
 
-**Última actualización**: 2025-12-08
+## 🔄 Cambio reciente - Timeline de modificaciones (F-01)
 
-**Cambio reciente**: La columna `state_id` fue renombrada a `status` el 2025-12-08 para evitar que Laravel intente resolver automáticamente relaciones `belongsTo` basadas en el nombre de la columna.
+**Fecha**: 2026-02-25  
+**Estado**: Implementado
+
+### Cambios Implementados
+
+1. **Campo `timeline`**: Columna JSON nullable en `pallets` para historial de cambios.
+2. **Endpoint**: `GET /api/v2/pallets/{id}/timeline` devuelve la lista cronológica (más reciente primero).
+3. **Servicio**: `PalletTimelineService::record()` centraliza el registro; se invoca desde escritura de palets, acciones (mover, posición, vincular pedido) y modelo (cambios automáticos de estado).
+4. **Tipos de evento**: `pallet_created`, `pallet_created_from_reception`, `state_changed`, `state_changed_auto`, `store_assigned`, `store_removed`, `position_assigned`, `position_unassigned`, `order_linked`, `order_unlinked`, `box_added`, `box_removed`, `box_updated`, `observations_updated`.
+
+**📖 Detalle**: Ver sección [Timeline de modificaciones (F-01)](#-timeline-de-modificaciones-f-01) en este documento.
+
+---
+
+**Última actualización**: 2026-02-25
+
+**Cambio reciente**: Implementación F-01 — Timeline de modificaciones en palet (campo `timeline`, endpoint `GET /pallets/{id}/timeline`, tipos de evento y detalles documentados arriba).
 

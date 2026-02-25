@@ -257,6 +257,50 @@ GET /api/v2/pallets/{id}
 
 ---
 
+### Timeline de modificaciones del palet (F-01)
+
+```http
+GET /api/v2/pallets/{id}/timeline
+```
+
+#### Headers
+```http
+X-Tenant: {subdomain}
+Authorization: Bearer {access_token}
+```
+
+#### Path Parameters
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| id | integer | ID del palet |
+
+#### Response Exitosa (200)
+
+```json
+{
+  "timeline": [
+    {
+      "timestamp": "2026-02-25T10:30:00.000000Z",
+      "userId": 5,
+      "userName": "José García",
+      "type": "state_changed",
+      "action": "Estado cambiado de Registrado a Almacenado",
+      "details": {
+        "fromId": 1,
+        "from": "registered",
+        "toId": 2,
+        "to": "stored"
+      }
+    }
+  ]
+}
+```
+
+**Descripción:** Historial de cambios del palet (quién lo movió, cuándo cambió de estado, vinculación a pedidos, cambios en cajas, etc.). Orden: más reciente primero. Tipos de evento y formato completo en [Inventario - Palets (31-palets.md)](/docs/inventario/31-palets.md#-timeline-de-modificaciones-f-01).
+
+---
+
 ### Actualizar Palet
 
 ```http

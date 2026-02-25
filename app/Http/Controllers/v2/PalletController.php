@@ -45,6 +45,16 @@ class PalletController extends Controller
         return response()->json(['data' => new PalletResource($pallet)]);
     }
 
+    /** Timeline de modificaciones del palet (F-01). */
+    public function timeline(string $id)
+    {
+        $pallet = Pallet::findOrFail($id);
+        $this->authorize('view', $pallet);
+        $timeline = $pallet->timeline ?? [];
+
+        return response()->json(['timeline' => array_values(array_reverse($timeline))]);
+    }
+
     public function update(UpdatePalletRequest $request, string $id)
     {
         $pallet = Pallet::with('reception', 'boxes.box.productionInputs')->findOrFail($id);

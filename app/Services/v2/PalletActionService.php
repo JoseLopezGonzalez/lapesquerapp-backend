@@ -2,35 +2,72 @@
 
 namespace App\Services\v2;
 
+use App\Models\Order;
 use App\Models\Pallet;
+use App\Models\Store;
 use App\Models\StoredPallet;
+use App\Services\v2\PalletTimelineService;
 
 class PalletActionService
 {
     public static function assignToPosition(int $positionId, array $palletIds): void
     {
         foreach ($palletIds as $palletId) {
+            $pallet = Pallet::with('storedPallet.store')->find($palletId);
             $stored = StoredPallet::firstOrNew(['pallet_id' => $palletId]);
             $stored->position = $positionId;
             $stored->save();
+            $stored->load('store');
+            if ($pallet) {
+                $store = $stored->store;
+                $storeName = $store?->name ?? null;
+                $action = $storeName
+                    ? "Posición asignada: {$positionId} ({$storeName})"
+                    : "Posición asignada: {$positionId}";
+                PalletTimelineService::record($pallet, 'position_assigned', $action, [
+                    'positionId' => $positionId,
+                    'positionName' => (string) $positionId,
+                    'storeId' => $store?->id,
+                    'storeName' => $storeName,
+                ]);
+            }
         }
     }
 
     public static function moveToStore(int $palletId, int $storeId): array
     {
-        $pallet = Pallet::findOrFail($palletId);
+        $pallet = Pallet::with('storedPallet.store')->findOrFail($palletId);
+        $previousStore = $pallet->storedPallet?->store;
+        $previousStoreId = $previousStore?->id;
+        $previousStoreName = $previousStore?->name;
 
         if ($pallet->status === Pallet::STATE_REGISTERED) {
             $pallet->status = Pallet::STATE_STORED;
             $pallet->save();
+            PalletTimelineService::record($pallet, 'state_changed', 'Estado cambiado de Registrado a Almacenado', [
+                'fromId' => Pallet::STATE_REGISTERED,
+                'from' => 'registered',
+                'toId' => Pallet::STATE_STORED,
+                'to' => 'stored',
+            ]);
         } elseif ($pallet->status !== Pallet::STATE_STORED) {
             return ['error' => 'El palet no está en estado almacenado o registrado'];
         }
+
+        $store = Store::find($storeId);
+        $storeName = $store?->name ?? null;
 
         $storedPallet = StoredPallet::firstOrNew(['pallet_id' => $palletId]);
         $storedPallet->store_id = $storeId;
         $storedPallet->position = null;
         $storedPallet->save();
+
+        PalletTimelineService::record($pallet, 'store_assigned', $storeName ? "Movido al almacén {$storeName}" : "Movido al almacén #{$storeId}", [
+            'storeId' => $storeId,
+            'storeName' => $storeName,
+            'previousStoreId' => $previousStoreId,
+            'previousStoreName' => $previousStoreName,
+        ]);
 
         $pallet->refresh();
         $pallet = PalletListService::loadRelations(Pallet::query()->where('id', $pallet->id))->first();
@@ -65,14 +102,28 @@ class PalletActionService
 
     public static function unassignPosition(int $palletId): ?StoredPallet
     {
-        $stored = StoredPallet::where('pallet_id', $palletId)->first();
+        $stored = StoredPallet::with('store')->where('pallet_id', $palletId)->first();
 
         if (! $stored) {
             return null;
         }
 
+        $pallet = Pallet::find($palletId);
+        $previousPosition = $stored->position;
+        $previousStoreName = $stored->store?->name;
+
         $stored->position = null;
         $stored->save();
+
+        if ($pallet) {
+            $action = $previousStoreName
+                ? "Posición {$previousPosition} eliminada ({$previousStoreName})"
+                : "Posición {$previousPosition} eliminada";
+            PalletTimelineService::record($pallet, 'position_unassigned', $action, [
+                'previousPositionId' => $previousPosition,
+                'previousPositionName' => (string) $previousPosition,
+            ]);
+        }
 
         return $stored;
     }
@@ -98,8 +149,11 @@ class PalletActionService
         $defaultStoreId = $defaultStoreId ?? \App\Models\Store::query()->value('id');
         $updatedCount = 0;
 
+        $stateName = Pallet::getStateName($stateId);
         foreach ($pallets as $pallet) {
             if ($pallet->status != $stateId) {
+                $fromId = $pallet->status;
+                $fromName = Pallet::getStateName($fromId);
                 if ($stateId !== Pallet::STATE_STORED && $pallet->storedPallet) {
                     $pallet->unStore();
                 }
@@ -113,6 +167,12 @@ class PalletActionService
 
                 $pallet->status = $stateId;
                 $pallet->save();
+                PalletTimelineService::record($pallet, 'state_changed', sprintf('Estado cambiado de %s a %s', ucfirst($fromName), ucfirst($stateName)), [
+                    'fromId' => $fromId,
+                    'from' => $fromName,
+                    'toId' => $stateId,
+                    'to' => $stateName,
+                ]);
                 $updatedCount++;
             }
         }
@@ -134,8 +194,14 @@ class PalletActionService
             return ['error' => "El palet #{$palletId} ya está vinculado al pedido #{$pallet->order_id}. Debe desvincularlo primero."];
         }
 
+        $order = Order::find($orderId);
+        $orderRef = $order && $order->reference ? $order->reference : '#' . $orderId;
         $pallet->order_id = $orderId;
         $pallet->save();
+        PalletTimelineService::record($pallet, 'order_linked', "Vinculado al pedido {$orderRef}", [
+            'orderId' => $orderId,
+            'orderReference' => $orderRef,
+        ]);
         $pallet = PalletListService::loadRelations(Pallet::query()->where('id', $palletId))->first();
 
         return ['status' => 'linked', 'pallet' => $pallet];
@@ -182,13 +248,18 @@ class PalletActionService
         }
 
         $orderId = $pallet->order_id;
+        $order = Order::find($orderId);
+        $orderRef = $order && $order->reference ? $order->reference : '#' . $orderId;
         $pallet->order_id = null;
         if ($pallet->status !== Pallet::STATE_REGISTERED) {
             $pallet->status = Pallet::STATE_REGISTERED;
         }
         $pallet->unStore();
         $pallet->save();
-
+        PalletTimelineService::record($pallet, 'order_unlinked', "Desvinculado del pedido {$orderRef}", [
+            'orderId' => $orderId,
+            'orderReference' => $orderRef,
+        ]);
         $pallet = PalletListService::loadRelations(Pallet::query()->where('id', $palletId))->first();
 
         return ['status' => 'unlinked', 'pallet' => $pallet, 'order_id' => $orderId];

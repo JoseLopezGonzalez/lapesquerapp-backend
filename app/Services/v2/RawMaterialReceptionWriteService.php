@@ -8,6 +8,7 @@ use App\Models\PalletBox;
 use App\Models\Product;
 use App\Models\RawMaterialReception;
 use App\Models\StoredPallet;
+use App\Services\v2\PalletTimelineService;
 use Illuminate\Database\Eloquent\Model;
 
 use function normalizeDateToBusiness;
@@ -104,6 +105,7 @@ class RawMaterialReceptionWriteService
             }
         }
         foreach ($palletsData as $palletData) {
+            $palletWasNew = false;
             $palletId = $palletData['id'] ?? null;
             $storeId = $palletData['store']['id'] ?? null;
             if ($palletId && $existingPallets->has($palletId)) {
@@ -128,10 +130,12 @@ class RawMaterialReceptionWriteService
                 }
                 $processedPalletIds[] = $palletId;
                 $pallet->load('boxes.box.productionInputs');
+                $palletWasNew = false;
             } else {
                 if ($hasUsedBoxes) {
                     throw new \Exception("No se pueden crear nuevos palets cuando hay cajas siendo usadas en producción");
                 }
+                $palletWasNew = true;
                 $pallet = new Pallet();
                 $pallet->reception_id = $reception->id;
                 $pallet->observations = $palletData['observations'] ?? null;
@@ -226,6 +230,21 @@ class RawMaterialReceptionWriteService
             }
             if ($boxesToDelete->isNotEmpty()) {
                 $pallet->load('boxes.box.productionInputs');
+            }
+            if ($palletWasNew) {
+                $pallet->load('boxes.box');
+                $boxesCount = $pallet->boxes->count();
+                $totalNetWeight = $pallet->boxes->sum(fn ($pb) => $pb->box?->net_weight ?? 0);
+                PalletTimelineService::record($pallet, 'pallet_created_from_reception', sprintf(
+                    'Palet creado desde la recepción #%d con %d cajas (%.2f kg)',
+                    $reception->id,
+                    $boxesCount,
+                    $totalNetWeight
+                ), [
+                    'receptionId' => $reception->id,
+                    'boxesCount' => $boxesCount,
+                    'totalNetWeight' => round($totalNetWeight, 2),
+                ]);
             }
         }
         foreach ($reception->pallets as $pallet) {
@@ -361,6 +380,18 @@ class RawMaterialReceptionWriteService
                 $box->save();
                 PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $box->id]);
             }
+            $boxesCount = count($palletData['boxes']);
+            $totalNetWeight = array_sum(array_map(fn ($b) => (float) ($b['netWeight'] ?? 0), $palletData['boxes']));
+            PalletTimelineService::record($pallet, 'pallet_created_from_reception', sprintf(
+                'Palet creado desde la recepción #%d con %d cajas (%.2f kg)',
+                $reception->id,
+                $boxesCount,
+                $totalNetWeight
+            ), [
+                'receptionId' => $reception->id,
+                'boxesCount' => $boxesCount,
+                'totalNetWeight' => round($totalNetWeight, 2),
+            ]);
         }
         $reception->load('pallets.boxes.box');
         $finalTotals = [];
@@ -391,7 +422,9 @@ class RawMaterialReceptionWriteService
     {
         $reception->load('pallets.boxes.box');
         $pallet = $reception->pallets->first();
+        $palletWasNew = false;
         if (! $pallet) {
+            $palletWasNew = true;
             $pallet = new Pallet();
             $pallet->reception_id = $reception->id;
             $pallet->observations = "Auto-generado desde recepción #{$reception->id}";
@@ -438,6 +471,21 @@ class RawMaterialReceptionWriteService
                 PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $box->id]);
             }
         }
+        if ($palletWasNew) {
+            $pallet->load('boxes.box');
+            $boxesCount = $pallet->boxes->count();
+            $totalNetWeight = $pallet->boxes->sum(fn ($pb) => $pb->box?->net_weight ?? 0);
+            PalletTimelineService::record($pallet, 'pallet_created_from_reception', sprintf(
+                'Palet creado desde la recepción #%d con %d cajas (%.2f kg)',
+                $reception->id,
+                $boxesCount,
+                $totalNetWeight
+            ), [
+                'receptionId' => $reception->id,
+                'boxesCount' => $boxesCount,
+                'totalNetWeight' => round($totalNetWeight, 2),
+            ]);
+        }
     }
 
     private static function createDetailsFromRequest(RawMaterialReception $reception, array $details, int $supplierId): void
@@ -472,6 +520,19 @@ class RawMaterialReceptionWriteService
                 PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $box->id]);
             }
         }
+        $pallet->load('boxes.box');
+        $boxesCount = $pallet->boxes->count();
+        $totalNetWeight = $pallet->boxes->sum(fn ($pb) => $pb->box?->net_weight ?? 0);
+        PalletTimelineService::record($pallet, 'pallet_created_from_reception', sprintf(
+            'Palet creado desde la recepción #%d con %d cajas (%.2f kg)',
+            $reception->id,
+            $boxesCount,
+            $totalNetWeight
+        ), [
+            'receptionId' => $reception->id,
+            'boxesCount' => $boxesCount,
+            'totalNetWeight' => round($totalNetWeight, 2),
+        ]);
     }
 
     private static function getDefaultPrice(int $productId, int $supplierId): ?float

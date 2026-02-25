@@ -6,7 +6,9 @@ use App\Models\Box;
 use App\Models\Pallet;
 use App\Models\PalletBox;
 use App\Models\RawMaterialReception;
+use App\Models\Store;
 use App\Models\StoredPallet;
+use App\Services\v2\PalletTimelineService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -43,13 +45,25 @@ class PalletWriteService
                 'gross_weight' => $box['grossWeight'],
                 'net_weight' => $box['netWeight'],
             ]);
-            PalletBox::create([
-                'pallet_id' => $newPallet->id,
-                'box_id' => $newBox->id,
-            ]);
+                PalletBox::create([
+                    'pallet_id' => $newPallet->id,
+                    'box_id' => $newBox->id,
+                ]);
         }
 
         $newPallet->refresh();
+        $boxesCount = count($boxes);
+        $totalNetWeight = array_sum(array_map(fn ($b) => (float) ($b['netWeight'] ?? 0), $boxes));
+        $storeId = $validated['store']['id'] ?? null;
+        $storeName = $storeId ? (Store::find($storeId)?->name ?? null) : null;
+        PalletTimelineService::record($newPallet, 'pallet_created', sprintf('Palet creado con %d cajas (%.2f kg)', $boxesCount, $totalNetWeight), [
+            'boxesCount' => $boxesCount,
+            'totalNetWeight' => round($totalNetWeight, 2),
+            'initialState' => Pallet::getStateName($newPallet->status),
+            'storeId' => $storeId,
+            'storeName' => $storeName,
+            'orderId' => $validated['orderId'] ?? null,
+        ]);
 
         return PalletListService::loadRelations(Pallet::query()->where('id', $newPallet->id))->firstOrFail();
     }
@@ -83,7 +97,10 @@ class PalletWriteService
      */
     public static function update(Request $request, Pallet $pallet, array $validated): Pallet
     {
-        return DB::transaction(function () use ($request, $pallet, $validated) {
+        $pallet->load('boxes.box.product', 'storedPallet.store', 'order');
+        $snapshot = self::snapshotPalletForTimeline($pallet);
+
+        return DB::transaction(function () use ($request, $pallet, $validated, $snapshot) {
             $palletData = $validated;
             $updatedPallet = $pallet;
 
@@ -184,6 +201,9 @@ class PalletWriteService
             }
 
             $updatedPallet->refresh();
+            $updatedPallet->load('boxes.box.product', 'storedPallet.store', 'order');
+
+            self::recordTimelineFromUpdate($updatedPallet, $snapshot, $validated);
 
             if ($updatedPallet->reception_id !== null) {
                 $reception = $updatedPallet->reception;
@@ -194,6 +214,209 @@ class PalletWriteService
 
             return PalletListService::loadRelations(Pallet::query()->where('id', $updatedPallet->id))->firstOrFail();
         });
+    }
+
+    /**
+     * Snapshot del palet para comparar antes/después en el timeline.
+     *
+     * @return array{order_id: mixed, status: int, observations: ?string, store_id: ?int, store_name: ?string, boxes: array<int, array>}
+     */
+    private static function snapshotPalletForTimeline(Pallet $pallet): array
+    {
+        $store = $pallet->storedPallet?->store;
+        $boxes = [];
+        foreach ($pallet->boxes as $palletBox) {
+            $box = $palletBox->box;
+            if (! $box) {
+                continue;
+            }
+            $boxes[$box->id] = [
+                'boxId' => $box->id,
+                'productId' => $box->article_id,
+                'productName' => $box->product?->name,
+                'lot' => $box->lot,
+                'gs1128' => $box->gs1_128,
+                'netWeight' => $box->net_weight,
+                'grossWeight' => $box->gross_weight,
+            ];
+        }
+        return [
+            'order_id' => $pallet->order_id,
+            'status' => $pallet->status,
+            'observations' => $pallet->observations,
+            'store_id' => $store?->id,
+            'store_name' => $store?->name,
+            'boxes' => $boxes,
+        ];
+    }
+
+    /**
+     * Registra en el timeline las diferencias entre snapshot y estado actual del palet.
+     */
+    private static function recordTimelineFromUpdate(Pallet $pallet, array $snapshot, array $validated): void
+    {
+        $store = $pallet->storedPallet?->store;
+        $currentStoreId = $store?->id;
+        $currentStoreName = $store?->name;
+
+        if (array_key_exists('observations', $validated)) {
+            $newObs = $validated['observations'];
+            if ((string) $newObs !== (string) $snapshot['observations']) {
+                PalletTimelineService::record($pallet, 'observations_updated', 'Observaciones actualizadas', [
+                    'from' => $snapshot['observations'],
+                    'to' => $newObs,
+                ]);
+            }
+        }
+
+        if ($pallet->status !== $snapshot['status']) {
+            PalletTimelineService::record($pallet, 'state_changed', sprintf(
+                'Estado cambiado de %s a %s',
+                ucfirst(Pallet::getStateName($snapshot['status'])),
+                ucfirst(Pallet::getStateName($pallet->status))
+            ), [
+                'fromId' => $snapshot['status'],
+                'from' => Pallet::getStateName($snapshot['status']),
+                'toId' => $pallet->status,
+                'to' => Pallet::getStateName($pallet->status),
+            ]);
+        }
+
+        if ($currentStoreId !== $snapshot['store_id'] || $currentStoreName !== $snapshot['store_name']) {
+            if ($currentStoreId && $currentStoreName) {
+                PalletTimelineService::record($pallet, 'store_assigned', "Movido al almacén {$currentStoreName}", [
+                    'storeId' => $currentStoreId,
+                    'storeName' => $currentStoreName,
+                    'previousStoreId' => $snapshot['store_id'],
+                    'previousStoreName' => $snapshot['store_name'],
+                ]);
+            } elseif ($snapshot['store_id']) {
+                PalletTimelineService::record($pallet, 'store_removed', "Retirado del almacén {$snapshot['store_name']}", [
+                    'previousStoreId' => $snapshot['store_id'],
+                    'previousStoreName' => $snapshot['store_name'],
+                ]);
+            }
+        }
+
+        if (array_key_exists('orderId', $validated)) {
+            $newOrderId = $validated['orderId'];
+            if ($newOrderId !== null && $snapshot['order_id'] !== $newOrderId) {
+                $order = $pallet->order ?? \App\Models\Order::find($newOrderId);
+                $ref = $order ? ($order->reference ?? '#' . $order->id) : '#' . $newOrderId;
+                PalletTimelineService::record($pallet, 'order_linked', "Vinculado al pedido {$ref}", [
+                    'orderId' => $newOrderId,
+                    'orderReference' => $ref,
+                ]);
+            }
+            if ($newOrderId === null && $snapshot['order_id'] !== null) {
+                $ref = $snapshot['order_id'];
+                $prevOrder = \App\Models\Order::find($snapshot['order_id']);
+                if ($prevOrder && $prevOrder->reference) {
+                    $ref = $prevOrder->reference;
+                } else {
+                    $ref = '#' . $snapshot['order_id'];
+                }
+                PalletTimelineService::record($pallet, 'order_unlinked', "Desvinculado del pedido {$ref}", [
+                    'orderId' => $snapshot['order_id'],
+                    'orderReference' => $ref,
+                ]);
+            }
+        }
+
+        if (! array_key_exists('boxes', $validated)) {
+            return;
+        }
+
+        $currentBoxes = [];
+        foreach ($pallet->boxes as $palletBox) {
+            $box = $palletBox->box;
+            if (! $box) {
+                continue;
+            }
+            $currentBoxes[$box->id] = [
+                'boxId' => $box->id,
+                'productId' => $box->article_id,
+                'productName' => $box->product?->name,
+                'lot' => $box->lot,
+                'gs1128' => $box->gs1_128,
+                'netWeight' => $box->net_weight,
+                'grossWeight' => $box->gross_weight,
+            ];
+        }
+
+        $snapshotBoxIds = array_keys($snapshot['boxes']);
+        $currentBoxIds = array_keys($currentBoxes);
+        $removedIds = array_diff($snapshotBoxIds, $currentBoxIds);
+        $addedIds = array_diff($currentBoxIds, $snapshotBoxIds);
+        $commonIds = array_intersect($snapshotBoxIds, $currentBoxIds);
+
+        foreach ($removedIds as $boxId) {
+            $b = $snapshot['boxes'][$boxId];
+            $pallet->refresh();
+            $nc = $pallet->boxes()->count();
+            $nw = $pallet->boxes->sum(fn ($pb) => $pb->box?->net_weight ?? 0);
+            PalletTimelineService::record($pallet, 'box_removed', sprintf(
+                'Caja eliminada — %s, Lote %s, %s kg. Total: %d cajas / %s kg',
+                $b['productName'] ?? 'N/A',
+                $b['lot'] ?? '',
+                number_format((float) $b['netWeight'], 2, ',', ''),
+                $nc,
+                number_format($nw, 2, ',', '')
+            ), array_merge($b, [
+                'newBoxesCount' => $nc,
+                'newTotalNetWeight' => round($nw, 2),
+            ]));
+        }
+
+        foreach ($addedIds as $boxId) {
+            $b = $currentBoxes[$boxId];
+            $pallet->refresh();
+            $nc = $pallet->boxes()->count();
+            $nw = $pallet->boxes->sum(fn ($pb) => $pb->box?->net_weight ?? 0);
+            PalletTimelineService::record($pallet, 'box_added', sprintf(
+                'Caja añadida — %s, Lote %s, %s kg. Total: %d cajas / %s kg',
+                $b['productName'] ?? 'N/A',
+                $b['lot'] ?? '',
+                number_format((float) $b['netWeight'], 2, ',', ''),
+                $nc,
+                number_format($nw, 2, ',', '')
+            ), array_merge($b, [
+                'newBoxesCount' => $nc,
+                'newTotalNetWeight' => round($nw, 2),
+            ]));
+        }
+
+        foreach ($commonIds as $boxId) {
+            $old = $snapshot['boxes'][$boxId];
+            $new = $currentBoxes[$boxId];
+            $changes = [];
+            if (($old['netWeight'] ?? null) != ($new['netWeight'] ?? null)) {
+                $changes['netWeight'] = ['from' => $old['netWeight'], 'to' => $new['netWeight']];
+            }
+            if (($old['grossWeight'] ?? null) != ($new['grossWeight'] ?? null)) {
+                $changes['grossWeight'] = ['from' => $old['grossWeight'], 'to' => $new['grossWeight']];
+            }
+            if (($old['lot'] ?? '') != ($new['lot'] ?? '')) {
+                $changes['lot'] = ['from' => $old['lot'], 'to' => $new['lot']];
+            }
+            if (($old['productId'] ?? null) != ($new['productId'] ?? null)) {
+                $changes['productId'] = ['from' => $old['productId'], 'to' => $new['productId']];
+            }
+            if ($changes !== []) {
+                PalletTimelineService::record($pallet, 'box_updated', sprintf(
+                    'Caja #%d modificada — %s, Lote %s',
+                    $boxId,
+                    $new['productName'] ?? 'N/A',
+                    $new['lot'] ?? ''
+                ), [
+                    'boxId' => $boxId,
+                    'productId' => $new['productId'],
+                    'productName' => $new['productName'],
+                    'lot' => $new['lot'],
+                    'changes' => $changes,
+                ]);
+            }
+        }
     }
 
     /**

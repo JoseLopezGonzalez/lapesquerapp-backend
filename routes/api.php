@@ -344,6 +344,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
             Route::apiResource('boxes', BoxesController::class); /* Algo raro en el nombre */
             Route::delete('boxes', [BoxesController::class, 'destroyMultiple']);
+            Route::get('pallets/{id}/timeline', [V2PalletController::class, 'timeline'])->name('pallets.timeline');
             Route::apiResource('pallets', V2PalletController::class);
             Route::delete('pallets', [V2PalletController::class, 'destroyMultiple']);
             Route::apiResource('customers', V2CustomerController::class);

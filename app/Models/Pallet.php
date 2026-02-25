@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\v2\PalletTimelineService;
 use App\Traits\UsesTenantConnection;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -60,7 +61,11 @@ class Pallet extends Model
         ];
     }
 
-    protected $fillable = ['observations', 'status', 'reception_id'];
+    protected $fillable = ['observations', 'status', 'reception_id', 'timeline'];
+
+    protected $casts = [
+        'timeline' => 'array',
+    ];
 
     /**
      * Boot del modelo - Validaciones y eventos
@@ -535,18 +540,48 @@ class Pallet extends Model
 
         // Si todas las cajas están usadas → procesado
         if ($usedBoxesCount > 0 && $usedBoxesCount === $totalBoxes) {
+            $fromId = $this->status;
             $this->changeToProcessed();
+            PalletTimelineService::record($this, 'state_changed_auto', 'Estado actualizado automáticamente a Procesado (todas las cajas en producción)', [
+                'fromId' => $fromId,
+                'from' => self::getStateName($fromId),
+                'toId' => self::STATE_PROCESSED,
+                'to' => 'processed',
+                'reason' => 'all_boxes_in_production',
+                'usedBoxesCount' => $usedBoxesCount,
+                'totalBoxesCount' => $totalBoxes,
+            ]);
         }
         // Si todas las cajas están disponibles → registrado
         elseif ($usedBoxesCount === 0 && $totalBoxes > 0) {
+            $fromId = $this->status;
             $this->changeToRegistered();
+            PalletTimelineService::record($this, 'state_changed_auto', 'Estado actualizado automáticamente a Registrado (todas las cajas disponibles)', [
+                'fromId' => $fromId,
+                'from' => self::getStateName($fromId),
+                'toId' => self::STATE_REGISTERED,
+                'to' => 'registered',
+                'reason' => 'boxes_released_from_production',
+                'usedBoxesCount' => 0,
+                'totalBoxesCount' => $totalBoxes,
+            ]);
         }
         // Si está parcialmente consumido
         else {
             // Si el palet estaba completamente procesado (PROCESSED) y ahora solo algunas cajas están usadas,
             // debe volver a REGISTERED porque ya no todas las cajas están consumidas
             if ($this->status === self::STATE_PROCESSED) {
+                $fromId = $this->status;
                 $this->changeToRegistered();
+                PalletTimelineService::record($this, 'state_changed_auto', 'Estado actualizado automáticamente a Registrado (cajas liberadas de producción)', [
+                    'fromId' => $fromId,
+                    'from' => self::getStateName($fromId),
+                    'toId' => self::STATE_REGISTERED,
+                    'to' => 'registered',
+                    'reason' => 'partial_boxes_released',
+                    'usedBoxesCount' => $usedBoxesCount,
+                    'totalBoxesCount' => $totalBoxes,
+                ]);
             }
             // Si está parcialmente consumido pero no estaba en PROCESSED, mantener estado actual
         }
@@ -585,8 +620,16 @@ class Pallet extends Model
     public function changeToShipped(): void
     {
         if ($this->status !== self::STATE_SHIPPED) {
+            $fromId = $this->status;
+            $fromName = self::getStateName($fromId);
             $this->status = self::STATE_SHIPPED;
             $this->save();
+            PalletTimelineService::record($this, 'state_changed', 'Estado cambiado a Enviado (desde pedido finalizado)', [
+                'fromId' => $fromId,
+                'from' => $fromName,
+                'toId' => self::STATE_SHIPPED,
+                'to' => 'shipped',
+            ]);
         }
         // Quitar almacenamiento si existe
         $this->unStore();

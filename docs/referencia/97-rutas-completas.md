@@ -337,6 +337,7 @@ Todas las rutas siguientes siguen el patrón RESTful estándar con `apiResource`
 | `GET` | `/api/v2/pallets` | `V2PalletController` | `index` | Listar palets | Todos |
 | `POST` | `/api/v2/pallets` | `V2PalletController` | `store` | Crear palet | Todos |
 | `GET` | `/api/v2/pallets/{id}` | `V2PalletController` | `show` | Mostrar palet | Todos |
+| `GET` | `/api/v2/pallets/{id}/timeline` | `V2PalletController` | `timeline` | Timeline de modificaciones (F-01) | Todos |
 | `PUT` | `/api/v2/pallets/{id}` | `V2PalletController` | `update` | Actualizar palet | Todos |
 | `DELETE` | `/api/v2/pallets/{id}` | `V2PalletController` | `destroy` | Eliminar palet | Todos |
 | `DELETE` | `/api/v2/pallets` | `V2PalletController` | `destroyMultiple` | Eliminar múltiples | `tecnico,administrador,administracion` |

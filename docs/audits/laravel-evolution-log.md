@@ -5,6 +5,14 @@ Cada entrada sigue el formato definido en `docs/prompts/01_Laravel incremental e
 
 ---
 
+## [2026-02-25] F-01: Timeline de modificaciones en Palet
+
+**Prioridad**: Media | **Complejidad**: Baja | **Estado**: Implementado
+
+Historial ligero de cambios sobre la entidad Palet. Columna `timeline` (JSON) en `pallets`; servicio `PalletTimelineService::record()`; endpoint `GET /api/v2/pallets/{id}/timeline`. Tipos: pallet_created, pallet_created_from_reception, state_changed, state_changed_auto, store_assigned, store_removed, position_assigned, position_unassigned, order_linked, order_unlinked, box_added, box_removed, box_updated, observations_updated. Documentación: `docs/inventario/31-palets.md` (sección Timeline F-01), `docs/referencia/97-rutas-completas.md`.
+
+---
+
 ## [2026-02-15] Auditoría global — Mejoras implementadas
 
 **Fuente:** `docs/audits/laravel-backend-global-audit.md`  
