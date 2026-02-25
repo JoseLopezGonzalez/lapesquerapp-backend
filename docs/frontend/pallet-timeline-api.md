@@ -66,7 +66,7 @@ A continuación se listan **todos** los valores posibles de `type` y, para cada 
 
 ### 3.1 `pallet_created`
 
-**Cuándo**: El usuario crea un palet manualmente con `POST /api/v2/pallets`.
+**Cuándo**: El usuario crea un palet manualmente con `POST /api/v2/pallets`, o se crea un palet en una **autoventa** (flujo autoventa).
 
 **`details`**:
 
@@ -74,12 +74,13 @@ A continuación se listan **todos** los valores posibles de `type` y, para cada 
 |-------|------|-------------|
 | `boxesCount` | number | Número de cajas con las que se creó el palet |
 | `totalNetWeight` | number | Peso neto total (kg) de esas cajas |
-| `initialState` | string | Estado inicial: `"registered"` o `"stored"` |
+| `initialState` | string | Estado inicial: `"registered"`, `"stored"` o `"shipped"` (autoventa) |
 | `storeId` | number \| null | ID del almacén si se asignó al crear; si no, `null` |
 | `storeName` | string \| null | Nombre del almacén; `null` si no hay almacén |
-| `orderId` | number \| null | ID del pedido si se vinculó al crear; si no, `null` |
+| `orderId` | number \| null | ID del pedido si se vinculó al crear (o pedido autoventa); si no, `null` |
+| `fromAutoventa` | boolean | *(Opcional)* `true` si el palet se creó en un flujo de autoventa |
 
-**Ejemplo de `action`**: `"Palet creado con 3 cajas (14.50 kg)"`
+**Ejemplos de `action`**: `"Palet creado con 3 cajas (14.50 kg)"` | `"Palet creado en autoventa con 2 cajas (8.00 kg)"`
 
 ---
 
@@ -323,7 +324,9 @@ Claves posibles dentro de `changes`:
 | `from` | string \| null | Observaciones anteriores (puede ser `null` o vacío) |
 | `to` | string \| null | Observaciones nuevas |
 
-**Ejemplo de `action`**: `"Observaciones actualizadas"`
+**Ejemplos de `action`**: `"Observaciones actualizadas"` | `"Observaciones actualizadas (desde recepción)"`
+
+**Nota**: Los mismos tipos `state_changed`, `store_assigned`, `store_removed`, `box_added`, `box_removed`, `box_updated` pueden generarse también al **editar una recepción** (modificar palets existentes desde la pantalla de recepción); en ese caso el texto de `action` incluye la coletilla `"(desde recepción)"`.
 
 ---
 

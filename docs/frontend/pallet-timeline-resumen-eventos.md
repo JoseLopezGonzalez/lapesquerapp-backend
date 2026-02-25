@@ -21,20 +21,20 @@ Chequeo rápido: eventos contemplados y qué se guarda en cada uno.
 
 | Tipo | Cuándo se dispara | Detalles guardados (resumen) |
 |------|-------------------|------------------------------|
-| **pallet_created** | Crear palet manual (`POST /pallets`) | `boxesCount`, `totalNetWeight`, `initialState`, `storeId`, `storeName`, `orderId` |
+| **pallet_created** | Crear palet manual (`POST /pallets`) o en autoventa | `boxesCount`, `totalNetWeight`, `initialState`, `storeId`, `storeName`, `orderId`; si autoventa: `fromAutoventa: true`, `initialState`: `shipped` |
 | **pallet_created_from_reception** | Palet creado desde recepción (modo palets o líneas) | `receptionId`, `boxesCount`, `totalNetWeight` |
-| **state_changed** | Cambio de estado por usuario (edición, mover a almacén, bulk state, desvincular, pedido finalizado) | `fromId`, `from`, `toId`, `to` |
+| **state_changed** | Cambio de estado por usuario (edición, mover a almacén, bulk state, desvincular, pedido finalizado, editar recepción) | `fromId`, `from`, `toId`, `to` |
 | **state_changed_auto** | Cambio automático por producción (todas cajas usadas → processed; liberadas → registered) | `fromId`, `from`, `toId`, `to`, `reason` (`all_boxes_in_production` \| `boxes_released_from_production` \| `partial_boxes_released`), `usedBoxesCount`, `totalBoxesCount` |
-| **store_assigned** | Palet asignado a almacén (mover o editar con almacén) | `storeId`, `storeName`, `previousStoreId`, `previousStoreName` |
-| **store_removed** | Palet retirado del almacén | `previousStoreId`, `previousStoreName` |
+| **store_assigned** | Palet asignado a almacén (mover, editar o editar recepción) | `storeId`, `storeName`, `previousStoreId`, `previousStoreName` |
+| **store_removed** | Palet retirado del almacén (editar o editar recepción) | `previousStoreId`, `previousStoreName` |
 | **position_assigned** | Asignar posición (`POST /pallets/assign-to-position`) | `positionId`, `positionName`, `storeId`, `storeName` |
 | **position_unassigned** | Quitar posición (`POST /pallets/{id}/unassign-position`) | `previousPositionId`, `previousPositionName` |
 | **order_linked** | Vincular a pedido (edición o `POST /pallets/{id}/link-order`) | `orderId`, `orderReference` |
 | **order_unlinked** | Desvincular de pedido (edición o `POST /pallets/{id}/unlink-order`) | `orderId`, `orderReference` |
-| **box_added** | Añadir caja(s) en edición del palet | `boxId`, `productId`, `productName`, `lot`, `gs1128`, `netWeight`, `grossWeight`, `newBoxesCount`, `newTotalNetWeight` |
-| **box_removed** | Quitar caja en edición del palet | Igual que box_added + totales tras eliminar |
-| **box_updated** | Modificar caja existente (producto, lote, pesos) en edición | `boxId`, `productId`, `productName`, `lot`, `changes` (solo campos cambiados: `netWeight`, `grossWeight`, `lot`, `productId` con `from`/`to`) |
-| **observations_updated** | Cambiar observaciones en edición del palet | `from`, `to` |
+| **box_added** | Añadir caja(s) en edición del palet o en edición de recepción | `boxId`, `productId`, `productName`, `lot`, `gs1128`, `netWeight`, `grossWeight`, `newBoxesCount`, `newTotalNetWeight` |
+| **box_removed** | Quitar caja en edición del palet o en edición de recepción | Igual que box_added + totales tras eliminar |
+| **box_updated** | Modificar caja existente (producto, lote, pesos) en edición o en edición de recepción | `boxId`, `productId`, `productName`, `lot`, `changes` (solo campos cambiados: `netWeight`, `grossWeight`, `lot`, `productId` con `from`/`to`) |
+| **observations_updated** | Cambiar observaciones en edición del palet o en edición de recepción | `from`, `to` |
 
 ---
 
@@ -44,6 +44,8 @@ Chequeo rápido: eventos contemplados y qué se guarda en cada uno.
 |---------------|-------------------------|
 | **PalletWriteService::store()** | pallet_created |
 | **PalletWriteService::update()** | state_changed, store_assigned, store_removed, order_linked, order_unlinked, box_added, box_removed, box_updated, observations_updated |
+| **AutoventaStoreService** (crear autoventa) | pallet_created (con fromAutoventa) |
+| **RawMaterialReceptionWriteService::updatePalletsFromRequest()** (editar recepción, palets existentes) | state_changed, store_assigned, store_removed, box_added, box_removed, box_updated, observations_updated (textos con «desde recepción») |
 | **PalletActionService::moveToStore()** | state_changed (si pasa a stored), store_assigned |
 | **PalletActionService::assignToPosition()** | position_assigned |
 | **PalletActionService::unassignPosition()** | position_unassigned |

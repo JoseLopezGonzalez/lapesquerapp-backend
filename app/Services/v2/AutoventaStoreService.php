@@ -8,6 +8,7 @@ use App\Models\OrderPlannedProductDetail;
 use App\Models\Pallet;
 use App\Models\PalletBox;
 use App\Models\Tax;
+use App\Services\v2\PalletTimelineService;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -103,6 +104,22 @@ class AutoventaStoreService
                     'box_id' => $newBox->id,
                 ]);
             }
+
+            $boxesCount = count($validated['boxes']);
+            $totalNetWeight = array_sum(array_map(fn ($b) => (float) ($b['netWeight'] ?? 0), $validated['boxes']));
+            PalletTimelineService::record($pallet, 'pallet_created', sprintf(
+                'Palet creado en autoventa con %d cajas (%.2f kg)',
+                $boxesCount,
+                $totalNetWeight
+            ), [
+                'boxesCount' => $boxesCount,
+                'totalNetWeight' => round($totalNetWeight, 2),
+                'initialState' => 'shipped',
+                'storeId' => null,
+                'storeName' => null,
+                'orderId' => $order->id,
+                'fromAutoventa' => true,
+            ]);
 
             DB::commit();
 
