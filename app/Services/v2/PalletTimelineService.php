@@ -35,4 +35,28 @@ class PalletTimelineService
 
         $pallet->setAttribute('timeline', $timeline);
     }
+
+    /**
+     * Construye el texto de action (título breve) para un evento pallet_updated.
+     * El detalle completo está en $details; el frontend puede expandir o mostrar por separado.
+     *
+     * @param  array<string, mixed>  $details
+     */
+    public static function buildPalletUpdatedAction(array $details, bool $fromReception = false): string
+    {
+        return $fromReception ? 'Palet actualizado (desde recepción)' : 'Palet actualizado';
+    }
+
+    /**
+     * Borra todo el historial (timeline) del palet. Solo actualiza la columna JSON.
+     */
+    public static function clear(Pallet $pallet): void
+    {
+        $connection = $pallet->getConnectionName() ?? config('database.default');
+        DB::connection($connection)->table('pallets')
+            ->where('id', $pallet->id)
+            ->update(['timeline' => json_encode([])]);
+
+        $pallet->setAttribute('timeline', []);
+    }
 }

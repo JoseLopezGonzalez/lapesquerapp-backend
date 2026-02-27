@@ -19,6 +19,7 @@ use App\Http\Requests\v2\UpdatePalletRequest;
 use App\Http\Resources\v2\PalletResource;
 use App\Services\v2\PalletActionService;
 use App\Services\v2\PalletListService;
+use App\Services\v2\PalletTimelineService;
 use App\Services\v2\PalletWriteService;
 use App\Models\Order;
 use App\Models\Pallet;
@@ -53,6 +54,16 @@ class PalletController extends Controller
         $timeline = $pallet->timeline ?? [];
 
         return response()->json(['timeline' => array_values(array_reverse($timeline))]);
+    }
+
+    /** Borra el historial (timeline) del palet. Solo administrador y técnico. */
+    public function clearTimeline(string $id)
+    {
+        $pallet = Pallet::findOrFail($id);
+        $this->authorize('clearTimeline', $pallet);
+        PalletTimelineService::clear($pallet);
+
+        return response()->json(['message' => 'Historial del palet borrado correctamente']);
     }
 
     public function update(UpdatePalletRequest $request, string $id)

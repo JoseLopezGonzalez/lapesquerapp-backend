@@ -17,6 +17,17 @@ class PalletPolicy
     }
 
     /**
+     * Roles que pueden borrar el historial (timeline) del palet. Solo administrador y técnico.
+     */
+    protected function rolesCanClearTimeline(): array
+    {
+        return [
+            Role::Administrador->value,
+            Role::Tecnico->value,
+        ];
+    }
+
+    /**
      * Determine if the user can view any pallets.
      */
     public function viewAny(User $user): bool
@@ -54,5 +65,13 @@ class PalletPolicy
     public function delete(User $user, Pallet $pallet): bool
     {
         return $user->hasAnyRole($this->allowedRoles());
+    }
+
+    /**
+     * Determine if the user can clear the pallet timeline (historial). Solo administrador y técnico.
+     */
+    public function clearTimeline(User $user, Pallet $pallet): bool
+    {
+        return $user->hasAnyRole($this->rolesCanClearTimeline());
     }
 }

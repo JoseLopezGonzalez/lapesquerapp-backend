@@ -237,18 +237,13 @@ class RawMaterialReceptionWriteService
             if ($timelineSnapshot !== null) {
                 $pallet->refresh();
                 $pallet->load('boxes.box.product', 'storedPallet.store');
-                self::recordPalletTimelineFromReceptionUpdate($pallet, $timelineSnapshot, $palletData);
+                self::recordPalletTimelineFromReceptionUpdate($pallet, $timelineSnapshot, $palletData, $reception);
             }
             if ($palletWasNew) {
                 $pallet->load('boxes.box');
                 $boxesCount = $pallet->boxes->count();
                 $totalNetWeight = $pallet->boxes->sum(fn ($pb) => $pb->box?->net_weight ?? 0);
-                PalletTimelineService::record($pallet, 'pallet_created_from_reception', sprintf(
-                    'Palet creado desde la recepción #%d con %d cajas (%.2f kg)',
-                    $reception->id,
-                    $boxesCount,
-                    $totalNetWeight
-                ), [
+                PalletTimelineService::record($pallet, 'pallet_created_from_reception', 'Palet creado desde recepción', [
                     'receptionId' => $reception->id,
                     'boxesCount' => $boxesCount,
                     'totalNetWeight' => round($totalNetWeight, 2),
@@ -390,12 +385,7 @@ class RawMaterialReceptionWriteService
             }
             $boxesCount = count($palletData['boxes']);
             $totalNetWeight = array_sum(array_map(fn ($b) => (float) ($b['netWeight'] ?? 0), $palletData['boxes']));
-            PalletTimelineService::record($pallet, 'pallet_created_from_reception', sprintf(
-                'Palet creado desde la recepción #%d con %d cajas (%.2f kg)',
-                $reception->id,
-                $boxesCount,
-                $totalNetWeight
-            ), [
+            PalletTimelineService::record($pallet, 'pallet_created_from_reception', 'Palet creado desde recepción', [
                 'receptionId' => $reception->id,
                 'boxesCount' => $boxesCount,
                 'totalNetWeight' => round($totalNetWeight, 2),
@@ -483,12 +473,7 @@ class RawMaterialReceptionWriteService
             $pallet->load('boxes.box');
             $boxesCount = $pallet->boxes->count();
             $totalNetWeight = $pallet->boxes->sum(fn ($pb) => $pb->box?->net_weight ?? 0);
-            PalletTimelineService::record($pallet, 'pallet_created_from_reception', sprintf(
-                'Palet creado desde la recepción #%d con %d cajas (%.2f kg)',
-                $reception->id,
-                $boxesCount,
-                $totalNetWeight
-            ), [
+            PalletTimelineService::record($pallet, 'pallet_created_from_reception', 'Palet creado desde recepción', [
                 'receptionId' => $reception->id,
                 'boxesCount' => $boxesCount,
                 'totalNetWeight' => round($totalNetWeight, 2),
@@ -531,12 +516,7 @@ class RawMaterialReceptionWriteService
         $pallet->load('boxes.box');
         $boxesCount = $pallet->boxes->count();
         $totalNetWeight = $pallet->boxes->sum(fn ($pb) => $pb->box?->net_weight ?? 0);
-        PalletTimelineService::record($pallet, 'pallet_created_from_reception', sprintf(
-            'Palet creado desde la recepción #%d con %d cajas (%.2f kg)',
-            $reception->id,
-            $boxesCount,
-            $totalNetWeight
-        ), [
+        PalletTimelineService::record($pallet, 'pallet_created_from_reception', 'Palet creado desde recepción', [
             'receptionId' => $reception->id,
             'boxesCount' => $boxesCount,
             'totalNetWeight' => round($totalNetWeight, 2),
@@ -612,48 +592,46 @@ class RawMaterialReceptionWriteService
     }
 
     /**
-     * Registra en el timeline del palet los cambios hechos desde la edición de recepción.
+     * Registra en el timeline un único evento pallet_updated con todos los cambios de esta guardada (desde recepción).
      */
-    private static function recordPalletTimelineFromReceptionUpdate(Pallet $pallet, array $snapshot, array $palletData): void
+    private static function recordPalletTimelineFromReceptionUpdate(Pallet $pallet, array $snapshot, array $palletData, RawMaterialReception $reception): void
     {
+        $details = [];
         $store = $pallet->storedPallet?->store;
         $currentStoreId = $store?->id;
         $currentStoreName = $store?->name;
         $newObs = $palletData['observations'] ?? $pallet->observations;
 
         if ((string) $newObs !== (string) $snapshot['observations']) {
-            PalletTimelineService::record($pallet, 'observations_updated', 'Observaciones actualizadas (desde recepción)', [
-                'from' => $snapshot['observations'],
-                'to' => $newObs,
-            ]);
+            $details['observations'] = ['from' => $snapshot['observations'], 'to' => $newObs];
         }
 
         if ($pallet->status !== $snapshot['status']) {
-            PalletTimelineService::record($pallet, 'state_changed', sprintf(
-                'Estado cambiado de %s a %s (desde recepción)',
-                ucfirst(Pallet::getStateName($snapshot['status'])),
-                ucfirst(Pallet::getStateName($pallet->status))
-            ), [
+            $details['state'] = [
                 'fromId' => $snapshot['status'],
                 'from' => Pallet::getStateName($snapshot['status']),
                 'toId' => $pallet->status,
                 'to' => Pallet::getStateName($pallet->status),
-            ]);
+            ];
         }
 
         if ($currentStoreId !== $snapshot['store_id'] || $currentStoreName !== $snapshot['store_name']) {
             if ($currentStoreId && $currentStoreName) {
-                PalletTimelineService::record($pallet, 'store_assigned', "Movido al almacén {$currentStoreName} (desde recepción)", [
-                    'storeId' => $currentStoreId,
-                    'storeName' => $currentStoreName,
-                    'previousStoreId' => $snapshot['store_id'],
-                    'previousStoreName' => $snapshot['store_name'],
-                ]);
+                $details['store'] = [
+                    'assigned' => [
+                        'storeId' => $currentStoreId,
+                        'storeName' => $currentStoreName,
+                        'previousStoreId' => $snapshot['store_id'],
+                        'previousStoreName' => $snapshot['store_name'],
+                    ],
+                ];
             } elseif ($snapshot['store_id']) {
-                PalletTimelineService::record($pallet, 'store_removed', "Retirado del almacén {$snapshot['store_name']} (desde recepción)", [
-                    'previousStoreId' => $snapshot['store_id'],
-                    'previousStoreName' => $snapshot['store_name'],
-                ]);
+                $details['store'] = [
+                    'removed' => [
+                        'previousStoreId' => $snapshot['store_id'],
+                        'previousStoreName' => $snapshot['store_name'],
+                    ],
+                ];
             }
         }
 
@@ -680,42 +658,28 @@ class RawMaterialReceptionWriteService
         $addedIds = array_diff($currentBoxIds, $snapshotBoxIds);
         $commonIds = array_intersect($snapshotBoxIds, $currentBoxIds);
 
+        $nc = $pallet->boxes()->count();
+        $nw = round($pallet->boxes->sum(fn ($pb) => $pb->box?->net_weight ?? 0), 2);
+
+        $details['boxesRemoved'] = [];
         foreach ($removedIds as $boxId) {
             $b = $snapshot['boxes'][$boxId];
-            $pallet->refresh();
-            $nc = $pallet->boxes()->count();
-            $nw = $pallet->boxes->sum(fn ($pb) => $pb->box?->net_weight ?? 0);
-            PalletTimelineService::record($pallet, 'box_removed', sprintf(
-                'Caja eliminada — %s, Lote %s, %s kg. Total: %d cajas / %s kg (desde recepción)',
-                $b['productName'] ?? 'N/A',
-                $b['lot'] ?? '',
-                number_format((float) ($b['netWeight'] ?? 0), 2, ',', ''),
-                $nc,
-                number_format($nw, 2, ',', '')
-            ), array_merge($b, [
+            $details['boxesRemoved'][] = array_merge($b, [
                 'newBoxesCount' => $nc,
-                'newTotalNetWeight' => round($nw, 2),
-            ]));
+                'newTotalNetWeight' => $nw,
+            ]);
         }
 
+        $details['boxesAdded'] = [];
         foreach ($addedIds as $boxId) {
             $b = $currentBoxes[$boxId];
-            $pallet->refresh();
-            $nc = $pallet->boxes()->count();
-            $nw = $pallet->boxes->sum(fn ($pb) => $pb->box?->net_weight ?? 0);
-            PalletTimelineService::record($pallet, 'box_added', sprintf(
-                'Caja añadida — %s, Lote %s, %s kg. Total: %d cajas / %s kg (desde recepción)',
-                $b['productName'] ?? 'N/A',
-                $b['lot'] ?? '',
-                number_format((float) ($b['netWeight'] ?? 0), 2, ',', ''),
-                $nc,
-                number_format($nw, 2, ',', '')
-            ), array_merge($b, [
+            $details['boxesAdded'][] = array_merge($b, [
                 'newBoxesCount' => $nc,
-                'newTotalNetWeight' => round($nw, 2),
-            ]));
+                'newTotalNetWeight' => $nw,
+            ]);
         }
 
+        $details['boxesUpdated'] = [];
         foreach ($commonIds as $boxId) {
             $old = $snapshot['boxes'][$boxId];
             $new = $currentBoxes[$boxId];
@@ -733,20 +697,29 @@ class RawMaterialReceptionWriteService
                 $changes['productId'] = ['from' => $old['productId'], 'to' => $new['productId']];
             }
             if ($changes !== []) {
-                PalletTimelineService::record($pallet, 'box_updated', sprintf(
-                    'Caja #%d modificada — %s, Lote %s (desde recepción)',
-                    $boxId,
-                    $new['productName'] ?? 'N/A',
-                    $new['lot'] ?? ''
-                ), [
+                $details['boxesUpdated'][] = [
                     'boxId' => $boxId,
                     'productId' => $new['productId'],
                     'productName' => $new['productName'],
                     'lot' => $new['lot'],
                     'changes' => $changes,
-                ]);
+                ];
             }
         }
+
+        if ($details === []) {
+            return;
+        }
+
+        $details['fromReception'] = true;
+        $details['receptionId'] = $reception->id;
+
+        PalletTimelineService::record(
+            $pallet,
+            'pallet_updated',
+            PalletTimelineService::buildPalletUpdatedAction($details, true),
+            $details
+        );
     }
 
     private static function validateCanEdit(RawMaterialReception $reception): void

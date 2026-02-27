@@ -45,6 +45,7 @@ class TenantDatabaseSeeder extends Seeder
         $this->call(BoxSeeder::class);
         $this->call(PalletSeeder::class);
         $this->call(OrderPalletSeeder::class);
+        $this->call(PalletTimelineSeeder::class);
 
         $companyConfig = config('company');
 

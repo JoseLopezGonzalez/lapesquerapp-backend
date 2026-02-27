@@ -107,11 +107,7 @@ class AutoventaStoreService
 
             $boxesCount = count($validated['boxes']);
             $totalNetWeight = array_sum(array_map(fn ($b) => (float) ($b['netWeight'] ?? 0), $validated['boxes']));
-            PalletTimelineService::record($pallet, 'pallet_created', sprintf(
-                'Palet creado en autoventa con %d cajas (%.2f kg)',
-                $boxesCount,
-                $totalNetWeight
-            ), [
+            PalletTimelineService::record($pallet, 'pallet_created', 'Palet creado (autoventa)', [
                 'boxesCount' => $boxesCount,
                 'totalNetWeight' => round($totalNetWeight, 2),
                 'initialState' => 'shipped',

@@ -1,6 +1,15 @@
 # Timeline Palet (F-01) — Resumen esquemático de eventos
 
-Chequeo rápido: eventos contemplados y qué se guarda en cada uno.
+Chequeo rápido: eventos contemplados, qué se guarda en cada uno y endpoints. A partir de la mejora "un evento por guardado", el backend emite **un solo** evento `pallet_updated` por cada guardado (formulario de palet o edición de recepción); los tipos granulares (`box_added`, `box_removed`, etc.) solo aparecen en **datos antiguos**.
+
+---
+
+## Endpoints
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/api/v2/pallets/{id}/timeline` | Obtener historial del palet. |
+| `DELETE` | `/api/v2/pallets/{id}/timeline` | Borrar todo el historial. **Solo administrador y técnico** (403 para el resto). |
 
 ---
 
@@ -23,18 +32,19 @@ Chequeo rápido: eventos contemplados y qué se guarda en cada uno.
 |------|-------------------|------------------------------|
 | **pallet_created** | Crear palet manual (`POST /pallets`) o en autoventa | `boxesCount`, `totalNetWeight`, `initialState`, `storeId`, `storeName`, `orderId`; si autoventa: `fromAutoventa: true`, `initialState`: `shipped` |
 | **pallet_created_from_reception** | Palet creado desde recepción (modo palets o líneas) | `receptionId`, `boxesCount`, `totalNetWeight` |
-| **state_changed** | Cambio de estado por usuario (edición, mover a almacén, bulk state, desvincular, pedido finalizado, editar recepción) | `fromId`, `from`, `toId`, `to` |
-| **state_changed_auto** | Cambio automático por producción (todas cajas usadas → processed; liberadas → registered) | `fromId`, `from`, `toId`, `to`, `reason` (`all_boxes_in_production` \| `boxes_released_from_production` \| `partial_boxes_released`), `usedBoxesCount`, `totalBoxesCount` |
-| **store_assigned** | Palet asignado a almacén (mover, editar o editar recepción) | `storeId`, `storeName`, `previousStoreId`, `previousStoreName` |
-| **store_removed** | Palet retirado del almacén (editar o editar recepción) | `previousStoreId`, `previousStoreName` |
+| **pallet_updated** | **Un único evento por guardado**: formulario de palet (`PUT /pallets/{id}`) o guardar recepción con palets modificados. Agrupa todos los cambios. | Solo claves que cambiaron: `observations`, `state`, `store` (assigned/removed), `order` (linked/unlinked), `boxesAdded`, `boxesRemoved`, `boxesUpdated`; si desde recepción: `fromReception`, `receptionId` |
+| **state_changed** | Cambio de estado por usuario en **acción puntual**: mover a almacén, bulk state, desvincular pedido, pedido finalizado | `fromId`, `from`, `toId`, `to` |
+| **state_changed_auto** | Cambio automático por producción (todas cajas usadas → processed; liberadas → registered) | `fromId`, `from`, `toId`, `to`, `reason`, `usedBoxesCount`, `totalBoxesCount` |
+| **store_assigned** | Palet asignado a almacén con **acción** "mover a almacén" (no desde edición) | `storeId`, `storeName`, `previousStoreId`, `previousStoreName` |
+| **store_removed** | Solo dentro de `pallet_updated` o en datos legacy | `previousStoreId`, `previousStoreName` |
 | **position_assigned** | Asignar posición (`POST /pallets/assign-to-position`) | `positionId`, `positionName`, `storeId`, `storeName` |
 | **position_unassigned** | Quitar posición (`POST /pallets/{id}/unassign-position`) | `previousPositionId`, `previousPositionName` |
-| **order_linked** | Vincular a pedido (edición o `POST /pallets/{id}/link-order`) | `orderId`, `orderReference` |
-| **order_unlinked** | Desvincular de pedido (edición o `POST /pallets/{id}/unlink-order`) | `orderId`, `orderReference` |
-| **box_added** | Añadir caja(s) en edición del palet o en edición de recepción | `boxId`, `productId`, `productName`, `lot`, `gs1128`, `netWeight`, `grossWeight`, `newBoxesCount`, `newTotalNetWeight` |
-| **box_removed** | Quitar caja en edición del palet o en edición de recepción | Igual que box_added + totales tras eliminar |
-| **box_updated** | Modificar caja existente (producto, lote, pesos) en edición o en edición de recepción | `boxId`, `productId`, `productName`, `lot`, `changes` (solo campos cambiados: `netWeight`, `grossWeight`, `lot`, `productId` con `from`/`to`) |
-| **observations_updated** | Cambiar observaciones en edición del palet o en edición de recepción | `from`, `to` |
+| **order_linked** | Vincular a pedido con **acción** link-order (no desde edición) | `orderId`, `orderReference` |
+| **order_unlinked** | Desvincular con **acción** unlink-order (no desde edición) | `orderId`, `orderReference` |
+| **box_added** | *(Solo datos antiguos)* Antes: una entrada por caja añadida | `boxId`, `productId`, `productName`, `lot`, `gs1128`, `netWeight`, `grossWeight`, `newBoxesCount`, `newTotalNetWeight` |
+| **box_removed** | *(Solo datos antiguos)* | Igual que box_added + totales tras eliminar |
+| **box_updated** | *(Solo datos antiguos)* | `boxId`, `productId`, `productName`, `lot`, `changes` |
+| **observations_updated** | *(Solo datos antiguos)* | `from`, `to` |
 
 ---
 
@@ -43,9 +53,9 @@ Chequeo rápido: eventos contemplados y qué se guarda en cada uno.
 | Flujo / Lugar | Tipos que puede generar |
 |---------------|-------------------------|
 | **PalletWriteService::store()** | pallet_created |
-| **PalletWriteService::update()** | state_changed, store_assigned, store_removed, order_linked, order_unlinked, box_added, box_removed, box_updated, observations_updated |
+| **PalletWriteService::update()** | **pallet_updated** (un evento por guardado con todos los cambios) |
 | **AutoventaStoreService** (crear autoventa) | pallet_created (con fromAutoventa) |
-| **RawMaterialReceptionWriteService::updatePalletsFromRequest()** (editar recepción, palets existentes) | state_changed, store_assigned, store_removed, box_added, box_removed, box_updated, observations_updated (textos con «desde recepción») |
+| **RawMaterialReceptionWriteService::updatePalletsFromRequest()** (editar recepción, palets existentes modificados) | **pallet_updated** (un evento por palet, con fromReception/receptionId) |
 | **PalletActionService::moveToStore()** | state_changed (si pasa a stored), store_assigned |
 | **PalletActionService::assignToPosition()** | position_assigned |
 | **PalletActionService::unassignPosition()** | position_unassigned |
@@ -54,7 +64,8 @@ Chequeo rápido: eventos contemplados y qué se guarda en cada uno.
 | **PalletActionService::unlinkOrder()** | order_unlinked |
 | **Pallet::changeToShipped()** | state_changed (a shipped) |
 | **Pallet::updateStateBasedOnBoxes()** | state_changed_auto (processed o registered) |
-| **RawMaterialReceptionWriteService** (crear/actualizar recepción con palets) | pallet_created_from_reception |
+| **RawMaterialReceptionWriteService** (crear/actualizar recepción con palets nuevos) | pallet_created_from_reception |
+| **DELETE /pallets/{id}/timeline** | No registra evento; vacía el historial. Solo admin y técnico. |
 
 ---
 
@@ -72,11 +83,13 @@ Chequeo rápido: eventos contemplados y qué se guarda en cada uno.
 ## Comprobación rápida: ¿está todo?
 
 - [x] Creación palet (manual y desde recepción)
+- [x] Guardado con cambios agrupados (pallet_updated)
 - [x] Cambio de estado (manual y automático)
 - [x] Asignación / retirada de almacén
 - [x] Asignación / retirada de posición
 - [x] Vinculación / desvinculación de pedido
-- [x] Alta / baja / modificación de cajas
-- [x] Cambio de observaciones
+- [x] Alta / baja / modificación de cajas (dentro de pallet_updated o legacy)
+- [x] Cambio de observaciones (dentro de pallet_updated o legacy)
+- [x] Borrar historial (DELETE, solo admin y técnico)
 
-**Total: 14 tipos de evento.**
+**Total: 15 tipos de evento.** El frontend debe soportar todos para compatibilidad con historiales antiguos; los nuevos guardados emiten sobre todo `pallet_updated`.

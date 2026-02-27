@@ -21,10 +21,7 @@ class PalletActionService
             if ($pallet) {
                 $store = $stored->store;
                 $storeName = $store?->name ?? null;
-                $action = $storeName
-                    ? "Posición asignada: {$positionId} ({$storeName})"
-                    : "Posición asignada: {$positionId}";
-                PalletTimelineService::record($pallet, 'position_assigned', $action, [
+                PalletTimelineService::record($pallet, 'position_assigned', 'Posición asignada', [
                     'positionId' => $positionId,
                     'positionName' => (string) $positionId,
                     'storeId' => $store?->id,
@@ -44,7 +41,7 @@ class PalletActionService
         if ($pallet->status === Pallet::STATE_REGISTERED) {
             $pallet->status = Pallet::STATE_STORED;
             $pallet->save();
-            PalletTimelineService::record($pallet, 'state_changed', 'Estado cambiado de Registrado a Almacenado', [
+            PalletTimelineService::record($pallet, 'state_changed', 'Estado cambiado', [
                 'fromId' => Pallet::STATE_REGISTERED,
                 'from' => 'registered',
                 'toId' => Pallet::STATE_STORED,
@@ -62,7 +59,7 @@ class PalletActionService
         $storedPallet->position = null;
         $storedPallet->save();
 
-        PalletTimelineService::record($pallet, 'store_assigned', $storeName ? "Movido al almacén {$storeName}" : "Movido al almacén #{$storeId}", [
+        PalletTimelineService::record($pallet, 'store_assigned', 'Movido a almacén', [
             'storeId' => $storeId,
             'storeName' => $storeName,
             'previousStoreId' => $previousStoreId,
@@ -116,10 +113,7 @@ class PalletActionService
         $stored->save();
 
         if ($pallet) {
-            $action = $previousStoreName
-                ? "Posición {$previousPosition} eliminada ({$previousStoreName})"
-                : "Posición {$previousPosition} eliminada";
-            PalletTimelineService::record($pallet, 'position_unassigned', $action, [
+            PalletTimelineService::record($pallet, 'position_unassigned', 'Posición eliminada', [
                 'previousPositionId' => $previousPosition,
                 'previousPositionName' => (string) $previousPosition,
             ]);
@@ -167,7 +161,7 @@ class PalletActionService
 
                 $pallet->status = $stateId;
                 $pallet->save();
-                PalletTimelineService::record($pallet, 'state_changed', sprintf('Estado cambiado de %s a %s', ucfirst($fromName), ucfirst($stateName)), [
+                PalletTimelineService::record($pallet, 'state_changed', 'Estado cambiado', [
                     'fromId' => $fromId,
                     'from' => $fromName,
                     'toId' => $stateId,
@@ -198,7 +192,7 @@ class PalletActionService
         $orderRef = $order && $order->reference ? $order->reference : '#' . $orderId;
         $pallet->order_id = $orderId;
         $pallet->save();
-        PalletTimelineService::record($pallet, 'order_linked', "Vinculado al pedido {$orderRef}", [
+        PalletTimelineService::record($pallet, 'order_linked', 'Vinculado a pedido', [
             'orderId' => $orderId,
             'orderReference' => $orderRef,
         ]);
@@ -256,7 +250,7 @@ class PalletActionService
         }
         $pallet->unStore();
         $pallet->save();
-        PalletTimelineService::record($pallet, 'order_unlinked', "Desvinculado del pedido {$orderRef}", [
+        PalletTimelineService::record($pallet, 'order_unlinked', 'Desvinculado de pedido', [
             'orderId' => $orderId,
             'orderReference' => $orderRef,
         ]);

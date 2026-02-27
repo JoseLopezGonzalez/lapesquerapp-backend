@@ -542,7 +542,7 @@ class Pallet extends Model
         if ($usedBoxesCount > 0 && $usedBoxesCount === $totalBoxes) {
             $fromId = $this->status;
             $this->changeToProcessed();
-            PalletTimelineService::record($this, 'state_changed_auto', 'Estado actualizado automáticamente a Procesado (todas las cajas en producción)', [
+            PalletTimelineService::record($this, 'state_changed_auto', 'Estado actualizado (automático)', [
                 'fromId' => $fromId,
                 'from' => self::getStateName($fromId),
                 'toId' => self::STATE_PROCESSED,
@@ -556,7 +556,7 @@ class Pallet extends Model
         elseif ($usedBoxesCount === 0 && $totalBoxes > 0) {
             $fromId = $this->status;
             $this->changeToRegistered();
-            PalletTimelineService::record($this, 'state_changed_auto', 'Estado actualizado automáticamente a Registrado (todas las cajas disponibles)', [
+            PalletTimelineService::record($this, 'state_changed_auto', 'Estado actualizado (automático)', [
                 'fromId' => $fromId,
                 'from' => self::getStateName($fromId),
                 'toId' => self::STATE_REGISTERED,
@@ -573,7 +573,7 @@ class Pallet extends Model
             if ($this->status === self::STATE_PROCESSED) {
                 $fromId = $this->status;
                 $this->changeToRegistered();
-                PalletTimelineService::record($this, 'state_changed_auto', 'Estado actualizado automáticamente a Registrado (cajas liberadas de producción)', [
+                PalletTimelineService::record($this, 'state_changed_auto', 'Estado actualizado (automático)', [
                     'fromId' => $fromId,
                     'from' => self::getStateName($fromId),
                     'toId' => self::STATE_REGISTERED,
@@ -624,7 +624,7 @@ class Pallet extends Model
             $fromName = self::getStateName($fromId);
             $this->status = self::STATE_SHIPPED;
             $this->save();
-            PalletTimelineService::record($this, 'state_changed', 'Estado cambiado a Enviado (desde pedido finalizado)', [
+            PalletTimelineService::record($this, 'state_changed', 'Estado cambiado', [
                 'fromId' => $fromId,
                 'from' => $fromName,
                 'toId' => self::STATE_SHIPPED,
