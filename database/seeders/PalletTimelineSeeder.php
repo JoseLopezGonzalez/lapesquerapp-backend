@@ -41,7 +41,6 @@ class PalletTimelineSeeder extends Seeder
         $storeId = $store?->id ?? 1;
         $storeName = $store?->name ?? 'Almacén desarrollo';
         $orderId = $order?->id ?? 1;
-        $orderRef = $order && $order->reference ? $order->reference : '#' . $orderId;
         $productId = $product?->id ?? 1;
         $productName = $product?->name ?? 'Producto demo';
 
@@ -103,7 +102,6 @@ class PalletTimelineSeeder extends Seeder
                     'order' => [
                         'linked' => [
                             'orderId' => $orderId,
-                            'orderReference' => $orderRef,
                         ],
                     ],
                     'boxesAdded' => [
@@ -115,10 +113,9 @@ class PalletTimelineSeeder extends Seeder
                             'gs1128' => null,
                             'netWeight' => 4.2,
                             'grossWeight' => 4.5,
-                            'newBoxesCount' => 4,
-                            'newTotalNetWeight' => 18.7,
                         ],
                     ],
+                    'afterEvent' => ['boxesCount' => 4, 'totalNetWeight' => 18.7],
                 ],
             ];
 
@@ -213,7 +210,6 @@ class PalletTimelineSeeder extends Seeder
                 'action' => 'Vinculado a pedido',
                 'details' => [
                     'orderId' => $orderId,
-                    'orderReference' => $orderRef,
                 ],
             ];
 
@@ -225,7 +221,6 @@ class PalletTimelineSeeder extends Seeder
                 'action' => 'Desvinculado de pedido',
                 'details' => [
                     'orderId' => $orderId,
-                    'orderReference' => $orderRef,
                 ],
             ];
 
@@ -243,8 +238,7 @@ class PalletTimelineSeeder extends Seeder
                     'gs1128' => null,
                     'netWeight' => 4.2,
                     'grossWeight' => 4.5,
-                    'newBoxesCount' => 4,
-                    'newTotalNetWeight' => 16.8,
+                    'afterEvent' => ['boxesCount' => 4, 'totalNetWeight' => 16.8],
                 ],
             ];
 
@@ -262,8 +256,7 @@ class PalletTimelineSeeder extends Seeder
                     'gs1128' => null,
                     'netWeight' => 4.2,
                     'grossWeight' => 4.5,
-                    'newBoxesCount' => 3,
-                    'newTotalNetWeight' => 12.6,
+                    'afterEvent' => ['boxesCount' => 3, 'totalNetWeight' => 12.6],
                 ],
             ];
 
@@ -282,6 +275,7 @@ class PalletTimelineSeeder extends Seeder
                         'netWeight' => ['from' => 4.0, 'to' => 4.2],
                         'lot' => ['from' => 'L-2025-01', 'to' => 'L-2025-02'],
                     ],
+                    'afterEvent' => ['boxesCount' => 4, 'totalNetWeight' => 16.8],
                 ],
             ];
 

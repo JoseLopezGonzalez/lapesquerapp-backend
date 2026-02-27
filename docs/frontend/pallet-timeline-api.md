@@ -6,6 +6,15 @@ Documento de contrato entre backend y frontend: qué devuelve el API, cuándo y 
 
 ---
 
+## Cambios recientes (para frontend)
+
+| Fecha | Cambio | Impacto en frontend |
+|-------|--------|---------------------|
+| 2026-02 | **Totales del palet en `afterEvent`** | En eventos que tocan cajas (`pallet_updated` con boxesAdded/boxesRemoved/boxesUpdated, y tipos legacy `box_added`/`box_removed`/`box_updated`), los totales del palet **ya no** van en cada ítem de caja. Pasan a un único objeto **`details.afterEvent`** con forma `{ "boxesCount": number, "totalNetWeight": number }`. Los ítems de `boxesAdded` y `boxesRemoved` solo llevan datos de la caja (boxId, productId, productName, lot, gs1128, netWeight, grossWeight). **Compatibilidad**: si existe `details.afterEvent`, usarlo para mostrar totales; si no (datos antiguos), se puede seguir leyendo `newBoxesCount`/`newTotalNetWeight` en el ítem o en details. |
+| 2026-02 | **Pedido anterior en `order.linked`** | En `pallet_updated` y en `order_linked`, al vincular un pedido nuevo, si antes había otro asignado se incluye **`previousOrderId`** dentro de `details.order.linked`. No se envían cadenas de referencia; el frontend obtiene la referencia del pedido por id si la necesita. |
+
+---
+
 ## 1. Endpoints
 
 | Método | Ruta | Descripción |
@@ -131,9 +140,10 @@ A continuación se listan **todos** los valores posibles de `type` y, para cada 
 | `state` | `{ "fromId", "from", "toId", "to" }` | Solo si cambió el estado (nombres: `registered`, `stored`, `shipped`, `processed`). |
 | `store` | Ver abajo | Solo si cambió la asignación de almacén. |
 | `order` | Ver abajo | Solo si cambió la vinculación al pedido. |
-| `boxesAdded` | array | Lista de cajas añadidas en esta guardada (objetos con boxId, productId, productName, lot, gs1128, netWeight, grossWeight; opcionalmente newBoxesCount, newTotalNetWeight). |
-| `boxesRemoved` | array | Lista de cajas eliminadas (misma estructura). |
+| `boxesAdded` | array | Lista de cajas añadidas en esta guardada. Cada elemento solo tiene datos de la caja: boxId, productId, productName, lot, gs1128, netWeight, grossWeight (no incluye totales del palet). |
+| `boxesRemoved` | array | Lista de cajas eliminadas (misma estructura: solo datos de cada caja). |
 | `boxesUpdated` | array | Lista de cajas modificadas; cada elemento tiene boxId, productId, productName, lot, `changes` (objeto con solo los campos que cambiaron: netWeight, grossWeight, lot, productId, con `from`/`to`). |
+| `afterEvent` | object | Presente cuando el evento incluye cambios de cajas (boxesAdded, boxesRemoved o boxesUpdated). Forma: `{ "boxesCount": number, "totalNetWeight": number }` — estado del palet tras el evento. |
 | `fromReception` | boolean | `true` si el cambio se hizo desde la edición de una recepción. |
 | `receptionId` | number | ID de la recepción; solo si `fromReception === true`. |
 
@@ -142,8 +152,8 @@ A continuación se listan **todos** los valores posibles de `type` y, para cada 
 - Retirado: `"store": { "removed": { "previousStoreId", "previousStoreName" } }`
 
 **Forma de `order`** (una u otra):  
-- Vinculado: `"order": { "linked": { "orderId", "orderReference" } }`  
-- Desvinculado: `"order": { "unlinked": { "orderId", "orderReference" } }`
+- Vinculado: `"order": { "linked": { "orderId" [, "previousOrderId" ] } }`. Si antes había otro pedido asignado, se incluye `previousOrderId`.  
+- Desvinculado: `"order": { "unlinked": { "orderId" } }`
 
 **`action`**: `"Palet actualizado"` | `"Palet actualizado (desde recepción)"` (título breve; el detalle de cambios está en `details`).
 
@@ -259,9 +269,9 @@ A continuación se listan **todos** los valores posibles de `type` y, para cada 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | `orderId` | number | ID del pedido vinculado |
-| `orderReference` | string | Referencia para mostrar (p. ej. `"#142"` o el campo referencia del pedido si existe) |
+| `previousOrderId` | number | *(Opcional)* ID del pedido que estaba asignado antes, si lo había |
 
-**`action`**: `"Vinculado a pedido"` (orderId/orderReference en `details`).
+**`action`**: `"Vinculado a pedido"` (orderId en `details`; el frontend puede resolver la referencia del pedido por id si la necesita).
 
 ---
 
@@ -274,17 +284,16 @@ A continuación se listan **todos** los valores posibles de `type` y, para cada 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | `orderId` | number | ID del pedido del que se desvinculó |
-| `orderReference` | string | Referencia para mostrar (mismo criterio que en `order_linked`) |
 
-**`action`**: `"Desvinculado de pedido"` (orderId/orderReference en `details`).
+**`action`**: `"Desvinculado de pedido"` (orderId en `details`).
 
 ---
 
 ### 3.12 `box_added`
 
-**Cuándo**: En una actualización del palet (`PUT /api/v2/pallets/{id}`) se añade al menos una caja nueva al array de cajas.
+**Cuándo**: *(Solo datos antiguos/legacy.)* En una actualización del palet se añadía al menos una caja; cada caja generaba una entrada de tipo `box_added`.
 
-**`details`** (por cada caja nueva se genera una entrada; los datos son los de la caja añadida y los totales del palet tras el cambio):
+**`details`**: Datos de la caja añadida. Los totales del palet tras el evento van en **`afterEvent`** (formato actual y datos de ejemplo):
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
@@ -295,18 +304,17 @@ A continuación se listan **todos** los valores posibles de `type` y, para cada 
 | `gs1128` | string \| null | Código GS1-128 |
 | `netWeight` | number | Peso neto (kg) |
 | `grossWeight` | number \| null | Peso bruto (kg) |
-| `newBoxesCount` | number | Número total de cajas del palet después de añadir |
-| `newTotalNetWeight` | number | Peso neto total del palet después (kg) |
+| `afterEvent` | object | *(Formato actual)* `{ "boxesCount": number, "totalNetWeight": number }` — estado del palet tras añadir la caja. |
 
-**Ejemplo de `action`**: `"Caja añadida — Merluza, Lote L-2024-05, 4,20 kg. Total: 4 cajas / 16,70 kg"` (el formato decimal puede usar coma según locale del backend).
+**Compatibilidad**: En datos legacy puede aparecer `newBoxesCount` y `newTotalNetWeight` en el propio objeto en lugar de `afterEvent`. El frontend puede priorizar `details.afterEvent` si existe; si no, usar esos campos para no romper historiales antiguos.
 
 ---
 
 ### 3.13 `box_removed`
 
-**Cuándo**: En una actualización del palet se elimina una caja (la caja existente no viene en el array de cajas enviado).
+**Cuándo**: *(Solo datos antiguos/legacy.)* En una actualización del palet se eliminaba una caja; cada eliminación generaba una entrada de tipo `box_removed`.
 
-**`details`**: Misma estructura que `box_added` (datos de la caja eliminada más totales actuales del palet).
+**`details`**: Datos de la caja eliminada. Los totales del palet tras el evento van en **`afterEvent`** (formato actual):
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
@@ -317,16 +325,15 @@ A continuación se listan **todos** los valores posibles de `type` y, para cada 
 | `gs1128` | string \| null | GS1-128 |
 | `netWeight` | number | Peso neto de esa caja |
 | `grossWeight` | number \| null | Peso bruto |
-| `newBoxesCount` | number | Número de cajas del palet después de eliminar |
-| `newTotalNetWeight` | number | Peso neto total del palet después (kg) |
+| `afterEvent` | object | *(Formato actual)* `{ "boxesCount": number, "totalNetWeight": number }` — estado del palet tras eliminar la caja. |
 
-**Ejemplo de `action`**: `"Caja eliminada — Merluza, Lote L-2024-05, 4,20 kg. Total: 3 cajas / 12,50 kg"`
+**Compatibilidad**: En datos legacy puede aparecer `newBoxesCount` y `newTotalNetWeight` en el propio objeto. Priorizar `details.afterEvent` si existe.
 
 ---
 
 ### 3.14 `box_updated`
 
-**Cuándo**: En una actualización del palet, una caja existente cambia en al menos uno de: producto, lote, peso neto, peso bruto.
+**Cuándo**: *(Solo datos antiguos/legacy.)* En una actualización del palet, una caja existente cambiaba en al menos uno de: producto, lote, peso neto, peso bruto.
 
 **`details`**:
 
@@ -337,6 +344,7 @@ A continuación se listan **todos** los valores posibles de `type` y, para cada 
 | `productName` | string \| null | Nombre del producto (estado final) |
 | `lot` | string | Lote después del cambio |
 | `changes` | object | Solo los campos que cambiaron; cada clave es el nombre del campo y el valor es `{ "from": valorAnterior, "to": valorNuevo }` |
+| `afterEvent` | object | *(Opcional)* Para consistencia en eventos que tocan cajas: `{ "boxesCount": number, "totalNetWeight": number }`. |
 
 Claves posibles dentro de `changes`:
 
@@ -414,8 +422,9 @@ Para interpretar `from` / `to` en eventos de estado:
 - **Orden**: El array `timeline` viene ya con el **evento más reciente en la primera posición**; se puede mostrar en orden sin invertir.
 - **`action` como título**: El campo `action` es un **título breve** (una línea), no una descripción larga. El detalle (almacén, pedido, cajas, etc.) está en `details`; el frontend puede mostrar el título en lista y el detalle al expandir o en vista detalle.
 - **`userId` null**: Indica acción automática (p. ej. `state_changed_auto`); `userName` será `"Sistema"`.
-- **Campos opcionales**: En `details`, campos como `storeName`, `productName`, `orderReference`, `gs1128`, `grossWeight` pueden ser `null`; conviene tratarlos como opcionales al mostrar.
+- **Campos opcionales**: En `details`, campos como `storeName`, `productName`, `gs1128`, `grossWeight` pueden ser `null`; conviene tratarlos como opcionales al mostrar.
 - **Idioma**: Los textos en `action` están en español.
 - **Formato numérico**: En `details` los valores numéricos usan punto decimal (ej. `14.5`). En datos legacy, `action` podía incluir números con coma.
 - **Compatibilidad**: Soportar tanto el tipo `pallet_updated` (un evento por guardado con `details` agregados) como los tipos legacy (`box_added`, `box_removed`, `box_updated`, `observations_updated`, etc.) para historiales antiguos. Si aparece un `type` no reconocido, mostrar al menos `timestamp`, `userName` y `action`.
+- **Totales del palet tras el evento (cajas)**: En eventos que implican cambios de cajas, los totales (número de cajas y peso neto total) van en **`details.afterEvent`** con forma `{ "boxesCount": number, "totalNetWeight": number }`. Los ítems de `boxesAdded`/`boxesRemoved` ya no repiten esos valores. En datos legacy puede seguir existiendo `newBoxesCount`/`newTotalNetWeight` en cada ítem o en details; el frontend puede priorizar `details.afterEvent` si existe y, si no, usar esos campos para no romper historiales antiguos.
 - **Borrar historial**: Mostrar el botón "Borrar historial" solo si el usuario tiene rol administrador o técnico; llamar a `DELETE /api/v2/pallets/{id}/timeline`. Si el backend devuelve 403, ocultar o deshabilitar el botón.

@@ -299,19 +299,14 @@ class PalletWriteService
         if (array_key_exists('orderId', $validated)) {
             $newOrderId = $validated['orderId'];
             if ($newOrderId !== null && $snapshot['order_id'] !== $newOrderId) {
-                $order = $pallet->order ?? \App\Models\Order::find($newOrderId);
-                $ref = $order ? ($order->reference ?? '#' . $order->id) : '#' . $newOrderId;
-                $details['order'] = ['linked' => ['orderId' => $newOrderId, 'orderReference' => $ref]];
+                $linked = ['orderId' => $newOrderId];
+                if ($snapshot['order_id'] !== null) {
+                    $linked['previousOrderId'] = $snapshot['order_id'];
+                }
+                $details['order'] = ['linked' => $linked];
             }
             if ($newOrderId === null && $snapshot['order_id'] !== null) {
-                $ref = $snapshot['order_id'];
-                $prevOrder = \App\Models\Order::find($snapshot['order_id']);
-                if ($prevOrder && $prevOrder->reference) {
-                    $ref = $prevOrder->reference;
-                } else {
-                    $ref = '#' . $snapshot['order_id'];
-                }
-                $details['order'] = ['unlinked' => ['orderId' => $snapshot['order_id'], 'orderReference' => $ref]];
+                $details['order'] = ['unlinked' => ['orderId' => $snapshot['order_id']]];
             }
         }
 
@@ -342,25 +337,17 @@ class PalletWriteService
             $nc = $pallet->boxes()->count();
             $nw = round($pallet->boxes->sum(fn ($pb) => $pb->box?->net_weight ?? 0), 2);
 
-            $details['boxesRemoved'] = [];
+            $boxesRemoved = [];
             foreach ($removedIds as $boxId) {
-                $b = $snapshot['boxes'][$boxId];
-                $details['boxesRemoved'][] = array_merge($b, [
-                    'newBoxesCount' => $nc,
-                    'newTotalNetWeight' => $nw,
-                ]);
+                $boxesRemoved[] = $snapshot['boxes'][$boxId];
             }
 
-            $details['boxesAdded'] = [];
+            $boxesAdded = [];
             foreach ($addedIds as $boxId) {
-                $b = $currentBoxes[$boxId];
-                $details['boxesAdded'][] = array_merge($b, [
-                    'newBoxesCount' => $nc,
-                    'newTotalNetWeight' => $nw,
-                ]);
+                $boxesAdded[] = $currentBoxes[$boxId];
             }
 
-            $details['boxesUpdated'] = [];
+            $boxesUpdated = [];
             foreach ($commonIds as $boxId) {
                 $old = $snapshot['boxes'][$boxId];
                 $new = $currentBoxes[$boxId];
@@ -378,7 +365,7 @@ class PalletWriteService
                     $changes['productId'] = ['from' => $old['productId'], 'to' => $new['productId']];
                 }
                 if ($changes !== []) {
-                    $details['boxesUpdated'][] = [
+                    $boxesUpdated[] = [
                         'boxId' => $boxId,
                         'productId' => $new['productId'],
                         'productName' => $new['productName'],
@@ -386,6 +373,19 @@ class PalletWriteService
                         'changes' => $changes,
                     ];
                 }
+            }
+
+            if ($boxesRemoved !== []) {
+                $details['boxesRemoved'] = $boxesRemoved;
+            }
+            if ($boxesAdded !== []) {
+                $details['boxesAdded'] = $boxesAdded;
+            }
+            if ($boxesUpdated !== []) {
+                $details['boxesUpdated'] = $boxesUpdated;
+            }
+            if (isset($details['boxesRemoved']) || isset($details['boxesAdded']) || isset($details['boxesUpdated'])) {
+                $details['afterEvent'] = ['boxesCount' => $nc, 'totalNetWeight' => $nw];
             }
         }
 

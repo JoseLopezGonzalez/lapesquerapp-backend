@@ -573,8 +573,8 @@ Historial ligero de cambios sobre la entidad Palet. Cualquier usuario puede ver 
 | `store_removed` | Retirado del almacén | `previousStoreId`, `previousStoreName` |
 | `position_assigned` | Posición asignada | `positionId`, `positionName`, `storeId`, `storeName` |
 | `position_unassigned` | Posición eliminada | `previousPositionId`, `previousPositionName` |
-| `order_linked` | Vinculado a pedido | `orderId`, `orderReference` |
-| `order_unlinked` | Desvinculado de pedido | `orderId`, `orderReference` |
+| `order_linked` | Vinculado a pedido | `orderId` [, `previousOrderId` ] |
+| `order_unlinked` | Desvinculado de pedido | `orderId` |
 | `box_added` | Caja añadida | `boxId`, `productId`, `productName`, `lot`, `gs1128`, `netWeight`, `grossWeight`, `newBoxesCount`, `newTotalNetWeight` |
 | `box_removed` | Caja eliminada | Igual que `box_added` + totales actuales |
 | `box_updated` | Caja modificada | `boxId`, `productId`, `productName`, `lot`, `changes` (objeto con `from`/`to` por campo) |

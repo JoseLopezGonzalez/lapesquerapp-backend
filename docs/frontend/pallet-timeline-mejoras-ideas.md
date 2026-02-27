@@ -50,9 +50,9 @@ Solo se incluyen en `details` las claves que realmente cambiaron. Si algo no cam
 **Forma de `order`** (una u otra):
 
 - Si se **vinculó** a un pedido:  
-  `"order": { "linked": { "orderId": number, "orderReference": string } }`
+  `"order": { "linked": { "orderId": number [, "previousOrderId": number ] } }`
 - Si se **desvinculó**:  
-  `"order": { "unlinked": { "orderId": number, "orderReference": string } }`
+  `"order": { "unlinked": { "orderId": number } }`
 
 **Objeto “caja” en `boxesAdded` y `boxesRemoved`** (cada elemento del array):
 
@@ -101,8 +101,7 @@ El campo `action` es un **título breve** (una línea), no una descripción. El 
     },
     "order": {
       "linked": {
-        "orderId": 142,
-        "orderReference": "#142"
+        "orderId": 142
       }
     },
     "boxesAdded": [

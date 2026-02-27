@@ -2,6 +2,8 @@
 
 Chequeo rápido: eventos contemplados, qué se guarda en cada uno y endpoints. A partir de la mejora "un evento por guardado", el backend emite **un solo** evento `pallet_updated` por cada guardado (formulario de palet o edición de recepción); los tipos granulares (`box_added`, `box_removed`, etc.) solo aparecen en **datos antiguos**.
 
+**Cambio reciente (2026-02)**: Totales del palet (cajas y peso) pasan a **`details.afterEvent`** (`{ boxesCount, totalNetWeight }`). Ya no se repiten en cada ítem de `boxesAdded`/`boxesRemoved`. Ver [pallet-timeline-api.md](pallet-timeline-api.md) sección "Cambios recientes".
+
 ---
 
 ## Endpoints
@@ -32,18 +34,18 @@ Chequeo rápido: eventos contemplados, qué se guarda en cada uno y endpoints. A
 |------|-------------------|------------------------------|
 | **pallet_created** | Crear palet manual (`POST /pallets`) o en autoventa | `boxesCount`, `totalNetWeight`, `initialState`, `storeId`, `storeName`, `orderId`; si autoventa: `fromAutoventa: true`, `initialState`: `shipped` |
 | **pallet_created_from_reception** | Palet creado desde recepción (modo palets o líneas) | `receptionId`, `boxesCount`, `totalNetWeight` |
-| **pallet_updated** | **Un único evento por guardado**: formulario de palet (`PUT /pallets/{id}`) o guardar recepción con palets modificados. Agrupa todos los cambios. | Solo claves que cambiaron: `observations`, `state`, `store` (assigned/removed), `order` (linked/unlinked), `boxesAdded`, `boxesRemoved`, `boxesUpdated`; si desde recepción: `fromReception`, `receptionId` |
+| **pallet_updated** | **Un único evento por guardado**: formulario de palet (`PUT /pallets/{id}`) o guardar recepción con palets modificados. Agrupa todos los cambios. | Solo claves que cambiaron: `observations`, `state`, `store` (assigned/removed), `order` (linked/unlinked), `boxesAdded`, `boxesRemoved`, `boxesUpdated` (ítems sin totales por caja); cuando hay cambios de cajas: `afterEvent: { boxesCount, totalNetWeight }`; si desde recepción: `fromReception`, `receptionId` |
 | **state_changed** | Cambio de estado por usuario en **acción puntual**: mover a almacén, bulk state, desvincular pedido, pedido finalizado | `fromId`, `from`, `toId`, `to` |
 | **state_changed_auto** | Cambio automático por producción (todas cajas usadas → processed; liberadas → registered) | `fromId`, `from`, `toId`, `to`, `reason`, `usedBoxesCount`, `totalBoxesCount` |
 | **store_assigned** | Palet asignado a almacén con **acción** "mover a almacén" (no desde edición) | `storeId`, `storeName`, `previousStoreId`, `previousStoreName` |
 | **store_removed** | Solo dentro de `pallet_updated` o en datos legacy | `previousStoreId`, `previousStoreName` |
 | **position_assigned** | Asignar posición (`POST /pallets/assign-to-position`) | `positionId`, `positionName`, `storeId`, `storeName` |
 | **position_unassigned** | Quitar posición (`POST /pallets/{id}/unassign-position`) | `previousPositionId`, `previousPositionName` |
-| **order_linked** | Vincular a pedido con **acción** link-order (no desde edición) | `orderId`, `orderReference` |
-| **order_unlinked** | Desvincular con **acción** unlink-order (no desde edición) | `orderId`, `orderReference` |
-| **box_added** | *(Solo datos antiguos)* Antes: una entrada por caja añadida | `boxId`, `productId`, `productName`, `lot`, `gs1128`, `netWeight`, `grossWeight`, `newBoxesCount`, `newTotalNetWeight` |
-| **box_removed** | *(Solo datos antiguos)* | Igual que box_added + totales tras eliminar |
-| **box_updated** | *(Solo datos antiguos)* | `boxId`, `productId`, `productName`, `lot`, `changes` |
+| **order_linked** | Vincular a pedido con **acción** link-order (no desde edición) | `orderId`; opc. `previousOrderId` si había otro pedido |
+| **order_unlinked** | Desvincular con **acción** unlink-order (no desde edición) | `orderId` |
+| **box_added** | *(Solo datos antiguos)* Antes: una entrada por caja añadida | Datos de la caja; totales en `afterEvent: { boxesCount, totalNetWeight }`. Legacy: puede tener `newBoxesCount`/`newTotalNetWeight` en details. |
+| **box_removed** | *(Solo datos antiguos)* | Igual que box_added: datos de la caja + `afterEvent`; legacy puede tener totales por ítem. |
+| **box_updated** | *(Solo datos antiguos)* | `boxId`, `productId`, `productName`, `lot`, `changes`; opcionalmente `afterEvent` para consistencia. |
 | **observations_updated** | *(Solo datos antiguos)* | `from`, `to` |
 
 ---

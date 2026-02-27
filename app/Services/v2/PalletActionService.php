@@ -188,13 +188,10 @@ class PalletActionService
             return ['error' => "El palet #{$palletId} ya está vinculado al pedido #{$pallet->order_id}. Debe desvincularlo primero."];
         }
 
-        $order = Order::find($orderId);
-        $orderRef = $order && $order->reference ? $order->reference : '#' . $orderId;
         $pallet->order_id = $orderId;
         $pallet->save();
         PalletTimelineService::record($pallet, 'order_linked', 'Vinculado a pedido', [
             'orderId' => $orderId,
-            'orderReference' => $orderRef,
         ]);
         $pallet = PalletListService::loadRelations(Pallet::query()->where('id', $palletId))->first();
 
@@ -242,8 +239,6 @@ class PalletActionService
         }
 
         $orderId = $pallet->order_id;
-        $order = Order::find($orderId);
-        $orderRef = $order && $order->reference ? $order->reference : '#' . $orderId;
         $pallet->order_id = null;
         if ($pallet->status !== Pallet::STATE_REGISTERED) {
             $pallet->status = Pallet::STATE_REGISTERED;
@@ -252,7 +247,6 @@ class PalletActionService
         $pallet->save();
         PalletTimelineService::record($pallet, 'order_unlinked', 'Desvinculado de pedido', [
             'orderId' => $orderId,
-            'orderReference' => $orderRef,
         ]);
         $pallet = PalletListService::loadRelations(Pallet::query()->where('id', $palletId))->first();
 
