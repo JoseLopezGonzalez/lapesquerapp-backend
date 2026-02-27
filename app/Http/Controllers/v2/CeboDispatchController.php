@@ -9,6 +9,7 @@ use App\Http\Requests\v2\StoreCeboDispatchRequest;
 use App\Http\Requests\v2\UpdateCeboDispatchRequest;
 use App\Http\Resources\v2\CeboDispatchResource;
 use App\Models\CeboDispatch;
+use App\Models\CeboDispatchProduct;
 use App\Models\Supplier;
 use App\Services\v2\CeboDispatchListService;
 use Illuminate\Support\Facades\DB;
@@ -18,33 +19,38 @@ use function normalizeDateToBusiness;
 class CeboDispatchController extends Controller
 {
     /**
-     * Precios por product_id de la última salida de cebo del proveedor.
-     * Clave: product_id, valor: price (float). Solo líneas con price no nulo.
+     * Para cada product_id, devuelve el precio de la última línea (por fecha/id de despacho) del mismo
+     * proveedor que contenga ese producto con price no nulo. Así cada línea puede tomar el precio de
+     * la salida anterior que sí incluyera ese producto, no solo de "la última salida en general".
      *
      * @param  int  $supplierId
-     * @param  int|null  $excludeDispatchId  Excluir este despacho (p. ej. el que se está editando en update).
-     * @return array<int, float>
+     * @param  int[]  $productIds  IDs de producto a consultar
+     * @param  int|null  $excludeDispatchId  Excluir este despacho (p. ej. el que se está editando en update)
+     * @return array<int, float> product_id => price
      */
-    private function getLastDispatchPricesByProduct(int $supplierId, ?int $excludeDispatchId = null): array
+    private function getLastPricePerProduct(int $supplierId, array $productIds, ?int $excludeDispatchId = null): array
     {
-        $query = CeboDispatch::where('supplier_id', $supplierId);
-        if ($excludeDispatchId !== null) {
-            $query->where('id', '!=', $excludeDispatchId);
-        }
-        $lastDispatch = $query
-            ->orderByDesc('date')
-            ->orderByDesc('id')
-            ->with('products')
-            ->first();
-
-        if (! $lastDispatch || ! $lastDispatch->relationLoaded('products')) {
+        $productIds = array_values(array_unique(array_map('intval', $productIds)));
+        if ($productIds === []) {
             return [];
         }
 
+        $lines = CeboDispatchProduct::query()
+            ->select('cebo_dispatch_products.product_id', 'cebo_dispatch_products.price')
+            ->join('cebo_dispatches', 'cebo_dispatches.id', '=', 'cebo_dispatch_products.dispatch_id')
+            ->where('cebo_dispatches.supplier_id', $supplierId)
+            ->whereIn('cebo_dispatch_products.product_id', $productIds)
+            ->whereNotNull('cebo_dispatch_products.price')
+            ->when($excludeDispatchId !== null, fn ($q) => $q->where('cebo_dispatches.id', '!=', $excludeDispatchId))
+            ->orderByDesc('cebo_dispatches.date')
+            ->orderByDesc('cebo_dispatches.id')
+            ->get();
+
         $prices = [];
-        foreach ($lastDispatch->products as $product) {
-            if ($product->price !== null) {
-                $prices[(int) $product->product_id] = (float) $product->price;
+        foreach ($lines as $line) {
+            $pid = (int) $line->product_id;
+            if (! array_key_exists($pid, $prices)) {
+                $prices[$pid] = (float) $line->price;
             }
         }
 
@@ -77,7 +83,8 @@ class CeboDispatchController extends Controller
             $dispatch->export_type = $exportType;
             $dispatch->save();
 
-            $lastPrices = $this->getLastDispatchPricesByProduct($supplierId);
+            $productIds = array_map(fn ($d) => (int) $d['product']['id'], $validated['details']);
+            $lastPrices = $this->getLastPricePerProduct($supplierId, $productIds);
             foreach ($validated['details'] as $detail) {
                 $productId = (int) $detail['product']['id'];
                 $price = array_key_exists('price', $detail) && $detail['price'] !== null && $detail['price'] !== ''
@@ -131,7 +138,8 @@ class CeboDispatchController extends Controller
                 'export_type' => $exportType,
             ]);
 
-            $lastPrices = $this->getLastDispatchPricesByProduct($supplierId, $dispatch->id);
+            $productIds = array_map(fn ($d) => (int) $d['product']['id'], $validated['details']);
+            $lastPrices = $this->getLastPricePerProduct($supplierId, $productIds, $dispatch->id);
             $dispatch->products()->delete();
             foreach ($validated['details'] as $detail) {
                 $productId = (int) $detail['product']['id'];
