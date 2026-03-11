@@ -95,12 +95,11 @@ class RawMaterialReceptionWriteService
             $pricesMap[$key] = $priceData['price'];
         }
         $hasUsedBoxes = false;
-        $keysWithUsedBoxes = [];
         foreach ($reception->pallets as $pallet) {
             foreach ($pallet->boxes as $palletBox) {
                 if ($palletBox->box && $palletBox->box->productionInputs()->exists()) {
                     $hasUsedBoxes = true;
-                    $keysWithUsedBoxes["{$palletBox->box->article_id}_{$palletBox->box->lot}"] = true;
+                    break 2;
                 }
             }
         }
@@ -365,10 +364,7 @@ class RawMaterialReceptionWriteService
             }
         }
         foreach ($finalTotals as $key => $total) {
-            // Solo conservar precio original para producto/lote que tiene cajas en producción
-            $price = isset($keysWithUsedBoxes[$key]) && isset($originalTotals[$key])
-                ? $originalTotals[$key]['price']
-                : ($pricesMap[$key] ?? self::getDefaultPrice($total['product_id'], $reception->supplier_id));
+            $price = $pricesMap[$key] ?? self::getDefaultPrice($total['product_id'], $reception->supplier_id);
             $reception->products()->create([
                 'product_id' => $total['product_id'],
                 'lot' => $total['lot'],
