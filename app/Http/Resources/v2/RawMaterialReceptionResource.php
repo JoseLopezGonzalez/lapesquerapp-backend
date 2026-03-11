@@ -85,6 +85,7 @@ class RawMaterialReceptionResource extends JsonResource
             'totalAmount' => $this->totalAmount,
             'canEdit' => $this->can_edit,
             'cannotEditReason' => $this->cannot_edit_reason,
+            'lockedPalletIds' => $this->locked_pallet_ids,
         ];
     }
 

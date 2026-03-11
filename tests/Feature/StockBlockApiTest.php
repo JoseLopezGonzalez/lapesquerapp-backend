@@ -641,6 +641,197 @@ class StockBlockApiTest extends TestCase
         $this->assertDatabaseMissing('raw_material_receptions', ['id' => $r2->id], 'tenant');
     }
 
+    public function test_can_update_reception_when_pallet_linked_to_order(): void
+    {
+        $this->seedTenantForReceptions();
+        $order = $this->createMinimalOrderOnTenant();
+        $supplier = Supplier::on('tenant')->first();
+        $product = Product::on('tenant')->first();
+        $reception = RawMaterialReception::on('tenant')->create([
+            'supplier_id' => $supplier->id,
+            'date' => '2021-04-01',
+            'notes' => 'Notas originales',
+            'creation_mode' => RawMaterialReception::CREATION_MODE_PALLETS,
+        ]);
+        $box1 = \App\Models\Box::on('tenant')->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-A',
+            'gs1_128' => '01000000000001',
+            'gross_weight' => 11,
+            'net_weight' => 10,
+        ]);
+        $box2 = \App\Models\Box::on('tenant')->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-A',
+            'gs1_128' => '01000000000002',
+            'gross_weight' => 21,
+            'net_weight' => 20,
+        ]);
+        $pallet1 = Pallet::on('tenant')->create([
+            'reception_id' => $reception->id,
+            'status' => Pallet::STATE_REGISTERED,
+            'observations' => 'Palet editable',
+        ]);
+        $pallet2 = Pallet::on('tenant')->create([
+            'reception_id' => $reception->id,
+            'status' => Pallet::STATE_REGISTERED,
+            'observations' => 'Palet vinculado',
+        ]);
+        $pallet2->order_id = $order->id;
+        $pallet2->save();
+        \App\Models\PalletBox::on('tenant')->create(['pallet_id' => $pallet1->id, 'box_id' => $box1->id]);
+        \App\Models\PalletBox::on('tenant')->create(['pallet_id' => $pallet2->id, 'box_id' => $box2->id]);
+        $reception->products()->create([
+            'product_id' => $product->id,
+            'lot' => 'LOT-A',
+            'net_weight' => 30,
+            'price' => 2.5,
+        ]);
+
+        $payload = [
+            'supplier' => ['id' => $supplier->id],
+            'date' => '2021-04-01',
+            'notes' => 'Notas actualizadas con palet vinculado',
+            'declaredTotalAmount' => 100,
+            'declaredTotalNetWeight' => 30,
+            'pallets' => [
+                [
+                    'id' => $pallet1->id,
+                    'observations' => 'Palet editable actualizado',
+                    'store' => null,
+                    'boxes' => [
+                        [
+                            'id' => $box1->id,
+                            'product' => ['id' => $product->id],
+                            'lot' => 'LOT-A',
+                            'gs1128' => $box1->gs1_128,
+                            'grossWeight' => $box1->gross_weight,
+                            'netWeight' => $box1->net_weight,
+                        ],
+                    ],
+                ],
+                [
+                    'id' => $pallet2->id,
+                    'observations' => 'Palet vinculado',
+                    'store' => null,
+                    'boxes' => [
+                        [
+                            'id' => $box2->id,
+                            'product' => ['id' => $product->id],
+                            'lot' => 'LOT-A',
+                            'gs1128' => $box2->gs1_128,
+                            'grossWeight' => $box2->gross_weight,
+                            'netWeight' => $box2->net_weight,
+                        ],
+                    ],
+                ],
+            ],
+            'prices' => [
+                ['product' => ['id' => $product->id], 'lot' => 'LOT-A', 'price' => 3],
+            ],
+        ];
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->putJson('/api/v2/raw-material-receptions/' . $reception->id, $payload);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.notes', 'Notas actualizadas con palet vinculado');
+        $response->assertJsonPath('data.canEdit', true);
+        $this->assertContains($pallet2->id, $response->json('data.lockedPalletIds'));
+
+        $reception->refresh();
+        $this->assertSame('Notas actualizadas con palet vinculado', $reception->notes);
+        $pallet1->refresh();
+        $pallet2->refresh();
+        $this->assertSame('Palet editable actualizado', $pallet1->observations);
+        $this->assertSame('Palet vinculado', $pallet2->observations);
+    }
+
+    public function test_update_reception_fails_when_trying_to_delete_linked_pallet(): void
+    {
+        $this->seedTenantForReceptions();
+        $order = $this->createMinimalOrderOnTenant();
+        $supplier = Supplier::on('tenant')->first();
+        $product = Product::on('tenant')->first();
+        $reception = RawMaterialReception::on('tenant')->create([
+            'supplier_id' => $supplier->id,
+            'date' => '2021-05-01',
+            'notes' => null,
+            'creation_mode' => RawMaterialReception::CREATION_MODE_PALLETS,
+        ]);
+        $box1 = \App\Models\Box::on('tenant')->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-B',
+            'gs1_128' => '01000000000011',
+            'gross_weight' => 11,
+            'net_weight' => 10,
+        ]);
+        $box2 = \App\Models\Box::on('tenant')->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-B',
+            'gs1_128' => '01000000000012',
+            'gross_weight' => 21,
+            'net_weight' => 20,
+        ]);
+        $pallet1 = Pallet::on('tenant')->create([
+            'reception_id' => $reception->id,
+            'status' => Pallet::STATE_REGISTERED,
+            'observations' => null,
+        ]);
+        $pallet2 = Pallet::on('tenant')->create([
+            'reception_id' => $reception->id,
+            'status' => Pallet::STATE_REGISTERED,
+            'observations' => null,
+        ]);
+        $pallet2->order_id = $order->id;
+        $pallet2->save();
+        \App\Models\PalletBox::on('tenant')->create(['pallet_id' => $pallet1->id, 'box_id' => $box1->id]);
+        \App\Models\PalletBox::on('tenant')->create(['pallet_id' => $pallet2->id, 'box_id' => $box2->id]);
+        $reception->products()->create([
+            'product_id' => $product->id,
+            'lot' => 'LOT-B',
+            'net_weight' => 30,
+            'price' => 1.5,
+        ]);
+
+        $payload = [
+            'supplier' => ['id' => $supplier->id],
+            'date' => '2021-05-01',
+            'notes' => 'Solo envío palet 1',
+            'declaredTotalAmount' => 10,
+            'declaredTotalNetWeight' => 10,
+            'pallets' => [
+                [
+                    'id' => $pallet1->id,
+                    'observations' => null,
+                    'store' => null,
+                    'boxes' => [
+                        [
+                            'id' => $box1->id,
+                            'product' => ['id' => $product->id],
+                            'lot' => 'LOT-B',
+                            'gs1128' => $box1->gs1_128,
+                            'grossWeight' => $box1->gross_weight,
+                            'netWeight' => $box1->net_weight,
+                        ],
+                    ],
+                ],
+            ],
+            'prices' => [
+                ['product' => ['id' => $product->id], 'lot' => 'LOT-B', 'price' => 1],
+            ],
+        ];
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->putJson('/api/v2/raw-material-receptions/' . $reception->id, $payload);
+
+        $response->assertStatus(500);
+        $this->assertStringContainsString('vinculado a un pedido', $response->getContent());
+        $pallet2->refresh();
+        $this->assertNotNull($pallet2->order_id);
+        $this->assertDatabaseHas('pallets', ['id' => $pallet2->id, 'order_id' => $order->id], 'tenant');
+    }
+
     public function test_store_reception_returns_422_with_invalid_payload(): void
     {
         $this->seedTenantForReceptions();

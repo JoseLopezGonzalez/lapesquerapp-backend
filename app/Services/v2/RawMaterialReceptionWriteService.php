@@ -55,8 +55,6 @@ class RawMaterialReceptionWriteService
      */
     public static function update(RawMaterialReception $reception, array $data): void
     {
-        self::validateCanEdit($reception);
-
         $reception->update([
             'supplier_id' => $data['supplier']['id'],
             'date' => normalizeDateToBusiness($data['date']),
@@ -76,6 +74,7 @@ class RawMaterialReceptionWriteService
     {
         $reception->load('pallets.boxes.box.productionInputs', 'products');
         $existingPallets = $reception->pallets->keyBy('id');
+        $lockedPalletIds = $reception->pallets->whereNotNull('order_id')->pluck('id')->all();
         $processedPalletIds = [];
         $groupedByProduct = [];
         $originalTotals = [];
@@ -110,6 +109,10 @@ class RawMaterialReceptionWriteService
             $storeId = $palletData['store']['id'] ?? null;
             $timelineSnapshot = null;
             if ($palletId && $existingPallets->has($palletId)) {
+                if (in_array($palletId, $lockedPalletIds)) {
+                    $processedPalletIds[] = $palletId;
+                    continue;
+                }
                 $pallet = $existingPallets->get($palletId);
                 $pallet->load('boxes.box.product', 'storedPallet.store');
                 $timelineSnapshot = self::snapshotPalletForTimeline($pallet);
@@ -252,6 +255,9 @@ class RawMaterialReceptionWriteService
         }
         foreach ($reception->pallets as $pallet) {
             if (! in_array($pallet->id, $processedPalletIds)) {
+                if (in_array($pallet->id, $lockedPalletIds)) {
+                    throw new \Exception("No se puede eliminar el palet #{$pallet->id}: está vinculado a un pedido");
+                }
                 $pallet->load('boxes.box.productionInputs');
                 $hasUsedBoxesInPallet = false;
                 foreach ($pallet->boxes as $palletBox) {
@@ -284,6 +290,22 @@ class RawMaterialReceptionWriteService
                     }
                     $newTotals[$key]['net_weight'] += $box->net_weight;
                 }
+            }
+        }
+        foreach ($reception->pallets as $pallet) {
+            if (! in_array($pallet->id, $lockedPalletIds)) {
+                continue;
+            }
+            foreach ($pallet->boxes as $palletBox) {
+                $box = $palletBox->box;
+                if (! $box || $box->productionInputs()->exists()) {
+                    continue;
+                }
+                $key = "{$box->article_id}_{$box->lot}";
+                if (! isset($newTotals[$key])) {
+                    $newTotals[$key] = ['product_id' => $box->article_id, 'lot' => $box->lot, 'net_weight' => 0];
+                }
+                $newTotals[$key]['net_weight'] += $box->net_weight;
             }
         }
         $tolerance = 0.01;
@@ -725,17 +747,5 @@ class RawMaterialReceptionWriteService
             PalletTimelineService::buildPalletUpdatedAction($details, true),
             $details
         );
-    }
-
-    private static function validateCanEdit(RawMaterialReception $reception): void
-    {
-        if (! $reception->relationLoaded('pallets')) {
-            $reception->load('pallets.reception', 'pallets.boxes.box.productionInputs');
-        }
-        foreach ($reception->pallets as $pallet) {
-            if ($pallet->order_id !== null) {
-                throw new \Exception("No se puede modificar la recepción: el palet #{$pallet->id} está vinculado a un pedido");
-            }
-        }
     }
 }

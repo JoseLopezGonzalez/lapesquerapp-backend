@@ -18,7 +18,7 @@ class RawMaterialReception extends Model
     const CREATION_MODE_LINES = 'lines';
     const CREATION_MODE_PALLETS = 'pallets';
 
-    protected $appends = ['total_amount', 'can_edit', 'cannot_edit_reason'];
+    protected $appends = ['total_amount', 'can_edit', 'cannot_edit_reason', 'locked_pallet_ids'];
 
     /* hacer numeros  declared_total_amount y declared_total_net_weight*/
     
@@ -98,55 +98,37 @@ class RawMaterialReception extends Model
     }
 
     /**
-     * Verificar si la recepción se puede editar
-     * No se puede editar si:
-     * - Algún palet está vinculado a un pedido
-     * 
-     * NOTA: Ya no bloquea si hay cajas en producción.
-     * Se permite edición parcial de cajas disponibles cuando hay cajas usadas.
+     * Verificar si la recepción se puede editar.
+     * La recepción es siempre editable; los palets vinculados a pedidos quedan bloqueados
+     * por palet (véase locked_pallet_ids). Ya no se bloquea por palets con order_id.
      */
     public function getCanEditAttribute(): bool
     {
-        // Cargar relaciones si no están cargadas
-        if (!$this->relationLoaded('pallets')) {
-            $this->load('pallets.boxes.box.productionInputs');
-        }
-
-        foreach ($this->pallets as $pallet) {
-            // Verificar si el palet está vinculado a un pedido
-            if ($pallet->order_id !== null) {
-                return false;
-            }
-
-            // ✅ NUEVO: Ya no bloqueamos si hay cajas en producción
-            // La edición parcial se permitirá, pero con validaciones estrictas
-        }
-
         return true;
     }
 
     /**
-     * Obtener la razón por la que no se puede editar
+     * Obtener la razón por la que no se puede editar (bloqueo total).
+     * Actualmente null: la recepción siempre se puede editar; restricciones por palet vía locked_pallet_ids.
      */
     public function getCannotEditReasonAttribute(): ?string
     {
-        if ($this->can_edit) {
-            return null;
+        return null;
+    }
+
+    /**
+     * IDs de palets que no se pueden modificar (vinculados a un pedido).
+     * El front debe deshabilitar la edición solo de estos palets.
+     *
+     * @return array<int>
+     */
+    public function getLockedPalletIdsAttribute(): array
+    {
+        if (! $this->relationLoaded('pallets')) {
+            $this->load('pallets');
         }
 
-        // Cargar relaciones si no están cargadas
-        if (!$this->relationLoaded('pallets')) {
-            $this->load('pallets.boxes.box.productionInputs');
-        }
-
-        foreach ($this->pallets as $pallet) {
-            // Verificar si el palet está vinculado a un pedido
-            if ($pallet->order_id !== null) {
-                return "El palet #{$pallet->id} está vinculado a un pedido";
-            }
-        }
-
-        return "No se puede editar la recepción";
+        return $this->pallets->whereNotNull('order_id')->pluck('id')->all();
     }
 
 }
