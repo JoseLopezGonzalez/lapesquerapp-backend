@@ -58,9 +58,9 @@ class RawMaterialReceptionWriteService
         $reception->update([
             'supplier_id' => $data['supplier']['id'],
             'date' => normalizeDateToBusiness($data['date']),
-            'notes' => $data['notes'] ?? null,
-            'declared_total_amount' => $data['declaredTotalAmount'] ?? null,
-            'declared_total_net_weight' => $data['declaredTotalNetWeight'] ?? null,
+            'notes' => array_key_exists('notes', $data) ? $data['notes'] : $reception->notes,
+            'declared_total_amount' => array_key_exists('declaredTotalAmount', $data) ? ($data['declaredTotalAmount'] ?? null) : $reception->declared_total_amount,
+            'declared_total_net_weight' => array_key_exists('declaredTotalNetWeight', $data) ? ($data['declaredTotalNetWeight'] ?? null) : $reception->declared_total_net_weight,
         ]);
 
         if ($reception->creation_mode === RawMaterialReception::CREATION_MODE_PALLETS) {
@@ -95,11 +95,12 @@ class RawMaterialReceptionWriteService
             $pricesMap[$key] = $priceData['price'];
         }
         $hasUsedBoxes = false;
+        $keysWithUsedBoxes = [];
         foreach ($reception->pallets as $pallet) {
             foreach ($pallet->boxes as $palletBox) {
                 if ($palletBox->box && $palletBox->box->productionInputs()->exists()) {
                     $hasUsedBoxes = true;
-                    break 2;
+                    $keysWithUsedBoxes["{$palletBox->box->article_id}_{$palletBox->box->lot}"] = true;
                 }
             }
         }
@@ -364,7 +365,8 @@ class RawMaterialReceptionWriteService
             }
         }
         foreach ($finalTotals as $key => $total) {
-            $price = $hasUsedBoxes && isset($originalTotals[$key])
+            // Solo conservar precio original para producto/lote que tiene cajas en producción
+            $price = isset($keysWithUsedBoxes[$key]) && isset($originalTotals[$key])
                 ? $originalTotals[$key]['price']
                 : ($pricesMap[$key] ?? self::getDefaultPrice($total['product_id'], $reception->supplier_id));
             $reception->products()->create([

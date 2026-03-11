@@ -73,7 +73,7 @@ class RawMaterialReceptionResource extends JsonResource
                 return new SupplierResource($this->supplier);
             }),
             'date' => $this->date,
-            'notes' => $this->notes,
+            'notes' => $this->notes ?? '',
             'declaredTotalAmount' => round((float) $this->declared_total_amount, 2),
             'declaredTotalNetWeight' => round((float) $this->declared_total_net_weight, 2),
             'creationMode' => $this->creation_mode, // 'lines' o 'pallets'
