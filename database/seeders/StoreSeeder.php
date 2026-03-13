@@ -35,6 +35,8 @@ class StoreSeeder extends Seeder
                     'temperature' => $row['temperature'],
                     'capacity' => $row['capacity'],
                     'map' => self::MINIMAL_MAP,
+                    'store_type' => 'interno',
+                    'external_user_id' => null,
                 ]
             );
         }

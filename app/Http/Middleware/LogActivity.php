@@ -2,12 +2,13 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ActivityLog;
+use App\Models\ExternalUser;
 use Closure;
 use Illuminate\Http\Request;
-use App\Models\ActivityLog;
+use Illuminate\Support\Facades\Log;
 use Jenssegers\Agent\Agent;
 use Stevebauman\Location\Facades\Location;
-use Illuminate\Support\Facades\Log;
 
 class LogActivity
 {
@@ -24,38 +25,41 @@ class LogActivity
             try {
                 $location = Location::get($ip);
             } catch (\Exception $e) {
-                Log::error("Error obteniendo la ubicación: " . $e->getMessage());
+                Log::error('Error obteniendo la ubicación: '.$e->getMessage());
             }
 
             // Analizar el User-Agent
-            $agent = new Agent();
+            $agent = new Agent;
             $userAgentHeader = $request->header('User-Agent');
             if ($userAgentHeader) {
                 $agent->setUserAgent($userAgentHeader);
             } else {
-                Log::warning("No se encontró un User-Agent en la solicitud.");
+                Log::warning('No se encontró un User-Agent en la solicitud.');
             }
 
             // Verificar si el usuario está autenticado antes de registrar la actividad
             if (auth()->check()) {
+                $actor = auth()->user();
                 ActivityLog::create([
-                    'user_id' => auth()->id(),
+                    'user_id' => $actor instanceof ExternalUser ? null : auth()->id(),
                     'ip_address' => $ip,
                     'country' => $location?->countryName ?? 'Desconocido',
                     'city' => $location?->cityName ?? 'Desconocido',
                     'region' => $location?->regionName ?? 'Desconocido',
                     'platform' => $agent->platform() ?? 'Desconocido',
                     'browser' => $agent->browser() ?? 'Desconocido',
-                    'device' => $agent->device() ?? 'Desconocido',
+                    'device' => $actor instanceof ExternalUser
+                        ? trim(($agent->device() ?? 'Desconocido').' [external_user]')
+                        : ($agent->device() ?? 'Desconocido'),
                     'path' => $request->path(),
                     'method' => $request->method(),
                     'location' => "{$location?->countryName}, {$location?->cityName}",
                 ]);
             } else {
-                Log::info("Usuario no autenticado, actividad no registrada.");
+                Log::info('Usuario no autenticado, actividad no registrada.');
             }
         } catch (\Exception $e) {
-            Log::error("Error en el middleware LogActivity: " . $e->getMessage());
+            Log::error('Error en el middleware LogActivity: '.$e->getMessage());
         }
 
         return $response;

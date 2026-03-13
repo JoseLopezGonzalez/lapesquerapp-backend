@@ -3,12 +3,13 @@
 namespace App\Services\v2;
 
 use App\Models\Box;
+use App\Models\ExternalUser;
 use App\Models\Pallet;
 use App\Models\PalletBox;
 use App\Models\RawMaterialReception;
 use App\Models\Store;
 use App\Models\StoredPallet;
-use App\Services\v2\PalletTimelineService;
+use App\Services\ActorScopeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -21,6 +22,17 @@ class PalletWriteService
     {
         $boxes = $validated['boxes'];
         $storeId = $validated['store']['id'] ?? null;
+        $actor = request()->user();
+
+        if ($actor instanceof ExternalUser) {
+            if ($validated['orderId'] ?? null) {
+                throw new \InvalidArgumentException('Un usuario externo no puede vincular palets a pedidos.');
+            }
+
+            if ($storeId !== null && ! app(ActorScopeService::class)->canAccessStoreId($actor, (int) $storeId)) {
+                throw new \InvalidArgumentException('El almacén seleccionado no pertenece al usuario externo.');
+            }
+        }
 
         $newPallet = new Pallet;
         $newPallet->observations = $validated['observations'];
@@ -45,10 +57,10 @@ class PalletWriteService
                 'gross_weight' => $box['grossWeight'],
                 'net_weight' => $box['netWeight'],
             ]);
-                PalletBox::create([
-                    'pallet_id' => $newPallet->id,
-                    'box_id' => $newBox->id,
-                ]);
+            PalletBox::create([
+                'pallet_id' => $newPallet->id,
+                'box_id' => $newBox->id,
+            ]);
         }
 
         $newPallet->refresh();
@@ -99,6 +111,18 @@ class PalletWriteService
     {
         $pallet->load('boxes.box.product', 'storedPallet.store', 'order');
         $snapshot = self::snapshotPalletForTimeline($pallet);
+        $actor = $request->user();
+
+        if ($actor instanceof ExternalUser) {
+            if (($validated['orderId'] ?? null) !== null) {
+                throw new \InvalidArgumentException('Un usuario externo no puede vincular palets a pedidos.');
+            }
+
+            $storeId = $validated['store']['id'] ?? $pallet->store_id;
+            if ($storeId !== null && ! app(ActorScopeService::class)->canAccessStoreId($actor, (int) $storeId)) {
+                throw new \InvalidArgumentException('El almacén seleccionado no pertenece al usuario externo.');
+            }
+        }
 
         return DB::transaction(function () use ($request, $pallet, $validated, $snapshot) {
             $palletData = $validated;
@@ -240,6 +264,7 @@ class PalletWriteService
                 'grossWeight' => $box->gross_weight,
             ];
         }
+
         return [
             'order_id' => $pallet->order_id,
             'status' => $pallet->status,

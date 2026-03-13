@@ -2,18 +2,23 @@
 
 namespace App\Services\v2;
 
-use App\Models\Order;
+use App\Models\ExternalUser;
 use App\Models\Pallet;
 use App\Models\Store;
 use App\Models\StoredPallet;
-use App\Services\v2\PalletTimelineService;
+use App\Services\ActorScopeService;
 
 class PalletActionService
 {
     public static function assignToPosition(int $positionId, array $palletIds): void
     {
+        $actor = request()->user();
+
         foreach ($palletIds as $palletId) {
             $pallet = Pallet::with('storedPallet.store')->find($palletId);
+            if ($actor instanceof ExternalUser && ! app(ActorScopeService::class)->canAccessStoreId($actor, $pallet?->store_id)) {
+                throw new \InvalidArgumentException('El palet no pertenece a un almacén del usuario externo.');
+            }
             $stored = StoredPallet::firstOrNew(['pallet_id' => $palletId]);
             $stored->position = $positionId;
             $stored->save();
@@ -33,7 +38,14 @@ class PalletActionService
 
     public static function moveToStore(int $palletId, int $storeId): array
     {
+        $actor = request()->user();
         $pallet = Pallet::with('storedPallet.store')->findOrFail($palletId);
+        if ($actor instanceof ExternalUser) {
+            $scope = app(ActorScopeService::class);
+            if (! $scope->canAccessStoreId($actor, $pallet->store_id) || ! $scope->canAccessStoreId($actor, $storeId)) {
+                return ['error' => 'Solo puedes mover palets entre almacenes vinculados a tu acceso externo'];
+            }
+        }
         $previousStore = $pallet->storedPallet?->store;
         $previousStoreId = $previousStore?->id;
         $previousStoreName = $previousStore?->name;
@@ -99,10 +111,15 @@ class PalletActionService
 
     public static function unassignPosition(int $palletId): ?StoredPallet
     {
+        $actor = request()->user();
         $stored = StoredPallet::with('store')->where('pallet_id', $palletId)->first();
 
         if (! $stored) {
             return null;
+        }
+
+        if ($actor instanceof ExternalUser && ! app(ActorScopeService::class)->canAccessStoreId($actor, $stored->store_id)) {
+            throw new \InvalidArgumentException('El palet no pertenece a un almacén del usuario externo.');
         }
 
         $pallet = Pallet::find($palletId);

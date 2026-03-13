@@ -3,18 +3,19 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-use App\Models\Pallet;
-
 class Store extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
-    protected $fillable = ['name', 'temperature', 'capacity', 'map'];
+    protected $fillable = ['name', 'temperature', 'capacity', 'map', 'store_type', 'external_user_id'];
+
+    protected $casts = [
+        'external_user_id' => 'integer',
+    ];
     //protected $table = 'stores';
 
     // Definir relación con Pallet
@@ -36,26 +37,31 @@ class Store extends Model
             ->withPivot('position');
     }
 
+    public function externalUser()
+    {
+        return $this->belongsTo(ExternalUser::class);
+    }
 
-    //Accessor 
+    //Accessor
     public function getNetWeightPalletsAttribute()
     {
-        if (!$this->relationLoaded('palletsV2') || !$this->palletsV2) {
+        if (! $this->relationLoaded('palletsV2') || ! $this->palletsV2) {
             return 0;
         }
+
         return $this->palletsV2->sum(function ($pallet) {
             return $pallet->netWeight ?? 0;
         });
     }
 
-    //Accessor 
+    //Accessor
     public function getNetWeightBoxesAttribute()
     {
         //Implementar...
         return 0;
     }
 
-    //Accessor 
+    //Accessor
     public function getNetWeightBigBoxesAttribute()
     {
         //Implementar...
@@ -74,6 +80,13 @@ class Store extends Model
             'name' => $this->name,
             'temperature' => $this->temperature,
             'capacity' => $this->capacity,
+            'storeType' => $this->store_type,
+            'externalUser' => $this->externalUser ? [
+                'id' => $this->externalUser->id,
+                'name' => $this->externalUser->name,
+                'email' => $this->externalUser->email,
+                'type' => $this->externalUser->type,
+            ] : null,
             'netWeightPallets' => $this->netWeightPallets,
             'totalNetWeight' => $this->totalNetWeight,
             'content' => [
@@ -92,14 +105,15 @@ class Store extends Model
             'name' => $this->name,
             'temperature' => $this->temperature,
             'capacity' => $this->capacity,
+            'storeType' => $this->store_type,
+            'externalUser' => $this->externalUser ? [
+                'id' => $this->externalUser->id,
+                'name' => $this->externalUser->name,
+                'email' => $this->externalUser->email,
+                'type' => $this->externalUser->type,
+            ] : null,
             'netWeightPallets' => $this->netWeightPallets,
             'totalNetWeight' => $this->totalNetWeight,
         ];
     }
-
-
-
-    
-
-
 }

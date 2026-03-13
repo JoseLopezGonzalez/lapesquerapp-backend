@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Mail\AccessEmail;
+use App\Models\ExternalUser;
 use App\Models\MagicLinkToken;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
@@ -24,7 +25,7 @@ class MagicLinkService
      * Crea un token de magic link y un token OTP; el usuario puede usar el enlace o el código.
      * Returns true si se envió, false si no (ej. FRONTEND_URL no configurada).
      */
-    public function sendAccessEmailToUser(User $user): bool
+    public function sendAccessEmailToUser(User|ExternalUser $user): bool
     {
         $frontendUrl = magicLinkFrontendUrl();
         if (empty($frontendUrl)) {
@@ -44,13 +45,13 @@ class MagicLinkService
 
         MagicLinkToken::create([
             'email' => $user->email,
-            'token' => hash('sha256', $code . $user->email . now('UTC')->timestamp),
+            'token' => hash('sha256', $code.$user->email.now('UTC')->timestamp),
             'type' => MagicLinkToken::TYPE_OTP,
             'otp_code' => $code,
             'expires_at' => $expiresAt,
         ]);
 
-        $magicLinkUrl = $frontendUrl . '/auth/verify?token=' . $token;
+        $magicLinkUrl = $frontendUrl.'/auth/verify?token='.$token;
 
         $this->mailConfig->configureTenantMailer();
         Mail::to($user->email)->send(
@@ -65,7 +66,7 @@ class MagicLinkService
      * Ahora envía el mismo email unificado (link + OTP) para consistencia.
      * Returns a non-null value on success (for backward compatibility), null on failure.
      */
-    public function sendMagicLinkToUser(User $user): ?string
+    public function sendMagicLinkToUser(User|ExternalUser $user): ?string
     {
         return $this->sendAccessEmailToUser($user) ? 'sent' : null;
     }

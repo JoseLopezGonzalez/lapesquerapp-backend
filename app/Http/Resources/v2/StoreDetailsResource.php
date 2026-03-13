@@ -19,11 +19,18 @@ class StoreDetailsResource extends JsonResource
             'name' => $this->name,
             'temperature' => $this->temperature,
             'capacity' => $this->capacity,
+            'storeType' => $this->store_type,
+            'externalUser' => $this->externalUser ? [
+                'id' => $this->externalUser->id,
+                'name' => $this->externalUser->name,
+                'email' => $this->externalUser->email,
+                'type' => $this->externalUser->type,
+            ] : null,
             'netWeightPallets' => $this->netWeightPallets,
             'totalNetWeight' => $this->totalNetWeight,
             'content' => [
                 'pallets' => $this->palletsV2->map(function ($pallet) {
-                    /* return $pallet->toArrayAssocV2(); *//* resource */
+                    /* return $pallet->toArrayAssocV2(); */ /* resource */
                     return $pallet->toArrayAssocV2();
 
                 }),

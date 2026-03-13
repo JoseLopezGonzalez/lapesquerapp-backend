@@ -17,12 +17,12 @@ use App\Http\Requests\v2\StorePalletRequest;
 use App\Http\Requests\v2\UnlinkOrdersPalletRequest;
 use App\Http\Requests\v2\UpdatePalletRequest;
 use App\Http\Resources\v2\PalletResource;
+use App\Models\Order;
+use App\Models\Pallet;
 use App\Services\v2\PalletActionService;
 use App\Services\v2\PalletListService;
 use App\Services\v2\PalletTimelineService;
 use App\Services\v2\PalletWriteService;
-use App\Models\Order;
-use App\Models\Pallet;
 
 class PalletController extends Controller
 {
@@ -33,7 +33,14 @@ class PalletController extends Controller
 
     public function store(StorePalletRequest $request)
     {
-        $newPallet = PalletWriteService::store($request->validated());
+        try {
+            $newPallet = PalletWriteService::store($request->validated());
+        } catch (\InvalidArgumentException $exception) {
+            return response()->json([
+                'message' => 'Acción no autorizada.',
+                'userMessage' => $exception->getMessage(),
+            ], 403);
+        }
 
         return response()->json(new PalletResource($newPallet), 201);
     }
@@ -79,7 +86,14 @@ class PalletController extends Controller
             ], 403);
         }
 
-        $updatedPallet = PalletWriteService::update($request, $pallet, $request->validated());
+        try {
+            $updatedPallet = PalletWriteService::update($request, $pallet, $request->validated());
+        } catch (\InvalidArgumentException $exception) {
+            return response()->json([
+                'message' => 'Acción no autorizada.',
+                'userMessage' => $exception->getMessage(),
+            ], 403);
+        }
 
         return response()->json(new PalletResource($updatedPallet), 201);
     }
@@ -119,7 +133,14 @@ class PalletController extends Controller
     public function assignToPosition(AssignToPositionPalletRequest $request)
     {
         $v = $request->validated();
-        PalletActionService::assignToPosition($v['position_id'], $v['pallet_ids']);
+        try {
+            PalletActionService::assignToPosition($v['position_id'], $v['pallet_ids']);
+        } catch (\InvalidArgumentException $exception) {
+            return response()->json([
+                'message' => 'Acción no autorizada.',
+                'userMessage' => $exception->getMessage(),
+            ], 403);
+        }
 
         return response()->json(['message' => 'Palets ubicados correctamente'], 200);
     }
@@ -158,7 +179,14 @@ class PalletController extends Controller
     {
         $pallet = Pallet::findOrFail($id);
         $this->authorize('update', $pallet);
-        $stored = PalletActionService::unassignPosition((int) $id);
+        try {
+            $stored = PalletActionService::unassignPosition((int) $id);
+        } catch (\InvalidArgumentException $exception) {
+            return response()->json([
+                'message' => 'Acción no autorizada.',
+                'userMessage' => $exception->getMessage(),
+            ], 403);
+        }
         if (! $stored) {
             return response()->json(['error' => 'El palet no está almacenado'], 404);
         }

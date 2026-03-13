@@ -22,6 +22,8 @@ class IndexStoreRequest extends FormRequest
             'ids' => 'nullable|array',
             'ids.*' => 'integer',
             'name' => 'nullable|string|max:255',
+            'store_type' => 'nullable|string|in:interno,externo',
+            'external_user_id' => 'nullable|integer|exists:tenant.external_users,id',
             'perPage' => 'nullable|integer|min:1|max:100',
         ];
     }

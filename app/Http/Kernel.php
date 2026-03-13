@@ -39,7 +39,7 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
-            \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',
+            \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\LogActivity::class,
         ],
@@ -54,21 +54,23 @@ class Kernel extends HttpKernel
      * @var array<string, class-string|string>
      */
     protected $middlewareAliases = [
-        'auth'             => \App\Http\Middleware\Authenticate::class,
-        'auth.basic'       => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
-        'auth.session'     => \Illuminate\Session\Middleware\AuthenticateSession::class,
-        'cache.headers'    => \Illuminate\Http\Middleware\SetCacheHeaders::class,
-        'can'              => \Illuminate\Auth\Middleware\Authorize::class,
-        'guest'            => \App\Http\Middleware\RedirectIfAuthenticated::class,
+        'auth' => \App\Http\Middleware\Authenticate::class,
+        'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
+        'auth.session' => \Illuminate\Session\Middleware\AuthenticateSession::class,
+        'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
+        'can' => \Illuminate\Auth\Middleware\Authorize::class,
+        'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
         'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
-        'precognitive'     => \Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests::class,
-        'signed'           => \App\Http\Middleware\ValidateSignature::class,
-        'throttle'         => \Illuminate\Routing\Middleware\ThrottleRequests::class,
-        'verified'         => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-        'role'             => \App\Http\Middleware\RoleMiddleware::class,
-        'tenant'           => \App\Http\Middleware\TenantMiddleware::class,
-        'superadmin'       => \App\Http\Middleware\SuperadminMiddleware::class,
-        'feature'          => \App\Http\Middleware\CheckFeatureFlag::class,
+        'precognitive' => \Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests::class,
+        'signed' => \App\Http\Middleware\ValidateSignature::class,
+        'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+        'role' => \App\Http\Middleware\RoleMiddleware::class,
+        'tenant' => \App\Http\Middleware\TenantMiddleware::class,
+        'superadmin' => \App\Http\Middleware\SuperadminMiddleware::class,
+        'feature' => \App\Http\Middleware\CheckFeatureFlag::class,
+        'actor' => \App\Http\Middleware\EnsureAllowedActor::class,
+        'external.active' => \App\Http\Middleware\EnsureExternalUserIsActive::class,
     ];
 
     /**
@@ -82,6 +84,7 @@ class Kernel extends HttpKernel
     protected $middlewarePriority = [
         \App\Http\Middleware\TenantMiddleware::class,
         \Illuminate\Auth\Middleware\Authenticate::class,
+        \App\Http\Middleware\EnsureExternalUserIsActive::class,
         \Illuminate\Session\Middleware\StartSession::class,
         \Illuminate\View\Middleware\ShareErrorsFromSession::class,
         \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,

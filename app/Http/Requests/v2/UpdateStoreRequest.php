@@ -4,6 +4,7 @@ namespace App\Http\Requests\v2;
 
 use App\Models\Store;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateStoreRequest extends FormRequest
 {
@@ -13,9 +14,10 @@ class UpdateStoreRequest extends FormRequest
         if ($id instanceof Store) {
             return $this->user()->can('update', $id);
         }
-        if (!$id) {
+        if (! $id) {
             return false;
         }
+
         return $this->user()->can('update', Store::findOrFail($id));
     }
 
@@ -28,9 +30,16 @@ class UpdateStoreRequest extends FormRequest
         $storeId = $id instanceof Store ? $id->id : $id;
 
         return [
-            'name' => 'required|string|min:3|max:255|unique:tenant.stores,name,' . $storeId,
+            'name' => 'required|string|min:3|max:255|unique:tenant.stores,name,'.$storeId,
             'temperature' => 'required|numeric|between:-99.99,99.99',
             'capacity' => 'required|numeric|min:0',
+            'store_type' => ['sometimes', 'string', Rule::in(['interno', 'externo'])],
+            'external_user_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('tenant.external_users', 'id')->where('is_active', true),
+                Rule::requiredIf(fn () => $this->input('store_type', 'interno') === 'externo'),
+            ],
         ];
     }
 
@@ -45,6 +54,14 @@ class UpdateStoreRequest extends FormRequest
             'temperature.required' => 'La temperatura es obligatoria.',
             'temperature.between' => 'La temperatura debe estar entre -99.99 y 99.99.',
             'capacity.required' => 'La capacidad es obligatoria.',
+            'external_user_id.required' => 'El usuario externo es obligatorio para un almacén externo.',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->input('store_type', 'interno') === 'interno') {
+            $this->merge(['external_user_id' => null]);
+        }
     }
 }

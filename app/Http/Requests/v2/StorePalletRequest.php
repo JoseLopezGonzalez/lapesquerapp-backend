@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\v2;
 
+use App\Models\ExternalUser;
 use App\Models\Pallet;
+use App\Services\ActorScopeService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StorePalletRequest extends FormRequest
@@ -35,5 +37,32 @@ class StorePalletRequest extends FormRequest
             'boxes.*.product.id.exists' => 'Uno de los productos no existe.',
             'boxes.*.netWeight.min' => 'El peso neto de cada caja debe ser mayor que 0.',
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $actor = $this->user();
+            $scope = app(ActorScopeService::class);
+
+            if (! $actor instanceof ExternalUser) {
+                return;
+            }
+
+            if ($this->filled('orderId')) {
+                $validator->errors()->add('orderId', 'Un usuario externo no puede vincular palets a pedidos.');
+            }
+
+            $storeId = data_get($this->validated(), 'store.id');
+            if ($storeId === null) {
+                $validator->errors()->add('store.id', 'Un usuario externo debe crear el palet dentro de uno de sus almacenes.');
+
+                return;
+            }
+
+            if ($storeId !== null && ! $scope->canAccessStoreId($actor, (int) $storeId)) {
+                $validator->errors()->add('store.id', 'El almacén seleccionado no pertenece al usuario externo.');
+            }
+        });
     }
 }

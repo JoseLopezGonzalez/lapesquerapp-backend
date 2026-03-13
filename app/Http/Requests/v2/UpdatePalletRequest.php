@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\v2;
 
+use App\Models\ExternalUser;
 use App\Models\Pallet;
+use App\Services\ActorScopeService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdatePalletRequest extends FormRequest
@@ -13,9 +15,10 @@ class UpdatePalletRequest extends FormRequest
         if ($id instanceof Pallet) {
             return $this->user()->can('update', $id);
         }
-        if (!$id) {
+        if (! $id) {
             return false;
         }
+
         return $this->user()->can('update', Pallet::findOrFail($id));
     }
 
@@ -35,5 +38,26 @@ class UpdatePalletRequest extends FormRequest
             'boxes.*.netWeight' => 'required_with:boxes|numeric|min:0.01',
             'orderId' => 'sometimes|nullable|integer|exists:tenant.orders,id',
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $actor = $this->user();
+            $scope = app(ActorScopeService::class);
+
+            if (! $actor instanceof ExternalUser) {
+                return;
+            }
+
+            if ($this->filled('orderId')) {
+                $validator->errors()->add('orderId', 'Un usuario externo no puede vincular palets a pedidos.');
+            }
+
+            $storeId = data_get($this->validated(), 'store.id');
+            if ($storeId !== null && ! $scope->canAccessStoreId($actor, (int) $storeId)) {
+                $validator->errors()->add('store.id', 'El almacén seleccionado no pertenece al usuario externo.');
+            }
+        });
     }
 }

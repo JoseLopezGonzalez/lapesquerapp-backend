@@ -2,52 +2,53 @@
 
 namespace App\Http\Controllers\v2;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\DeleteMultipleStoresRequest;
 use App\Http\Requests\v2\IndexStoreRequest;
 use App\Http\Requests\v2\StoreStoreRequest;
 use App\Http\Requests\v2\UpdateStoreRequest;
-use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
-
-use App\Models\Store;
 use App\Http\Resources\v2\StoreDetailsResource;
 use App\Http\Resources\v2\StoreResource;
-use Illuminate\Support\Facades\DB;
+use App\Models\Store;
+use App\Services\ActorScopeService;
 
 class StoreController extends Controller
 {
+    public function __construct(
+        protected ActorScopeService $scope
+    ) {}
 
     private function getDefaultMap(): array
     {
         return [
-            "posiciones" => [
+            'posiciones' => [
                 [
-                    "id" => 1,
-                    "nombre" => "U1",
-                    "x" => 40,
-                    "y" => 40,
-                    "width" => 460,
-                    "height" => 238,
-                    "tipo" => "center",
-                    "nameContainer" => [
-                        "x" => 0,
-                        "y" => 0,
-                        "width" => 230,
-                        "height" => 180
+                    'id' => 1,
+                    'nombre' => 'U1',
+                    'x' => 40,
+                    'y' => 40,
+                    'width' => 460,
+                    'height' => 238,
+                    'tipo' => 'center',
+                    'nameContainer' => [
+                        'x' => 0,
+                        'y' => 0,
+                        'width' => 230,
+                        'height' => 180,
                     ],
-                ]
-            ],
-            "elementos" => [
-                "fondos" => [
-                    [
-                        "x" => 0,
-                        "y" => 0,
-                        "width" => 3410,
-                        "height" => 900
-                    ]
                 ],
-                "textos" => []
-            ]
+            ],
+            'elementos' => [
+                'fondos' => [
+                    [
+                        'x' => 0,
+                        'y' => 0,
+                        'width' => 3410,
+                        'height' => 900,
+                    ],
+                ],
+                'textos' => [],
+            ],
         ];
     }
 
@@ -57,6 +58,7 @@ class StoreController extends Controller
     public function index(IndexStoreRequest $request)
     {
         $query = Store::query();
+        $query = $this->scope->scopeStores($query, $request->user());
 
         /* filter by id */
         if ($request->has('id')) {
@@ -70,16 +72,25 @@ class StoreController extends Controller
 
         /* filter by name */
         if ($request->has('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
+            $query->where('name', 'like', '%'.$request->name.'%');
+        }
+
+        if ($request->filled('store_type')) {
+            $query->where('store_type', $request->input('store_type'));
+        }
+
+        if ($request->filled('external_user_id')) {
+            $query->where('external_user_id', $request->integer('external_user_id'));
         }
 
         /* ORDER */
         $query->orderBy('name', 'asc');
 
         // Cargar la relación palletsV2 para evitar errores en toArrayAssoc()
-        $query->with('palletsV2');
+        $query->with(['palletsV2', 'externalUser']);
 
         $perPage = $request->input('perPage', 12); //  Default a 10 si no se proporciona
+
         return StoreResource::collection($query->paginate($perPage));
     }
 
@@ -90,6 +101,7 @@ class StoreController extends Controller
     {
         $validated = $request->validated();
         $validated['map'] = json_encode($this->getDefaultMap());
+        $validated['store_type'] = $validated['store_type'] ?? 'interno';
 
         $store = Store::create($validated);
 
@@ -98,8 +110,6 @@ class StoreController extends Controller
             'data' => new StoreResource($store),
         ], 201);
     }
-
-
 
     /**
      * Display the specified resource.
@@ -117,8 +127,10 @@ class StoreController extends Controller
             'palletsV2.boxes.box.productionInputs.productionRecord.production', // Cargar productionInputs para determinar disponibilidad
             'palletsV2.boxes.box.product', // Cargar product para toArrayAssocV2
             'palletsV2.storedPallet', // Cargar storedPallet para posición
+            'externalUser',
         ])->findOrFail($id);
         $this->authorize('view', $store);
+
         return response()->json([
             'data' => new StoreDetailsResource($store),
         ]);
@@ -141,7 +153,6 @@ class StoreController extends Controller
         ]);
     }
 
-
     /**
      * Remove the specified resource from storage.
      */
@@ -162,19 +173,17 @@ class StoreController extends Controller
         return response()->json(['message' => 'Almacenes eliminados correctamente.']);
     }
 
-
-
     /* Options */
     public function options()
     {
         $this->authorize('viewOptions', Store::class);
         $stores = Store::select('id', 'name')
+            ->when($this->scope->isExternal(request()->user()), fn ($query) => $query->whereIn('id', $this->scope->allowedStoreIds(request()->user())))
             ->orderBy('name', 'asc')
             ->get();
 
         return response()->json($stores);
     }
-
 
     public function totalStockByProducts()
     {
@@ -246,7 +255,4 @@ class StoreController extends Controller
 
         return response()->json($productsInventory);
     }
-
-
-
 }

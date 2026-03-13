@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 
 class TenantDatabaseSeeder extends Seeder
 {
@@ -30,6 +30,8 @@ class TenantDatabaseSeeder extends Seeder
         // FAO zones (producción/recepciones), almacenes y operario de tienda
         $this->call(FAOZonesSeeder::class);
         $this->call(StoreSeeder::class);
+        $this->call(ExternalUsersSeeder::class);
+        $this->call(ExternalStoresSeeder::class);
         $this->call(StoreOperatorUserSeeder::class);
         $this->call(EmployeeSeeder::class);
         $this->call(PunchEventSeeder::class);

@@ -4,6 +4,7 @@ namespace App\Http\Requests\v2;
 
 use App\Enums\Role;
 use App\Models\User;
+use App\Services\AuthActorService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -13,9 +14,10 @@ class UpdateUserRequest extends FormRequest
     {
         $param = $this->route('user');
         $user = $param instanceof User ? $param : User::find($param);
-        if (!$user) {
+        if (! $user) {
             return true;
         }
+
         return $this->user()->can('update', $user);
     }
 
@@ -33,6 +35,11 @@ class UpdateUserRequest extends FormRequest
                 'sometimes',
                 'email',
                 Rule::unique(User::class, 'email')->whereNull('deleted_at')->ignore($userId),
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if (app(AuthActorService::class)->emailExistsOnOtherActor($value, User::class)) {
+                        $fail('El email ya está en uso por un usuario externo del tenant.');
+                    }
+                },
             ],
             'active' => 'sometimes|boolean',
             'role' => ['sometimes', 'string', Rule::in(Role::values())],
