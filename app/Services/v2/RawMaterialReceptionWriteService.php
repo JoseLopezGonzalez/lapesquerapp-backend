@@ -117,23 +117,33 @@ class RawMaterialReceptionWriteService
                 $pallet->load('boxes.box.product', 'storedPallet.store');
                 $timelineSnapshot = self::snapshotPalletForTimeline($pallet);
                 $pallet->observations = $palletData['observations'] ?? null;
-                $pallet->status = $storeId ? Pallet::STATE_STORED : Pallet::STATE_REGISTERED;
-                $pallet->save();
-                $storedPallet = StoredPallet::where('pallet_id', $pallet->id)->first();
-                if ($storeId) {
-                    if ($storedPallet) {
-                        if ($storedPallet->store_id != $storeId) {
-                            $storedPallet->store_id = $storeId;
-                            $storedPallet->save();
+
+                // Solo actualizar almacén/estado si el payload incluye explícitamente "store"
+                $hasStoreKey = array_key_exists('store', $palletData) && array_key_exists('id', $palletData['store'] ?? []);
+                if ($hasStoreKey) {
+                    $storeId = $palletData['store']['id'];
+                    $storedPallet = StoredPallet::where('pallet_id', $pallet->id)->first();
+
+                    if ($storeId) {
+                        $pallet->status = Pallet::STATE_STORED;
+                        if ($storedPallet) {
+                            if ($storedPallet->store_id != $storeId) {
+                                $storedPallet->store_id = $storeId;
+                                $storedPallet->save();
+                            }
+                        } else {
+                            StoredPallet::create(['pallet_id' => $pallet->id, 'store_id' => $storeId]);
                         }
                     } else {
-                        StoredPallet::create(['pallet_id' => $pallet->id, 'store_id' => $storeId]);
-                    }
-                } else {
-                    if ($storedPallet) {
-                        $storedPallet->delete();
+                        // Desalmacenar explícitamente
+                        $pallet->status = Pallet::STATE_REGISTERED;
+                        if ($storedPallet) {
+                            $storedPallet->delete();
+                        }
                     }
                 }
+
+                $pallet->save();
                 $processedPalletIds[] = $palletId;
                 $pallet->load('boxes.box.productionInputs');
                 $palletWasNew = false;
