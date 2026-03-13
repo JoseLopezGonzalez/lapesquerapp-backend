@@ -40,6 +40,8 @@ class TenantMiddleware
         app()->instance('currentTenant', $subdomain);
 
         config([
+            // Para este request, toda la lógica de negocio debe usar la BD del tenant
+            'database.default' => 'tenant',
             'database.connections.tenant.database' => $tenant->database,
         ]);
 
