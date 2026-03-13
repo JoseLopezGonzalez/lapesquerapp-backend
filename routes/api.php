@@ -195,6 +195,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
     Route::middleware(['auth:sanctum', 'external.active', 'actor:internal,external'])->group(function () {
         Route::get('/stores/options', [V2StoreController::class, 'options']);
+        Route::get('/products/options', [V2ProductController::class, 'options']);
         Route::get('stores', [V2StoreController::class, 'index']);
         Route::get('stores/{store}', [V2StoreController::class, 'show']);
 
@@ -225,6 +226,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::post('external-users/{externalUser}/resend-access', [ExternalUserController::class, 'resendAccess'])->name('v2.external-users.resend-access');
         Route::post('external-users/{externalUser}/activate', [ExternalUserController::class, 'activate'])->name('v2.external-users.activate');
         Route::post('external-users/{externalUser}/deactivate', [ExternalUserController::class, 'deactivate'])->name('v2.external-users.deactivate');
+        Route::get('external-users/options', [ExternalUserController::class, 'options'])->name('v2.external-users.options');
         Route::apiResource('external-users', ExternalUserController::class)->parameters(['external-users' => 'externalUser']);
         Route::apiResource('activity-logs', ActivityLogController::class);
 
@@ -239,7 +241,6 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('/incoterms/options', [V2IncotermController::class, 'options']);
         Route::get('/suppliers/options', [V2SupplierController::class, 'options']);
         Route::get('/species/options', [V2SpeciesController::class, 'options']);
-        Route::get('/products/options', [V2ProductController::class, 'options']);
         Route::get('/product-categories/options', [ProductCategoryController::class, 'options']);
         Route::get('/product-families/options', [ProductFamilyController::class, 'options']);
         Route::get('/taxes/options', [TaxController::class, 'options']);

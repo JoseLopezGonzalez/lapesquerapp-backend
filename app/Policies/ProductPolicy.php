@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\Role;
+use App\Models\ExternalUser;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
@@ -19,8 +20,12 @@ class ProductPolicy
     /**
      * Determine if the user can view any products.
      */
-    public function viewAny(User $user): bool
+    public function viewAny(User|ExternalUser $user): bool
     {
+        if ($user instanceof ExternalUser) {
+            return false;
+        }
+
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
@@ -30,16 +35,24 @@ class ProductPolicy
     /**
      * Determine if the user can view the product.
      */
-    public function view(User $user, Product $product): bool
+    public function view(User|ExternalUser $user, Product $product): bool
     {
+        if ($user instanceof ExternalUser) {
+            return false;
+        }
+
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
-    public function viewOptions(User $user): bool
+    public function viewOptions(User|ExternalUser $user): bool
     {
+        if ($user instanceof ExternalUser) {
+            return $user->is_active;
+        }
+
         return true;
     }
 

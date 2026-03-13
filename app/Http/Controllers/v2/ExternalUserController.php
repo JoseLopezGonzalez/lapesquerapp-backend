@@ -10,6 +10,7 @@ use App\Http\Resources\v2\ExternalUserResource;
 use App\Models\ExternalUser;
 use App\Services\AuthActorService;
 use App\Services\MagicLinkService;
+use Illuminate\Http\JsonResponse;
 
 class ExternalUserController extends Controller
 {
@@ -126,5 +127,17 @@ class ExternalUserController extends Controller
             'message' => 'Usuario externo desactivado correctamente.',
             'data' => new ExternalUserResource($externalUser->fresh()->loadCount('stores')),
         ]);
+    }
+
+    public function options(): JsonResponse
+    {
+        $this->authorize('viewAny', ExternalUser::class);
+
+        $externalUsers = ExternalUser::query()
+            ->select('id', 'name', 'email')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json($externalUsers);
     }
 }
