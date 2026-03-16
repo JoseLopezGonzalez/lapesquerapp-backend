@@ -27,7 +27,6 @@ class StoreStoreRequest extends FormRequest
                 'nullable',
                 'integer',
                 Rule::exists('tenant.external_users', 'id')->where('is_active', true),
-                Rule::requiredIf(fn () => $this->input('store_type', 'interno') === 'externo'),
             ],
         ];
     }
@@ -43,7 +42,6 @@ class StoreStoreRequest extends FormRequest
             'temperature.required' => 'La temperatura es obligatoria.',
             'temperature.between' => 'La temperatura debe estar entre -99.99 y 99.99.',
             'capacity.required' => 'La capacidad es obligatoria.',
-            'external_user_id.required' => 'El usuario externo es obligatorio para un almacén externo.',
         ];
     }
 
