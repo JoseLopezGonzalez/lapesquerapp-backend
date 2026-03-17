@@ -246,9 +246,11 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('/taxes/options', [TaxController::class, 'options']);
         Route::get('/capture-zones/options', [V2CaptureZoneController::class, 'options']);
         Route::get('/processes/options', [V2ProcessController::class, 'options']);
+        // Rutas especiales de pallets: registrated, búsqueda por lote y disponibles para pedido
         Route::get('/pallets/registered', [V2PalletController::class, 'registeredPallets']);
         Route::get('/pallets/search-by-lot', [V2PalletController::class, 'searchByLot']);
         Route::get('/orders/{orderId}/available-pallets', [V2PalletController::class, 'availableForOrder']);
+        // Resto de rutas de pallets ligadas a pedidos
         Route::get('/orders/options', [V2OrderController::class, 'options']);
         Route::post('/pallets/{id}/link-order', [V2PalletController::class, 'linkOrder']);
         Route::post('/pallets/link-orders', [V2PalletController::class, 'linkOrders']);
