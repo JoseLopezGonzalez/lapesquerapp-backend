@@ -10,7 +10,6 @@ class OrderDetailService
      * Obtiene un pedido con eager loading completo para detalle (show).
      * Evita N+1 y reduce memoria con selects explícitos.
      *
-     * @return Order
      * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
      */
     public static function getOrderForDetail(string $id): Order
@@ -45,6 +44,7 @@ class OrderDetailService
             'plannedProductDetails.product.family' => fn ($q) => $q->select(['id', 'name', 'description', 'category_id', 'active']),
             'plannedProductDetails.product.family.category' => fn ($q) => $q->select(['id', 'name']),
             'plannedProductDetails.tax' => fn ($q) => $q->select(['id', 'name', 'rate']),
+            'offer' => fn ($q) => $q->select(['id', 'order_id']),
             'incident' => fn ($q) => $q->select([
                 'id', 'order_id', 'description', 'status', 'resolution_type', 'resolution_notes', 'resolved_at', 'created_at', 'updated_at',
             ]),

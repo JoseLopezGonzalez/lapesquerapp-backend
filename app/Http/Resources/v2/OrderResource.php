@@ -29,6 +29,7 @@ class OrderResource extends JsonResource
             'totalNetWeight' => $this->totalNetWeight,
             'subtotalAmount' => $this->subtotal_amount,
             'totalAmount' => $this->total_amount,
+            'offerId' => $this->offer?->id,
         ];
     }
 }

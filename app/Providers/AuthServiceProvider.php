@@ -49,6 +49,9 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\FishingGear::class => \App\Policies\FishingGearPolicy::class,
         \App\Models\CaptureZone::class => \App\Policies\CaptureZonePolicy::class,
         \App\Models\Species::class => \App\Policies\SpeciesPolicy::class,
+        \App\Models\Prospect::class => \App\Policies\ProspectPolicy::class,
+        \App\Models\CommercialInteraction::class => \App\Policies\CommercialInteractionPolicy::class,
+        \App\Models\Offer::class => \App\Policies\OfferPolicy::class,
     ];
 
     /**

@@ -3,27 +3,29 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
 class Order extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     /**
      * Estados válidos del pedido
      */
     const STATUS_PENDING = 'pending';
+
     const STATUS_FINISHED = 'finished';
+
     const STATUS_INCIDENT = 'incident';
 
     /**
      * Tipos de pedido
      */
     const ORDER_TYPE_STANDARD = 'standard';
+
     const ORDER_TYPE_AUTOVENTA = 'autoventa';
 
     /**
@@ -65,7 +67,7 @@ class Order extends Model
         'status',
         'order_type',
         'buyer_reference',
-        'incoterm_id'
+        'incoterm_id',
     ];
 
     public function plannedProductDetails()
@@ -76,7 +78,7 @@ class Order extends Model
     /* Id formateado #00_ _ _ , rellenar con 0 a la izquierda si no tiene 5 digitos y añadir un # al principio */
     public function getFormattedIdAttribute()
     {
-        return '#' . str_pad($this->id, 5, '0', STR_PAD_LEFT);
+        return '#'.str_pad($this->id, 5, '0', STR_PAD_LEFT);
     }
 
     // Relación con Incoterm
@@ -131,7 +133,7 @@ class Order extends Model
     {
         $plannedProducts = $this->plannedProductDetails;
 
-        if (!$plannedProducts || $plannedProducts->isEmpty()) {
+        if (! $plannedProducts || $plannedProducts->isEmpty()) {
             return [
                 'totalProducts' => 0,
                 'totalQuantity' => 0,
@@ -155,12 +157,17 @@ class Order extends Model
         return $this->belongsTo(PaymentTerm::class);
     }
 
+    public function offer()
+    {
+        return $this->hasOne(Offer::class);
+    }
+
     public function isActive()
     {
         return $this->status == 'pending' || $this->load_date >= now();
     }
 
-    // Resumen de productos agrupados por especie && zona de captura, necesito 
+    // Resumen de productos agrupados por especie && zona de captura, necesito
 
     public function getProductsBySpeciesAndCaptureZoneAttribute()
     {
@@ -168,29 +175,29 @@ class Order extends Model
         $this->pallets->map(function ($pallet) use (&$summary) {
             $pallet->boxes->map(function ($box) use (&$summary) {
                 // Solo incluir cajas disponibles (no usadas en producción)
-                if (!$box->box->isAvailable) {
+                if (! $box->box->isAvailable) {
                     return;
                 }
 
                 $product = $box->box->product;
                 $species = $product->species;
                 $captureZone = $product->captureZone;
-                $key = $species->id . '-' . $captureZone->id;
+                $key = $species->id.'-'.$captureZone->id;
 
-                if (!isset($summary[$key])) {
+                if (! isset($summary[$key])) {
                     $summary[$key] = [
                         'species' => $species,
                         'captureZone' => $captureZone,
-                        'products' => []
+                        'products' => [],
                     ];
                 }
 
                 $productKey = $product->id;
-                if (!isset($summary[$key]['products'][$productKey])) {
+                if (! isset($summary[$key]['products'][$productKey])) {
                     $summary[$key]['products'][$productKey] = [
                         'product' => $product,
                         'boxes' => 0,
-                        'netWeight' => 0
+                        'netWeight' => 0,
                     ];
                 }
 
@@ -202,12 +209,11 @@ class Order extends Model
         return $summary;
     }
 
-
     public function getTotalsAttribute()
     {
         $totals = [
             'boxes' => 0,
-            'netWeight' => 0
+            'netWeight' => 0,
         ];
 
         if ($this->pallets) {
@@ -227,8 +233,6 @@ class Order extends Model
         return $totals;
     }
 
-
-
     public function getNumberOfPalletsAttribute()
     {
         return $this->pallets ? $this->pallets->count() : 0;
@@ -243,7 +247,7 @@ class Order extends Model
                 if ($pallet && is_array($pallet->lots)) {
                     // Asegúrate de que $pallet->lots sea un array antes de intentar iterar sobre él
                     foreach ($pallet->lots as $lot) {
-                        if (!in_array($lot, $lots)) {
+                        if (! in_array($lot, $lots)) {
                             $lots[] = $lot;
                         }
                     }
@@ -257,9 +261,10 @@ class Order extends Model
     /* some pallets on storage status */
     public function hasPalletsOnStorage()
     {
-        if (!$this->pallets) {
+        if (! $this->pallets) {
             return false;
         }
+
         return $this->pallets->some(function ($pallet) {
             return $pallet && $pallet->status == \App\Models\Pallet::STATE_STORED;
         });
@@ -275,7 +280,6 @@ class Order extends Model
         return $this->extractEmails('regular');
     }
 
-
     /**
      * Get the array of CC emails.
      *
@@ -286,12 +290,10 @@ class Order extends Model
         return $this->extractEmails('cc');
     }
 
-
-
     /**
      * Helper method to extract emails based on type.
      *
-     * @param string $type 'regular' or 'cc'
+     * @param  string  $type  'regular' or 'cc'
      * @return array
      */
     protected function extractEmails($type)
@@ -306,8 +308,8 @@ class Order extends Model
             }
 
             if ($type == 'cc' && (str_starts_with($email, 'CC:') || str_starts_with($email, 'cc:'))) {
-                $result[] = substr($email, 3);  // Remove 'CC:' prefix and add to results 
-            } elseif ($type == 'regular' && !str_starts_with($email, 'CC:') && !str_starts_with($email, 'cc:')) {
+                $result[] = substr($email, 3);  // Remove 'CC:' prefix and add to results
+            } elseif ($type == 'regular' && ! str_starts_with($email, 'CC:') && ! str_starts_with($email, 'cc:')) {
                 $result[] = $email;  // Add regular email to results
             }
         }
@@ -315,38 +317,39 @@ class Order extends Model
         return $result;
     }
 
-
     /* Nuevo V2 */
 
     public function getTotalNetWeightAttribute()
     {
         try {
             return $this->pallets->sum(function ($pallet) {
-                if (!$pallet->relationLoaded('boxes')) {
+                if (! $pallet->relationLoaded('boxes')) {
                     $pallet->load('boxes.box.productionInputs');
                 }
-                
+
                 return $pallet->boxes->sum(function ($palletBox) {
                     // Solo incluir cajas disponibles (no usadas en producción)
-                    if (!$palletBox->box) {
+                    if (! $palletBox->box) {
                         return 0;
                     }
-                    
+
                     // Asegurar que productionInputs esté cargado
-                    if (!$palletBox->box->relationLoaded('productionInputs')) {
+                    if (! $palletBox->box->relationLoaded('productionInputs')) {
                         $palletBox->box->load('productionInputs');
                     }
-                    
+
                     try {
                         return $palletBox->box->isAvailable ? ($palletBox->box->net_weight ?? 0) : 0;
                     } catch (\Exception $e) {
-                        \Log::warning('Error checking isAvailable in getTotalNetWeightAttribute: ' . $e->getMessage());
+                        \Log::warning('Error checking isAvailable in getTotalNetWeightAttribute: '.$e->getMessage());
+
                         return 0;
                     }
                 });
             });
         } catch (\Exception $e) {
-            \Log::error('Error in getTotalNetWeightAttribute: ' . $e->getMessage());
+            \Log::error('Error in getTotalNetWeightAttribute: '.$e->getMessage());
+
             return 0;
         }
     }
@@ -361,7 +364,6 @@ class Order extends Model
         });
     }
 
-
     public function getProductsWithLotsDetailsAttribute()
     {
         $summary = [];
@@ -369,7 +371,7 @@ class Order extends Model
         $this->pallets->map(function ($pallet) use (&$summary) {
             $pallet->boxes->map(function ($box) use (&$summary) {
                 // Solo incluir cajas disponibles (no usadas en producción)
-                if (!$box->box->isAvailable) {
+                if (! $box->box->isAvailable) {
                     return;
                 }
 
@@ -379,7 +381,7 @@ class Order extends Model
 
                 $productKey = $product->id;
 
-                if (!isset($summary[$productKey])) {
+                if (! isset($summary[$productKey])) {
                     $summary[$productKey] = [
                         'product' => [
                             'id' => $product->id,
@@ -395,7 +397,7 @@ class Order extends Model
                             'captureZone' => $product->captureZone->name,
                             'fishingGear' => $product->species->fishingGear->name,
                         ],
-                        'lots' => []
+                        'lots' => [],
                     ];
                 }
 
@@ -431,13 +433,13 @@ class Order extends Model
         $this->pallets->map(function ($pallet) use (&$details) {
             $pallet->boxes->map(function ($box) use (&$details) {
                 // Solo incluir cajas disponibles (no usadas en producción)
-                if (!$box->box->isAvailable) {
+                if (! $box->box->isAvailable) {
                     return;
                 }
 
                 $product = $box->box->product;
                 $productKey = $product->id;
-                if (!isset($details[$productKey])) {
+                if (! isset($details[$productKey])) {
                     $details[$productKey] = [
                         'product' => [
                             'id' => $product->id,
@@ -463,8 +465,6 @@ class Order extends Model
 
         return array_values($details);
     }
-
-
 
     /* Confrontar en un mismo array productionProductDetails añadiendo el precio y tax sacado de plannedProductDetail y calculando
     el subtotal (base sin tax) y total (base + tax) */
@@ -511,7 +511,6 @@ class Order extends Model
         return array_values($details);
     }
 
-
     /* Subtotal Atribute */
     public function getSubtotalAmountAttribute()
     {
@@ -533,8 +532,6 @@ class Order extends Model
     /**
      * Marcar el pedido como incidente
      * Se usa cuando se crea un incidente asociado al pedido
-     * 
-     * @return bool
      */
     public function markAsIncident(): bool
     {
@@ -544,8 +541,6 @@ class Order extends Model
     /**
      * Finalizar el pedido después de resolver un incidente
      * Cambia el estado a 'finished' y marca todos los palets como 'shipped'
-     * 
-     * @return bool
      */
     public function finalizeAfterIncident(): bool
     {
@@ -562,7 +557,6 @@ class Order extends Model
         return $saved;
     }
 
-
     public function getSpeciesListAttribute()
     {
         $species = collect();
@@ -570,7 +564,7 @@ class Order extends Model
         $this->pallets->each(function ($pallet) use (&$species) {
             $pallet->boxes->each(function ($box) use (&$species) {
                 // Solo incluir cajas disponibles (no usadas en producción)
-                if (!$box->box->isAvailable) {
+                if (! $box->box->isAvailable) {
                     return;
                 }
 
@@ -596,7 +590,7 @@ class Order extends Model
         $this->pallets->each(function ($pallet) use (&$families) {
             $pallet->boxes->each(function ($box) use (&$families) {
                 // Solo incluir cajas disponibles (no usadas en producción)
-                if (!$box->box->isAvailable) {
+                if (! $box->box->isAvailable) {
                     return;
                 }
 
@@ -620,7 +614,7 @@ class Order extends Model
         $this->pallets->each(function ($pallet) use (&$categories) {
             $pallet->boxes->each(function ($box) use (&$categories) {
                 // Solo incluir cajas disponibles (no usadas en producción)
-                if (!$box->box->isAvailable) {
+                if (! $box->box->isAvailable) {
                     return;
                 }
 
@@ -655,15 +649,13 @@ class Order extends Model
             }
 
             // Validar status valores válidos
-            if ($order->status && !in_array($order->status, self::getValidStatuses())) {
+            if ($order->status && ! in_array($order->status, self::getValidStatuses())) {
                 throw ValidationException::withMessages([
-                    'status' => 'El estado del pedido no es válido. Valores permitidos: ' . implode(', ', self::getValidStatuses()),
+                    'status' => 'El estado del pedido no es válido. Valores permitidos: '.implode(', ', self::getValidStatuses()),
                 ]);
             }
         });
     }
-
-
 
     /* NUEVO ACTUALIZADO 2025 LA PESQUERAPP--------------------------------------- */
 
@@ -678,12 +670,11 @@ class Order extends Model
     {
         if ($speciesId) {
             $query->join('products', 'products.id', '=', 'boxes.article_id')
-                  ->where('products.species_id', $speciesId);
+                ->where('products.species_id', $speciesId);
         }
 
         return $query;
     }
-
 
     public function scopeJoinBoxesAndArticles($query)
     {
@@ -710,8 +701,6 @@ class Order extends Model
         return $query;
     }
 
-
-
     // En Order.php
     public static function executeNetWeightSum($query): float
     {
@@ -731,8 +720,8 @@ class Order extends Model
     /**
      * Scope para cargar relaciones necesarias para calcular totalNetWeight y totalBoxes
      * Evita queries N+1 cuando se accede a estos attributes en colecciones
-     * 
-     * @param \Illuminate\Database\Eloquent\Builder $query
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeWithTotals($query)
@@ -742,18 +731,4 @@ class Order extends Model
             'pallets.boxes.box.product', // Para cálculos si es necesario
         ]);
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }

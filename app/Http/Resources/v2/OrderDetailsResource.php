@@ -7,8 +7,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class OrderDetailsResource extends JsonResource
 {
-
-
     /**
      * Transform the resource into an array.
      *
@@ -56,6 +54,7 @@ class OrderDetailsResource extends JsonResource
             'trailerPlate' => $this->trailer_plate,
             'temperature' => $this->temperature,
             'incident' => $this->incident ? $this->incident->toArrayAssoc() : null,
+            'offerId' => $this->offer?->id,
         ];
     }
 }

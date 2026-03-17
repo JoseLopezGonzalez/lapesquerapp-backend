@@ -7,8 +7,8 @@ use App\Models\Order;
 use App\Models\Pallet;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -39,21 +39,23 @@ class OrderListService
         if ($request->has('active')) {
             if ($request->active == 'true') {
                 $query = Order::withTotals()
-                    ->with(['customer', 'salesperson', 'transport', 'incoterm'])
+                    ->with(['customer', 'salesperson', 'transport', 'incoterm', 'offer'])
                     ->where('status', 'pending')
                     ->orWhereDate('load_date', '>=', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
                 self::scopeForComercial($query, $user);
+
                 return $query->get();
             }
             $query = Order::withTotals()
-                ->with(['customer', 'salesperson', 'transport', 'incoterm'])
+                ->with(['customer', 'salesperson', 'transport', 'incoterm', 'offer'])
                 ->where('status', 'finished')
                 ->whereDate('load_date', '<', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
             self::scopeForComercial($query, $user);
+
             return $query->get();
         }
 
-        $query = Order::withTotals()->with(['customer', 'salesperson', 'transport', 'incoterm']);
+        $query = Order::withTotals()->with(['customer', 'salesperson', 'transport', 'incoterm', 'offer']);
         self::scopeForComercial($query, $user);
 
         if ($request->has('customers')) {
@@ -165,6 +167,7 @@ class OrderListService
                     ->orWhereDate('load_date', '>=', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
             });
         self::scopeForComercial($query, $user);
+
         return $query->orderBy('load_date', 'desc')->get();
     }
 
@@ -180,6 +183,7 @@ class OrderListService
             ->orWhereDate('load_date', '>=', now())
             ->select('id', 'id as name', 'load_date');
         self::scopeForComercial($query, $user);
+
         return $query->orderBy('load_date', 'desc')->get();
     }
 
@@ -193,6 +197,7 @@ class OrderListService
         $user = $user ?? auth()->user();
         $query = Order::select('id', 'id as name');
         self::scopeForComercial($query, $user);
+
         return $query->orderBy('id')->get();
     }
 }
