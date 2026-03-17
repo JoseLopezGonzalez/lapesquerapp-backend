@@ -203,6 +203,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::post('/pallets/move-to-store', [V2PalletController::class, 'moveToStore']);
         Route::post('/pallets/move-multiple-to-store', [V2PalletController::class, 'moveMultipleToStore']);
         Route::post('pallets/{id}/unassign-position', [V2PalletController::class, 'unassignPosition']);
+        // Almacén fantasma de palets registrados (antes de cualquier {pallet})
+        Route::get('/pallets/registered', [V2PalletController::class, 'registeredPallets']);
         Route::get('pallets/{id}/timeline', [V2PalletController::class, 'timeline'])->name('pallets.timeline');
         Route::get('pallets', [V2PalletController::class, 'index']);
         Route::post('pallets', [V2PalletController::class, 'store']);
@@ -246,8 +248,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('/taxes/options', [TaxController::class, 'options']);
         Route::get('/capture-zones/options', [V2CaptureZoneController::class, 'options']);
         Route::get('/processes/options', [V2ProcessController::class, 'options']);
-        // Rutas especiales de pallets: registrated, búsqueda por lote y disponibles para pedido
-        Route::get('/pallets/registered', [V2PalletController::class, 'registeredPallets']);
+        // Rutas especiales de pallets: búsqueda por lote y disponibles para pedido
         Route::get('/pallets/search-by-lot', [V2PalletController::class, 'searchByLot']);
         Route::get('/orders/{orderId}/available-pallets', [V2PalletController::class, 'availableForOrder']);
         // Resto de rutas de pallets ligadas a pedidos
