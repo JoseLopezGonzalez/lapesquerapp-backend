@@ -19,6 +19,7 @@ class TenantDatabaseSeeder extends Seeder
         $this->call(CaptureZonesSeeder::class);
         $this->call(FishingGearSeeder::class);
         $this->call(SpeciesSeeder::class);
+        $this->call(ProcessSeeder::class);
         // Clientes / Pedidos: Países, Formas de Pago, Incoterms, Transportes, Comerciales
         $this->call(CountriesSeeder::class);
         $this->call(PaymentTermsSeeder::class);
