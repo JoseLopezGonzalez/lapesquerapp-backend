@@ -28,30 +28,20 @@ class CrmDashboardService
             $customerQuery->where('salesperson_id', $user->salesperson->id);
         }
 
-        $remindersToday = (clone $prospectQuery)
-            ->whereDate('next_action_at', $today)
-            ->orderBy('next_action_at')
-            ->get()
-            ->map(fn (Prospect $prospect) => self::prospectActionPayload($prospect, 'prospect'));
+        // Cutover: el “feed” de próximos/hechos proviene de `agenda_actions`.
+        $agendaSummary = CrmAgendaService::summary($user, 50);
 
-        $remindersTodayFromInteractions = (clone $interactionQuery)
-            ->whereNotNull('next_action_at')
-            ->whereDate('next_action_at', $today)
-            ->orderBy('next_action_at')
-            ->get()
-            ->map(fn (CommercialInteraction $interaction) => self::interactionActionPayload($interaction));
+        $remindersToday = collect($agendaSummary['today'] ?? [])
+            ->map(fn (array $item) => self::agendaActionPayload($item, $today))
+            ->sortBy('label')
+            ->values()
+            ->all();
 
-        $overdueFromProspects = (clone $prospectQuery)
-            ->whereDate('next_action_at', '<', $today)
-            ->get()
-            ->map(fn (Prospect $prospect) => self::prospectActionPayload($prospect, 'prospect'));
-
-        $overdueFromInteractions = (clone $interactionQuery)
-            ->whereNotNull('next_action_at')
-            ->whereDate('next_action_at', '<', $today)
-            ->orderBy('next_action_at')
-            ->get()
-            ->map(fn (CommercialInteraction $interaction) => self::interactionActionPayload($interaction));
+        $overdueActions = collect($agendaSummary['overdue'] ?? [])
+            ->map(fn (array $item) => self::agendaActionPayload($item, $today))
+            ->sortByDesc('daysOverdue')
+            ->values()
+            ->all();
 
         $customerIds = (clone $customerQuery)->pluck('id');
         $latestOrdersByCustomer = Order::query()
@@ -104,54 +94,41 @@ class CrmDashboardService
             });
 
         return [
-            'reminders_today' => $remindersToday
-                ->concat($remindersTodayFromInteractions)
-                ->sortBy('label')
-                ->values()
-                ->all(),
-            'overdue_actions' => $overdueFromProspects->concat($overdueFromInteractions)->sortByDesc('daysOverdue')->values()->all(),
+            'reminders_today' => $remindersToday,
+            'overdue_actions' => $overdueActions,
             'inactive_customers' => $inactiveCustomers->all(),
             'prospects_without_activity' => $prospectsWithoutActivity->all(),
             'counters' => [
-                'remindersToday' => $remindersToday->count() + $remindersTodayFromInteractions->count(),
-                'overdueActions' => $overdueFromProspects->count() + $overdueFromInteractions->count(),
+                'remindersToday' => count($remindersToday),
+                'overdueActions' => count($overdueActions),
                 'inactiveCustomers' => $inactiveCustomers->count(),
                 'prospectsWithoutActivity' => $prospectsWithoutActivity->count(),
             ],
         ];
     }
 
-    private static function prospectActionPayload(Prospect $prospect, string $type): array
+    private static function agendaActionPayload(array $item, Carbon $today): array
     {
-        return [
-            'type' => $type,
-            'id' => $prospect->id,
-            'label' => $prospect->company_name,
-            'nextActionAt' => $prospect->next_action_at?->format('Y-m-d'),
-            'daysOverdue' => $prospect->next_action_at
-                ? Carbon::parse($prospect->next_action_at)->diffInDays(Carbon::today())
-                : 0,
-            'prospectId' => $prospect->id,
-            'customerId' => $prospect->customer_id,
-        ];
-    }
+        $scheduledAt = $item['scheduledAt'] ?? null;
+        $daysOverdue = $scheduledAt
+            ? Carbon::parse($scheduledAt)->diffInDays($today)
+            : 0;
 
-    private static function interactionActionPayload(CommercialInteraction $interaction): array
-    {
-        $label = $interaction->prospect?->company_name
-            ?? $interaction->customer?->name
-            ?? 'Acción pendiente';
+        $target = $item['target'] ?? [];
+        $targetType = $target['type'] ?? null;
+        $targetId = isset($target['id']) ? (int) $target['id'] : null;
 
         return [
-            'type' => 'interaction',
-            'id' => $interaction->id,
-            'label' => $label,
-            'nextActionAt' => $interaction->next_action_at?->format('Y-m-d'),
-            'daysOverdue' => $interaction->next_action_at
-                ? Carbon::parse($interaction->next_action_at)->diffInDays(Carbon::today())
-                : 0,
-            'prospectId' => $interaction->prospect_id,
-            'customerId' => $interaction->customer_id,
+            // Para que el front pueda cerrar “done” ligado a agendaActionId.
+            'agendaActionId' => $item['agendaActionId'] ?? null,
+            'type' => $targetType,
+            'id' => $item['agendaActionId'] ?? null,
+            'label' => $item['label'] ?? 'Acción pendiente',
+            'nextActionAt' => $scheduledAt,
+            'nextActionNote' => $item['description'] ?? null,
+            'daysOverdue' => $daysOverdue,
+            'prospectId' => $targetType === CrmAgendaService::TARGET_PROSPECT ? $targetId : null,
+            'customerId' => $targetType === CrmAgendaService::TARGET_CUSTOMER ? $targetId : null,
         ];
     }
 }

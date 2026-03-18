@@ -84,12 +84,44 @@ class CommercialInteractionService
                 'next_action_at' => $validated['nextActionAt'] ?? null,
             ]);
 
+            $nextActionAt = $validated['nextActionAt'] ?? null;
+
+            // 1 pending por target: desde una interacción materializamos la agenda en agenda_actions.
+            if (! empty($validated['prospectId'])) {
+                CrmAgendaService::createPendingOrCompleteFromInteraction(
+                    $user,
+                    'prospect',
+                    (int) $validated['prospectId'],
+                    $interaction->id,
+                    $nextActionAt,
+                    $validated['nextActionNote'] ?? null,
+                    $validated['agendaActionId'] ?? null
+                );
+            }
+
+            if (! empty($validated['customerId'])) {
+                CrmAgendaService::createPendingOrCompleteFromInteraction(
+                    $user,
+                    'customer',
+                    (int) $validated['customerId'],
+                    $interaction->id,
+                    $nextActionAt,
+                    $validated['nextActionNote'] ?? null,
+                    $validated['agendaActionId'] ?? null
+                );
+            }
+
             if (! empty($validated['prospectId'])) {
                 $prospect = Prospect::findOrFail($validated['prospectId']);
-                $prospect->update([
+                $updates = [
                     'last_contact_at' => $validated['occurredAt'],
-                    'next_action_at' => $validated['nextActionAt'] ?? null,
-                ]);
+                    'next_action_at' => $nextActionAt,
+                    'next_action_note' => $nextActionAt !== null ? ($validated['nextActionNote'] ?? null) : null,
+                ];
+                if ($prospect->status === Prospect::STATUS_NEW) {
+                    $updates['status'] = Prospect::STATUS_FOLLOWING;
+                }
+                $prospect->update($updates);
             }
 
             return $interaction->load(['salesperson', 'prospect.country', 'customer.country']);

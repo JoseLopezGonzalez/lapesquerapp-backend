@@ -18,17 +18,13 @@ class CountryPolicy
 
     public function viewAny(User $user): bool
     {
-        if ($user->hasRole(Role::Comercial->value)) {
-            return false;
-        }
+        // Comercial puede listar países (catálogo) para clientes y prospectos.
         return $user->hasAnyRole($this->allowedRoles());
     }
 
     public function view(User $user, Country $country): bool
     {
-        if ($user->hasRole(Role::Comercial->value)) {
-            return false;
-        }
+        // Comercial puede ver un país (catálogo) para clientes y prospectos.
         return $user->hasAnyRole($this->allowedRoles());
     }
 

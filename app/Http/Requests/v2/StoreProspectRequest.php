@@ -25,6 +25,7 @@ class StoreProspectRequest extends FormRequest
             'notes' => 'nullable|string',
             'commercialInterestNotes' => 'nullable|string',
             'nextActionAt' => 'nullable|date',
+            'nextActionNote' => 'nullable|string|max:255',
             'lostReason' => 'nullable|string',
             'salespersonId' => 'nullable|integer|exists:tenant.salespeople,id',
             'primaryContact.name' => 'nullable|string|max:255',

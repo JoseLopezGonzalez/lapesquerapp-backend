@@ -13,6 +13,7 @@ class ActivityLog extends Model
     use HasFactory;
 
     protected $fillable = [
+        'action',
         'user_id',
         'ip_address',
         'country',

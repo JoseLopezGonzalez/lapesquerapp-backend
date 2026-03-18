@@ -275,6 +275,11 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('/countries/options', [CountryController::class, 'options']);
         Route::get('/payment-terms/options', [V2PaymentTermController::class, 'options']);
         Route::get('/crm/dashboard', [CrmDashboardController::class, 'index']);
+        Route::get('/crm/agenda', [\App\Http\Controllers\v2\CrmAgendaController::class, 'calendar']);
+        Route::get('/crm/agenda/summary', [\App\Http\Controllers\v2\CrmAgendaController::class, 'summary']);
+        Route::post('/crm/agenda', [\App\Http\Controllers\v2\CrmAgendaController::class, 'store']);
+        Route::post('/crm/agenda/{id}/reschedule', [\App\Http\Controllers\v2\CrmAgendaController::class, 'reschedule']);
+        Route::post('/crm/agenda/{id}/cancel', [\App\Http\Controllers\v2\CrmAgendaController::class, 'cancel']);
         Route::get('/prospects/{id}/contacts', [ProspectController::class, 'contacts']);
         Route::post('/prospects/{id}/contacts', [ProspectController::class, 'storeContact']);
         Route::put('/prospects/{id}/contacts/{contactId}', [ProspectController::class, 'updateContact']);

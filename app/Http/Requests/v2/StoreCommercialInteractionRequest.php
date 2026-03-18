@@ -22,6 +22,18 @@ class StoreCommercialInteractionRequest extends FormRequest
             'result' => 'required|string|in:interested,no_response,not_interested,pending',
             'nextActionNote' => 'nullable|string|max:255',
             'nextActionAt' => 'nullable|date',
+            'agendaActionId' => 'nullable|integer|exists:tenant.agenda_actions,id',
         ];
+    }
+
+    public function withValidator(\Illuminate\Validation\Validator $validator): void
+    {
+        $validator->after(function () use ($validator) {
+            // Regla V1: “done” en agenda requiere ligadura explícita (agendaActionId)
+            // cuando no se programa una nueva próxima acción.
+            if (! $this->filled('nextActionAt') && ! $this->filled('agendaActionId')) {
+                $validator->errors()->add('agendaActionId', 'agendaActionId es requerida cuando no se envía nextActionAt.');
+            }
+        });
     }
 }

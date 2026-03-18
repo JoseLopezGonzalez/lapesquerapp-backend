@@ -12,9 +12,11 @@
     "reminders_today": [
       {
         "type": "prospect",
+        "agendaActionId": 10,
         "id": 10,
         "label": "Acme Seafood",
         "nextActionAt": "2026-03-17",
+        "nextActionNote": "Enviar oferta",
         "daysOverdue": 0,
         "prospectId": 10,
         "customerId": null
@@ -51,21 +53,23 @@
 
 ## Reglas de negocio
 
-- `reminders_today`: prospectos e interacciones con `next_action_at = hoy`
-- `overdue_actions`: combinación de
-  - prospectos con `next_action_at < hoy`
-  - interacciones con `next_action_at < hoy`
+- `reminders_today`: acciones `agenda_actions` con `status=pending` y `scheduled_at = hoy`
+- `overdue_actions`: acciones `agenda_actions` con `status=pending` y `scheduled_at < hoy`
 - `inactive_customers`: clientes sin pedido en más de 30 días
 - `prospects_without_activity`: prospectos sin interacción en más de 7 días
 
 ## Resolución de agenda desde frontend
 
-Hay dos caminos soportados:
+El dashboard y el calendario leen la agenda desde `agenda_actions`:
+- `GET /api/v2/crm/agenda/summary`
+- `GET /api/v2/crm/agenda`
+
+Hay caminos soportados para “resolver” agenda:
 
 1. Registrar interacción nueva en `POST /api/v2/commercial-interactions`
-   - si `nextActionAt` llega vacío, el backend limpia la acción pendiente del prospecto
+   - si `nextActionAt` llega con fecha, el backend crea una `agenda_actions.pending` para el target
+   - si `nextActionAt` no llega (o llega `null`), el backend exige `agendaActionId` y marca como `done` la `agenda_actions.pending` indicada
 2. Reprogramar o limpiar directamente sobre el prospecto
-   - `POST /api/v2/prospects/{id}/schedule-action`
-   - `DELETE /api/v2/prospects/{id}/next-action`
+   - `POST /api/v2/prospects/{id}/schedule-action` (reprograma/cancela y crea pending en `agenda_actions`)
+   - `DELETE /api/v2/prospects/{id}/next-action` (cancela pending en `agenda_actions`)
 
-No existe calendario separado ni motor adicional de tareas.

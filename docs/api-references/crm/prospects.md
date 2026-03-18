@@ -45,6 +45,7 @@ Payload:
   "notes": "Interés inicial",
   "commercialInterestNotes": "Formato 2kg, mercado horeca",
   "nextActionAt": "2026-03-20",
+  "nextActionNote": "Llamar para enviar oferta",
   "lostReason": null,
   "salespersonId": 3,
   "primaryContact": {
@@ -66,6 +67,7 @@ Respuesta de escritura:
     "companyName": "Acme Seafood",
     "status": "new",
     "nextActionAt": "2026-03-20",
+    "nextActionNote": "Llamar para enviar oferta",
     "primaryContact": {
       "id": 14,
       "name": "Ana Compras",
@@ -150,9 +152,12 @@ Errores típicos:
 
 ```json
 {
-  "nextActionAt": "2026-03-25"
+  "nextActionAt": "2026-03-25",
+  "nextActionNote": "Enviar condiciones actualizadas"
 }
 ```
 
+`nextActionNote` es opcional (máx. 255 caracteres). Si no se envía, se limpia la descripción de la próxima acción.
+
 - `DELETE /api/v2/prospects/{id}/next-action`
-- Limpia `next_action_at` sin registrar interacción
+- Limpia `next_action_at` y `next_action_note` sin registrar interacción

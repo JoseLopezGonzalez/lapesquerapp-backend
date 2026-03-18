@@ -4,6 +4,7 @@ namespace App\Services\v2;
 
 use App\Enums\Role;
 use App\Models\Customer;
+use App\Models\AgendaAction;
 use App\Models\Offer;
 use App\Models\Prospect;
 use App\Models\ProspectContact;
@@ -63,6 +64,7 @@ class ProspectService
             'origin' => $validated['origin'] ?? Prospect::ORIGIN_OTHER,
             'status' => $validated['status'] ?? Prospect::STATUS_NEW,
             'next_action_at' => $validated['nextActionAt'] ?? null,
+            'next_action_note' => $validated['nextActionNote'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'commercial_interest_notes' => $validated['commercialInterestNotes'] ?? null,
             'lost_reason' => $validated['lostReason'] ?? null,
@@ -90,6 +92,7 @@ class ProspectService
             'origin' => $validated['origin'] ?? Prospect::ORIGIN_OTHER,
             'status' => $validated['status'] ?? $prospect->status,
             'next_action_at' => $validated['nextActionAt'] ?? null,
+            'next_action_note' => array_key_exists('nextActionNote', $validated) ? $validated['nextActionNote'] : $prospect->next_action_note,
             'notes' => $validated['notes'] ?? null,
             'commercial_interest_notes' => $validated['commercialInterestNotes'] ?? null,
             'lost_reason' => $validated['lostReason'] ?? null,
@@ -155,9 +158,35 @@ class ProspectService
         $contact->delete();
     }
 
-    public static function scheduleAction(Prospect $prospect, string $date): Prospect
+    public static function scheduleAction(Prospect $prospect, string $date, ?string $note = null): Prospect
     {
+        DB::transaction(function () use ($prospect, $date, $note) {
+            $pending = AgendaAction::query()
+                ->where('target_type', CrmAgendaService::TARGET_PROSPECT)
+                ->where('target_id', $prospect->id)
+                ->where('status', 'pending')
+                ->first();
+
+            $previousActionId = null;
+            if ($pending) {
+                $previousActionId = $pending->id;
+                $pending->update(['status' => 'cancelled']);
+            }
+
+            AgendaAction::create([
+                'target_type' => CrmAgendaService::TARGET_PROSPECT,
+                'target_id' => (int) $prospect->id,
+                'scheduled_at' => $date,
+                'description' => $note,
+                'status' => 'pending',
+                'source_interaction_id' => null,
+                'completed_interaction_id' => null,
+                'previous_action_id' => $previousActionId,
+            ]);
+        });
+
         $prospect->next_action_at = $date;
+        $prospect->next_action_note = $note;
         $prospect->save();
 
         return $prospect->fresh(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction', 'offers']);
@@ -165,7 +194,20 @@ class ProspectService
 
     public static function clearNextAction(Prospect $prospect): Prospect
     {
+        DB::transaction(function () use ($prospect) {
+            $pending = AgendaAction::query()
+                ->where('target_type', CrmAgendaService::TARGET_PROSPECT)
+                ->where('target_id', $prospect->id)
+                ->where('status', 'pending')
+                ->first();
+
+            if ($pending) {
+                $pending->update(['status' => 'cancelled']);
+            }
+        });
+
         $prospect->next_action_at = null;
+        $prospect->next_action_note = null;
         $prospect->save();
 
         return $prospect->fresh(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction', 'offers']);
@@ -219,6 +261,30 @@ class ProspectService
                 'status' => Prospect::STATUS_CUSTOMER,
                 'customer_id' => $customer->id,
             ]);
+
+            // Transferimos la pending principal del prospecto al cliente.
+            $pending = AgendaAction::query()
+                ->where('target_type', CrmAgendaService::TARGET_PROSPECT)
+                ->where('target_id', (int) $prospect->id)
+                ->where('status', 'pending')
+                ->first();
+
+            if ($pending) {
+                $customerPending = AgendaAction::query()
+                    ->where('target_type', CrmAgendaService::TARGET_CUSTOMER)
+                    ->where('target_id', (int) $customer->id)
+                    ->where('status', 'pending')
+                    ->first();
+
+                if ($customerPending) {
+                    $customerPending->update(['status' => 'cancelled']);
+                }
+
+                $pending->update([
+                    'target_type' => CrmAgendaService::TARGET_CUSTOMER,
+                    'target_id' => (int) $customer->id,
+                ]);
+            }
 
             $prospect->offers()
                 ->update([

@@ -4,18 +4,18 @@ namespace App\Http\Requests\v2;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class ScheduleProspectActionRequest extends FormRequest
+class IndexCrmAgendaSummaryRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user() !== null;
     }
 
     public function rules(): array
     {
         return [
-            'nextActionAt' => 'required|date',
-            'nextActionNote' => 'nullable|string|max:255',
+            'limitNext' => 'sometimes|integer|min:1|max:100',
         ];
     }
 }
+

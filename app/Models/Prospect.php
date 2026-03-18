@@ -22,12 +22,22 @@ class Prospect extends Model
     public const STATUS_DISCARDED = 'discarded';
 
     public const ORIGIN_CONXEMAR = 'conxemar';
-
     public const ORIGIN_DIRECT = 'direct';
-
     public const ORIGIN_REFERRAL = 'referral';
-
     public const ORIGIN_WEB = 'web';
+
+    public const ORIGIN_INBOUND_CALL = 'inbound_call';
+    public const ORIGIN_EMAIL = 'email';
+    public const ORIGIN_WEB_FORM = 'web_form';
+    public const ORIGIN_WHATSAPP = 'whatsapp';
+    public const ORIGIN_LINKEDIN = 'linkedin';
+    public const ORIGIN_EVENT = 'event';
+    public const ORIGIN_AGENT = 'agent';
+    public const ORIGIN_MARKETING_CAMPAIGN = 'marketing_campaign';
+    public const ORIGIN_REACTIVATION = 'reactivation';
+    public const ORIGIN_ONLINE_SEARCH = 'online_search';
+    public const ORIGIN_GOOGLE_MAPS = 'google_maps';
+    public const ORIGIN_AI_SOURCED = 'ai_sourced';
 
     public const ORIGIN_OTHER = 'other';
 
@@ -40,6 +50,7 @@ class Prospect extends Model
         'status',
         'customer_id',
         'next_action_at',
+        'next_action_note',
         'notes',
         'commercial_interest_notes',
         'last_contact_at',
@@ -72,6 +83,18 @@ class Prospect extends Model
             self::ORIGIN_DIRECT,
             self::ORIGIN_REFERRAL,
             self::ORIGIN_WEB,
+            self::ORIGIN_INBOUND_CALL,
+            self::ORIGIN_EMAIL,
+            self::ORIGIN_WEB_FORM,
+            self::ORIGIN_WHATSAPP,
+            self::ORIGIN_LINKEDIN,
+            self::ORIGIN_EVENT,
+            self::ORIGIN_AGENT,
+            self::ORIGIN_MARKETING_CAMPAIGN,
+            self::ORIGIN_REACTIVATION,
+            self::ORIGIN_ONLINE_SEARCH,
+            self::ORIGIN_GOOGLE_MAPS,
+            self::ORIGIN_AI_SOURCED,
             self::ORIGIN_OTHER,
         ];
     }
@@ -130,6 +153,7 @@ class Prospect extends Model
             'salesperson' => $this->salesperson?->toArrayAssoc(),
             'customer' => $this->customer?->toArrayAssoc(),
             'nextActionAt' => $this->next_action_at?->format('Y-m-d'),
+            'nextActionNote' => $this->next_action_note,
             'notes' => $this->notes,
             'commercialInterestNotes' => $this->commercial_interest_notes,
             'lastContactAt' => $this->last_contact_at?->toISOString(),

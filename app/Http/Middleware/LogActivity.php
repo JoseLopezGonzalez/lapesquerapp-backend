@@ -28,6 +28,12 @@ class LogActivity
                 Log::error('Error obteniendo la ubicación: '.$e->getMessage());
             }
 
+            // Algunos drivers devuelven `false` cuando no hay geoIP; normalizamos para evitar
+            // "Attempt to read property ... on bool" al usar el nullsafe operator.
+            if (! is_object($location)) {
+                $location = null;
+            }
+
             // Analizar el User-Agent
             $agent = new Agent;
             $userAgentHeader = $request->header('User-Agent');
@@ -42,6 +48,7 @@ class LogActivity
                 $actor = auth()->user();
                 ActivityLog::create([
                     'user_id' => $actor instanceof ExternalUser ? null : auth()->id(),
+                    'action' => $request->method().' '.$request->path(),
                     'ip_address' => $ip,
                     'country' => $location?->countryName ?? 'Desconocido',
                     'city' => $location?->cityName ?? 'Desconocido',

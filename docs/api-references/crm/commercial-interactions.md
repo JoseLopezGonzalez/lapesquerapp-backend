@@ -10,10 +10,14 @@
 
 - Una interacción pertenece a un prospecto o a un cliente, nunca a ambos.
 - En V1 las interacciones no se editan.
-- Al crear una interacción sobre un prospecto, el backend actualiza:
-  - `prospects.last_contact_at`
-  - `prospects.next_action_at` si llega `nextActionAt`
-- Si llega `nextActionAt = null`, el backend limpia la próxima acción del prospecto.
+- Si llega `nextActionAt`:
+  - el backend crea una `agenda_actions.pending` para el target (prospecto/cliente) ligada a esa interacción
+  - si el target es prospecto, también actualiza `prospects.last_contact_at` y `prospects.next_action_at/next_action_note` (legacy)
+- Si NO llega `nextActionAt` (o llega `null`):
+  - el backend exige `agendaActionId`
+  - el backend marca esa `agenda_actions` como `status=done` y guarda el vínculo con la interacción que cierra
+  - si el target es prospecto, limpia `prospects.next_action_at/next_action_note` (legacy)
+- Regla V1: si ya existe una `agenda_actions` `pending` para el mismo target, crear otra pendiente con `nextActionAt` devuelve `422`.
 
 ## Tipos válidos
 
@@ -55,6 +59,21 @@ Payload sobre cliente:
   "occurredAt": "2026-03-17T11:00:00Z",
   "summary": "Se envían condiciones actualizadas",
   "result": "interested"
+}
+```
+
+### Cierre (done) sin próxima acción
+
+Para marcar una acción como `done` (V1), la interacción debe venir **sin** `nextActionAt` y debe incluir `agendaActionId`.
+
+```json
+{
+  "prospectId": 10,
+  "type": "call",
+  "occurredAt": "2026-03-17T12:10:00Z",
+  "summary": "Cierre de la tarea",
+  "result": "pending",
+  "agendaActionId": 123
 }
 ```
 

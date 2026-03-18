@@ -135,6 +135,7 @@ También valida ownership en servicios cuando el target viene en payload, para e
   "notes": "Interés inicial",
   "commercialInterestNotes": "Formato 2kg, mercado horeca",
   "nextActionAt": "2026-03-20",
+  "nextActionNote": "Llamar para enviar oferta",
   "lostReason": null,
   "salespersonId": 3,
   "primaryContact": {
@@ -167,6 +168,7 @@ También valida ownership en servicios cuando el target viene en payload, para e
     },
     "customer": null,
     "nextActionAt": "2026-03-20",
+    "nextActionNote": "Llamar para enviar oferta",
     "notes": "Interés inicial",
     "commercialInterestNotes": "Formato 2kg, mercado horeca",
     "lastContactAt": null,
@@ -240,11 +242,12 @@ Reprogramar:
 ```json
 POST /api/v2/prospects/{id}/schedule-action
 {
-  "nextActionAt": "2026-03-25"
+  "nextActionAt": "2026-03-25",
+  "nextActionNote": "Enviar condiciones actualizadas"
 }
 ```
 
-Limpiar:
+`nextActionNote` es opcional. Limpiar:
 
 - `DELETE /api/v2/prospects/{id}/next-action`
 
@@ -344,8 +347,8 @@ Errores típicos:
 - En V1 las interacciones no se editan
 - Si la interacción es sobre prospecto:
   - se actualiza `last_contact_at`
-  - si llega `nextActionAt`, se copia a `prospects.next_action_at`
-  - si no llega `nextActionAt`, se limpia `prospects.next_action_at`
+  - si llega `nextActionAt`, se copian fecha y `nextActionNote` a `prospects.next_action_at` y `prospects.next_action_note`
+  - si no llega `nextActionAt`, se limpian fecha y descripción de la próxima acción
 
 #### Implicación importante para frontend
 
@@ -625,6 +628,7 @@ Errores típicos:
         "id": 10,
         "label": "Acme Seafood",
         "nextActionAt": "2026-03-17",
+        "nextActionNote": "Enviar oferta",
         "daysOverdue": 0,
         "prospectId": 10,
         "customerId": null
@@ -740,6 +744,7 @@ Campos relevantes:
 - `salesperson`
 - `customer`
 - `nextActionAt`
+- `nextActionNote`
 - `notes`
 - `commercialInterestNotes`
 - `lastContactAt`
@@ -820,7 +825,7 @@ Esto aplica en:
 1. `POST /api/v2/commercial-interactions`
 2. si es sobre prospecto:
    - se actualiza `last_contact_at`
-   - se actualiza o limpia `next_action_at`
+   - se actualiza o limpia `next_action_at` y `next_action_note`
 
 ### Flujo 3. Resolver una acción pendiente
 

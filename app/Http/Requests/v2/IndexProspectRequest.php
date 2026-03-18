@@ -4,6 +4,7 @@ namespace App\Http\Requests\v2;
 
 use App\Models\Prospect;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class IndexProspectRequest extends FormRequest
 {
@@ -19,7 +20,7 @@ class IndexProspectRequest extends FormRequest
             'status' => 'sometimes|array',
             'status.*' => 'string|in:new,following,offer_sent,customer,discarded',
             'origin' => 'sometimes|array',
-            'origin.*' => 'string|in:conxemar,direct,referral,web,other',
+            'origin.*' => ['string', Rule::in(Prospect::origins())],
             'countries' => 'sometimes|array',
             'countries.*' => 'integer',
             'salespeople' => 'sometimes|array',

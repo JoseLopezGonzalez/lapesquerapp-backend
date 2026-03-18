@@ -127,7 +127,11 @@ class ProspectController extends Controller
     {
         $prospect = Prospect::findOrFail($id);
         $this->authorize('update', $prospect);
-        $prospect = ProspectService::scheduleAction($prospect, $request->validated()['nextActionAt']);
+        $prospect = ProspectService::scheduleAction(
+            $prospect,
+            $request->validated()['nextActionAt'],
+            $request->validated()['nextActionNote'] ?? null
+        );
 
         return response()->json([
             'message' => 'Acción reprogramada correctamente.',
