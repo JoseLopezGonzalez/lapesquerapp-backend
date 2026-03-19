@@ -9,7 +9,9 @@ return new class extends Migration
     {
         // El constraint original fue creado en `2026_03_18_130000_create_agenda_actions_table.php`
         // con el nombre `chk_agenda_actions_status`.
-        DB::statement('ALTER TABLE agenda_actions DROP CHECK chk_agenda_actions_status');
+        // MariaDB no soporta `ALTER TABLE ... DROP CHECK ...` para constraints.
+        // En su lugar usa `DROP CONSTRAINT`.
+        DB::statement('ALTER TABLE agenda_actions DROP CONSTRAINT chk_agenda_actions_status');
 
         DB::statement('
             ALTER TABLE agenda_actions
@@ -20,7 +22,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE agenda_actions DROP CHECK chk_agenda_actions_status');
+        DB::statement('ALTER TABLE agenda_actions DROP CONSTRAINT chk_agenda_actions_status');
 
         DB::statement('
             ALTER TABLE agenda_actions
