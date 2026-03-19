@@ -56,6 +56,20 @@ class PDFController extends Controller
         return $this->generatePdf($order, 'pdf.v2.orders.order_signs', 'Letreros_transporte_' . $order->formattedId);
     }
 
+    public function generateRestrictedOrderSigns(int|string $orderId): StreamedResponse
+    {
+        $order = $this->getAuthorizedOrder($orderId);
+        if (auth()->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
+
+        return $this->generatePdf(
+            $order,
+            'pdf.v2.orders.restricted_order_signs',
+            'Letreros_transporte_restringidos_' . $order->formattedId
+        );
+    }
+
     public function generateOrderPackingList(int|string $orderId): StreamedResponse
     {
         $order = $this->getAuthorizedOrder($orderId);

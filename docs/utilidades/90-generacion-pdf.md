@@ -65,6 +65,11 @@ Todos los métodos reciben `$orderId` como parámetro y generan un PDF específi
 - **Archivo**: `Letreros_transporte_{formattedId}.pdf`
 - **Descripción**: Letreros para transporte
 
+#### `generateRestrictedOrderSigns($orderId)`
+- **Vista**: `pdf.v2.orders.restricted_order_signs`
+- **Archivo**: `Letreros_transporte_restringidos_{formattedId}.pdf`
+- **Descripción**: Letreros restringidos para transporte (sin consignatario ni transporte)
+
 #### `generateOrderPackingList($orderId)`
 - **Vista**: `pdf.v2.orders.order_packing_list`
 - **Archivo**: `Packing_list_{formattedId}.pdf`
@@ -161,6 +166,7 @@ Todas las rutas siguen el patrón: `GET /api/v2/orders/{orderId}/pdf/{document-t
 |------------|------|----------------------|-------------|
 | `GET` | `/api/v2/orders/{orderId}/pdf/order-sheet` | `generateOrderSheet` | Hoja de pedido |
 | `GET` | `/api/v2/orders/{orderId}/pdf/order-signs` | `generateOrderSigns` | Letreros de transporte |
+| `GET` | `/api/v2/orders/{orderId}/pdf/restricted-order-signs` | `generateRestrictedOrderSigns` | Letreros de transporte restringidos |
 | `GET` | `/api/v2/orders/{orderId}/pdf/order-packing-list` | `generateOrderPackingList` | Lista de empaque |
 | `GET` | `/api/v2/orders/{orderId}/pdf/loading-note` | `generateLoadingNote` | Nota de carga |
 | `GET` | `/api/v2/orders/{orderId}/pdf/restricted-loading-note` | `generateRestrictedLoadingNote` | Nota de carga restringida |

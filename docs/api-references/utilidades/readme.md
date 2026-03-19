@@ -59,6 +59,17 @@ Retorna un archivo PDF con los letreros de transporte del pedido.
 
 ---
 
+### Letreros de Transporte (Restringidos)
+
+```http
+GET /api/v2/orders/{orderId}/pdf/restricted-order-signs
+```
+
+#### Response Exitosa (200)
+
+Retorna un archivo PDF con letreros de transporte restringidos del pedido (sin consignatario ni transporte).
+---
+
 ### Lista de Empaque
 
 ```http

@@ -123,6 +123,13 @@ GET /v2/orders/{orderId}/pdf/order-signs
 - **Vista**: `pdf.v2.orders.order_signs`
 - **Nombre archivo**: `Letreros_transporte_{formattedId}.pdf`
 
+##### `generateRestrictedOrderSigns($orderId)`
+```php
+GET /v2/orders/{orderId}/pdf/restricted-order-signs
+```
+- **Vista**: `pdf.v2.orders.restricted_order_signs`
+- **Nombre archivo**: `Letreros_transporte_restringidos_{formattedId}.pdf`
+
 ##### `generateOrderPackingList($orderId)`
 ```php
 GET /v2/orders/{orderId}/pdf/order-packing-list
@@ -287,6 +294,7 @@ Mailable genérico para envío personalizado con un documento.
 ### Generación de PDFs (Descarga)
 - `GET /v2/orders/{id}/pdf/order-sheet`
 - `GET /v2/orders/{id}/pdf/order-signs`
+- `GET /v2/orders/{id}/pdf/restricted-order-signs`
 - `GET /v2/orders/{id}/pdf/order-packing-list`
 - `GET /v2/orders/{id}/pdf/loading-note`
 - `GET /v2/orders/{id}/pdf/restricted-loading-note`

@@ -127,6 +127,7 @@ Todas las rutas están bajo `/v2` y requieren autenticación (`auth:sanctum`) y 
 ### Order Documents (Documentos)
 - `GET /v2/orders/{id}/pdf/order-sheet` - Generar hoja de pedido PDF
 - `GET /v2/orders/{id}/pdf/order-signs` - Generar letreros de transporte PDF
+- `GET /v2/orders/{id}/pdf/restricted-order-signs` - Generar letreros de transporte restringidos PDF (sin consignatario ni transporte)
 - `GET /v2/orders/{id}/pdf/order-packing-list` - Generar packing list PDF
 - `GET /v2/orders/{id}/pdf/loading-note` - Generar nota de carga PDF
 - `GET /v2/orders/{id}/pdf/restricted-loading-note` - Generar nota de carga restringida PDF

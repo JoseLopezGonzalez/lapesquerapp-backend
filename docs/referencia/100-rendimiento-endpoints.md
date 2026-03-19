@@ -190,7 +190,7 @@ El controlador usa el trait **HandlesChromiumConfig** para configurar Chromium (
 - **I/O:** Snappdf (Chromium) genera el PDF desde HTML: **uso intensivo de CPU y tiempo** (típicamente 2–10+ s por documento).
 - **Memoria:** media–alta durante el renderizado.
 
-Rutas: `order-sheet`, `order-signs`, `order-packing-list`, `loading-note`, `restricted-loading-note`, `order-cmr`, `valued-loading-note`, `incident`, `order-confirmation`, `transport-pickup-request`.
+Rutas: `order-sheet`, `order-signs`, `restricted-order-signs`, `order-packing-list`, `loading-note`, `restricted-loading-note`, `order-cmr`, `valued-loading-note`, `incident`, `order-confirmation`, `transport-pickup-request`.
 
 **Endpoint masivo** `GET orders/pdf/order-sheets-filtered`:
 

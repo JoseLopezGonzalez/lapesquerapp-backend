@@ -471,6 +471,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('orders/{orderId}/pdf/order-sheet', [\App\Http\Controllers\v2\PDFController::class, 'generateOrderSheet'])->name('generate_order_sheet');
         Route::get('orders/pdf/order-sheets-filtered', [\App\Http\Controllers\v2\PDFController::class, 'generateOrderSheetsWithFilters'])->name('generate_order_sheets_filtered');
         Route::get('orders/{orderId}/pdf/order-signs', [\App\Http\Controllers\v2\PDFController::class, 'generateOrderSigns'])->name('generate_order_signs');
+        Route::get('orders/{orderId}/pdf/restricted-order-signs', [\App\Http\Controllers\v2\PDFController::class, 'generateRestrictedOrderSigns'])->name('generate_restricted_order_signs');
         Route::get('orders/{orderId}/pdf/order-packing-list', [\App\Http\Controllers\v2\PDFController::class, 'generateOrderPackingList'])->name('generate_order_packing_list');
         Route::get('orders/{orderId}/pdf/loading-note', [\App\Http\Controllers\v2\PDFController::class, 'generateLoadingNote'])->name('generate_loading_note');
         Route::get('orders/{orderId}/pdf/restricted-loading-note', [\App\Http\Controllers\v2\PDFController::class, 'generateRestrictedLoadingNote'])->name('generate_restricted_loading_note');

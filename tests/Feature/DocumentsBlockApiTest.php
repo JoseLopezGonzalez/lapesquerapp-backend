@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Incoterm;
 use App\Models\Order;
 use App\Models\PaymentTerm;
+use App\Models\Pallet;
 use App\Models\Salesperson;
 use App\Models\Tenant;
 use App\Models\Transport;
@@ -199,6 +200,46 @@ class DocumentsBlockApiTest extends TestCase
             ->get("/api/v2/orders/{$this->order->id}/xlsx/lots-report");
 
         $response->assertUnauthorized();
+    }
+
+    public function test_restricted_order_signs_returns_403_for_comercial(): void
+    {
+        $comercialUser = User::create([
+            'name' => 'Test User Comercal Docs ' . uniqid(),
+            'email' => $this->tenantSubdomain . '-comercial-' . uniqid() . '@test.com',
+            'role' => Role::Comercial->value,
+            'active' => true,
+        ]);
+
+        $comercialToken = $comercialUser->createToken('test')->plainTextToken;
+
+        $response = $this->withHeaders([
+            'X-Tenant' => $this->tenantSubdomain,
+            'Authorization' => 'Bearer ' . $comercialToken,
+            'Accept' => 'application/pdf',
+        ])->get("/api/v2/orders/{$this->order->id}/pdf/restricted-order-signs");
+
+        $response->assertStatus(403);
+    }
+
+    public function test_restricted_order_signs_returns_200_for_admin(): void
+    {
+        if (! file_exists('/usr/bin/google-chrome') && ! file_exists('/usr/bin/chromium')) {
+            $this->markTestSkipped('Chromium not available for PDF generation');
+        }
+
+        $pallet = new Pallet(['status' => Pallet::STATE_REGISTERED]);
+        $pallet->order_id = $this->order->id;
+        $pallet->save();
+
+        $headers = $this->authHeaders();
+        $headers['Accept'] = 'application/pdf';
+
+        $response = $this->withHeaders($headers)
+            ->get("/api/v2/orders/{$this->order->id}/pdf/restricted-order-signs");
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
     }
 
 }

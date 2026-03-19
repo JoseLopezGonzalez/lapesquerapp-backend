@@ -500,6 +500,7 @@ Todas las rutas de PDF retornan archivos PDF para descarga directa.
 |--------|------|-------------|--------|-------------|
 | `GET` | `/api/v2/orders/{orderId}/pdf/order-sheet` | `PDFController` | `generateOrderSheet` | Hoja de pedido |
 | `GET` | `/api/v2/orders/{orderId}/pdf/order-signs` | `PDFController` | `generateOrderSigns` | Letreros de transporte |
+| `GET` | `/api/v2/orders/{orderId}/pdf/restricted-order-signs` | `PDFController` | `generateRestrictedOrderSigns` | Letreros de transporte restringidos |
 | `GET` | `/api/v2/orders/{orderId}/pdf/order-packing-list` | `PDFController` | `generateOrderPackingList` | Lista de empaque |
 | `GET` | `/api/v2/orders/{orderId}/pdf/loading-note` | `PDFController` | `generateLoadingNote` | Nota de carga |
 | `GET` | `/api/v2/orders/{orderId}/pdf/restricted-loading-note` | `PDFController` | `generateRestrictedLoadingNote` | Nota de carga restringida |
