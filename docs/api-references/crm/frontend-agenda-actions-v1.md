@@ -26,7 +26,8 @@ Una `agenda_actions` siempre pertenece a un **target**:
 En V1 los estados relevantes para UI son:
 - `pending`: acción activa y pendiente
 - `done`: acción ya realizada (se marca por interacción de cierre con ligadura)
-- `cancelled`: acción retirada (p.ej. al reprogramar)
+- `reprogrammed`: acción antigua retirada por reprogramación (queda como historial)
+- `cancelled`: acción retirada (cancelación explícita)
 
 ### 3) Regla V1 de cardinalidad: 1 pending principal por target
 Para cada target (prospecto/cliente):
@@ -49,7 +50,7 @@ Nota importante:
 - la UI ya no debe esperar items con `type="interaction"` dentro de `reminders_today/overdue_actions`
 
 ### Calendario (nuevo)
-- `GET /api/v2/crm/agenda?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&targetType=prospect|customer&status[]=pending|done|cancelled`
+- `GET /api/v2/crm/agenda?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&targetType=prospect|customer&status[]=pending|reprogrammed|done|cancelled`
 - `GET /api/v2/crm/agenda/summary?limitNext=10`
 
 Ambos endpoints consumen `agenda_actions` (no legacy).
@@ -97,7 +98,7 @@ Cada item del array:
 - `agendaActionId`
 - `scheduledAt` (`YYYY-MM-DD`)
 - `description`
-- `status` (`pending|done|cancelled`)
+- `status` (`pending|reprogrammed|done|cancelled`)
 - `target`: `{ "type": "prospect|customer", "id": <targetId> }`
 - `label`
 
@@ -206,17 +207,16 @@ Endpoints:
 - `POST /api/v2/crm/agenda/{id}/reschedule`
 
 Efecto esperado:
-- la `agenda_actions` original (el `id` reprogramado) pasa a `cancelled`
+- la `agenda_actions` original (el `id` reprogramado) pasa a `reprogrammed`
 - se crea una nueva `agenda_actions` `pending` con:
   - nueva `scheduledAt`
-  - nueva `description`
+  - `description` igual a la anterior (se hereda si el front no envía nota)
   - enlace histórico mediante `previous_action_id` (la UI puede ignorarlo si no muestra historial)
 
 Entrada conceptual:
 ```json
 {
   "nextActionAt": "2026-03-27",
-  "nextActionNote": "Nota reprogramada",
   "sourceInteractionId": null
 }
 ```

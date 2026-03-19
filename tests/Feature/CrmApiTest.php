@@ -351,7 +351,7 @@ class CrmApiTest extends TestCase
         $reschedule->assertStatus(200);
 
         $old = AgendaAction::query()->find($pending->id);
-        $this->assertSame('cancelled', $old->status);
+        $this->assertSame('reprogrammed', $old->status);
 
         $newId = $reschedule->json('data.agendaActionId');
         $new = AgendaAction::query()->find($newId);
@@ -366,6 +366,50 @@ class CrmApiTest extends TestCase
         $cancel->assertStatus(200);
         $cancelled = AgendaAction::query()->find($newId);
         $this->assertSame('cancelled', $cancelled->status);
+    }
+
+    public function test_reschedule_without_next_action_note_inherits_previous_description(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Reschedule Inherit Description Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+
+        // Creamos pending vía schedule-action wrapper (crea agenda_actions y descripción inicial).
+        $schedule = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/schedule-action', [
+                'nextActionAt' => now()->addDays(5)->format('Y-m-d'),
+                'nextActionNote' => 'Nota inicial',
+            ]);
+
+        $schedule->assertStatus(200);
+
+        $pending = AgendaAction::query()
+            ->where('target_type', 'prospect')
+            ->where('target_id', $prospect->id)
+            ->where('status', 'pending')
+            ->first();
+
+        $this->assertNotNull($pending);
+        $this->assertSame('Nota inicial', $pending->description);
+
+        // Reschedule SIN nextActionNote: el backend debe heredar la descripción anterior.
+        $reschedule = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/crm/agenda/'.$pending->id.'/reschedule', [
+                'nextActionAt' => now()->addDays(8)->format('Y-m-d'),
+            ]);
+
+        $reschedule->assertStatus(200);
+
+        $newId = $reschedule->json('data.agendaActionId');
+        $new = AgendaAction::query()->find($newId);
+
+        $this->assertNotNull($new);
+        $this->assertSame('pending', $new->status);
+        $this->assertSame('Nota inicial', $new->description);
+        $this->assertSame($pending->id, (int) $new->previous_action_id);
     }
 
     public function test_prospect_can_be_converted_to_customer(): void

@@ -2,7 +2,7 @@
 
 ## Endpoints
 
-- `GET /api/v2/crm/agenda?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&targetType=prospect|customer&status[]=pending|done|cancelled`
+- `GET /api/v2/crm/agenda?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&targetType=prospect|customer&status[]=pending|reprogrammed|done|cancelled`
 - `GET /api/v2/crm/agenda/summary?limitNext=10`
 - `POST /api/v2/crm/agenda`
 - `POST /api/v2/crm/agenda/{id}/reschedule`
@@ -67,7 +67,6 @@ Payload:
 ```json
 {
   "nextActionAt": "2026-03-27",
-  "nextActionNote": "Nota reprogramada",
   "sourceInteractionId": null
 }
 ```

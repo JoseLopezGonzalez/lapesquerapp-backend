@@ -31,7 +31,9 @@ class CrmAgendaService
         ?string $targetType = null,
         ?array $status = null,
     ): array {
-        $status = $status ?? ['pending'];
+        // Si el front no envía filtros de estado, devolvemos historial completo
+        // para poder visualizar reprogramaciones.
+        $status = $status ?? ['pending', 'reprogrammed', 'done', 'cancelled'];
 
         $query = AgendaAction::query()
             ->whereIn('status', $status);
@@ -235,21 +237,25 @@ class CrmAgendaService
             ]);
         }
 
+        $effectiveDescription = $newDescription ?? $action->description;
+
         return DB::transaction(function () use (
             $action,
             $user,
             $newScheduledAt,
-            $newDescription,
+            $effectiveDescription,
             $sourceInteractionId
         ) {
-            $action->update(['status' => 'cancelled']);
+            // En V1, reprogramar significa que la acción antigua pasa a `reprogrammed`
+            // (y la nueva representa el mismo trabajo, pero en otra fecha).
+            $action->update(['status' => 'reprogrammed']);
 
             // Al cancelar, creamos la nueva pendiente con enlace histórico.
             $new = AgendaAction::create([
                 'target_type' => $action->target_type,
                 'target_id' => $action->target_id,
                 'scheduled_at' => $newScheduledAt,
-                'description' => $newDescription,
+                'description' => $effectiveDescription,
                 'status' => 'pending',
                 'source_interaction_id' => $sourceInteractionId,
                 'previous_action_id' => $action->id,

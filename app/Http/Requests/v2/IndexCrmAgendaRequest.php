@@ -19,7 +19,7 @@ class IndexCrmAgendaRequest extends FormRequest
             'endDate' => 'sometimes|date',
             'targetType' => 'sometimes|in:prospect,customer',
             'status' => 'sometimes|array',
-            'status.*' => 'string|in:pending,done,cancelled',
+            'status.*' => 'string|in:pending,reprogrammed,done,cancelled',
         ];
     }
 }
