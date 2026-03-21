@@ -28,6 +28,11 @@ class Order extends Model
 
     const ORDER_TYPE_AUTOVENTA = 'autoventa';
 
+    const OPERATIONAL_EDITABLE_STATUSES = [
+        self::STATUS_PENDING,
+        self::STATUS_INCIDENT,
+    ];
+
     /**
      * Lista de todos los estados válidos
      */
@@ -60,6 +65,8 @@ class Order extends Model
         'production_notes',
         'accounting_notes',
         'salesperson_id',
+        'field_operator_id',
+        'created_by_user_id',
         'emails',
         'transport_id',
         'entry_date',
@@ -68,6 +75,8 @@ class Order extends Model
         'order_type',
         'buyer_reference',
         'incoterm_id',
+        'route_id',
+        'route_stop_id',
     ];
 
     public function plannedProductDetails()
@@ -97,6 +106,16 @@ class Order extends Model
         return $this->belongsTo(Salesperson::class);
     }
 
+    public function fieldOperator()
+    {
+        return $this->belongsTo(FieldOperator::class);
+    }
+
+    public function createdByUser()
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
     public function transport()
     {
         return $this->belongsTo(Transport::class);
@@ -121,6 +140,11 @@ class Order extends Model
     public function getIsAutoventaAttribute(): bool
     {
         return $this->order_type === self::ORDER_TYPE_AUTOVENTA;
+    }
+
+    public function canBeEditedOperationally(): bool
+    {
+        return in_array($this->status, self::OPERATIONAL_EDITABLE_STATUSES, true);
     }
 
     //Resumen productos pedido
@@ -160,6 +184,16 @@ class Order extends Model
     public function offer()
     {
         return $this->hasOne(Offer::class);
+    }
+
+    public function route()
+    {
+        return $this->belongsTo(DeliveryRoute::class, 'route_id');
+    }
+
+    public function routeStop()
+    {
+        return $this->belongsTo(RouteStop::class, 'route_stop_id');
     }
 
     public function isActive()

@@ -7,6 +7,7 @@ use App\Enums\Role;
 use App\Http\Requests\v2\DestroyMultipleCustomersRequest;
 use App\Http\Requests\v2\IndexCustomerRequest;
 use App\Http\Requests\v2\StoreCustomerRequest;
+use App\Http\Requests\v2\UpdateCustomerAssignmentRequest;
 use App\Http\Requests\v2\UpdateCustomerRequest;
 use App\Http\Resources\v2\CustomerResource;
 use App\Models\Customer;
@@ -60,6 +61,7 @@ class CustomerController extends Controller
             'emails' => $validated['emails'] ?? null,
             'contact_info' => $validated['contact_info'] ?? null,
             'salesperson_id' => $validated['salesperson_id'] ?? null,
+            'created_by_user_id' => $request->user()->id,
             'country_id' => $validated['country_id'] ?? null,
             'payment_term_id' => $validated['payment_term_id'] ?? null,
             'transport_id' => $validated['transport_id'] ?? null,
@@ -135,6 +137,22 @@ class CustomerController extends Controller
         return response()->json([
             'message' => 'Cliente actualizado correctamente.',
             'data' => new CustomerResource($customer),
+        ]);
+    }
+
+    public function updateAssignment(UpdateCustomerAssignmentRequest $request, Customer $customer)
+    {
+        $validated = $request->validated();
+
+        $customer->update([
+            'salesperson_id' => array_key_exists('salesperson_id', $validated) ? $validated['salesperson_id'] : $customer->salesperson_id,
+            'field_operator_id' => array_key_exists('field_operator_id', $validated) ? $validated['field_operator_id'] : $customer->field_operator_id,
+            'operational_status' => $validated['operational_status'] ?? $customer->operational_status,
+        ]);
+
+        return response()->json([
+            'message' => 'Asignación del cliente actualizada correctamente.',
+            'data' => new CustomerResource($customer->fresh(['salesperson', 'fieldOperator', 'country', 'transport', 'payment_term'])),
         ]);
     }
 

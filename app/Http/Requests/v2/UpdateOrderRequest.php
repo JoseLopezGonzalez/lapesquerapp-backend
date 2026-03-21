@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\v2;
 
+use App\Models\DeliveryRoute;
+use App\Models\RouteStop;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateOrderRequest extends FormRequest
@@ -31,6 +33,7 @@ class UpdateOrderRequest extends FormRequest
             'productionNotes' => 'sometimes|nullable|string',
             'accountingNotes' => 'sometimes|nullable|string',
             'salesperson' => 'sometimes|integer|exists:tenant.salespeople,id',
+            'fieldOperator' => 'sometimes|nullable|integer|exists:tenant.field_operators,id',
             'emails' => 'sometimes|nullable|array',
             'emails.*' => 'string|email:rfc,dns|distinct',
             'ccEmails' => 'sometimes|nullable|array',
@@ -40,6 +43,8 @@ class UpdateOrderRequest extends FormRequest
             'loadDate' => 'sometimes|date',
             'status' => 'sometimes|string|in:pending,finished,incident',
             'incoterm' => 'sometimes|integer|exists:tenant.incoterms,id',
+            'routeId' => 'sometimes|nullable|integer|exists:tenant.routes,id',
+            'routeStopId' => 'sometimes|nullable|integer|exists:tenant.route_stops,id',
             'truckPlate' => 'sometimes|nullable|string',
             'trailerPlate' => 'sometimes|nullable|string',
             'temperature' => 'sometimes|nullable|numeric',
@@ -65,6 +70,8 @@ class UpdateOrderRequest extends FormRequest
             'accountingNotes.string' => 'Las notas contables deben ser texto.',
             'salesperson.integer' => 'El comercial debe ser un número entero.',
             'salesperson.exists' => 'El comercial seleccionado no existe.',
+            'fieldOperator.integer' => 'El actor operativo debe ser un número entero.',
+            'fieldOperator.exists' => 'El actor operativo seleccionado no existe.',
             'emails.array' => 'Los emails deben ser una lista.',
             'emails.*.string' => 'Cada email debe ser texto.',
             'emails.*.email' => 'Uno o más emails no son válidos.',
@@ -81,9 +88,32 @@ class UpdateOrderRequest extends FormRequest
             'status.in' => 'El estado del pedido no es válido. Valores permitidos: pending, finished, incident.',
             'incoterm.integer' => 'El incoterm debe ser un número entero.',
             'incoterm.exists' => 'El incoterm seleccionado no existe.',
+            'routeId.integer' => 'La ruta debe ser un número entero.',
+            'routeId.exists' => 'La ruta seleccionada no existe.',
+            'routeStopId.integer' => 'La parada debe ser un número entero.',
+            'routeStopId.exists' => 'La parada seleccionada no existe.',
             'truckPlate.string' => 'La matrícula del camión debe ser texto.',
             'trailerPlate.string' => 'La matrícula del remolque debe ser texto.',
             'temperature.numeric' => 'La temperatura debe ser un número.',
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $routeId = $this->input('routeId', $this->route('order')?->route_id);
+            $routeStopId = $this->input('routeStopId', $this->route('order')?->route_stop_id);
+
+            if (! $routeId || ! $routeStopId) {
+                return;
+            }
+
+            $route = DeliveryRoute::find($routeId);
+            $routeStop = RouteStop::find($routeStopId);
+
+            if ($route && $routeStop && $routeStop->route_id !== $route->id) {
+                $validator->errors()->add('routeStopId', 'La parada seleccionada no pertenece a la ruta indicada.');
+            }
+        });
     }
 }

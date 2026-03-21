@@ -87,6 +87,11 @@ class User extends Authenticatable
         return $this->hasOne(Salesperson::class);
     }
 
+    public function fieldOperator()
+    {
+        return $this->hasOne(FieldOperator::class);
+    }
+
     /* toasocArray */
     public function activityLogs()
     {

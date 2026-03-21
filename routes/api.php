@@ -13,6 +13,10 @@ use App\Http\Controllers\v2\CrmDashboardController;
 use App\Http\Controllers\v2\CustomerController as V2CustomerController;
 use App\Http\Controllers\v2\EmployeeController;
 use App\Http\Controllers\v2\ExternalUserController;
+use App\Http\Controllers\v2\FieldCustomerController;
+use App\Http\Controllers\v2\FieldOperatorController;
+use App\Http\Controllers\v2\FieldProductController;
+use App\Http\Controllers\v2\FieldRouteController;
 use App\Http\Controllers\v2\FishingGearController;
 use App\Http\Controllers\v2\IncidentController;
 use App\Http\Controllers\v2\IncotermController as V2IncotermController;
@@ -21,6 +25,7 @@ use App\Http\Controllers\v2\OfferController;
 use App\Http\Controllers\v2\OrderController as V2OrderController;
 use App\Http\Controllers\v2\OrderDocumentController;
 use App\Http\Controllers\v2\OrderPlannedProductDetailController;
+use App\Http\Controllers\v2\FieldOrderController;
 /* API V2 */
 use App\Http\Controllers\v2\OrdersReportController;
 use App\Http\Controllers\v2\OrderStatisticsController;
@@ -40,7 +45,9 @@ use App\Http\Controllers\v2\ProspectController;
 use App\Http\Controllers\v2\PunchController;
 use App\Http\Controllers\v2\RawMaterialReceptionController as V2RawMaterialReceptionController;
 use App\Http\Controllers\v2\RawMaterialReceptionStatisticsController;
+use App\Http\Controllers\v2\DeliveryRouteController;
 use App\Http\Controllers\v2\RoleController;
+use App\Http\Controllers\v2\RouteTemplateController;
 use App\Http\Controllers\v2\SalespersonController as V2SalespersonController;
 use App\Http\Controllers\v2\SessionController;
 use App\Http\Controllers\v2\SettingController;
@@ -243,6 +250,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::put('settings', [SettingController::class, 'update']);
 
         Route::get('/customers/options', [V2CustomerController::class, 'options']);
+        Route::get('/field-operators/options', [FieldOperatorController::class, 'options']);
         Route::get('/salespeople/options', [V2SalespersonController::class, 'options']);
         Route::get('/employees/options', [EmployeeController::class, 'options']);
         Route::get('/transports/options', [V2TransportController::class, 'options']);
@@ -380,6 +388,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::apiResource('customers', V2CustomerController::class);
         Route::delete('customers', [V2CustomerController::class, 'destroyMultiple']);
         Route::get('customers/{customer}/order-history', [V2CustomerController::class, 'getOrderHistory'])->name('customers.order_history');
+        Route::put('customers/{customer}/assignment', [V2CustomerController::class, 'updateAssignment'])->name('customers.assignment');
 
         Route::apiResource('suppliers', V2SupplierController::class);
         Route::delete('suppliers', [V2SupplierController::class, 'destroyMultiple']);
@@ -399,6 +408,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
         Route::apiResource('salespeople', V2SalespersonController::class);
         Route::delete('salespeople', [V2SalespersonController::class, 'destroyMultiple']);
+        Route::apiResource('field-operators', FieldOperatorController::class);
+        Route::apiResource('route-templates', RouteTemplateController::class);
+        Route::apiResource('routes', DeliveryRouteController::class);
 
         Route::apiResource('fishing-gears', FishingGearController::class);
         Route::delete('fishing-gears', [FishingGearController::class, 'destroyMultiple']);
@@ -500,6 +512,18 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         /* Envio de documentos */
         Route::post('orders/{orderId}/send-custom-documents', [OrderDocumentController::class, 'sendCustomDocumentation']);
         Route::post('orders/{orderId}/send-standard-documents', [OrderDocumentController::class, 'sendStandardDocumentation']);
+    });
+
+    Route::middleware(['auth:sanctum', 'external.active', 'role:repartidor_autoventa'])->prefix('field')->group(function () {
+        Route::get('customers/options', [FieldCustomerController::class, 'options']);
+        Route::get('products/options', [FieldProductController::class, 'options']);
+        Route::get('orders', [FieldOrderController::class, 'index']);
+        Route::get('orders/{order}', [FieldOrderController::class, 'show']);
+        Route::put('orders/{order}', [FieldOrderController::class, 'update']);
+        Route::post('autoventas', [FieldOrderController::class, 'storeAutoventa']);
+        Route::get('routes', [FieldRouteController::class, 'index']);
+        Route::get('routes/{route}', [FieldRouteController::class, 'show']);
+        Route::put('routes/{route}/stops/{routeStop}', [FieldRouteController::class, 'updateStop']);
     });
 });
 

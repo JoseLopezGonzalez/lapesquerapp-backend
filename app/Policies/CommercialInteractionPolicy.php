@@ -23,6 +23,9 @@ class CommercialInteractionPolicy
 
     public function viewAny(User $user): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         if ($user->hasRole(Role::Comercial->value)) {
             return $user->salesperson !== null;
         }
@@ -32,6 +35,9 @@ class CommercialInteractionPolicy
 
     public function view(User $user, CommercialInteraction $interaction): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         if ($user->hasRole(Role::Comercial->value)) {
             return $user->salesperson && $interaction->salesperson_id === $user->salesperson->id;
         }
@@ -41,6 +47,9 @@ class CommercialInteractionPolicy
 
     public function create(User $user): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         if ($user->hasRole(Role::Comercial->value)) {
             return $user->salesperson !== null;
         }

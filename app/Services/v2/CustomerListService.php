@@ -19,7 +19,7 @@ class CustomerListService
     {
         $user = $request->user();
         $query = Customer::query()
-            ->with(['payment_term', 'salesperson', 'country', 'transport']);
+            ->with(['payment_term', 'salesperson', 'fieldOperator', 'country', 'transport']);
 
         if ($user->hasRole(Role::Comercial->value) && $user->salesperson) {
             $query->where('salesperson_id', $user->salesperson->id);
@@ -47,6 +47,18 @@ class CustomerListService
 
         if ($request->filled('salespeople')) {
             $query->whereIn('salesperson_id', $request->input('salespeople'));
+        }
+
+        if ($request->boolean('withoutSalesperson')) {
+            $query->whereNull('salesperson_id');
+        }
+
+        if ($request->filled('fieldOperatorId')) {
+            $query->where('field_operator_id', $request->integer('fieldOperatorId'));
+        }
+
+        if ($request->filled('operationalStatus')) {
+            $query->where('operational_status', $request->input('operationalStatus'));
         }
 
         if ($request->filled('countries')) {

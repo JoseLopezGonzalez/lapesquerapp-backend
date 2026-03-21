@@ -22,7 +22,7 @@ class SalespersonPolicy
      */
     public function viewAny(User $user): bool
     {
-        if ($user->hasRole(Role::Comercial->value)) {
+        if ($user->hasRole(Role::Comercial->value) || $user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
 
@@ -34,6 +34,9 @@ class SalespersonPolicy
      */
     public function view(User $user, Salesperson $salesperson): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -42,6 +45,9 @@ class SalespersonPolicy
      */
     public function create(User $user): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -50,6 +56,9 @@ class SalespersonPolicy
      */
     public function update(User $user, Salesperson $salesperson): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -58,6 +67,9 @@ class SalespersonPolicy
      */
     public function delete(User $user, Salesperson $salesperson): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -66,6 +78,9 @@ class SalespersonPolicy
      */
     public function restore(User $user, Salesperson $salesperson): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -74,6 +89,9 @@ class SalespersonPolicy
      */
     public function forceDelete(User $user, Salesperson $salesperson): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 }

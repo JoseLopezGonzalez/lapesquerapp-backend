@@ -23,6 +23,9 @@ class OfferPolicy
 
     public function viewAny(User $user): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         if ($user->hasRole(Role::Comercial->value)) {
             return $user->salesperson !== null;
         }
@@ -32,6 +35,9 @@ class OfferPolicy
 
     public function view(User $user, Offer $offer): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         if ($user->hasRole(Role::Comercial->value)) {
             return $user->salesperson && $offer->salesperson_id === $user->salesperson->id;
         }
@@ -41,6 +47,9 @@ class OfferPolicy
 
     public function create(User $user): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         if ($user->hasRole(Role::Comercial->value)) {
             return $user->salesperson !== null;
         }

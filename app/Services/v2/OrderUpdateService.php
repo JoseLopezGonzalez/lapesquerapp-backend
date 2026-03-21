@@ -2,7 +2,9 @@
 
 namespace App\Services\v2;
 
+use App\Models\DeliveryRoute;
 use App\Models\Order;
+use App\Models\RouteStop;
 use Illuminate\Validation\ValidationException;
 
 use function normalizeDateToBusiness;
@@ -26,6 +28,10 @@ class OrderUpdateService
                 'loadDate' => ['La fecha de carga debe ser mayor o igual a la fecha de entrada.'],
             ]);
         }
+
+        $routeId = array_key_exists('routeId', $validated) ? $validated['routeId'] : $order->route_id;
+        $routeStopId = array_key_exists('routeStopId', $validated) ? $validated['routeStopId'] : $order->route_stop_id;
+        self::validateRouteContext($routeId, $routeStopId);
 
         if (array_key_exists('buyerReference', $validated)) {
             $order->buyer_reference = $validated['buyerReference'];
@@ -51,6 +57,9 @@ class OrderUpdateService
         if (array_key_exists('salesperson', $validated)) {
             $order->salesperson_id = $validated['salesperson'];
         }
+        if (array_key_exists('fieldOperator', $validated)) {
+            $order->field_operator_id = $validated['fieldOperator'];
+        }
         if (array_key_exists('transport', $validated)) {
             $order->transport_id = $validated['transport'];
         }
@@ -72,6 +81,12 @@ class OrderUpdateService
         }
         if (array_key_exists('incoterm', $validated)) {
             $order->incoterm_id = $validated['incoterm'];
+        }
+        if (array_key_exists('routeId', $validated)) {
+            $order->route_id = $validated['routeId'];
+        }
+        if (array_key_exists('routeStopId', $validated)) {
+            $order->route_stop_id = $validated['routeStopId'];
         }
         if (array_key_exists('truckPlate', $validated)) {
             $order->truck_plate = $validated['truckPlate'];
@@ -113,5 +128,21 @@ class OrderUpdateService
             $all[] = 'CC:' . trim($email);
         }
         return count($all) > 0 ? implode(";\n", $all) . ';' : null;
+    }
+
+    private static function validateRouteContext(?int $routeId, ?int $routeStopId): void
+    {
+        if (! $routeId || ! $routeStopId) {
+            return;
+        }
+
+        $route = DeliveryRoute::find($routeId);
+        $routeStop = RouteStop::find($routeStopId);
+
+        if ($route && $routeStop && $routeStop->route_id !== $route->id) {
+            throw ValidationException::withMessages([
+                'routeStopId' => ['La parada seleccionada no pertenece a la ruta indicada.'],
+            ]);
+        }
     }
 }

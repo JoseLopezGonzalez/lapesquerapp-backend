@@ -26,6 +26,8 @@ class OrderDetailsResource extends JsonResource
             'productionNotes' => $this->production_notes,
             'accountingNotes' => $this->accounting_notes,
             'salesperson' => $this->salesperson?->toArrayAssoc(),
+            'fieldOperator' => $this->fieldOperator?->toArrayAssoc(),
+            'fieldOperatorId' => $this->field_operator_id,
             'transport' => $this->transport?->toArrayAssoc(),
             'entryDate' => $this->entry_date,
             'loadDate' => $this->load_date,
@@ -55,6 +57,25 @@ class OrderDetailsResource extends JsonResource
             'temperature' => $this->temperature,
             'incident' => $this->incident ? $this->incident->toArrayAssoc() : null,
             'offerId' => $this->offer?->id,
+            'routeId' => $this->route_id,
+            'routeStopId' => $this->route_stop_id,
+            'route' => $this->route ? [
+                'id' => $this->route->id,
+                'name' => $this->route->name,
+                'routeDate' => $this->route->route_date,
+            ] : null,
+            'routeStop' => $this->routeStop ? [
+                'id' => $this->routeStop->id,
+                'position' => $this->routeStop->position,
+                'stopType' => $this->routeStop->stop_type,
+                'targetType' => $this->routeStop->target_type,
+                'label' => $this->routeStop->label,
+                'address' => $this->routeStop->address,
+                'status' => $this->routeStop->status,
+                'resultType' => $this->routeStop->result_type,
+                'resultNotes' => $this->routeStop->result_notes,
+            ] : null,
+            'createdByUserId' => $this->created_by_user_id,
         ];
     }
 }

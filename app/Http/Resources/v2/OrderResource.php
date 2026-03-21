@@ -22,6 +22,8 @@ class OrderResource extends JsonResource
             'status' => $this->status,
             'loadDate' => $this->load_date,
             'salesperson' => $this->salesperson?->toArrayAssoc(),
+            'fieldOperator' => $this->fieldOperator?->toArrayAssoc(),
+            'fieldOperatorId' => $this->field_operator_id,
             'transport' => $this->transport?->toArrayAssoc(),
             'pallets' => $this->numberOfPallets,
             'totalBoxes' => $this->totalBoxes,
@@ -30,6 +32,9 @@ class OrderResource extends JsonResource
             'subtotalAmount' => $this->subtotal_amount,
             'totalAmount' => $this->total_amount,
             'offerId' => $this->offer?->id,
+            'routeId' => $this->route_id,
+            'routeStopId' => $this->route_stop_id,
+            'createdByUserId' => $this->created_by_user_id,
         ];
     }
 }

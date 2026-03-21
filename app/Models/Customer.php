@@ -22,6 +22,9 @@ class Customer extends Model
         'production_notes',
         'accounting_notes',
         'salesperson_id',
+        'field_operator_id',
+        'operational_status',
+        'created_by_user_id',
         'emails',
         'contact_info',
         'country_id',
@@ -39,6 +42,16 @@ class Customer extends Model
     public function salesperson()
     {
         return $this->belongsTo(Salesperson::class);
+    }
+
+    public function fieldOperator()
+    {
+        return $this->belongsTo(FieldOperator::class);
+    }
+
+    public function createdByUser()
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
     public function country()
@@ -85,6 +98,9 @@ class Customer extends Model
             'productionNotes' => $this->production_notes,
             'accountingNotes' => $this->accounting_notes,
             'salesperson' => $this->salesperson ? $this->salesperson->toArrayAssoc() : null,
+            'fieldOperator' => $this->fieldOperator ? $this->fieldOperator->toArrayAssoc() : null,
+            'operationalStatus' => $this->operational_status,
+            'createdByUserId' => $this->created_by_user_id,
             'emails' => $this->emailsArray,
             'ccEmails' => $this->ccEmailsArray,
             'contactInfo' => $this->contact_info,
@@ -105,6 +121,8 @@ class Customer extends Model
             'alias' => $this->alias,
             'vatNumber' => $this->vat_number,
             'billingAddress' => $this->billing_address,
+            'fieldOperatorId' => $this->field_operator_id,
+            'operationalStatus' => $this->operational_status,
         ];
     }
 

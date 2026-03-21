@@ -22,6 +22,9 @@ class CustomerPolicy
      */
     public function viewAny(User $user): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         if ($user->hasRole(Role::Comercial->value)) {
             return $user->salesperson !== null;
         }
@@ -34,6 +37,9 @@ class CustomerPolicy
      */
     public function view(User $user, Customer $customer): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         if ($user->hasRole(Role::Comercial->value)) {
             return $user->salesperson && $customer->salesperson_id === $user->salesperson->id;
         }
@@ -45,6 +51,9 @@ class CustomerPolicy
      */
     public function create(User $user): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -54,6 +63,9 @@ class CustomerPolicy
      */
     public function update(User $user, Customer $customer): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
@@ -66,6 +78,9 @@ class CustomerPolicy
      */
     public function delete(User $user, Customer $customer): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
@@ -78,6 +93,9 @@ class CustomerPolicy
      */
     public function restore(User $user, Customer $customer): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
@@ -90,9 +108,17 @@ class CustomerPolicy
      */
     public function forceDelete(User $user, Customer $customer): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
         return $user->hasAnyRole($this->allowedRoles());
+    }
+
+    public function viewOperationalOptions(User $user): bool
+    {
+        return $user->hasRole(Role::RepartidorAutoventa->value) && $user->fieldOperator !== null;
     }
 }

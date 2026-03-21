@@ -3,10 +3,13 @@
 namespace App\Services\v2;
 
 use App\Enums\Role;
+use App\Models\DeliveryRoute;
 use App\Models\Order;
 use App\Models\OrderPlannedProductDetail;
+use App\Models\RouteStop;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 use function normalizeDateToBusiness;
 
@@ -29,6 +32,8 @@ class OrderStoreService
             return AutoventaStoreService::store($validated, $user);
         }
 
+        self::validateRouteContext($validated['routeId'] ?? null, $validated['routeStopId'] ?? null);
+
         $salespersonId = $validated['salesperson'] ?? null;
         if ($user && $user->hasRole(Role::Comercial->value) && $user->salesperson) {
             $salespersonId = $user->salesperson->id;
@@ -47,8 +52,12 @@ class OrderStoreService
                 'entry_date' => normalizeDateToBusiness($validated['entryDate']),
                 'load_date' => normalizeDateToBusiness($validated['loadDate']),
                 'salesperson_id' => $salespersonId,
+                'field_operator_id' => $validated['fieldOperator'] ?? null,
+                'created_by_user_id' => $user?->id,
                 'payment_term_id' => $validated['payment'] ?? null,
                 'incoterm_id' => $validated['incoterm'] ?? null,
+                'route_id' => $validated['routeId'] ?? null,
+                'route_stop_id' => $validated['routeStopId'] ?? null,
                 'buyer_reference' => $validated['buyerReference'] ?? null,
                 'transport_id' => $validated['transport'] ?? null,
                 'truck_plate' => $validated['truckPlate'] ?? null,
@@ -61,7 +70,7 @@ class OrderStoreService
                 'accounting_notes' => $validated['accountingNotes'] ?? null,
                 'emails' => $formattedEmails ?? '',
                 'status' => 'pending',
-                'order_type' => Order::ORDER_TYPE_STANDARD,
+                'order_type' => $validated['orderType'] ?? Order::ORDER_TYPE_STANDARD,
             ]);
 
             if (!empty($validated['plannedProducts'])) {
@@ -101,5 +110,21 @@ class OrderStoreService
             $all[] = 'CC:' . trim($email);
         }
         return count($all) > 0 ? implode(";\n", $all) . ';' : null;
+    }
+
+    private static function validateRouteContext(?int $routeId, ?int $routeStopId): void
+    {
+        if (! $routeId || ! $routeStopId) {
+            return;
+        }
+
+        $route = DeliveryRoute::find($routeId);
+        $routeStop = RouteStop::find($routeStopId);
+
+        if ($route && $routeStop && $routeStop->route_id !== $route->id) {
+            throw ValidationException::withMessages([
+                'routeStopId' => ['La parada seleccionada no pertenece a la ruta indicada.'],
+            ]);
+        }
     }
 }

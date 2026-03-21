@@ -42,6 +42,10 @@ class PalletPolicy
             return $user->is_active && $user->stores()->exists();
         }
 
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -52,6 +56,10 @@ class PalletPolicy
     {
         if ($user instanceof ExternalUser) {
             return $user->is_active && $this->scope->canAccessStoreId($user, $pallet->store_id);
+        }
+
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
         }
 
         return $user->hasAnyRole($this->allowedRoles());
@@ -66,6 +74,10 @@ class PalletPolicy
             return $user->is_active;
         }
 
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -78,6 +90,10 @@ class PalletPolicy
             return $user->is_active && $this->scope->canAccessStoreId($user, $pallet->store_id);
         }
 
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -87,6 +103,10 @@ class PalletPolicy
     public function delete(User|ExternalUser $user, Pallet $pallet): bool
     {
         if ($user instanceof ExternalUser) {
+            return false;
+        }
+
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
 

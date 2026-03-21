@@ -9,6 +9,7 @@ enum Role: string
     case Direccion = 'direccion';
     case Administracion = 'administracion';
     case Comercial = 'comercial';
+    case RepartidorAutoventa = 'repartidor_autoventa';
     case Operario = 'operario';
 
     /**
@@ -30,6 +31,7 @@ enum Role: string
             self::Direccion => 'Dirección',
             self::Administracion => 'Administración',
             self::Comercial => 'Comercial',
+            self::RepartidorAutoventa => 'Repartidor / Autoventa',
             self::Operario => 'Operario',
         };
     }

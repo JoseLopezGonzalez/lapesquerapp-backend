@@ -16,21 +16,23 @@ class OrderDetailService
     {
         return Order::select([
             'id', 'buyer_reference', 'customer_id', 'payment_term_id', 'billing_address', 'shipping_address',
-            'transportation_notes', 'production_notes', 'accounting_notes', 'salesperson_id', 'emails',
+            'transportation_notes', 'production_notes', 'accounting_notes', 'salesperson_id', 'field_operator_id', 'created_by_user_id', 'emails',
             'transport_id', 'entry_date', 'load_date', 'status', 'order_type', 'incoterm_id', 'created_at', 'updated_at',
-            'truck_plate', 'trailer_plate', 'temperature',
+            'truck_plate', 'trailer_plate', 'temperature', 'route_id', 'route_stop_id',
         ])->with([
             'customer' => fn ($q) => $q->select([
                 'id', 'name', 'alias', 'vat_number', 'payment_term_id', 'billing_address', 'shipping_address',
-                'transportation_notes', 'production_notes', 'accounting_notes', 'salesperson_id', 'emails',
+                'transportation_notes', 'production_notes', 'accounting_notes', 'salesperson_id', 'field_operator_id', 'operational_status', 'created_by_user_id', 'emails',
                 'contact_info', 'country_id', 'transport_id', 'a3erp_code', 'facilcom_code', 'created_at', 'updated_at',
             ]),
             'customer.payment_term' => fn ($q) => $q->select(['id', 'name', 'created_at', 'updated_at']),
             'customer.salesperson' => fn ($q) => $q->select(['id', 'name', 'emails', 'created_at', 'updated_at']),
+            'customer.fieldOperator' => fn ($q) => $q->select(['id', 'name', 'emails', 'user_id', 'created_at', 'updated_at']),
             'customer.country' => fn ($q) => $q->select(['id', 'name', 'created_at', 'updated_at']),
             'customer.transport' => fn ($q) => $q->select(['id', 'name', 'vat_number', 'address', 'emails', 'created_at', 'updated_at']),
             'payment_term' => fn ($q) => $q->select(['id', 'name', 'created_at', 'updated_at']),
             'salesperson' => fn ($q) => $q->select(['id', 'name', 'emails', 'created_at', 'updated_at']),
+            'fieldOperator' => fn ($q) => $q->select(['id', 'name', 'emails', 'user_id', 'created_at', 'updated_at']),
             'transport' => fn ($q) => $q->select(['id', 'name', 'vat_number', 'address', 'emails', 'created_at', 'updated_at']),
             'incoterm' => fn ($q) => $q->select(['id', 'code', 'description', 'created_at', 'updated_at']),
             'plannedProductDetails' => fn ($q) => $q->select(['id', 'order_id', 'product_id', 'tax_id', 'quantity', 'boxes', 'unit_price', 'created_at', 'updated_at']),
@@ -45,6 +47,11 @@ class OrderDetailService
             'plannedProductDetails.product.family.category' => fn ($q) => $q->select(['id', 'name']),
             'plannedProductDetails.tax' => fn ($q) => $q->select(['id', 'name', 'rate']),
             'offer' => fn ($q) => $q->select(['id', 'order_id']),
+            'route' => fn ($q) => $q->select(['id', 'name', 'route_date', 'field_operator_id']),
+            'routeStop' => fn ($q) => $q->select([
+                'id', 'route_id', 'position', 'stop_type', 'target_type', 'customer_id',
+                'prospect_id', 'label', 'address', 'status', 'result_type', 'result_notes',
+            ]),
             'incident' => fn ($q) => $q->select([
                 'id', 'order_id', 'description', 'status', 'resolution_type', 'resolution_notes', 'resolved_at', 'created_at', 'updated_at',
             ]),

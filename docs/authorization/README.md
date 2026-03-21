@@ -7,6 +7,7 @@ Este directorio contiene **documentos detallados y persistentes** con las restri
 | Documento | Rol | Descripción |
 |-----------|-----|-------------|
 | [01-rol-comercial.md](01-rol-comercial.md) | Comercial | Pedidos y clientes propios; solo listar/crear según reglas; options y settings acotados. |
+| [repartidor-autoventa-perimetro.md](repartidor-autoventa-perimetro.md) | Repartidor / Autoventa | Perímetro operativo real, endpoints `field/*`, recursos bloqueados y reglas de scope. |
 | *(futuro)* | Operario | Stock, recepciones, despachos, fichajes (según matriz en por-hacer). |
 | *(futuro)* | Administración | Por definir. |
 

@@ -34,6 +34,8 @@ class IndexOrderRequest extends FormRequest
             'transports.*' => 'integer',
             'salespeople' => 'sometimes|array',
             'salespeople.*' => 'integer',
+            'fieldOperators' => 'sometimes|array',
+            'fieldOperators.*' => 'integer',
             'palletsState' => 'sometimes|string|in:stored,shipping',
             'products' => 'sometimes|array',
             'products.*' => 'integer',
@@ -41,6 +43,7 @@ class IndexOrderRequest extends FormRequest
             'species.*' => 'integer',
             'incoterm' => 'sometimes|integer',
             'transport' => 'sometimes|integer',
+            'routeId' => 'sometimes|integer',
             'perPage' => 'sometimes|integer|min:1|max:100',
         ];
     }

@@ -3,6 +3,11 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Models\FieldOperator;
+use App\Models\FishingGear;
+use App\Models\Product;
+use App\Models\CaptureZone;
+use App\Models\Species;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Sanctum\PersonalAccessToken;
@@ -118,8 +123,106 @@ class AuthBlockApiTest extends TestCase
             'id', 'name', 'email', 'role', 'active',
             'assigned_store_id', 'company_name', 'company_logo_url',
             'created_at', 'updated_at',
+            'salespersonId', 'fieldOperatorId', 'isFieldOperator',
         ]);
         $this->assertEquals($this->authUser->email, $response->json('email'));
+    }
+
+    public function test_field_role_is_blocked_from_general_store_product_and_pallet_endpoints(): void
+    {
+        $fieldUser = User::create([
+            'name' => 'Field Auth',
+            'email' => 'field-auth-' . uniqid() . '@test.com',
+            'role' => Role::RepartidorAutoventa->value,
+            'active' => true,
+        ]);
+
+        FieldOperator::create([
+            'name' => 'Field Auth Operator',
+            'user_id' => $fieldUser->id,
+        ]);
+
+        $headers = $this->authHeadersForUser($fieldUser);
+
+        $this->withHeaders($headers)
+            ->getJson('/api/v2/stores/options')
+            ->assertStatus(403);
+
+        $this->withHeaders($headers)
+            ->getJson('/api/v2/products/options')
+            ->assertStatus(403);
+
+        $this->withHeaders($headers)
+            ->getJson('/api/v2/pallets')
+            ->assertStatus(403);
+
+        $this->withHeaders($headers)
+            ->getJson('/api/v2/prospects')
+            ->assertStatus(403);
+
+        $this->withHeaders($headers)
+            ->getJson('/api/v2/offers')
+            ->assertStatus(403);
+
+        $this->withHeaders($headers)
+            ->getJson('/api/v2/commercial-interactions')
+            ->assertStatus(403);
+
+        $this->withHeaders($headers)
+            ->getJson('/api/v2/crm/dashboard')
+            ->assertStatus(403);
+
+        $this->withHeaders($headers)
+            ->getJson('/api/v2/orders_report')
+            ->assertStatus(403);
+
+        $this->withHeaders($headers)
+            ->get('/api/v2/orders/1/pdf/order-sheet')
+            ->assertStatus(403);
+    }
+
+    public function test_field_role_can_access_operational_product_options_but_not_general_product_options(): void
+    {
+        $fieldUser = User::create([
+            'name' => 'Field Product Auth',
+            'email' => 'field-product-auth-' . uniqid() . '@test.com',
+            'role' => Role::RepartidorAutoventa->value,
+            'active' => true,
+        ]);
+
+        FieldOperator::create([
+            'name' => 'Field Product Operator',
+            'user_id' => $fieldUser->id,
+        ]);
+
+        $fishingGear = FishingGear::create(['name' => 'Arte Auth']);
+        $species = Species::create([
+            'name' => 'Especie Auth',
+            'scientific_name' => 'Species auth',
+            'fao' => 'AU1',
+            'image' => null,
+            'fishing_gear_id' => $fishingGear->id,
+        ]);
+        $captureZone = CaptureZone::create(['name' => 'Zona Auth']);
+        Product::create([
+            'name' => 'Producto Auth',
+            'species_id' => $species->id,
+            'capture_zone_id' => $captureZone->id,
+            'article_gtin' => '8400000001111',
+            'box_gtin' => '9400000001111',
+            'pallet_gtin' => '9900000001111',
+        ]);
+
+        $headers = $this->authHeadersForUser($fieldUser);
+
+        $this->withHeaders($headers)
+            ->getJson('/api/v2/products/options')
+            ->assertStatus(403);
+
+        $this->withHeaders($headers)
+            ->getJson('/api/v2/field/products/options')
+            ->assertStatus(200)
+            ->assertJsonFragment(['name' => 'Producto Auth']);
     }
 
     public function test_auth_logout_returns_200_when_authenticated(): void

@@ -39,15 +39,17 @@ class OrderListService
         if ($request->has('active')) {
             if ($request->active == 'true') {
                 $query = Order::withTotals()
-                    ->with(['customer', 'salesperson', 'transport', 'incoterm', 'offer'])
-                    ->where('status', 'pending')
-                    ->orWhereDate('load_date', '>=', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
+                    ->with(['customer', 'salesperson', 'fieldOperator', 'transport', 'incoterm', 'offer'])
+                    ->where(function ($query) {
+                        $query->where('status', 'pending')
+                            ->orWhereDate('load_date', '>=', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
+                    });
                 self::scopeForComercial($query, $user);
 
                 return $query->get();
             }
             $query = Order::withTotals()
-                ->with(['customer', 'salesperson', 'transport', 'incoterm', 'offer'])
+                ->with(['customer', 'salesperson', 'fieldOperator', 'transport', 'incoterm', 'offer'])
                 ->where('status', 'finished')
                 ->whereDate('load_date', '<', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
             self::scopeForComercial($query, $user);
@@ -55,7 +57,7 @@ class OrderListService
             return $query->get();
         }
 
-        $query = Order::withTotals()->with(['customer', 'salesperson', 'transport', 'incoterm', 'offer']);
+        $query = Order::withTotals()->with(['customer', 'salesperson', 'fieldOperator', 'transport', 'incoterm', 'offer']);
         self::scopeForComercial($query, $user);
 
         if ($request->has('customers')) {
@@ -112,6 +114,10 @@ class OrderListService
             $query->whereIn('salesperson_id', $request->salespeople);
         }
 
+        if ($request->has('fieldOperators')) {
+            $query->whereIn('field_operator_id', $request->fieldOperators);
+        }
+
         if ($request->has('palletsState')) {
             if ($request->palletsState == 'stored') {
                 $query->whereHas('pallets', function ($q) {
@@ -142,6 +148,10 @@ class OrderListService
 
         if ($request->has('transport')) {
             $query->where('transport_id', $request->transport);
+        }
+
+        if ($request->has('routeId')) {
+            $query->where('route_id', $request->routeId);
         }
 
         $query->orderBy('load_date', 'desc');
@@ -179,8 +189,10 @@ class OrderListService
     public static function activeOrdersOptions(?User $user = null): Collection
     {
         $user = $user ?? auth()->user();
-        $query = Order::where('status', 'pending')
-            ->orWhereDate('load_date', '>=', now())
+        $query = Order::where(function ($query) {
+            $query->where('status', 'pending')
+                ->orWhereDate('load_date', '>=', now());
+        })
             ->select('id', 'id as name', 'load_date');
         self::scopeForComercial($query, $user);
 

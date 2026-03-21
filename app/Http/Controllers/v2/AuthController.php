@@ -229,6 +229,8 @@ class AuthController extends Controller
     private function buildActorPayload(User|ExternalUser $user, bool $includeFeatures = false): array
     {
         $isExternal = $user instanceof ExternalUser;
+        $salespersonId = ! $isExternal ? $user->salesperson?->id : null;
+        $fieldOperatorId = ! $isExternal ? $user->fieldOperator?->id : null;
 
         return [
             'id' => $user->id,
@@ -242,6 +244,9 @@ class AuthController extends Controller
             'companyLogoUrl' => $isExternal ? null : $user->company_logo_url,
             'active' => $isExternal ? $user->is_active : $user->active,
             'role' => $isExternal ? null : $user->role,
+            'salespersonId' => $salespersonId,
+            'fieldOperatorId' => $fieldOperatorId,
+            'isFieldOperator' => ! $isExternal && $fieldOperatorId !== null,
             'actorType' => $this->actors->actorType($user),
             'externalUserType' => $isExternal ? $user->type : null,
             'allowedStoreIds' => $this->actors->allowedStoreIds($user),

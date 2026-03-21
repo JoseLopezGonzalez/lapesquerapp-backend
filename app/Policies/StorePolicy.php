@@ -30,7 +30,7 @@ class StorePolicy
         if ($user instanceof ExternalUser) {
             return $user->is_active && $user->stores()->exists();
         }
-        if ($user->hasRole(Role::Comercial->value)) {
+        if ($user->hasRole(Role::Comercial->value) || $user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
 
@@ -45,7 +45,7 @@ class StorePolicy
         if ($user instanceof ExternalUser) {
             return $user->is_active && $this->scope->canAccessStoreId($user, $store->id);
         }
-        if ($user->hasRole(Role::Comercial->value)) {
+        if ($user->hasRole(Role::Comercial->value) || $user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
 
@@ -58,7 +58,7 @@ class StorePolicy
             return $user->is_active;
         }
 
-        return true;
+        return ! $user->hasRole(Role::RepartidorAutoventa->value);
     }
 
     /**
@@ -66,6 +66,9 @@ class StorePolicy
      */
     public function create(User $user): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -74,6 +77,9 @@ class StorePolicy
      */
     public function update(User $user, Store $store): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -82,6 +88,9 @@ class StorePolicy
      */
     public function delete(User $user, Store $store): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 }

@@ -26,7 +26,7 @@ class ProductPolicy
             return false;
         }
 
-        if ($user->hasRole(Role::Comercial->value)) {
+        if ($user->hasRole(Role::Comercial->value) || $user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
         return $user->hasAnyRole($this->allowedRoles());
@@ -41,7 +41,7 @@ class ProductPolicy
             return false;
         }
 
-        if ($user->hasRole(Role::Comercial->value)) {
+        if ($user->hasRole(Role::Comercial->value) || $user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
         return $user->hasAnyRole($this->allowedRoles());
@@ -53,7 +53,16 @@ class ProductPolicy
             return $user->is_active;
         }
 
-        return true;
+        return ! $user->hasRole(Role::RepartidorAutoventa->value);
+    }
+
+    public function viewOperationalOptions(User|ExternalUser $user): bool
+    {
+        if ($user instanceof ExternalUser) {
+            return false;
+        }
+
+        return $user->hasRole(Role::RepartidorAutoventa->value) && $user->fieldOperator !== null;
     }
 
     /**
@@ -61,6 +70,9 @@ class ProductPolicy
      */
     public function create(User $user): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -69,6 +81,9 @@ class ProductPolicy
      */
     public function update(User $user, Product $product): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -77,6 +92,9 @@ class ProductPolicy
      */
     public function delete(User $user, Product $product): bool
     {
+        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
+            return false;
+        }
         return $user->hasAnyRole($this->allowedRoles());
     }
 }

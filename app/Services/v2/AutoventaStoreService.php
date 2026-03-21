@@ -3,10 +3,13 @@
 namespace App\Services\v2;
 
 use App\Models\Box;
+use App\Models\Customer;
+use App\Models\DeliveryRoute;
 use App\Models\Order;
 use App\Models\OrderPlannedProductDetail;
 use App\Models\Pallet;
 use App\Models\PalletBox;
+use App\Models\RouteStop;
 use App\Models\Tax;
 use App\Services\v2\PalletTimelineService;
 use App\Models\User;
@@ -28,12 +31,9 @@ class AutoventaStoreService
      */
     public static function store(array $validated, User $user): Order
     {
-        $salespersonId = $user->salesperson?->id;
-        if (! $salespersonId) {
-            throw ValidationException::withMessages([
-                'orderType' => ['Solo los usuarios con rol comercial pueden crear autoventas.'],
-            ]);
-        }
+        [$salespersonId, $fieldOperatorId] = self::resolveActorIds($user);
+        self::validateRouteContext($validated, $fieldOperatorId);
+        $customerId = self::resolveCustomerId($validated, $user, $fieldOperatorId);
 
         $defaultTaxId = Tax::query()->value('id');
         if (! $defaultTaxId) {
@@ -51,10 +51,12 @@ class AutoventaStoreService
 
         try {
             $order = Order::create([
-                'customer_id' => $validated['customer'],
+                'customer_id' => $customerId,
                 'entry_date' => normalizeDateToBusiness($validated['entryDate']),
                 'load_date' => normalizeDateToBusiness($validated['loadDate']),
                 'salesperson_id' => $salespersonId,
+                'field_operator_id' => $fieldOperatorId,
+                'created_by_user_id' => $user->id,
                 'order_type' => Order::ORDER_TYPE_AUTOVENTA,
                 'accounting_notes' => $accountingNotes,
                 'status' => Order::STATUS_PENDING,
@@ -67,6 +69,8 @@ class AutoventaStoreService
                 'transportation_notes' => null,
                 'production_notes' => null,
                 'emails' => null,
+                'route_id' => $validated['routeId'] ?? null,
+                'route_stop_id' => $validated['routeStopId'] ?? null,
             ]);
 
             foreach ($validated['items'] as $item) {
@@ -139,5 +143,115 @@ class AutoventaStoreService
         }
 
         return implode("\n", $parts);
+    }
+
+    private static function resolveActorIds(User $user): array
+    {
+        $salespersonId = $user->salesperson?->id;
+        $fieldOperatorId = $user->fieldOperator?->id;
+
+        if (! $salespersonId && ! $fieldOperatorId) {
+            throw ValidationException::withMessages([
+                'orderType' => ['El usuario actual no tiene una identidad comercial u operativa válida para crear autoventas.'],
+            ]);
+        }
+
+        return [$salespersonId, $fieldOperatorId];
+    }
+
+    private static function resolveCustomerId(array $validated, User $user, ?int $fieldOperatorId): int
+    {
+        if ($fieldOperatorId && ! empty($validated['newCustomerName'])) {
+            $customer = Customer::create([
+                'name' => trim((string) $validated['newCustomerName']),
+                'alias' => null,
+                'vat_number' => null,
+                'payment_term_id' => null,
+                'billing_address' => null,
+                'shipping_address' => null,
+                'transportation_notes' => null,
+                'production_notes' => null,
+                'accounting_notes' => null,
+                'salesperson_id' => null,
+                'field_operator_id' => $fieldOperatorId,
+                'operational_status' => 'alta_operativa',
+                'created_by_user_id' => $user->id,
+                'emails' => null,
+                'contact_info' => null,
+                'country_id' => null,
+                'transport_id' => null,
+                'a3erp_code' => null,
+                'facilcom_code' => null,
+            ]);
+            $customer->alias = 'Cliente Nº ' . $customer->id;
+            $customer->save();
+
+            return $customer->id;
+        }
+
+        $customerId = $validated['customer'] ?? null;
+        if (! $customerId) {
+            throw ValidationException::withMessages([
+                'customer' => ['Debe indicar un cliente existente o crear uno nuevo en la autoventa.'],
+            ]);
+        }
+
+        $customer = Customer::find($customerId);
+        if (! $customer) {
+            throw ValidationException::withMessages([
+                'customer' => ['El cliente seleccionado no existe.'],
+            ]);
+        }
+
+        if ($fieldOperatorId && $customer->field_operator_id !== $fieldOperatorId) {
+            throw ValidationException::withMessages([
+                'customer' => ['Solo puede crear autoventas sobre clientes operativos asignados a usted.'],
+            ]);
+        }
+
+        return $customer->id;
+    }
+
+    private static function validateRouteContext(array $validated, ?int $fieldOperatorId): void
+    {
+        $routeId = $validated['routeId'] ?? null;
+        $routeStopId = $validated['routeStopId'] ?? null;
+
+        if (! $routeId && ! $routeStopId) {
+            return;
+        }
+
+        $route = $routeId ? DeliveryRoute::find($routeId) : null;
+        $routeStop = $routeStopId ? RouteStop::with('route')->find($routeStopId) : null;
+
+        if ($routeId && ! $route) {
+            throw ValidationException::withMessages([
+                'routeId' => ['La ruta seleccionada no existe.'],
+            ]);
+        }
+
+        if ($routeStopId && ! $routeStop) {
+            throw ValidationException::withMessages([
+                'routeStopId' => ['La parada seleccionada no existe.'],
+            ]);
+        }
+
+        if ($route && $routeStop && $routeStop->route_id !== $route->id) {
+            throw ValidationException::withMessages([
+                'routeStopId' => ['La parada seleccionada no pertenece a la ruta indicada.'],
+            ]);
+        }
+
+        if ($fieldOperatorId && $route && $route->field_operator_id !== $fieldOperatorId) {
+            throw ValidationException::withMessages([
+                'routeId' => ['La ruta seleccionada no está asignada al actor operativo actual.'],
+            ]);
+        }
+
+        if ($fieldOperatorId && $routeStop && $routeStop->route?->field_operator_id !== $fieldOperatorId) {
+            throw ValidationException::withMessages([
+                'routeStopId' => ['La parada seleccionada no pertenece a una ruta asignada al actor operativo actual.'],
+            ]);
+        }
     }
 }

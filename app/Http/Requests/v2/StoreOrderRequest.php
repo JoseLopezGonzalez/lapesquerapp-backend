@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\v2;
 
+use App\Models\DeliveryRoute;
 use App\Models\Order;
+use App\Models\RouteStop;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -50,8 +52,11 @@ class StoreOrderRequest extends FormRequest
             'entryDate' => 'required|date',
             'loadDate' => 'required|date',
             'salesperson' => 'nullable|integer|exists:tenant.salespeople,id',
+            'fieldOperator' => 'nullable|integer|exists:tenant.field_operators,id',
             'payment' => 'nullable|integer|exists:tenant.payment_terms,id',
             'incoterm' => 'nullable|integer|exists:tenant.incoterms,id',
+            'routeId' => 'nullable|integer|exists:tenant.routes,id',
+            'routeStopId' => 'nullable|integer|exists:tenant.route_stops,id',
             'buyerReference' => 'nullable|string',
             'transport' => 'nullable|integer|exists:tenant.transports,id',
             'truckPlate' => 'nullable|string',
@@ -112,10 +117,16 @@ class StoreOrderRequest extends FormRequest
             'loadDate.date' => 'La fecha de carga debe ser una fecha válida.',
             'salesperson.integer' => 'El comercial debe ser un número entero.',
             'salesperson.exists' => 'El comercial seleccionado no existe.',
+            'fieldOperator.integer' => 'El actor operativo debe ser un número entero.',
+            'fieldOperator.exists' => 'El actor operativo seleccionado no existe.',
             'payment.integer' => 'El término de pago debe ser un número entero.',
             'payment.exists' => 'El término de pago seleccionado no existe.',
             'incoterm.integer' => 'El incoterm debe ser un número entero.',
             'incoterm.exists' => 'El incoterm seleccionado no existe.',
+            'routeId.integer' => 'La ruta debe ser un número entero.',
+            'routeId.exists' => 'La ruta seleccionada no existe.',
+            'routeStopId.integer' => 'La parada debe ser un número entero.',
+            'routeStopId.exists' => 'La parada seleccionada no existe.',
             'buyerReference.string' => 'La referencia del comprador debe ser texto.',
             'transport.integer' => 'El transporte debe ser un número entero.',
             'transport.exists' => 'El transporte seleccionado no existe.',
@@ -186,6 +197,20 @@ class StoreOrderRequest extends FormRequest
         $validator->after(function ($validator) {
             if ($this->filled('entryDate') && $this->filled('loadDate') && $this->entryDate > $this->loadDate) {
                 $validator->errors()->add('loadDate', 'La fecha de carga debe ser mayor o igual a la fecha de entrada.');
+            }
+
+            $routeId = $this->input('routeId');
+            $routeStopId = $this->input('routeStopId');
+
+            if (! $routeId || ! $routeStopId) {
+                return;
+            }
+
+            $route = DeliveryRoute::find($routeId);
+            $routeStop = RouteStop::find($routeStopId);
+
+            if ($route && $routeStop && $routeStop->route_id !== $route->id) {
+                $validator->errors()->add('routeStopId', 'La parada seleccionada no pertenece a la ruta indicada.');
             }
         });
     }
