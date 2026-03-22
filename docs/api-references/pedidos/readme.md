@@ -124,8 +124,11 @@ Content-Type: application/json
   "entryDate": "2024-01-15",
   "loadDate": "2024-01-20",
   "salesperson": 1,
+  "fieldOperator": 3,
   "payment": 1,
   "incoterm": 1,
+  "routeId": 12,
+  "routeStopId": 48,
   "buyerReference": "REF-001",
   "transport": 1,
   "truckPlate": "ABC-1234",
@@ -163,8 +166,11 @@ Content-Type: application/json
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | salesperson | integer | ID del vendedor |
+| fieldOperator | integer | ID del actor operativo asignado al pedido |
 | payment | integer | ID del término de pago |
 | incoterm | integer | ID del incoterm |
+| routeId | integer | ID de la ruta asociada (opcional) |
+| routeStopId | integer | ID de la parada asociada (opcional) |
 | buyerReference | string | Referencia del comprador |
 | transport | integer | ID del transporte |
 | truckPlate | string | Matrícula del camión |
@@ -178,6 +184,14 @@ Content-Type: application/json
 | emails | array | Array de emails |
 | ccEmails | array | Array de emails en copia |
 | plannedProducts | array | Array de productos planificados |
+
+#### Reglas adicionales del backend
+
+- `fieldOperator` debe existir en `tenant.field_operators`
+- si se envían `routeId` y `routeStopId`, la parada debe pertenecer a la ruta indicada
+- `salesperson` y `fieldOperator` tienen significados distintos:
+  - `salesperson`: ownership / contexto comercial
+  - `fieldOperator`: ejecutor o actor operativo asignado
 
 #### Campos de plannedProducts
 
@@ -1107,4 +1121,3 @@ Authorization: Bearer {access_token}
   "userMessage": "No se encontró incidencia para este pedido."
 }
 ```
-

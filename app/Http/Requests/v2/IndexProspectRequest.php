@@ -25,7 +25,7 @@ class IndexProspectRequest extends FormRequest
             'countries.*' => 'integer',
             'salespeople' => 'sometimes|array',
             'salespeople.*' => 'integer',
-            'perPage' => 'sometimes|integer|min:1|max:100',
+            'perPage' => 'sometimes|integer|min:1|max:250',
         ];
     }
 }

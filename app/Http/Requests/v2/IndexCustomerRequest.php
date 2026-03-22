@@ -31,7 +31,7 @@ class IndexCustomerRequest extends FormRequest
             'operationalStatus' => 'nullable|string|in:normal,alta_operativa',
             'countries' => 'nullable|array',
             'countries.*' => 'integer',
-            'perPage' => 'nullable|integer|min:1|max:100',
+            'perPage' => 'nullable|integer|min:1|max:250',
         ];
     }
 }

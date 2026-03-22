@@ -13,6 +13,7 @@ class TenantDatabaseSeeder extends Seeder
         // Orden: entidades del menú (catálogos) y luego usuarios. Sin Calibers (no es entidad del menú).
         $this->call(RoleSeeder::class);
         $this->call(UsersSeeder::class);
+        $this->call(RepartidorAutoventaDevSeeder::class);
         // Productos: Categorías, Familias, Zonas de Captura, Artes de Pesca, Especies
         $this->call(ProductCategorySeeder::class);
         $this->call(ProductFamilySeeder::class);
