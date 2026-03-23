@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\v2\Superadmin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\Superadmin\EndImpersonationSessionRequest;
+use App\Http\Requests\v2\Superadmin\RequestImpersonationAccessRequest;
+use App\Http\Requests\v2\Superadmin\SilentImpersonationRequest;
 use App\Models\ImpersonationLog;
 use App\Models\Tenant;
 use App\Services\Superadmin\ImpersonationService;
@@ -18,13 +21,8 @@ class ImpersonationController extends Controller
     /**
      * Request consent-based impersonation. Sends approval email to tenant admin.
      */
-    public function requestAccess(Request $request, Tenant $tenant): JsonResponse
+    public function requestAccess(RequestImpersonationAccessRequest $request, Tenant $tenant): JsonResponse
     {
-        $request->validate([
-            'target_user_id' => 'required|integer',
-            'reason'         => 'nullable|string|max:500',
-        ]);
-
         $impersonationRequest = $this->service->requestConsent(
             $request->user(),
             $tenant,
@@ -33,7 +31,7 @@ class ImpersonationController extends Controller
         );
 
         return response()->json([
-            'message'    => 'Solicitud de impersonación enviada. Esperando aprobación del usuario.',
+            'message' => 'Solicitud de impersonación enviada. Esperando aprobación del usuario.',
             'request_id' => $impersonationRequest->id,
         ]);
     }
@@ -41,13 +39,8 @@ class ImpersonationController extends Controller
     /**
      * Silent impersonation (no consent, logged). Reason is mandatory.
      */
-    public function silent(Request $request, Tenant $tenant): JsonResponse
+    public function silent(SilentImpersonationRequest $request, Tenant $tenant): JsonResponse
     {
-        $request->validate([
-            'target_user_id' => 'required|integer',
-            'reason'         => 'required|string|max:500',
-        ]);
-
         $result = $this->service->silentImpersonate(
             $request->user(),
             $tenant,
@@ -74,10 +67,8 @@ class ImpersonationController extends Controller
     /**
      * End an impersonation session (from the impersonated user side).
      */
-    public function end(Request $request): JsonResponse
+    public function end(EndImpersonationSessionRequest $request): JsonResponse
     {
-        $request->validate(['log_id' => 'required|integer']);
-
         $this->service->endSession($request->log_id);
 
         return response()->json(['message' => 'Sesión de impersonación finalizada.']);
@@ -109,8 +100,8 @@ class ImpersonationController extends Controller
             'data' => collect($history->items())->map(fn ($log) => $this->formatLog($log)),
             'meta' => [
                 'current_page' => $history->currentPage(),
-                'last_page'    => $history->lastPage(),
-                'total'        => $history->total(),
+                'last_page' => $history->lastPage(),
+                'total' => $history->total(),
             ],
         ]);
     }
@@ -123,7 +114,7 @@ class ImpersonationController extends Controller
         $sessions = $this->service->getActiveSessions();
 
         return response()->json([
-            'data'  => $sessions->map(fn ($log) => $this->formatLog($log)),
+            'data' => $sessions->map(fn ($log) => $this->formatLog($log)),
             'total' => $sessions->count(),
         ]);
     }
@@ -135,15 +126,15 @@ class ImpersonationController extends Controller
             : null;
 
         return [
-            'id'               => $log->id,
-            'superadmin'       => $log->superadminUser?->name,
-            'tenant'           => $log->tenant?->subdomain,
-            'tenant_id'        => $log->tenant_id,
-            'target_user_id'   => $log->target_user_id,
-            'mode'             => $log->mode,
-            'reason'           => $log->reason,
-            'started_at'       => $log->started_at,
-            'ended_at'         => $log->ended_at,
+            'id' => $log->id,
+            'superadmin' => $log->superadminUser?->name,
+            'tenant' => $log->tenant?->subdomain,
+            'tenant_id' => $log->tenant_id,
+            'target_user_id' => $log->target_user_id,
+            'mode' => $log->mode,
+            'reason' => $log->reason,
+            'started_at' => $log->started_at,
+            'ended_at' => $log->ended_at,
             'duration_minutes' => $durationMinutes,
         ];
     }

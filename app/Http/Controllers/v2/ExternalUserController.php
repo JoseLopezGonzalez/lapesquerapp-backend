@@ -109,7 +109,12 @@ class ExternalUserController extends Controller
     public function activate(ExternalUser $externalUser)
     {
         $this->authorize('update', $externalUser);
+        $wasInactive = ! $externalUser->is_active;
         $externalUser->update(['is_active' => true]);
+
+        if ($wasInactive) {
+            app(MagicLinkService::class)->sendMagicLinkToUser($externalUser);
+        }
 
         return response()->json([
             'message' => 'Usuario externo activado correctamente.',

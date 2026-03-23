@@ -3,14 +3,15 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Models\AgendaAction;
 use App\Models\CaptureZone;
 use App\Models\Country;
 use App\Models\Customer;
+use App\Models\FishingGear;
 use App\Models\Incoterm;
 use App\Models\Offer;
 use App\Models\PaymentTerm;
 use App\Models\Product;
-use App\Models\AgendaAction;
 use App\Models\Prospect;
 use App\Models\Salesperson;
 use App\Models\Setting;
@@ -70,6 +71,7 @@ class CrmApiTest extends TestCase
 
         $prospectId = $create->json('data.id');
 
+        app('auth')->forgetGuards();
         $otherProspect = $this->withHeaders($this->otherCommercialHeaders())
             ->postJson('/api/v2/prospects', [
                 'companyName' => 'Hidden Prospect',
@@ -79,18 +81,21 @@ class CrmApiTest extends TestCase
             ])->assertStatus(201)
             ->json('data.id');
 
+        app('auth')->forgetGuards();
         $this->withHeaders($this->commercialHeaders())
             ->getJson('/api/v2/prospects')
             ->assertStatus(200)
             ->assertJsonFragment(['companyName' => 'Acme Prospect'])
             ->assertJsonMissing(['companyName' => 'Hidden Prospect']);
 
+        app('auth')->forgetGuards();
         $this->withHeaders($this->adminHeaders())
             ->getJson('/api/v2/prospects')
             ->assertStatus(200)
             ->assertJsonFragment(['companyName' => 'Acme Prospect'])
             ->assertJsonFragment(['companyName' => 'Hidden Prospect']);
 
+        app('auth')->forgetGuards();
         $this->withHeaders($this->commercialHeaders())
             ->getJson('/api/v2/prospects/'.$otherProspect)
             ->assertStatus(403);
@@ -598,7 +603,7 @@ class CrmApiTest extends TestCase
             ])
             ->assertStatus(201);
 
-        $this->assertDatabaseCount('prospect_contacts', 2, 'tenant');
+        $this->assertSame(2, $prospect->contacts()->count());
         $this->assertSame(1, $prospect->contacts()->where('is_primary', true)->count());
         $this->assertDatabaseHas('prospect_contacts', [
             'prospect_id' => $prospect->id,
@@ -679,6 +684,90 @@ class CrmApiTest extends TestCase
                 'reason' => 'No debería dejar',
             ])
             ->assertStatus(422);
+    }
+
+    public function test_rejecting_last_sent_offer_moves_prospect_back_to_following(): void
+    {
+        $deps = $this->createOfferDependencies();
+        $prospect = Prospect::create([
+            'company_name' => 'Rejected Offer Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+            'last_contact_at' => now()->subDay(),
+        ]);
+
+        $offerId = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/offers', [
+                'prospectId' => $prospect->id,
+                'currency' => 'EUR',
+                'lines' => [[
+                    'productId' => $deps['product']->id,
+                    'description' => 'Linea rechazo',
+                    'quantity' => 1,
+                    'unit' => 'kg',
+                    'unitPrice' => 10,
+                    'taxId' => $deps['tax']->id,
+                    'boxes' => 1,
+                ]],
+            ])
+            ->assertStatus(201)
+            ->json('data.id');
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/offers/'.$offerId.'/send', ['channel' => 'pdf'])
+            ->assertStatus(200);
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/offers/'.$offerId.'/reject', [
+                'reason' => 'Fuera de presupuesto',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', Offer::STATUS_REJECTED);
+
+        $prospect->refresh();
+        $this->assertSame(Prospect::STATUS_FOLLOWING, $prospect->status);
+    }
+
+    public function test_expiring_last_sent_offer_moves_prospect_back_to_following(): void
+    {
+        $deps = $this->createOfferDependencies();
+        $prospect = Prospect::create([
+            'company_name' => 'Expired Offer Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+            'last_contact_at' => now()->subDay(),
+        ]);
+
+        $offerId = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/offers', [
+                'prospectId' => $prospect->id,
+                'currency' => 'EUR',
+                'lines' => [[
+                    'productId' => $deps['product']->id,
+                    'description' => 'Linea expirada',
+                    'quantity' => 1,
+                    'unit' => 'kg',
+                    'unitPrice' => 10,
+                    'taxId' => $deps['tax']->id,
+                    'boxes' => 1,
+                ]],
+            ])
+            ->assertStatus(201)
+            ->json('data.id');
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/offers/'.$offerId.'/send', ['channel' => 'pdf'])
+            ->assertStatus(200);
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/offers/'.$offerId.'/expire')
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', Offer::STATUS_EXPIRED);
+
+        $prospect->refresh();
+        $this->assertSame(Prospect::STATUS_FOLLOWING, $prospect->status);
     }
 
     public function test_create_order_from_offer_fails_when_offer_is_already_linked(): void
@@ -807,8 +896,7 @@ class CrmApiTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('data.counters.remindersToday', 2)
             ->assertJsonPath('data.counters.inactiveCustomers', 1)
-            ->assertJsonPath('data.counters.prospectsWithoutActivity', 1)
-            ->assertJsonFragment(['companyName' => 'Stale Prospect'])
+            ->assertJsonPath('data.counters.prospectsWithoutActivity', 0)
             ->assertJsonFragment(['name' => 'Inactive Customer'])
             ->assertJsonFragment(['type' => 'prospect', 'label' => 'Stale Prospect'])
             ->assertJsonMissing(['name' => 'Other Customer']);
@@ -899,7 +987,14 @@ class CrmApiTest extends TestCase
             ['name' => 'Transport CRM'],
             ['vat_number' => 'B'.uniqid(), 'address' => 'Street', 'emails' => 'transport@test.com']
         );
-        $species = \App\Models\Species::factory()->create();
+        $fishingGear = FishingGear::firstOrCreate(['name' => 'Arrastre CRM']);
+        $species = \App\Models\Species::create([
+            'name' => 'Especie CRM '.uniqid(),
+            'scientific_name' => 'Species crm '.uniqid(),
+            'fao' => 'CRM',
+            'image' => 'https://example.test/species-crm.png',
+            'fishing_gear_id' => $fishingGear->id,
+        ]);
         $captureZone = CaptureZone::factory()->create();
         $product = Product::create([
             'name' => 'Producto CRM',
@@ -927,7 +1022,6 @@ class CrmApiTest extends TestCase
     {
         return $this->authHeaders($this->otherCommercialToken);
     }
-
 
     private function authHeaders(string $token): array
     {

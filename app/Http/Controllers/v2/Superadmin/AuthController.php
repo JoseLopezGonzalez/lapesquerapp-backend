@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\v2\Superadmin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\Superadmin\RequestSuperadminAccessRequest;
+use App\Http\Requests\v2\Superadmin\VerifySuperadminMagicLinkRequest;
+use App\Http\Requests\v2\Superadmin\VerifySuperadminOtpRequest;
 use App\Models\SuperadminMagicLinkToken;
 use App\Models\SuperadminUser;
 use App\Sanctum\SuperadminPersonalAccessToken;
@@ -15,13 +18,11 @@ class AuthController extends Controller
 {
     private const REQUEST_ACCESS_MESSAGE = 'Si el correo está registrado, recibirás un correo con un enlace y un código para acceder.';
 
-    public function requestAccess(Request $request): JsonResponse
+    public function requestAccess(RequestSuperadminAccessRequest $request): JsonResponse
     {
-        $request->validate(['email' => 'required|email']);
-
         $user = SuperadminUser::where('email', $request->email)->first();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => self::REQUEST_ACCESS_MESSAGE]);
         }
 
@@ -29,16 +30,15 @@ class AuthController extends Controller
             app(SuperadminAuthService::class)->sendAccessEmail($user);
         } catch (\Throwable $e) {
             report($e);
+
             return response()->json(['message' => 'No se pudo enviar el correo.'], 500);
         }
 
         return response()->json(['message' => self::REQUEST_ACCESS_MESSAGE]);
     }
 
-    public function verifyMagicLink(Request $request): JsonResponse
+    public function verifyMagicLink(VerifySuperadminMagicLinkRequest $request): JsonResponse
     {
-        $request->validate(['token' => 'required|string']);
-
         $hashedToken = hash('sha256', $request->token);
 
         $record = SuperadminMagicLinkToken::valid()
@@ -46,7 +46,7 @@ class AuthController extends Controller
             ->where('token', $hashedToken)
             ->first();
 
-        if (!$record) {
+        if (! $record) {
             return response()->json([
                 'message' => 'El enlace no es válido o ha expirado. Solicita uno nuevo.',
             ], 400);
@@ -54,7 +54,7 @@ class AuthController extends Controller
 
         $user = SuperadminUser::where('email', $record->email)->first();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Acción no autorizada.'], 403);
         }
 
@@ -64,20 +64,15 @@ class AuthController extends Controller
         return $this->tokenResponse($user);
     }
 
-    public function verifyOtp(Request $request): JsonResponse
+    public function verifyOtp(VerifySuperadminOtpRequest $request): JsonResponse
     {
-        $request->validate([
-            'email' => 'required|email',
-            'code' => 'required|string|size:6',
-        ]);
-
         $record = SuperadminMagicLinkToken::valid()
             ->otp()
             ->where('email', $request->email)
             ->where('otp_code', $request->code)
             ->first();
 
-        if (!$record) {
+        if (! $record) {
             return response()->json([
                 'message' => 'El código no es válido o ha expirado. Solicita uno nuevo.',
             ], 400);
@@ -85,7 +80,7 @@ class AuthController extends Controller
 
         $user = SuperadminUser::where('email', $record->email)->first();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Acción no autorizada.'], 403);
         }
 

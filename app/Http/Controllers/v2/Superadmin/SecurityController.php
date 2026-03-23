@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\v2\Superadmin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\Superadmin\StoreTenantBlockRequest;
 use App\Models\Tenant;
 use App\Models\TenantBlocklist;
 use App\Services\Superadmin\TenantManagementService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class SecurityController extends Controller
@@ -25,7 +25,7 @@ class SecurityController extends Controller
             $tokens = $this->service->getActiveTokens($tenant);
 
             return response()->json([
-                'data'  => $tokens,
+                'data' => $tokens,
                 'total' => $tokens->count(),
             ]);
         } catch (\InvalidArgumentException $e) {
@@ -41,7 +41,7 @@ class SecurityController extends Controller
         try {
             $deleted = $this->service->revokeToken($tenant, $tokenId);
 
-            if (!$deleted) {
+            if (! $deleted) {
                 return response()->json(['message' => 'Token no encontrado.'], 404);
             }
 
@@ -60,7 +60,7 @@ class SecurityController extends Controller
             $count = $this->service->revokeAllTokens($tenant);
 
             return response()->json([
-                'message'        => 'Todos los tokens han sido revocados.',
+                'message' => 'Todos los tokens han sido revocados.',
                 'tokens_revoked' => $count,
             ]);
         } catch (\InvalidArgumentException $e) {
@@ -86,22 +86,15 @@ class SecurityController extends Controller
     /**
      * Add a new IP or email block for a tenant.
      */
-    public function block(Request $request, Tenant $tenant): JsonResponse
+    public function block(StoreTenantBlockRequest $request, Tenant $tenant): JsonResponse
     {
-        $request->validate([
-            'type'       => 'required|in:ip,email',
-            'value'      => 'required|string|max:255',
-            'reason'     => 'nullable|string|max:500',
-            'expires_at' => 'nullable|date',
-        ]);
-
         $block = TenantBlocklist::create([
-            'tenant_id'                => $tenant->id,
-            'type'                     => $request->type,
-            'value'                    => $request->value,
+            'tenant_id' => $tenant->id,
+            'type' => $request->type,
+            'value' => $request->value,
             'blocked_by_superadmin_id' => $request->user()->id,
-            'reason'                   => $request->reason,
-            'expires_at'               => $request->expires_at,
+            'reason' => $request->reason,
+            'expires_at' => $request->expires_at,
         ]);
 
         $this->invalidateBlocklistCache($tenant->id, $request->value);

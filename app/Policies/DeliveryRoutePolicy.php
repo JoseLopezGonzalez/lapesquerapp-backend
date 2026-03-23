@@ -25,27 +25,32 @@ class DeliveryRoutePolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole($this->allowedInternalRoles());
+        return $this->isPrivilegedInternalUser($user)
+            || $this->isCommercialUser($user);
     }
 
     public function view(User $user, DeliveryRoute $route): bool
     {
-        return $user->hasAnyRole($this->allowedInternalRoles());
+        return $this->isPrivilegedInternalUser($user)
+            || $this->ownsCommercialRoute($user, $route);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole($this->allowedInternalRoles());
+        return $this->isPrivilegedInternalUser($user)
+            || $this->isCommercialUser($user);
     }
 
     public function update(User $user, DeliveryRoute $route): bool
     {
-        return $user->hasAnyRole($this->allowedInternalRoles());
+        return $this->isPrivilegedInternalUser($user)
+            || $this->ownsCommercialRoute($user, $route);
     }
 
     public function delete(User $user, DeliveryRoute $route): bool
     {
-        return $user->hasAnyRole($this->allowedInternalRoles());
+        return $this->isPrivilegedInternalUser($user)
+            || $this->ownsCommercialRoute($user, $route);
     }
 
     public function viewAssigned(User $user, DeliveryRoute $route): bool
@@ -58,5 +63,29 @@ class DeliveryRoutePolicy
     public function updateAssignedStop(User $user, DeliveryRoute $route): bool
     {
         return $this->viewAssigned($user, $route);
+    }
+
+    private function isPrivilegedInternalUser(User $user): bool
+    {
+        return $user->hasAnyRole(array_values(array_filter(
+            $this->allowedInternalRoles(),
+            fn (string $role) => $role !== Role::Comercial->value
+        )));
+    }
+
+    private function isCommercialUser(User $user): bool
+    {
+        return $user->hasRole(Role::Comercial->value)
+            && $user->salesperson !== null;
+    }
+
+    private function ownsCommercialRoute(User $user, DeliveryRoute $route): bool
+    {
+        if (! $this->isCommercialUser($user)) {
+            return false;
+        }
+
+        return $route->salesperson_id === $user->salesperson->id
+            || ($route->salesperson_id === null && $route->created_by_user_id === $user->id);
     }
 }

@@ -363,4 +363,23 @@ class ExternalUsersApiTest extends TestCase
             'id' => $deleteAccessToken->id,
         ], 'tenant');
     }
+
+    public function test_activating_inactive_external_user_resends_access(): void
+    {
+        $externalUser = $this->createExternalUser(email: 'reactivate@test.com', active: false);
+
+        $this->withHeaders($this->authHeadersFor($this->admin))
+            ->postJson('/api/v2/external-users/'.$externalUser->id.'/activate')
+            ->assertStatus(200)
+            ->assertJsonPath('data.isActive', true);
+
+        $this->assertDatabaseHas('magic_link_tokens', [
+            'email' => $externalUser->email,
+            'type' => MagicLinkToken::TYPE_MAGIC_LINK,
+        ], 'tenant');
+        $this->assertDatabaseHas('magic_link_tokens', [
+            'email' => $externalUser->email,
+            'type' => MagicLinkToken::TYPE_OTP,
+        ], 'tenant');
+    }
 }

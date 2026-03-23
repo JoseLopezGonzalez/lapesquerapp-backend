@@ -43,6 +43,16 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         $user = $request->user();
+        if ($user instanceof ExternalUser) {
+            $user->refresh();
+        }
+
+        if (! $this->actors->isActive($user)) {
+            return response()->json([
+                'message' => 'Acción no autorizada.',
+                'userMessage' => 'El usuario no existe o está desactivado.',
+            ], 403);
+        }
 
         return response()->json($this->buildActorPayload($user, includeFeatures: true));
     }

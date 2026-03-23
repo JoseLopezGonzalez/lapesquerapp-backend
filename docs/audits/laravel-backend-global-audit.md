@@ -1,221 +1,283 @@
 # Auditoría Arquitectónica Global — Backend Laravel PesquerApp
 
-**Fecha**: 2026-02-15  
-**Alcance**: Backend Laravel 10, multi-tenant, API v2  
-**Tipo**: Auditoría arquitectónica y sistémica (sin refactors ni revisión línea a línea)
+**Fecha**: 2026-03-23  
+**Alcance**: Backend Laravel 10, API v2, multi-tenant database-per-tenant, capa SaaS/superadmin  
+**Tipo**: Auditoría principal integral basada en repo y validación local no invasiva
 
 ---
 
-## 1. Resumen Ejecutivo
+## 1. Executive Summary
 
-El backend de PesquerApp es una aplicación Laravel 10 multi-tenant con **una base de datos por tenant**, API REST v2 consumida por un frontend Next.js 16, y dominios de negocio claros: pedidos, recepciones de materia prima, despachos de cebo, producción, inventario (cajas/palets/almacenes), fichajes y catálogos del sector pesquero. La arquitectura es **coherente** con un estilo **MVC + capa de servicios en dominios complejos**: controladores delgados, Form Requests en prácticamente toda la API, API Resources, Policies aplicadas en la mayoría de recursos críticos, y servicios para producción, estadísticas, PDF y correo. No se sigue un patrón Repository ni DDD estricto; la identidad es **Laravel idiomático con servicios de aplicación**.
+PesquerApp Backend presenta una base arquitectónica claramente por encima del nivel "funciona pero duele". El proyecto combina un núcleo Laravel idiomático con separación real por `FormRequest`, `Policy`, `Resource` y una capa de `Services` ya muy extendida, especialmente en ventas, producción, listados operativos, CRM y SaaS. La madurez multi-tenant sigue siendo una fortaleza diferencial: el middleware tenant resuelve `X-Tenant`, conmuta la conexión a base de datos del tenant y la mayor parte del dominio usa `UsesTenantConnection` de forma consistente.
 
-**Fortalezas principales**: Aislamiento tenant por base de datos, documentación de arquitectura multi-tenant, Form Requests con cobertura amplia (137 clases), Policies registradas y aplicadas en la mayoría de controladores, modelo `Setting` y `SettingService` para configuración, controladores refactorizados (Order, Punch) que delegan en servicios, y suite de tests Feature y Unit en bloques críticos. **Riesgos residuales**: uso de `tenantSetting()` helper que aún emplea `DB::connection('tenant')->table('settings')` para lectura en caché por petición; ausencia de Jobs/colas (si se añaden, definir convención de contexto tenant); y documentación formal de API (OpenAPI) pendiente. La madurez arquitectónica ha mejorado de forma significativa desde la auditoría anterior.
+La foto actual, sin embargo, ya no encaja con la auditoría canónica previa en varios puntos importantes. Ya existen `Jobs` reales para onboarding y migraciones de tenants, hay una capa `superadmin` con superficie SaaS relevante, el sistema supera los `430` endpoints `api/v2`, y siguen presentes controladores grandes con lógica e inline validation en algunos bordes, especialmente en fichajes. La suite de tests es amplia en número de bloques, pero en el entorno revisado no es ejecutable end-to-end porque `php artisan test` falla al no poder conectar con MySQL en `127.0.0.1:3306`, lo que penaliza la nota de operabilidad y la fiabilidad de verificación local.
+
+Conclusión ejecutiva: el backend está en una franja **7.8/10** global, con un core clásico estable y bien protegido, pero con una capa de plataforma SaaS y algunos bloques operativos todavía en fase de consolidación. Llegar a **9/10** no exige rehacer la arquitectura; exige cerrar deuda estructural concreta: endurecer el circuito de tests, seguir adelgazando controladores grandes, formalizar contratos/observabilidad de exportes y estadísticas, y definir una convención explícita tenant-aware para la ejecución asíncrona.
 
 ---
 
 ## 2. Identidad Arquitectónica del Proyecto
 
-El proyecto **no** sigue un checklist rígido de patrones; implícitamente adopta:
+- **Arquitectura real**: Laravel MVC + capa de servicios de aplicación, sin DDD estricto ni repositorios genéricos.
+- **API**: REST v2 con prefijo `api/v2`, mezcla de `apiResource` y endpoints de acción/reporte/exportación.
+- **Multi-tenancy**: database-per-tenant resuelta por header `X-Tenant` y `TenantMiddleware`.
+- **Seguridad**: `auth:sanctum`, middleware de rol, `Policies` por recurso, throttling en accesos públicos sensibles.
+- **Plataforma SaaS**: bloque `superadmin` fuera del middleware tenant, con onboarding, impersonation, migrations panel, feature flags, observabilidad y alertas.
+- **Operación**: Sail + `docker-compose.yml` con servicio `queue`, MySQL, Redis y Mailpit.
 
-- **Arquitectura**: MVC + **Application Service Layer** en dominios complejos (Producción, estadísticas, listados, envío de documentos).
-- **Multi-tenancy**: **Database-per-tenant** con conexión dinámica `tenant` configurada por middleware a partir del header `X-Tenant`.
-- **API**: REST v2 con prefijo `v2`, Form Requests en prácticamente todos los endpoints, API Resources para serialización, Policies aplicadas en controladores.
-- **Autenticación**: Sanctum (API tokens), roles por usuario (`role` en `users`), middleware `role:tecnico,administrador,...` para rutas protegidas.
-- **Persistencia**: Eloquent con trait `UsesTenantConnection` en modelos de negocio; modelo `Tenant` en conexión por defecto (base central); modelo `Setting` para configuración por tenant.
-- **Sin**: Repositorios genéricos, capa de dominio explícita (DDD), colas/jobs en el código. Policies registradas para ~30 modelos y **usadas** en Order, Customer, Pallet, Punch, Production, Setting, Supplier, Employee, etc.
-
-La identidad es **Laravel estándar con servicios** y multi-tenant por base de datos, adecuada para un ERP de cooperativas pesqueras con necesidad de aislamiento fuerte de datos.
+El proyecto ya no es solo "ERP tenant-aware"; es también una plataforma SaaS operable, aunque esa capa todavía no tiene la misma madurez homogénea que el core clásico.
 
 ---
 
-## 3. Fortalezas
+## 3. Hallazgos Sistémicos Clave
 
-- **Aislamiento multi-tenant**: Una base de datos por tenant y conexión dinámica bien documentada reducen el riesgo de fuga de datos entre empresas.
-- **Documentación de arquitectura**: `docs/fundamentos/01-Arquitectura-Multi-Tenant.md` describe flujo, middleware, trait y uso de conexiones.
-- **Form Requests extensivos**: 137 clases en `Http/Requests/v2/` cubriendo prácticamente toda la API v2; validación en frontera HTTP coherente.
-- **Policies aplicadas**: AuthServiceProvider registra ~30 políticas; la mayoría de controladores llaman a `authorize()` (Order, Customer, Pallet, Punch, Production, Setting, Supplier, Employee, etc.).
-- **Modelo Setting**: `Setting` con `UsesTenantConnection` y `SettingService` encapsulan configuración; ofuscación de contraseña de correo en respuestas.
-- **Controladores refactorizados**: OrderController delega en OrderListService, OrderDetailService, OrderStoreService, OrderUpdateService; PunchController en PunchDashboardService, PunchCalendarService, PunchStatisticsService, PunchEventListService, PunchEventWriteService.
-- **Manejo de excepciones API**: `Handler` unifica respuestas JSON, traduce errores de validación y QueryException a mensajes comprensibles.
-- **Uso consistente de `UsesTenantConnection`**: Los modelos de negocio usan el trait; solo `Tenant` vive en la base central.
-- **Tests**: Feature tests para Auth, Order, Customer, Productos, Stock, Settings, Fichajes, Label, Catalogos, Suppliers, Documents, Tenant, OrderStatistics; Unit tests para OrderDetailService, OrderListService, OrderStoreService, OrderUpdateService. Trait `ConfiguresTenantConnection` para tests multi-tenant.
-- **Transacciones**: Uso de `DB::transaction()` en servicios y controladores donde hay operaciones compuestas.
+### Fortalezas principales
 
----
+- **Multi-tenancy sólido**: `TenantMiddleware` valida tenant y estado, conmuta `database.default` a `tenant` y reconecta la BD por request.
+- **Uso amplio de componentes Laravel**: `185` Form Requests, `42` Policies, `51` API Resources, `63` Services y `71` controladores `v2`.
+- **Cobertura funcional amplia por bloques**: `30` Feature tests y `4` Unit tests, con suites específicas para Auth, Stock, CRM, Settings, Documents, Superadmin, canal operativo y usuarios externos.
+- **Bloques maduros**: ventas, inventario, recepciones, despachos, documentos y gran parte de producción conservan una estructura profesional.
+- **Capa SaaS tangible**: existen `OnboardTenantJob` y `MigrateTenantJob`, además de servicios y controladores dedicados a la operación superadmin.
 
-## 4. Riesgos o Debilidades Estructurales
+### Riesgos sistémicos
 
-- **Helper `tenantSetting()`**: El helper en `app/Support/helpers.php` usa `DB::connection('tenant')->table('settings')` para lectura. Funciona en contexto request (después del middleware tenant) y tiene caché por petición; riesgo bajo. Podría migrarse a `Setting::query()` para unificar acceso.
-- **Sin jobs/colas**: No hay clases Job; si en el futuro se añaden (envío de emails masivos, reportes, integraciones), habrá que asegurar que el contexto tenant esté en el payload.
-- **Documentación API**: Falta OpenAPI/Swagger; convenciones de paginación y filtrado no están formalizadas en un contrato.
-- **Algunos controladores aún con lógica**: PunchController index construye la query con `listService->applyFiltersToQuery()` pero la paginación y ordenación siguen en el controlador; aceptable para el tamaño actual.
+- **Controladores aún demasiado grandes**: `PunchController` (`459` líneas), `PalletController` (`310`), `OrderController` (`298`), `BoxesController` (`277`), `SpeciesController` (`264`), `StoreController` (`258`) y `AuthController` (`258`).
+- **Validación inline residual**: sigue habiendo `request->validate()` en puntos relevantes como `PunchController`, `SpeciesController`, `CaptureZoneController` y varios controladores `superadmin`.
+- **Autorización gruesa aún presente en rutas**: el grupo principal `v2` mantiene un comentario explícito de transición "por ahora todas accesibles para todos los roles", señal de que el diseño fino depende mucho de `Policies` y no siempre de segmentación de rutas.
+- **Operabilidad/testability incompleta**: `php artisan test` no es reproducible en este entorno por dependencia de MySQL no levantado/accesible, con `11` fallos, `48` warnings y `222` tests saltados.
+- **Asincronía tenant-aware no formalizada como patrón transversal**: los jobs SaaS existentes resuelven el tenant, pero la convención aún no está documentada como estándar reutilizable del sistema.
 
 ---
 
-## 5. Alineación con Prácticas Laravel Profesionales
+## 4. Evaluación por Dimensión
 
-| Área | Estado | Comentario |
-|------|--------|------------|
-| Estructura de carpetas | ✅ | app/Http/Controllers/v2, Requests/v2, Resources/v2, Services y Services/Production; Enums, Traits, Helpers. |
-| Rutas y middleware | ✅ | Rutas api bajo prefijo v2, middleware `tenant` y `auth:sanctum`, agrupación por rol. |
-| Validación | ✅ | Form Requests en prácticamente toda la API v2 (137 clases). |
-| Serialización API | ✅ | API Resources para entidades principales; respuestas JSON homogéneas. |
-| Autenticación | ✅ | Sanctum, magic link y OTP; throttling en endpoints sensibles. |
-| Autorización | ✅ | Policies registradas y usadas en la mayoría de controladores de recursos críticos. |
-| Eloquent y conexiones | ✅ | Uso correcto del trait en modelos; Setting como modelo; solo `tenantSetting()` helper usa acceso directo para lectura. |
-| Transacciones | ✅ | Usadas en servicios y controladores donde hay operaciones compuestas. |
-| Excepciones | ✅ | Handler personalizado para API, ValidationException, QueryException, HttpException. |
-| Testing | ⚠️ | Feature y Unit tests presentes en bloques críticos; cobertura no medida; base sólida para ampliar. |
-| Documentación | ⚠️ | Buena documentación de arquitectura; falta documentación formal de API (OpenAPI). |
+| Dimensión | Nota | Justificación |
+|-----------|------|---------------|
+| Multi-tenancy implementation maturity | **8.5/10** | Diseño database-per-tenant consistente, modelo `Tenant` central y dominio tenant-aware. Falta formalizar patrón transversal para jobs/cache/observabilidad. |
+| Domain modeling clarity | **8.5/10** | El dominio ERP + CRM + SaaS está bien expresado en modelos y servicios, aunque algunos flujos complejos siguen repartidos entre controlador, servicio y modelo. |
+| API design consistency | **7.5/10** | API rica y usable, pero con mezcla de recursos REST, acciones ad hoc, exports y contratos no formalizados por OpenAPI. |
+| Testing coverage and strategy | **6/10** | Hay amplitud de suites por bloque, pero poca profundidad unitaria y la ejecución local actual no es confiable sin infraestructura adicional. |
+| Deployment and DevOps practices | **6.5/10** | Docker/Sail, Redis, queue worker y cron en `Console\\Kernel`; pero `queue` y `cache` siguen con defaults conservadores y la reproducibilidad local/test no está cerrada. |
+| Documentation quality | **7/10** | Buen nivel de documentación de arquitectura y circuito interno; falta contrato formal de API y actualizar más rápido la auditoría canónica. |
+| Technical debt level | **7.5/10** | La deuda ya no es caótica, pero persisten hotspots concretos: controladores grandes, validación inline y bloques SaaS/operativos aún no plenamente cerrados. |
+| Code quality and maintainability | **7.5/10** | El uso de `Services`, `Requests`, `Policies` y `Resources` es sólido. La mantenibilidad baja en controladores pesados y bloques con mucha superficie transaccional. |
+| Performance and scalability | **7/10** | Hay señales sanas de eager loading y servicios de listado, pero faltan evidencias cerradas sobre índices, tiempos de respuesta y estrés en estadísticas/exports. |
+| Security and authorization maturity | **8/10** | Tenant isolation y `Policies` bien implantados. El riesgo ya no es ausencia de autorización, sino mantener coherencia fina mientras crece la superficie SaaS y operativa. |
 
-En conjunto, el proyecto está **muy alineado con Laravel**; las áreas de mejora son documentación API y eventual convención de tenant para jobs futuros.
+**Nota global actual**: **7.8/10**
 
----
+### Qué separa al proyecto de un 9/10
 
-## 6. Uso de componentes estructurales Laravel
+- Suite de tests reproducible y útil en local/CI.
+- Reducción real de controladores monstruo en los bloques restantes.
+- Criterio uniforme para exports, estadísticas y errores operativos.
+- Convención tenant-aware explícita para jobs, cache y observabilidad.
+- Cierre de los bloques A.19-A.22 con auditoría y trazabilidad equivalente al core clásico.
 
-| Componente | Presencia | Corrección / consistencia |
-|------------|-----------|---------------------------|
-| **Services** | ✅ | Servicios de aplicación en dominios complejos; listados (OrderListService, PunchEventListService), estadísticas, producción, PDF, correo. Responsabilidad única y reutilización adecuadas. |
-| **Actions** | ❌ | No existe carpeta `Actions` ni invocables. La lógica está en servicios o controladores; no es obligatorio. |
-| **Jobs** | ❌ | No hay clases Job. Si se añaden, definir convención de contexto tenant en el payload. |
-| **Events / Listeners** | Solo por defecto | EventServiceProvider solo registra `Registered` → `SendEmailVerificationNotification`. Adecuado para el flujo actual. |
-| **Form Requests** | ✅ | 137 clases; cobertura amplia en toda la API v2. Consistente. |
-| **Policies / Gates** | ✅ | ~30 políticas registradas; la mayoría de controladores llaman a `authorize()`. Coherente. |
-| **Middleware** | ✅ | `tenant`, `auth:sanctum`, `role`, `throttle`, `LogActivity`. Correcto y coherente. |
-| **API Resources** | ✅ | Recursos v2 para entidades principales; serialización estable. |
+### Qué separa al proyecto de un 10/10
 
-**Resumen**: Form Requests y Policies han pasado de uso parcial a uso amplio y coherente. La capa de servicios sigue bien utilizada. Mejora significativa respecto a la auditoría anterior.
+- Contrato formal de API, métricas de rendimiento y cobertura cuantificada.
+- Pipeline DevOps endurecido y validable desde repo.
+- Homogeneidad estructural total entre core ERP, CRM y SaaS.
+- Deuda residual reducida a pulido no estructural.
 
 ---
 
-## 7. Evaluación OOP (SRP, acoplamiento, cohesión)
+## 5. Componentes Estructurales Laravel
 
-- **Responsabilidad única**: Los servicios de producción, estadísticas, listados y correo/PDF tienen responsabilidades bien delimitadas. OrderController y PunchController han sido refactorizados y delegan en servicios.
-- **Acoplamiento**: Los controladores acoplan Request, Model y servicios; las dependencias están inyectadas. El acoplamiento a la base de datos se ha reducido al eliminar `DB::connection('tenant')->table()` de los controladores (queda solo en el helper `tenantSetting`).
-- **Cohesión**: Los módulos de producción, pedidos, fichajes y configuración son cohesivos; la lógica de listados y reportes está en servicios dedicados.
+| Componente | Estado | Observación |
+|-----------|--------|-------------|
+| Services | Fuerte | `63` servicios repartidos entre núcleo, `v2`, `Production` y `Superadmin`. |
+| Actions | Ausente | No hay `app/Actions`; no es un problema por sí mismo. |
+| Jobs | Presente | Existen al menos `OnboardTenantJob` y `MigrateTenantJob`; la auditoría previa estaba desactualizada en este punto. |
+| Events / Listeners | Débil | No hay capa explícita de eventos de dominio. Los side effects siguen mayoritariamente síncronos. |
+| Form Requests | Fuerte | `185` clases; gran parte de la API está validada así. |
+| Policies / Gates | Fuerte | `42` policies registradas y uso amplio de `authorize()` en controladores `v2`. |
+| API Resources | Fuerte | `51` resources; serialización más consistente que en auditorías previas. |
+| Middleware | Fuerte | `tenant`, `superadmin`, `actor`, `external.active`, CORS dinámico y `LogActivity`. |
+| DTOs / Data objects | Ausente | El sistema resuelve esto con `Request + Resource + Service`. |
 
----
-
-## 8. API y Diseño de Serialización
-
-- **Recursos**: Uso de API Resources (OrderResource, OrderDetailsResource, ActiveOrderCardResource, PunchEventResource, etc.) mantiene la forma de salida estable.
-- **Consistencia**: Respuestas con `message`, `userMessage` y `errors` en errores; estructura predecible en listados y detalle.
-- **Options/endpoints auxiliares**: Múltiples rutas `options` para desplegables.
-- **Recomendación**: Documentar convenciones de paginación y filtrado; considerar OpenAPI/Swagger para v2.
-
----
-
-## 9. Distribución de la Lógica de Dominio
-
-- **En modelos**: Constantes de estado, relaciones, accessors y scopes. Lógica de presentación y reglas de estado.
-- **En controladores**: Orquestación; delegan en servicios para listados, estadísticas, escritura y documentos.
-- **En servicios**: Producción (ProductionRecordService, ProductionOutputService, etc.), estadísticas (OrderStatisticsService, StockStatisticsService, etc.), listados (OrderListService, PunchEventListService), SettingService, OrderPDFService, OrderMailerService.
-
-La distribución es **adecuada**; la lógica compleja está en servicios y los controladores actúan como orquestadores.
+Valoración: la base Laravel es profesional y reconocible. La mejora prioritaria no es "meter más patrones", sino reducir inconsistencias donde el proyecto aún no los aplica de forma homogénea.
 
 ---
 
-## 10. Integridad Transaccional y Efectos Secundarios
+## 6. Lógica de Negocio, Transacciones y Side Effects
 
-- **Transacciones**: Usadas en servicios de producción, recepciones, despachos, palets y fichajes.
-- **Efectos secundarios**: Envío de correo y generación de PDFs se invocan desde controladores; si en el futuro se movieran a colas, garantizar tenant en el payload del job.
-- **Eliminaciones**: En RawMaterialReception y otros dominios se usa Eloquent o servicios; revisar si hay eliminaciones manuales que puedan unificarse.
+- **Ventas**: `OrderController` ya delega bastante en `OrderListService`, `OrderStoreService`, `OrderUpdateService` y `OrderDetailService`, pero conserva reglas de ownership comercial y algunos side effects en controlador.
+- **Fichajes**: mezcla de dashboard, calendario, estadísticas, bulk, NFC y manual punch dentro de un único controlador todavía muy ancho.
+- **Producción**: el reparto por servicios especializados es una fortaleza; sigue siendo el dominio más complejo del core.
+- **SaaS/superadmin**: onboarding, impersonation, migrations y feature flags ya forman un subdominio con identidad propia.
+- **Side effects**: siguen predominantemente síncronos en exportes, PDFs, emails y ciertos flujos de CRM; eso simplifica hoy, pero deja deuda de capacidad si crece la carga.
 
----
-
-## 11. Testing y Mantenibilidad
-
-- **Cobertura**: Feature tests para Auth, Order, Customer, Productos, Stock, Settings, Fichajes, Label, Catalogos, Suppliers, Documents, Tenant, OrderStatistics, Infraestructura; Unit tests para OrderDetailService, OrderListService, OrderStoreService, OrderUpdateService. Trait `ConfiguresTenantConnection` para tenant en tests.
-- **Mantenibilidad**: Base de código legible; controladores refactorizados; tests documentan comportamiento esperado en flujos críticos.
-- **Recomendación**: Medir cobertura; ampliar tests a producción y recepciones si se considera crítico; mantener consistencia en uso de ConfiguresTenantConnection.
+La lógica de negocio ya no está desperdigada "sin remedio", pero sí existen dominios donde el controlador continúa actuando como mini-application-service.
 
 ---
 
-## 12. Señales de Rendimiento y Escalabilidad
+## 7. Rendimiento y Escalabilidad
 
-- **Consultas N+1**: Uso de `with()` en listados (Order con customer, salesperson, transport, etc.); servicios centralizan eager loading.
-- **Índices**: Revisar índices en tablas grandes (orders, punch_events, production_*) para filtros por fechas y estado.
-- **Conexiones**: Una conexión `tenant` por request; purge/reconnect en cada request.
-- **Escalabilidad horizontal**: Posible con varias instancias detrás de balanceador; cada request lleva `X-Tenant`.
+### Señales positivas
 
----
+- Servicios de listado y estadísticas dedicados en varios bloques.
+- Uso frecuente de `with(...)` y queries especializadas en listados pesados.
+- Redis y worker de cola previstos en `docker-compose.yml`.
+- Conmutación tenant por request simple y explícita.
 
-## 13. Seguridad y Autorización
+### Hotspots observados
 
-- **Aislamiento tenant**: Middleware garantiza tenant activo por request; modelos usan conexión `tenant`.
-- **Autorización**: Policies aplicadas en la mayoría de recursos; `authorize()` en Order, Customer, Pallet, Punch, Production, Setting, Supplier, Employee, etc. Filtro fino por recurso además del middleware de rol.
-- **Datos sensibles**: SettingService ofusca `company.mail.password` en respuestas; contraseña no se actualiza si no se envía en el request.
-- **Input**: Validación mediante Form Requests en prácticamente toda la API.
+- `PunchController` concentra demasiados caminos de ejecución en un solo borde HTTP.
+- `OrderController`, `PalletController`, `BoxesController`, `StoreController` y `SpeciesController` aún son candidatos claros a seguir adelgazando.
+- Estadísticas, dashboards y exports siguen siendo los principales candidatos a problemas de índices o N+1 ocultos.
+- `TenantMiddleware` hace `DB::purge()` + `DB::reconnect()` en cada request; es correcto para este modelo, pero debe vigilarse si el volumen crece o si se introducen workers de larga vida.
 
----
+### Riesgo operativo relevante
 
-## 14. Oportunidades de Mejora (Priorizadas)
-
-1. **Convención de tenant en jobs futuros**: Si se incorporan colas, definir payload con `tenant_subdomain` o `tenant_database` y configurar conexión en el worker.
-2. **Migrar `tenantSetting()` a Setting model**: Usar `Setting::query()` en lugar de `DB::connection('tenant')->table('settings')` en el helper para unificar acceso; el helper puede seguir existiendo como capa de abstracción.
-3. **Documentar API (OpenAPI/Swagger)**: Convenciones de paginación, filtros y errores; facilita evolución del frontend.
-4. **Medir y ampliar cobertura de tests**: Objetivo ≥80% en bloques críticos según CLAUDE.md; priorizar producción y recepciones si faltan.
-5. **Revisar índices en tablas grandes**: orders, punch_events, production_* para optimizar listados filtrados.
+- La configuración base del repo deja `QUEUE_CONNECTION=sync` y `CACHE_DRIVER=file` por defecto. Eso no es malo en dev, pero impide leer el proyecto como "production-ready por defecto" sin endurecimiento por entorno.
 
 ---
 
-## 15. Trayectoria de Evolución Sugerida
+## 8. Seguridad y Autorización
 
-- **Fase 1 (corto plazo)**: Refactor de `tenantSetting()` para usar Setting model; documentar convenciones de API.
-- **Fase 2 (medio plazo)**: OpenAPI/Swagger si se expone API a terceros o se prioriza onboarding; ampliar tests a bloques sin cobertura.
-- **Fase 3 (según necesidad)**: Si aparecen colas, estándar de tenant en jobs; revisión de índices en tablas críticas.
+- **Tenant isolation**: fuerte; el tenant se resuelve desde cabecera, se valida el estado y el dominio usa conexión `tenant`.
+- **Policies**: implantación amplia y útil; la seguridad fina ya depende más de políticas que de simples middlewares de rol.
+- **Rutas públicas**: `v2/public/tenant/{subdomain}` y aprobación/rechazo de impersonation firmada están claramente separadas.
+- **Superadmin**: existe middleware específico con modelo de token distinto, lo cual aísla bien esta superficie.
+- **Deuda residual**: mantener la coherencia entre middleware de rol, actores internos/externos y políticas en bloques nuevos.
 
-La evolución es **adaptativa**; el proyecto está en buen estado para el CORE v1.0 Consolidation.
-
----
-
-## 16. Marco de Madurez Arquitectónica
-
-Evaluación por dimensión (1–10):
-
-| Dimensión | Puntuación | Comentario |
-|-----------|------------|------------|
-| **Madurez multi-tenant** | 8 | Aislamiento por BD claro; modelo Setting; solo helper `tenantSetting` usa acceso directo. Sin jobs con contexto tenant. |
-| **Claridad del modelo de dominio** | 8 | Conceptos del sector en modelos y servicios; controladores delegan en servicios. |
-| **Consistencia del diseño API** | 7 | Form Requests, API Resources, Policies coherentes; falta documentación formal. |
-| **Cobertura y estrategia de tests** | 6 | Feature y Unit tests en bloques críticos; base sólida; cobertura no medida. |
-| **Prácticas de despliegue/DevOps** | 6 | Docker/Coolify; no revisado en detalle pipelines. |
-| **Calidad de documentación** | 7 | Buena documentación de arquitectura; falta documentación de API. |
-| **Nivel de deuda técnica** | 7 | Controladores refactorizados; Setting como modelo; políticas aplicadas. Deuda residual menor. |
-
-**Puntuación global de madurez**: **7,0 / 10** — Proyecto sólido y coherente; mejora notable respecto a la auditoría anterior (5,7).
+No he detectado un problema sistémico actual de fuga cross-tenant en el código revisado. El riesgo ahora está en la complejidad creciente de la plataforma, no en una base insegura.
 
 ---
 
-## 17. Top 5 Riesgos Sistémicos
+## 9. Testing y Runtime
 
-1. **Jobs/colas sin convención de tenant**: Si se añaden tareas en segundo plano sin definir cómo se pasa el tenant, riesgo de ejecutar trabajos en el tenant equivocado.
-2. **Helper `tenantSetting()` con acceso directo**: Uso de `DB::connection('tenant')->table('settings')`; migrar a Setting model unificaría acceso.
-3. **Documentación API ausente**: Sin OpenAPI, la evolución del frontend y posibles integraciones externas dependen de conocimiento tribal.
-4. **Cobertura de tests no medida**: Aunque hay tests, no se conoce el porcentaje de cobertura; puede haber huecos en dominios críticos.
-5. **Índices no revisados en detalle**: En tablas grandes, filtros por fechas/estado podrían beneficiarse de índices compuestos.
+### Estado del testing
 
----
+- `30` suites Feature y `4` Unit.
+- Cobertura visible en Auth, Stock, CRM, Settings, Documents, Superadmin, canal operativo, usuarios externos y fichajes.
+- Cobertura unitaria todavía estrecha y muy concentrada en `Order*Service`.
 
-## 18. Top 5 Mejoras de Mayor Impacto
+### Resultado de validación local
 
-1. **Definir convención de tenant para jobs** (cuando se usen colas): Payload con tenant_subdomain; middleware o lógica de arranque en worker.
-2. **Refactorizar `tenantSetting()`** para usar Setting model: Un solo punto de acceso a settings; menor riesgo.
-3. **Documentar API (OpenAPI/Swagger)**: Convenciones y contratos; facilita evolución y onboarding.
-4. **Medir y ampliar cobertura de tests**: Priorizar bloques sin tests o con flujos críticos no cubiertos.
-5. **Revisar índices en tablas orders, punch_events, production_***: Optimizar listados filtrados.
+- `php artisan test` ejecutado el **23 de marzo de 2026** en este entorno termina con:
+  - `11` fallos
+  - `48` warnings
+  - `222` tests saltados
+  - causa dominante: **MySQL no accesible en `127.0.0.1:3306`**
+- Esto no prueba una regresión funcional de negocio, pero sí evidencia que el circuito de verificación local no está autocontenido ni suficientemente robusto.
 
----
+### Runtime / producción
 
-## 19. Preguntas de Contexto (opcionales)
-
-1. ¿Está previsto usar colas (Laravel Queue) para envío de emails, reportes o integraciones? Si sí, definir desde el inicio el payload con identificador de tenant.
-2. ¿Hay planes de exponer la API a terceros? En ese caso, OpenAPI y versionado estable serían prioritarios.
-3. ¿Qué nivel de cobertura de tests se considera objetivo (solo flujos críticos vs. ≥80%)?
-4. ¿`tenantSetting()` debe mantenerse para rendimiento (lectura directa) o se prefiere migrar a Setting model para consistencia?
+- `docker-compose.yml` define app, queue worker, MySQL, Redis y Mailpit.
+- `Console\\Kernel` agenda limpieza de PDFs, cleanup de magic tokens y tareas SaaS de seguridad/onboarding.
+- El repo no expone todavía una configuración cerrada de PHP-FPM/OPcache/supervisor, por lo que la nota de runtime debe seguir siendo prudente.
 
 ---
 
-*Documento generado en el marco de una auditoría arquitectónica global (actualización 2026-02-15). No sustituye una revisión de seguridad ni una auditoría de rendimiento dedicada.*
+## 10. Evaluación por Bloques
+
+| Bloque | Nota | Estado actual | Fortalezas | Riesgos / gap principal | Prioridad |
+|--------|------|---------------|------------|--------------------------|-----------|
+| A.1 Auth + Roles/Permisos | 9/10 | Maduro | Policies, throttling, auth flows ricos | Más cobertura unitaria y homogeneización final | P2 |
+| A.2 Ventas / Pedidos | 9/10 | Maduro | Buen uso de servicios y recursos | Contratos de reporting/export y variantes | P2 |
+| A.3 Inventario / Stock | 10/10 | Referencia interna | Bloque más consistente del core | Mantener estándar y evitar regresiones | P3 |
+| A.4 Recepciones | 9/10 | Maduro | Bulk y estadísticas ya estructurados | Stress/performance en bulk y export | P2 |
+| A.5 Despachos de Cebo | 9/10 | Maduro | Cohesión buena y tests de bloque | Variantes de export y carga | P2 |
+| A.6 Producción | 9/10 | Complejo pero sólido | Servicios especializados y policies | Complejidad inherente, trazabilidad y costes | P1 |
+| A.7 Productos y maestros | 9/10 | Maduro | Requests, policies y opciones | Filtros/opciones y cobertura fina | P2 |
+| A.8 Catálogos transaccionales | 9/10 | Estable | CRUDs coherentes y encapsulados | Pulido menor | P3 |
+| A.9 Proveedores + Liquidaciones | 9/10 | Estable | Bloque coherente y con pruebas | Casos complejos de liquidación | P2 |
+| A.10 Etiquetas | 9/10 | Estable | Simple y bien contenido | Pulido menor | P3 |
+| A.11 Fichajes / Control horario | 9/10 | Funcional con deuda localizada | Tests amplios y servicios de apoyo | `PunchController` aún demasiado ancho e inline validation | P1 |
+| A.12 Estadísticas e informes | 9/10 | Bueno con riesgo operativo | Capa dedicada por dominio | Índices, tiempos y consistencia de export/report | P1 |
+| A.13 Configuración por tenant | 9/10 | Robusto | `Setting` model + servicio | Mantener coherencia y evitar volver a acceso ad hoc | P2 |
+| A.14 Sistema / usuarios / logs | 9/10 | Maduro | Muy alineado con A.1 | No duplicar deuda de auth | P3 |
+| A.15 Documentos / PDF / Excel | 9/10 | Amplio y útil | Gran cobertura funcional | Contrato uniforme de errores y asíncronía futura | P1 |
+| A.16 Tenants públicos y resolución tenant | 9/10 | Sólido | Superficie pequeña y crítica bien resuelta | Mantener mínimo y seguro | P2 |
+| A.17 Infraestructura API | 9/10 | Estable | Health y endpoints técnicos claros | Mantenimiento | P3 |
+| A.18 Utilidades PDF / extracción | 9/10 | Estable | Bloque acotado | Límites de uso y consumo | P3 |
+| A.19 CRM comercial | 8.5/10 | Buen nivel, no totalmente cerrado | Tests amplios y servicios dedicados | Estados, conversión y side effects comerciales | P1 |
+| A.20 Canal operativo / Autoventa / Reparto | 8.5/10 | Bien encaminado | Buen set de rutas y tests | Límites de acceso y sincronización ruta-pedido | P1 |
+| A.21 Usuarios externos | 8.5/10 | Casi cerrado | Identidad propia y tests | Consolidar onboarding y reglas actor externo | P1 |
+| A.22 Superadmin SaaS | 8.5/10 | Estratégico, aún consolidándose | Jobs, servicios, rutas y tests propios | Hardening operacional, observabilidad y patrón tenant-aware transversal | P0 |
+
+---
+
+## 11. Top 5 Riesgos Sistémicos
+
+1. **A.22 Superadmin SaaS aún no tiene la misma madurez homogénea que el core clásico**.
+2. **Circuito de tests no reproducible localmente sin infraestructura externa levantada**.
+3. **Controladores grandes en bordes críticos, especialmente fichajes y operaciones de almacén**.
+4. **Exports/estadísticas/documentos como superficie principal de deuda de rendimiento y contrato**.
+5. **Patrón asíncrono tenant-aware todavía implícito, no formalizado como estándar del backend**.
+
+---
+
+## 12. Top 5 Mejoras de Mayor Impacto
+
+1. Convertir la ejecución de tests en un flujo fiable de repo/CI, con bootstrap claro de MySQL tenant y central.
+2. Cerrar A.22 Superadmin SaaS con auditoría e implementación por sub-bloques: onboarding, migrations, impersonation, observability y feature flags.
+3. Seguir adelgazando `PunchController` y otros controladores hotspot con `FormRequest` y servicios más finos.
+4. Formalizar el contrato de exports/estadísticas/documentos y medir queries/índices de los caminos pesados.
+5. Documentar el patrón tenant-aware para jobs, cache keys y tareas operativas.
+
+---
+
+## 13. Quick Wins de Bajo Riesgo
+
+- Migrar la validación inline restante de `PunchController`, `SpeciesController`, `CaptureZoneController` y controladores `superadmin` a `FormRequest`.
+- Añadir una guía operativa breve para ejecutar tests en local con MySQL/tenant listos.
+- Crear una convención documental simple para jobs tenant-aware.
+- Homogeneizar respuestas de error en exports y documentos.
+- Medir y documentar los endpoints más pesados de estadísticas antes de refactorar.
+
+---
+
+## 14. Roadmap Recomendado para Llegar a 9/10
+
+1. **Operabilidad y verificación**
+   - hacer reproducible `php artisan test`
+   - fijar comandos soportados para entorno host vs Sail
+2. **Consolidación SaaS**
+   - auditar/implementar A.22 por sub-bloques
+   - reforzar observabilidad y retry/failure semantics de jobs
+3. **Refactor estructural focalizado**
+   - adelgazar controladores hotspot
+   - mover validación residual a Requests
+4. **Performance y contratos**
+   - revisar índices y tiempos en dashboards, rankings, exports y PDFs
+   - estandarizar respuestas y límites operativos
+5. **Cierre documental**
+   - mantener auditoría canónica sincronizada
+   - dejar matriz de prioridad por bloque como fuente de ejecución
+
+---
+
+## 15. Cierre Obligatorio
+
+1. **Nota global actual**: **7.8/10**
+2. **Nota potencial tras quick wins**: **8.3/10**
+3. **Nota potencial tras plan completo**: **9/10**
+4. **Secuencia recomendada de ejecución**: tests/operabilidad -> A.22 SaaS -> controladores hotspot -> performance/contracts -> cierre documental
+5. **Criterios objetivos para declarar el backend en 9/10**:
+   - tests reproducibles y útiles
+   - A.19-A.22 cerrados con trazabilidad equivalente al core
+   - hotspots de controlador reducidos
+   - exports/estadísticas endurecidos con medición
+   - convención tenant-aware documentada para asincronía y operación
+
+---
+
+## Evidencia principal consultada
+
+- `routes/api.php`
+- `app/Http/Middleware/TenantMiddleware.php`
+- `app/Http/Kernel.php`
+- `app/Providers/AuthServiceProvider.php`
+- `app/Http/Controllers/v2/*`
+- `app/Jobs/*`
+- `app/Services/*`
+- `app/Models/*`
+- `config/database.php`, `config/cache.php`, `config/queue.php`, `config/sanctum.php`
+- `docker-compose.yml`, `Dockerfile`
+- `tests/Feature/*`, `tests/Unit/*`
+
+Esta auditoría sustituye la síntesis canónica previa y se apoya en una corrida de revisión local fechada el **23 de marzo de 2026**.

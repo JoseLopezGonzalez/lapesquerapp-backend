@@ -1,78 +1,37 @@
 # Revisión del Modelo de Dominio — PesquerApp Backend
 
-**Documento de hallazgos** | Auditoría global Laravel  
-**Fecha**: 2026-02-15
+**Fecha**: 2026-03-23
 
 ---
 
-## 1. Contexto del Dominio
+## Lectura del dominio
 
-Dominio: **ERP para cooperativas pesqueras y procesado de productos del mar**. Conceptos principales observados en el código:
+El backend ya no representa solo un ERP pesquero clásico. El dominio observable se reparte en cuatro capas funcionales:
 
-- **Ventas y logística**: Pedidos (Order), clientes (Customer), comerciales (Salesperson), transportes (Transport), incoterms, términos de pago (PaymentTerm).
-- **Inventario y trazabilidad**: Productos (Product), familias y categorías, cajas (Box), palets (Pallet), almacenes (Store), lotes.
-- **Materia prima**: Recepciones (RawMaterialReception), despachos de cebo (CeboDispatch), especies (Species), artes de pesca (FishingGear), zonas de captura (CaptureZone), calibres, zonas FAO.
-- **Producción**: Production, ProductionRecord, ProductionInput, ProductionOutput, ProductionOutputConsumption, ProductionCost, CostCatalog, Process.
-- **Personas y organización**: Usuarios (User), empleados (Employee), fichajes (PunchEvent).
-- **Otros**: Proveedores (Supplier), liquidaciones, incidentes (Incident), etiquetas (Label), **configuración (Setting model)**.
+- **Core ERP**: ventas, inventario, recepciones, despachos, producción, catálogos, proveedores, etiquetas, fichajes y settings.
+- **Canales de operación**: autoventa, rutas, field operators y usuarios externos.
+- **CRM comercial**: prospects, offers, interacciones y agenda.
+- **Plataforma SaaS**: tenants, onboarding, impersonation, feature flags, alertas y observabilidad superadmin.
 
----
+## Hallazgos
 
-## 2. Ubicación de la Lógica de Dominio
+- El lenguaje del dominio es razonablemente claro en modelos y servicios.
+- Los bloques complejos ya se apoyan en servicios específicos y no solo en controladores.
+- Producción y SaaS son los subdominios con mayor complejidad estructural.
+- La mayor deuda ya no está en “no entender el dominio”, sino en cómo algunos bordes HTTP siguen empaquetando demasiadas responsabilidades.
 
-### En modelos (Eloquent)
+## Riesgos
 
-- **Constantes y estados**: Por ejemplo `Order::STATUS_PENDING`, `STATUS_FINISHED`, `STATUS_INCIDENT`; `Setting::SENSITIVE_KEY_PASSWORD`.
-- **Relaciones**: Definidas de forma clara (belongsTo, hasMany, etc.).
-- **Accessors y atributos derivados**: Por ejemplo `Order::getFormattedIdAttribute`, `getSummaryAttribute`; lógica de presentación.
-- **Scopes**: Por ejemplo `Order::withTotals()` para totales en listados.
-- **Setting model**: `Setting::getAllKeyValue()`; uso de Eloquent para acceso a configuración. **Mejora respecto a auditoría anterior** (2026-02-14): ya existe modelo Setting.
+- Algunos flujos siguen mezclando reglas de negocio, control de errores y orquestación en controladores grandes.
+- No hay eventos de dominio que desacoplen side effects en CRM, documentos o SaaS.
+- La capa SaaS está suficientemente avanzada como para exigir ya una semántica de dominio más explícita en próximos ciclos.
 
-### En controladores
+## Valoración
 
-- **Orquestación**: Los controladores han sido refactorizados y delegan en servicios para listados, estadísticas, escritura y documentos.
-- **OrderController**: Delega en OrderListService, OrderDetailService, OrderStoreService, OrderUpdateService.
-- **PunchController**: Delega en PunchDashboardService, PunchCalendarService, PunchStatisticsService, PunchEventListService, PunchEventWriteService.
-- **SettingController**: Delega en SettingService.
-- **Filtros y agregaciones**: Concentrados en servicios (OrderListService, PunchEventListService, etc.) en lugar de controladores. **Mejora respecto a auditoría anterior**.
+| Dimensión | Nota | Comentario |
+|----------|------|------------|
+| Claridad del dominio core | 9/10 | Muy buena en ERP clásico. |
+| Claridad en canales/CRM | 8/10 | Buena, con deuda residual de cierre. |
+| Claridad en SaaS/superadmin | 8/10 | Ya es bloque propio, aún consolidándose. |
 
-### En servicios
-
-- **Producción**: ProductionRecordService, ProductionOutputService, ProductionInputService, ProductionOutputConsumptionService, ProductionService.
-- **Estadísticas**: OrderStatisticsService, StockStatisticsService, CeboDispatchStatisticsService, RawMaterialReceptionStatisticsService.
-- **Listados**: OrderListService, PunchEventListService, CustomerListService, ProductListService, etc.
-- **Documentos y correo**: OrderPDFService, OrderMailerService, TenantMailConfigService.
-- **Configuración**: SettingService encapsula lectura/escritura de settings con ofuscación de datos sensibles.
-
-La distribución es **adecuada**: la lógica compleja y transaccional está en servicios; los controladores actúan como orquestadores.
-
----
-
-## 3. Claridad de Conceptos del Sector
-
-- Los nombres de entidades (Order, RawMaterialReception, CeboDispatch, Production, Box, Pallet, Species, FishingGear, CaptureZone, Setting) son comprensibles y alineados con el dominio pesquero/industrial.
-- Enums como `Role` y constantes como `Order::STATUS_*` aportan claridad.
-- No hay lenguaje ubicuo formal (DDD); en la práctica, los modelos Eloquent y los servicios actúan como agregados y casos de uso.
-
-**Conclusión**: El modelo de dominio es **claro** para mantener y extender. La refactorización de controladores mejora la separación de responsabilidades.
-
----
-
-## 4. Riesgos en la Distribución de Responsabilidades
-
-- **Controladores gruesos**: **Mitigado**. OrderController y PunchController han sido refactorizados; delegan en servicios.
-- **Duplicación de criterios**: Centralizar criterios de filtrado en modelos (scopes) o servicios; revisar si hay repetición.
-- **Accessors costosos**: Revisar que accessors que cargan relaciones no generen N+1 en listados; usar eager loading.
-
----
-
-## 5. Resumen
-
-| Dimensión | Valoración | Comentario |
-|-----------|------------|------------|
-| Claridad de entidades y relaciones | Alta | Nombres y relaciones coherentes con el sector. |
-| Ubicación de reglas de negocio | Alta | Bien en servicios; controladores delegan. |
-| Consistencia de estados y transiciones | Media | Constantes y enums ayudan; no hay máquina de estados explícita en todos los flujos. |
-| Mantenibilidad del dominio | Alta | Refactorización de controladores; modelo Setting; servicios bien delimitados. |
-
-**Conclusión**: El modelo de dominio está en buen estado. **Mejora respecto a auditoría anterior** en distribución de lógica y claridad de responsabilidades.
+**Conclusión**: el modelo de dominio es claro y mantenible, con valoración global **8.5/10**.

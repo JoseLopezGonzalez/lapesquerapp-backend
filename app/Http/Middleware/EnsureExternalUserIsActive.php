@@ -18,6 +18,10 @@ class EnsureExternalUserIsActive
     {
         $user = $request->user();
 
+        if ($user instanceof ExternalUser) {
+            $user->refresh();
+        }
+
         if ($user instanceof ExternalUser && ! $user->is_active) {
             $this->actors->revokeTokens($user);
 

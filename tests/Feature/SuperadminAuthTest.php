@@ -13,8 +13,8 @@ use Tests\TestCase;
 
 class SuperadminAuthTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -26,7 +26,7 @@ class SuperadminAuthTest extends TestCase
     {
         return SuperadminUser::create([
             'name' => 'Test SA',
-            'email' => 'sa-' . uniqid() . '@lapesquerapp.es',
+            'email' => 'sa-'.uniqid().'@lapesquerapp.es',
         ]);
     }
 
@@ -38,7 +38,7 @@ class SuperadminAuthTest extends TestCase
         Sanctum::usePersonalAccessTokenModel($previousModel);
 
         return [
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'application/json',
         ];
     }
@@ -106,6 +106,14 @@ class SuperadminAuthTest extends TestCase
         $response->assertStatus(400);
     }
 
+    public function test_verify_magic_link_requires_token(): void
+    {
+        $response = $this->postJson('/api/v2/superadmin/auth/verify-magic-link', []);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['token']);
+    }
+
     // ---------- verify-otp ----------
 
     public function test_verify_otp_returns_token(): void
@@ -115,7 +123,7 @@ class SuperadminAuthTest extends TestCase
 
         SuperadminMagicLinkToken::create([
             'email' => $user->email,
-            'token' => hash('sha256', $code . $user->email . now('UTC')->timestamp),
+            'token' => hash('sha256', $code.$user->email.now('UTC')->timestamp),
             'type' => 'otp',
             'otp_code' => $code,
             'expires_at' => now('UTC')->addMinutes(10),
@@ -138,6 +146,17 @@ class SuperadminAuthTest extends TestCase
         ]);
 
         $response->assertStatus(400);
+    }
+
+    public function test_verify_otp_requires_six_digit_code(): void
+    {
+        $response = $this->postJson('/api/v2/superadmin/auth/verify-otp', [
+            'email' => 'test@test.com',
+            'code' => '123',
+        ]);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['code']);
     }
 
     // ---------- me ----------
@@ -187,14 +206,14 @@ class SuperadminAuthTest extends TestCase
 
         $tenantUser = \App\Models\User::create([
             'name' => 'Tenant User',
-            'email' => 'tenantuser-' . uniqid() . '@test.com',
+            'email' => 'tenantuser-'.uniqid().'@test.com',
             'role' => 'administrador',
             'active' => true,
         ]);
         $token = $tenantUser->createToken('test')->plainTextToken;
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'application/json',
         ])->getJson('/api/v2/superadmin/auth/me');
 

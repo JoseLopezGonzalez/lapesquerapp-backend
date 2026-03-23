@@ -131,12 +131,7 @@ class OfferService
             'sent_at' => now('UTC'),
         ]);
 
-        if ($offer->prospect) {
-            $offer->prospect->update([
-                'status' => Prospect::STATUS_OFFER_SENT,
-                'last_offer_at' => now('UTC'),
-            ]);
-        }
+        self::syncProspectStatus($offer);
 
         return $offer->fresh(['prospect.country', 'prospect.primaryContact', 'customer.country', 'salesperson', 'incoterm', 'paymentTerm', 'order', 'lines.product', 'lines.tax']);
     }
@@ -156,6 +151,8 @@ class OfferService
             'rejection_reason' => null,
         ]);
 
+        self::syncProspectStatus($offer);
+
         return $offer->fresh(['prospect.country', 'prospect.primaryContact', 'customer.country', 'salesperson', 'incoterm', 'paymentTerm', 'order', 'lines.product', 'lines.tax']);
     }
 
@@ -173,6 +170,8 @@ class OfferService
             'rejection_reason' => $reason,
         ]);
 
+        self::syncProspectStatus($offer);
+
         return $offer->fresh(['prospect.country', 'prospect.primaryContact', 'customer.country', 'salesperson', 'incoterm', 'paymentTerm', 'order', 'lines.product', 'lines.tax']);
     }
 
@@ -186,7 +185,12 @@ class OfferService
 
         $offer->update([
             'status' => Offer::STATUS_EXPIRED,
+            'accepted_at' => null,
+            'rejected_at' => null,
+            'rejection_reason' => null,
         ]);
+
+        self::syncProspectStatus($offer);
 
         return $offer->fresh(['prospect.country', 'prospect.primaryContact', 'customer.country', 'salesperson', 'incoterm', 'paymentTerm', 'order', 'lines.product', 'lines.tax']);
     }
@@ -332,6 +336,41 @@ class OfferService
                 'currency' => $line['currency'] ?? $offer->currency,
             ]);
         }
+    }
+
+    private static function syncProspectStatus(Offer $offer): void
+    {
+        $offer->loadMissing('prospect');
+
+        if (! $offer->prospect) {
+            return;
+        }
+
+        $prospect = $offer->prospect->fresh();
+        if (! $prospect || $prospect->status === Prospect::STATUS_CUSTOMER) {
+            return;
+        }
+
+        $hasActiveOffer = $prospect->offers()
+            ->whereIn('status', [Offer::STATUS_SENT, Offer::STATUS_ACCEPTED])
+            ->exists();
+
+        if ($hasActiveOffer) {
+            $prospect->update([
+                'status' => Prospect::STATUS_OFFER_SENT,
+                'last_offer_at' => now('UTC'),
+            ]);
+
+            return;
+        }
+
+        $hasCommercialFollowUp = $prospect->next_action_at !== null
+            || $prospect->last_contact_at !== null
+            || $prospect->interactions()->exists();
+
+        $prospect->update([
+            'status' => $hasCommercialFollowUp ? Prospect::STATUS_FOLLOWING : Prospect::STATUS_NEW,
+        ]);
     }
 
     private static function ensureTargetIsAccessible(array $validated, User $user): void

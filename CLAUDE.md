@@ -97,21 +97,29 @@ No se usa capa Repository ni DDD estricto; identidad: **Laravel idiomático + ca
 | Bloque | Rating | Estado |
 |--------|--------|--------|
 | A.1 Auth + Roles/Permisos | 9/10 | ✅ |
-| A.2 Ventas | 8,5/10 | 🔄 En progreso |
+| A.2 Ventas | 9/10 | ✅ |
 | A.3 Inventario / Stock | 10/10 | ✅ |
 | A.4 Recepciones Materia Prima | 9/10 | ✅ |
 | A.5 Despachos de Cebo | 9/10 | ✅ |
 | A.6 Producción | 9/10 | ✅ |
 | A.7 Productos | 9/10 | ✅ |
-| A.8 Catálogos | — | ⏳ Pendiente |
-| A.9 Proveedores | — | ⏳ Pendiente |
+| A.8 Catálogos | 9/10 | ✅ |
+| A.9 Proveedores | 9/10 | ✅ |
 | A.10 Etiquetas | 9/10 | ✅ |
 | A.11 Fichajes | 9/10 | ✅ |
-| A.12 Estadísticas | — | ⏳ |
+| A.12 Estadísticas | 9/10 | ✅ |
 | A.13 Configuración (Settings) | 9/10 | ✅ |
 | A.14 Sistema | 9/10 | ✅ (comparte A.1) |
+| A.15 Documentos (PDF/Excel) | 9/10 | ✅ |
+| A.16 Tenants públicos | 9/10 | ✅ |
+| A.17 Infraestructura API | 9/10 | ✅ |
+| A.18 Utilidades PDF/IA | 9/10 | ✅ |
+| A.19 CRM comercial | 8.5/10 | 🔄 En revisión |
+| A.20 Canal operativo / Autoventa | 8.5/10 | 🔄 En revisión |
+| A.21 Usuarios externos | 8.5/10 | 🔄 En revisión |
+| A.22 Superadmin SaaS | 8/10 | 🔄 En seguimiento |
 
-Detalle por bloque y sub-bloques en `docs/core-consolidation-plan-erp-saas.md` (ANEXO A) y en `docs/audits/laravel-evolution-log.md`.
+Detalle completo por bloque en `docs/core-consolidation-plan-erp-saas.md` (ANEXO A) y en `docs/audits/laravel-evolution-log.md`.
 
 ---
 

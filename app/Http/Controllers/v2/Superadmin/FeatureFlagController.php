@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\v2\Superadmin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\Superadmin\SetFeatureFlagOverrideRequest;
 use App\Models\Tenant;
 use App\Services\Superadmin\FeatureFlagService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class FeatureFlagController extends Controller
 {
@@ -47,29 +47,24 @@ class FeatureFlagController extends Controller
 
         $formatted = collect($effective)->map(function ($enabled, $flagKey) use ($overrides) {
             return [
-                'flag_key'     => $flagKey,
-                'enabled'      => $enabled,
+                'flag_key' => $flagKey,
+                'enabled' => $enabled,
                 'has_override' => isset($overrides[$flagKey]),
             ];
         })->values();
 
         return response()->json([
             'tenant' => $tenant->subdomain,
-            'plan'   => $tenant->plan ?? 'basic',
-            'data'   => $formatted,
+            'plan' => $tenant->plan ?? 'basic',
+            'data' => $formatted,
         ]);
     }
 
     /**
      * Set a flag override for a specific tenant.
      */
-    public function setOverride(Request $request, Tenant $tenant, string $flag): JsonResponse
+    public function setOverride(SetFeatureFlagOverrideRequest $request, Tenant $tenant, string $flag): JsonResponse
     {
-        $request->validate([
-            'enabled' => 'required|boolean',
-            'reason'  => 'nullable|string|max:500',
-        ]);
-
         $override = $this->service->setOverride(
             $tenant,
             $flag,
@@ -80,7 +75,7 @@ class FeatureFlagController extends Controller
 
         return response()->json([
             'message' => 'Override guardado.',
-            'data'    => $override,
+            'data' => $override,
         ]);
     }
 
@@ -91,7 +86,7 @@ class FeatureFlagController extends Controller
     {
         $deleted = $this->service->removeOverride($tenant, $flag);
 
-        if (!$deleted) {
+        if (! $deleted) {
             return response()->json(['message' => 'No existía override para este flag.'], 404);
         }
 

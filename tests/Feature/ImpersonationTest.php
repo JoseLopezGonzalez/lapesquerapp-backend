@@ -3,22 +3,20 @@
 namespace Tests\Feature;
 
 use App\Models\ImpersonationLog;
-use App\Models\ImpersonationRequest;
 use App\Models\SuperadminUser;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Sanctum\SuperadminPersonalAccessToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\URL;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\ConfiguresTenantConnection;
 use Tests\TestCase;
 
 class ImpersonationTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?SuperadminUser $superadmin = null;
 
@@ -40,7 +38,7 @@ class ImpersonationTest extends TestCase
     {
         $this->superadmin = SuperadminUser::create([
             'name' => 'SA Imp',
-            'email' => 'sa-imp-' . uniqid() . '@lapesquerapp.es',
+            'email' => 'sa-imp-'.uniqid().'@lapesquerapp.es',
         ]);
 
         $previousModel = Sanctum::$personalAccessTokenModel;
@@ -49,12 +47,12 @@ class ImpersonationTest extends TestCase
         Sanctum::usePersonalAccessTokenModel($previousModel);
 
         $this->headers = [
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'application/json',
         ];
 
-        $database = config('database.connections.' . config('database.default') . '.database') ?? 'testing';
-        $slug = 'imp-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? 'testing';
+        $slug = 'imp-'.uniqid();
         $this->tenant = Tenant::create([
             'name' => 'Imp Tenant',
             'subdomain' => $slug,
@@ -64,7 +62,7 @@ class ImpersonationTest extends TestCase
 
         $this->tenantUser = User::create([
             'name' => 'Tenant Admin',
-            'email' => 'admin-' . uniqid() . '@imp.es',
+            'email' => 'admin-'.uniqid().'@imp.es',
             'role' => 'administrador',
             'active' => true,
         ]);
@@ -77,6 +75,7 @@ class ImpersonationTest extends TestCase
         $response = $this->withHeaders($this->headers)
             ->postJson("/api/v2/superadmin/tenants/{$this->tenant->id}/impersonate/silent", [
                 'target_user_id' => $this->tenantUser->id,
+                'reason' => 'Diagnóstico operativo controlado',
             ]);
 
         $response->assertOk();
@@ -132,6 +131,26 @@ class ImpersonationTest extends TestCase
 
         $response->assertOk();
         $this->assertNotNull($log->fresh()->ended_at);
+    }
+
+    public function test_silent_impersonation_requires_reason(): void
+    {
+        $response = $this->withHeaders($this->headers)
+            ->postJson("/api/v2/superadmin/tenants/{$this->tenant->id}/impersonate/silent", [
+                'target_user_id' => $this->tenantUser->id,
+            ]);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['reason']);
+    }
+
+    public function test_end_session_requires_log_id(): void
+    {
+        $response = $this->withHeaders($this->headers)
+            ->postJson('/api/v2/superadmin/impersonate/end', []);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['log_id']);
     }
 
     // ---------- Unauthenticated ----------

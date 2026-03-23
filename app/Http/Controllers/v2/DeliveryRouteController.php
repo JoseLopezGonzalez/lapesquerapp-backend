@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\v2;
 
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\IndexDeliveryRouteRequest;
 use App\Http\Requests\v2\StoreDeliveryRouteRequest;
@@ -9,15 +10,17 @@ use App\Http\Requests\v2\UpdateDeliveryRouteRequest;
 use App\Http\Resources\v2\DeliveryRouteResource;
 use App\Models\DeliveryRoute;
 use App\Services\v2\DeliveryRouteWriteService;
+use Illuminate\Database\Eloquent\Builder;
 
 class DeliveryRouteController extends Controller
 {
     public function index(IndexDeliveryRouteRequest $request)
     {
         $query = DeliveryRoute::query()->with(['salesperson', 'fieldOperator', 'stops']);
+        $this->scopeQueryForUser($query, $request->user());
 
         if ($request->filled('name')) {
-            $query->where('name', 'like', '%' . $request->input('name') . '%');
+            $query->where('name', 'like', '%'.$request->input('name').'%');
         }
 
         if ($request->filled('fieldOperatorId')) {
@@ -41,7 +44,7 @@ class DeliveryRouteController extends Controller
 
     public function store(StoreDeliveryRouteRequest $request)
     {
-        $route = DeliveryRouteWriteService::store($request->validated(), $request->user()->id);
+        $route = DeliveryRouteWriteService::store($request->validated(), $request->user());
 
         return response()->json([
             'message' => 'Ruta creada correctamente.',
@@ -60,7 +63,7 @@ class DeliveryRouteController extends Controller
 
     public function update(UpdateDeliveryRouteRequest $request, DeliveryRoute $route)
     {
-        $updated = DeliveryRouteWriteService::update($route, $request->validated());
+        $updated = DeliveryRouteWriteService::update($route, $request->validated(), $request->user());
 
         return response()->json([
             'message' => 'Ruta actualizada correctamente.',
@@ -74,5 +77,20 @@ class DeliveryRouteController extends Controller
         $route->delete();
 
         return response()->json(['message' => 'Ruta eliminada correctamente.']);
+    }
+
+    private function scopeQueryForUser(Builder $query, $user): void
+    {
+        if (! $user->hasRole(Role::Comercial->value) || ! $user->salesperson) {
+            return;
+        }
+
+        $query->where(function (Builder $scoped) use ($user) {
+            $scoped->where('salesperson_id', $user->salesperson->id)
+                ->orWhere(function (Builder $createdByUser) use ($user) {
+                    $createdByUser->whereNull('salesperson_id')
+                        ->where('created_by_user_id', $user->id);
+                });
+        });
     }
 }

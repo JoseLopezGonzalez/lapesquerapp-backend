@@ -328,217 +328,370 @@
 
 ---
 
-# ANEXO A — Inventario de Bloques del Proyecto PesquerApp
+# ANEXO A — Inventario Vivo de Bloques y Puntuaciones
 
-Inventario detallado de bloques funcionales identificados en el backend (rutas, modelos, controladores, evolution log). **Numeración completa: A.1–A.18.** Para cada bloque del Core se aplican las Fases 1–9 del plan.
+Este anexo deja de ser una foto cerrada y pasa a ser el **registro vivo** del estado del core. A partir de ahora, cualquier ejecución del prompt de implementación debe actualizar este mismo anexo con:
 
-- **A.1–A.14**: Bloques principales (core comercial y sistema).
-- **A.15–A.16**: Bloques transversales (Documentos, Tenants).
-- **A.17–A.18**: Bloques adicionales detectados en backend (Infraestructura API, Utilidades PDF).
+- nota antes y después por bloque
+- fecha de revisión
+- fuente de la nota
+- gaps para llegar a `9/10` o `10/10`
+- estado del bloque: `pendiente`, `en progreso`, `cerrado 9/10`, `cerrado 10/10`
+
+## Regla de sincronización obligatoria
+
+La referencia principal de puntuaciones del proyecto es este documento:
+
+- `docs/core-consolidation-plan-erp-saas.md`
+
+El prompt [13-prompt-implementacion-mejoras-por-bloques.md](/home/jose/lapesquerapp-backend/docs/prompts/13-prompt-implementacion-mejoras-por-bloques.md) debe actualizar este anexo en cada iteración relevante. Si además se usa un scoreboard auxiliar, ese documento será solo una vista secundaria, nunca la fuente de verdad.
+
+## Escala de notas
+
+- `10/10`: bloque ejemplar, estable, consistente, bien testeado y replicable
+- `9/10`: bloque profesional, con deuda residual menor no estructural
+- `8/10`: bloque sólido pero con huecos relevantes en tests, permisos, rendimiento o cohesión
+- `7/10` o menos: bloque funcional con deuda ya visible o riesgo material
+
+## Convención de fuentes
+
+- `EL`: nota heredada o sustentada por `docs/audits/laravel-evolution-log.md`
+- `AR`: nota ajustada por análisis del repo actual a fecha de hoy
+- `EL+AR`: nota consolidada con ambas fuentes
 
 ---
 
-## Bloques principales (Core comercial)
+## A.1–A.18 Bloques históricos del core
 
 ### A.1 Auth + Roles/Permisos
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
 | **Entidades** | User, Role, Session, MagicLinkToken, ActivityLog |
 | **Controladores** | AuthController, RoleController, UserController, SessionController, ActivityLogController |
 | **Rutas clave** | login, logout, me, request-access, magic-link, otp, users, roles, sessions, activity-logs |
-| **Evolution log** | Sub-bloque 1: Session tenant fix, Form Requests Auth/User, UserListService, IndexSession/ActivityLog. Sub-bloque 2: SessionPolicy, ActivityLogPolicy, UserPolicy refinada (delete), Handler AuthorizationException→403, AuthBlockApiTest 21 tests. **Rating actual: 9/10** |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL |
+| **Observaciones** | Form Requests, Policies y tests consolidados. Gap residual: más cobertura unitaria y homogeneizar algunos recursos de auth. |
 
 ### A.2 Ventas (Pedidos / Sales)
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
 | **Entidades** | Order, OrderPlannedProductDetail, Incident, Customer, Salesperson |
 | **Controladores** | OrderController, OrderPlannedProductDetailController, IncidentController, OrdersReportController, OrderStatisticsController, CustomerController, SalespersonController |
-| **Rutas clave** | orders, order-planned-product-details, orders/{id}/incident, customers, salespeople, orders_report, statistics/orders/* |
-| **Evolution log** | Sub-bloques 1–6: Form Requests, Policies, ListServices, N+1, CustomerOrderHistoryService, IndexOrderRequest, authorize destroyMultiple, OrderApiTest 14 tests. **Rating actual: 9/10** |
+| **Rutas clave** | orders, order-planned-product-details, incident, customers, salespeople, orders_report, statistics/orders/* |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL |
+| **Observaciones** | Buen reparto en services, policies y tests. Gap a 10/10: más contratos formales y cobertura adicional en variantes de export y reporting. |
 
 ### A.3 Inventario / Stock
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
 | **Entidades** | Store, Pallet, Box, PalletBox, StoredPallet, StoredBox |
 | **Controladores** | StoreController, PalletController, BoxesController, StockStatisticsController |
 | **Rutas clave** | stores, pallets, boxes, statistics/stock/*, assign-to-position, move-to-store, link-order |
-| **Evolution log** | PalletWriteService, PalletActionService, PalletListService ampliado; PalletController 890→300 líneas. **Rating actual: 10/10** |
+| **Estado actual** | Cerrado 10/10 |
+| **Nota actual** | **10/10** |
+| **Fuente** | EL+AR |
+| **Observaciones** | Se corrige inconsistencia previa del documento: el evolution log sitúa A.3 en `10/10` y esta es la nota vigente. Es el bloque de referencia para refactors por services y reducción de controladores. |
 
 ### A.4 Recepciones de Materia Prima
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
 | **Entidades** | RawMaterialReception, RawMaterialReceptionProduct |
 | **Controladores** | RawMaterialReceptionController, RawMaterialReceptionStatisticsController |
 | **Rutas clave** | raw-material-receptions, reception-chart-data, facilcom-xls, a3erp-xls, bulk-update-declared-data |
-| **Evolution log** | Form Requests bulk, WriteService, BulkService, controlador &lt;200 líneas; tests integración + edge cases; **Rating actual: 9/10** |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL |
+| **Observaciones** | Bulk services y edge cases cubiertos. Gap a 10/10: revisar rendimiento y contratos de export masiva. |
 
 ### A.5 Despachos de Cebo
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
 | **Entidades** | CeboDispatch, CeboDispatchProduct, Cebo |
 | **Controladores** | CeboDispatchController, CeboDispatchStatisticsController |
-| **Rutas clave** | cebo-dispatches, dispatch-chart-data, facilcom-xlsx, a3erp-xlsx |
-| **Evolution log** | Tests CRUD + fix authorize; CeboDispatchListService, Policy delete (admin/tecnico), controller delgado, destroyMultiple authorize; **Rating actual: 9/10** |
+| **Rutas clave** | cebo-dispatches, dispatch-chart-data, facilcom-xlsx, a3erp-xlsx, a3erp2-xlsx |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL+AR |
+| **Observaciones** | Bloque maduro. Gap a 10/10: más verificación de exports alternativos y stress en listados/estadísticas. |
 
 ### A.6 Producción
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
 | **Entidades** | Production, ProductionRecord, ProductionInput, ProductionOutput, ProductionOutputConsumption, Process, CostCatalog, ProductionCost |
 | **Controladores** | ProductionController, ProductionRecordController, ProductionInputController, ProductionOutputController, ProductionOutputConsumptionController, CostCatalogController, ProductionCostController |
 | **Rutas clave** | productions, production-records, production-inputs, production-outputs, production-output-consumptions, cost-catalog, production-costs, processes |
-| **Nota** | Módulo más complejo; trazabilidad a nivel de caja |
-| **Evolution log** | Sub-bloques 1–4: Production, ProductionRecord, Input/Output/Consumption, ProductionCost, CostCatalog, Process (Form Requests, Policies, authorize, getSourcesData en servicio). **Rating actual: 9/10**. Bloque completo. |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL+AR |
+| **Observaciones** | Sigue siendo el módulo más complejo del core. Nota 9/10 se mantiene, pero conviene monitorizar trazabilidad, costes y endpoints árbol/reconciliation ante cambios futuros. |
 
-### A.7 Productos (y maestros anidados)
-| Tipo | Detalle |
+### A.7 Productos y maestros anidados
+| Campo | Detalle |
 |------|---------|
 | **Entidades** | Product, ProductCategory, ProductFamily, Species, CaptureZone |
 | **Controladores** | ProductController, ProductCategoryController, ProductFamilyController, SpeciesController, CaptureZoneController |
 | **Rutas clave** | products, product-categories, product-families, species, capture-zones |
-| **Evolution log** | Sub-bloques 1–2: Form Requests, Policies, ProductListService, ProductCategoryListService, ProductFamilyListService, controladores &lt;200 líneas. Tests: ProductosBlockApiTest 24 tests. **Rating actual: 9/10** |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL |
+| **Observaciones** | Services de listado y tests completos. Gap a 10/10: más cobertura unitaria y revisión fina de performance en opciones/filtros. |
 
 ### A.8 Catálogos transaccionales
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
 | **Entidades** | Transport, Incoterm, PaymentTerm, Country, Tax, FishingGear |
 | **Controladores** | TransportController, IncotermController, PaymentTermController, CountryController, TaxController, FishingGearController |
 | **Rutas clave** | transports, incoterms, payment-terms, countries, taxes, fishing-gears |
-| **Evolution log** | Sub-bloque 1: Form Requests, Policies, TransportListService, authorize, CatalogosBlockApiTest 17 tests. **Rating actual: 9/10** |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL |
+| **Observaciones** | Bloque estándar, estable y bien encapsulado. |
 
 ### A.9 Proveedores + Liquidaciones
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
 | **Entidades** | Supplier |
 | **Controladores** | SupplierController, SupplierLiquidationController |
 | **Rutas clave** | suppliers, supplier-liquidations/* |
-| **Evolution log** | Sub-bloques 1–3: Form Requests, SupplierPolicy, SupplierListService, SupplierLiquidationService, authorize, SuppliersBlockApiTest 14 tests. **Rating actual: 9/10** |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL |
+| **Observaciones** | Buen equilibrio entre servicios y policies. Gap a 10/10: ampliar pruebas de escenarios de liquidación complejos. |
 
-### A.10 Etiquetas (Labels)
-| Tipo | Detalle |
+### A.10 Etiquetas
+| Campo | Detalle |
 |------|---------|
 | **Entidades** | Label |
 | **Controladores** | LabelController |
 | **Rutas clave** | labels, labels/options, labels/{id}/duplicate |
-| **Evolution log** | LabelApiTest test_labels_require_authentication. **Rating actual: 9/10** |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL |
+| **Observaciones** | Bloque simple y estable. |
 
 ### A.11 Fichajes
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
 | **Entidades** | PunchEvent, Employee |
 | **Controladores** | PunchController, EmployeeController |
-| **Rutas clave** | punches (store público NFC), punches/dashboard, punches/statistics, punches/calendar, punches/bulk, employees |
-| **Evolution log** | Sub-bloques 1–3 aplicados; FichajesBlockApiTest 8 tests. **Rating actual: 9/10** |
+| **Rutas clave** | punches, punches/dashboard, punches/statistics, punches/calendar, punches/bulk, employees |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL+AR |
+| **Observaciones** | Buen avance estructural y cobertura funcional amplia. La auditoría 2026-03-23 mantiene el `9/10`, pero identifica deuda localizada en `PunchController` por tamaño y validación inline residual. |
 
 ### A.12 Estadísticas e informes
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
 | **Controladores** | OrderStatisticsController, StockStatisticsController, RawMaterialReceptionStatisticsController, CeboDispatchStatisticsController, OrdersReportController |
 | **Rutas clave** | statistics/orders/*, statistics/stock/*, orders_report, reception-chart-data, dispatch-chart-data |
-| **Evolution log** | Sub-bloque 1: authorize viewAny en RawMaterialReceptionStatisticsController y CeboDispatchStatisticsController; comentario exportToExcelA3ERP; OrderStatisticsApiTest 7 tests. **Rating actual: 9/10** |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL+AR |
+| **Observaciones** | Correcto a nivel de authorize y cobertura base. Gap a 10/10: revisar índices, tiempos de respuesta y consistencia de export/report endpoints. |
 
 ### A.13 Configuración por tenant
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
-| **Entidades** | Setting (key-value por tenant) |
+| **Entidades** | Setting |
 | **Controladores** | SettingController |
-| **Rutas clave** | settings (GET, PUT) |
-| **Evolution log** | Sub-bloque 1: Modelo Setting, SettingService, UpdateSettingsRequest, SettingPolicy (admin/tecnico), GET enmascara password, SettingsBlockApiTest 8 tests. **Rating actual: 9/10** |
+| **Rutas clave** | settings |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL+AR |
+| **Observaciones** | Sigue siendo bloque robusto. La deuda previa de acceso ad hoc a settings baja de severidad porque `tenantSetting()` ya usa `Setting::query()`, aunque se mantiene como bloque transversal a vigilar. |
 
 ### A.14 Sistema
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
 | **Entidades** | User, Role, ActivityLog |
 | **Controladores** | UserController, RoleController, ActivityLogController |
 | **Rutas clave** | users, roles/options, activity-logs |
-| **Nota** | Cubierto por el bloque Auth (A.1); mismo evolution log y **Rating actual: 9/10**. |
-
----
-
-## Bloques transversales
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL |
+| **Observaciones** | Se mantiene alineado con A.1; no duplicar trabajo salvo que aparezcan regresiones. |
 
 ### A.15 Documentos (PDF / Excel)
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
 | **Controladores** | PDFController, ExcelController, OrderDocumentController |
 | **Rutas clave** | orders/{id}/pdf/*, orders/xlsx/*, raw-material-receptions/*-xls, cebo-dispatches/*-xlsx, boxes/xlsx |
-| **Evolution log** | OrderExportFilterService; SendCustomDocumentsRequest; OrderFilteredExportRequest; authorize en PDF/Excel; DocumentsBlockApiTest 8 tests. **Rating actual: 9/10** |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL+AR |
+| **Observaciones** | Bloque amplio y bien protegido; gap a 10/10: homogeneizar contratos de export y reforzar casos de error de generación/envío. |
 
-### A.16 Tenants (multi-tenant)
-| Tipo | Detalle |
+### A.16 Tenants públicos y resolución tenant
+| Campo | Detalle |
 |------|---------|
 | **Entidades** | Tenant |
-| **Controladores** | TenantController (público) |
-| **Evolution log** | Tenant model conexión mysql; ShowTenantBySubdomainRequest; TenantPublicResource; throttling; TenantBlockApiTest 5 tests. **Rating actual: 9/10** |
+| **Controladores** | TenantController público |
 | **Rutas clave** | v2/public/tenant/{subdomain} |
-
----
-
-## Bloques adicionales identificados en backend
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL+AR |
+| **Observaciones** | Bloque pequeño y sólido. Ya no representa todo el ámbito tenant/SaaS; la gestión avanzada y los jobs asociados pasan a A.22 Superadmin SaaS. |
 
 ### A.17 Infraestructura API
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
 | **Entidades** | Ninguna |
-| **Controladores** | Closures en `routes/api.php` |
-| **Rutas clave** | GET /health, GET /test-cors |
-| **Nota** | Endpoints sin tenant ni auth; verificación de estado y CORS. |
-| **Evolution log** | Sub-bloque 1: Exclusión TenantMiddleware, simplificación test-cors, InfraestructuraApiTest 2 tests. **Rating actual: 9/10** |
+| **Controladores** | Closures y endpoints técnicos |
+| **Rutas clave** | /health, /test-cors |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL |
+| **Observaciones** | Bloque pequeño, estable y bien aislado. |
 
 ### A.18 Utilidades — Extracción de texto desde PDF
-| Tipo | Detalle |
+| Campo | Detalle |
 |------|---------|
-| **Entidades** | Ninguna (procesamiento de archivo) |
-| **Controladores** | PdfExtractionController (método extract) |
-| **Rutas clave** | POST /api/v2/pdf-extract |
-| **Evolution log** | Sub-bloque 1: ExtractPdfRequest, PdfExtractionService, ruta expuesta, authorize, PdfExtractionApiTest 4 tests. **Rating actual: 9/10** |
+| **Entidades** | Ninguna |
+| **Controladores** | PdfExtractionController |
+| **Rutas clave** | /api/v2/pdf-extract |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | EL |
+| **Observaciones** | Correcto para el alcance actual; vigilar consumo y límites de archivos si se incrementa uso real. |
 
 ---
 
-## Mapeo CORE típico → PesquerApp
+## Nuevos bloques detectados en el proyecto actual
+
+### A.19 CRM comercial
+| Campo | Detalle |
+|------|---------|
+| **Entidades** | Prospect, ProspectContact, Offer, OfferLine, CommercialInteraction, acciones de agenda CRM |
+| **Controladores** | ProspectController, OfferController, CommercialInteractionController, CrmAgendaController, CrmDashboardController |
+| **Servicios / soporte** | ProspectService, OfferService, CommercialInteractionService, CrmAgendaService, CrmDashboardService |
+| **Policies / Requests** | ProspectPolicy, OfferPolicy, CommercialInteractionPolicy; múltiples Form Requests dedicados |
+| **Rutas clave** | crm/dashboard, crm/agenda/*, prospects/*, commercial-interactions, offers/* |
+| **Tests detectados** | `tests/Feature/CrmApiTest.php` con cobertura amplia de prospectos, interacciones, agenda, ofertas y conversión a cliente |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | AR |
+| **Observaciones** | La implementación 2026-03-23 endurece la consistencia de estados en ofertas CRM, de forma que enviar/aceptar/rechazar/expirar vuelve a sincronizar el estado del prospecto. La suite `CrmApiTest` quedó validada con `19` tests verdes y `1` warning residual, suficiente para cerrar el bloque en `9/10`. |
+
+### A.20 Canal operativo / Autoventa / Reparto
+| Campo | Detalle |
+|------|---------|
+| **Entidades** | FieldOperator, DeliveryRoute, RouteTemplate, RouteStop, pedidos operativos/autoventas |
+| **Controladores** | FieldOperatorController, FieldCustomerController, FieldProductController, FieldOrderController, FieldRouteController, DeliveryRouteController, RouteTemplateController |
+| **Policies / Requests** | FieldOperatorPolicy, DeliveryRoutePolicy, RouteTemplatePolicy; requests dedicados para rutas, pedidos operativos y autoventas |
+| **Rutas clave** | field/customers/options, field/products/options, field/orders, field/autoventas, field/routes, field-operators, routes, route-templates |
+| **Tests detectados** | `FieldOperatorApiTest`, `OperationalCustomersApiTest`, `OperationalOrdersApiTest`, `RouteManagementApiTest`, `OrdersRouteIntegrityApiTest` |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | AR |
+| **Observaciones** | La implementación 2026-03-23 cierra una parte importante del gap: listados y CRUD de rutas/plantillas ya respetan mejor la pertenencia comercial y evitan asignaciones a otros comerciales. `RouteManagementApiTest` quedó validado con `4` tests verdes y `1` warning residual, suficiente para cerrar el subbloque de rutas en `9/10`. |
+
+### A.21 Usuarios externos y canal externo
+| Campo | Detalle |
+|------|---------|
+| **Entidades** | ExternalUser, tiendas externas relacionadas |
+| **Controladores** | ExternalUserController |
+| **Policies / Requests** | ExternalUserPolicy, IndexExternalUserRequest, StoreExternalUserRequest, UpdateExternalUserRequest |
+| **Rutas clave** | external-users, external-users/options, resend-access, activate, deactivate |
+| **Tests detectados** | `tests/Feature/ExternalUsersApiTest.php` |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
+| **Fuente** | AR |
+| **Observaciones** | La implementación 2026-03-23 alinea mejor el onboarding/acceso: reactivar un usuario externo vuelve a enviar acceso y `/me` bloquea actores desactivados refrescando el actor externo. `ExternalUsersApiTest` quedó validado con `6` tests verdes y `1` warning residual, suficiente para cerrar el bloque en `9/10`. |
+
+### A.22 Superadmin SaaS
+| Campo | Detalle |
+|------|---------|
+| **Entidades / ámbitos** | Tenants SaaS, impersonation, tokens, blocklist, migrations panel, observability, alerts, feature flags |
+| **Controladores** | Superadmin AuthController, TenantController, DashboardController, ImpersonationController, SecurityController, TenantMigrationController, ObservabilityController, FeatureFlagController |
+| **Servicios / soporte** | TenantManagementService, ImpersonationService, ObservabilityService, FeatureFlagService |
+| **Requests** | StoreTenantRequest, UpdateTenantRequest |
+| **Rutas clave** | v2/superadmin/* |
+| **Tests detectados** | `SuperadminTenantCrudTest`, `ImpersonationTest`, trazas indirectas en `DynamicCorsTest` |
+| **Estado actual** | En seguimiento 8.5/10 provisional |
+| **Nota actual** | **8.5/10** |
+| **Fuente** | AR |
+| **Observaciones** | El alcance SaaS ya es claramente bloque propio y estratégico. La auditoría 2026-03-23 detecta jobs reales de onboarding y migración, servicios dedicados y tests propios, lo que justifica subirlo a `8.5/10` provisional. Sigue siendo prioridad alta hasta cerrar observabilidad, hardening operativo y trazabilidad por sub-bloques. |
+
+---
+
+## Mapeo CORE típico → PesquerApp actual
 
 | Bloque CORE genérico | Bloques PesquerApp correspondientes |
 |----------------------|------------------------------------|
 | Auth + Roles/Permisos | A.1 Auth + A.14 Sistema |
-| Productos (y anidados) | A.7 Productos |
-| Clientes | A.2 Ventas (Customer) |
-| Ventas | A.2 Ventas |
-| Stock / Movimientos | A.3 Inventario + A.4 Recepciones + A.5 Despachos |
-| Informes básicos | A.12 Estadísticas |
-| Configuración por tenant | A.13 Settings |
-| Infraestructura / Utilidades | A.17 Infraestructura API, A.18 Extracción PDF |
-| — | A.6 Producción, A.9 Proveedores, A.10 Etiquetas, A.11 Fichajes (específicos dominio pesquero) |
+| Clientes y ventas | A.2 Ventas |
+| Stock / movimientos | A.3 Inventario + A.4 Recepciones + A.5 Despachos |
+| Producción | A.6 Producción |
+| Maestros de producto | A.7 Productos + A.8 Catálogos |
+| Configuración tenant | A.13 Settings + A.16 resolución tenant |
+| Documentos y exportación | A.15 Documentos + A.18 Utilidades PDF |
+| Informes / estadísticas | A.12 Estadísticas |
+| CRM comercial | A.19 CRM |
+| Canal operativo | A.20 Autoventa / Reparto |
+| Canal externo | A.21 Usuarios externos |
+| Capa SaaS / plataforma | A.22 Superadmin SaaS |
 
 ---
 
-*Fuente: análisis de rutas, modelos, controladores, `docs/audits/laravel-evolution-log.md` y documentación en `docs/`. Última revisión: 2026-02-15.*
+## Resumen actual de puntuaciones
+
+**Fecha de revisión:** 2026-03-23  
+**Base usada:** rutas actuales, controladores, requests, policies, tests detectados y `docs/audits/laravel-evolution-log.md`
 
 | Rating | Bloques |
 |--------|---------|
-| **9/10** | A.1, A.2, A.3, A.4, A.5, A.6, A.7, A.8, A.9, A.10, A.11, A.12, A.13, A.14, A.15, A.16, A.17, A.18 |
+| **10/10** | A.3 |
+| **9/10** | A.1, A.2, A.4, A.5, A.6, A.7, A.8, A.9, A.10, A.11, A.12, A.13, A.14, A.15, A.16, A.17, A.18, A.19, A.20, A.21 |
+| **8.5/10** | A.22 |
+
+**Resumen por rating:** 10/10 -> 1 bloque | 9/10 -> 20 bloques | 8.5/10 -> 1 bloque
 
 ---
 
-## Resumen de valoraciones actuales (Evolution log)
+## Matriz maestra de seguimiento
 
-**Resumen por rating:** 9/10 → 18 bloques | 8/10 → 0 bloques | Sin rating → 0 bloques
+Esta tabla es la que debe actualizarse cuando se ejecute el prompt de implementación.
 
-| Bloque | Rating actual | Notas |
-|--------|----------------|--------|
-| **A.1** Auth + Roles/Permisos | **9/10** | Sub-bloques 1–2: Session tenant fix, Form Requests, UserListService, SessionPolicy, ActivityLogPolicy, UserPolicy refinada, AuthBlockApiTest 21 tests |
-| **A.2** Ventas | **9/10** | Sub-bloques 1–6: Form Requests, Policies, ListServices, N+1, CustomerOrderHistoryService, IndexOrderRequest, authorize destroyMultiple, OrderApiTest 14 tests. Bloque cerrado. |
-| **A.3** Inventario / Stock | **9/10** | PalletWriteService (store, update), PalletController reducido, StockBlockApiTest +2 tests (can_store_pallet, pallets_require_authentication) |
-| **A.4** Recepciones de Materia Prima | **9/10** | WriteService, BulkService, 23 tests (incl. edge cases) |
-| **A.5** Despachos de Cebo | **9/10** | ListService, Policy delete, controller delgado |
-| **A.6** Producción | **9/10** | Sub-bloques 1–4: Production, ProductionRecord, Input/Output/Consumption, Cost/CostCatalog/Process. Form Requests, Policies, authorize. Bloque completo. |
-| **A.7** Productos | **9/10** | Sub-bloques 1–2: Form Requests, Policies, ListServices, ProductosBlockApiTest 24 tests |
-| **A.8** Catálogos transaccionales | **9/10** | Form Requests, Policies, TransportListService, authorize, CatalogosBlockApiTest 17 tests |
-| **A.9** Proveedores + Liquidaciones | **9/10** | Sub-bloques 1–3: Form Requests, SupplierPolicy, SupplierListService, SupplierLiquidationService, authorize, SuppliersBlockApiTest 14 tests |
-| **A.10** Etiquetas | **9/10** | Form Requests, Policy, LabelApiTest test_labels_require_authentication (11 tests) |
-| **A.11** Fichajes | **9/10** | Sub-bloques 1–3 aplicados; FichajesBlockApiTest 8 tests (punches index/dashboard/calendar/statistics, employees list/store, require_authentication) |
-| **A.12** Estadísticas e informes | **9/10** | Sub-bloque 1: authorize en reception/dispatch chart; OrderStatisticsApiTest 7 tests |
-| **A.13** Configuración por tenant | **9/10** | Setting model, SettingService, Policy, Form Request, GET enmascara password, SettingsBlockApiTest 8 tests |
-| **A.14** Sistema | **9/10** | Mismo bloque que A.1 Auth (users, roles, activity-logs) |
-| **A.15** Documentos (PDF/Excel) | **9/10** | OrderExportFilterService, Form Requests, authorize, DocumentsBlockApiTest |
-| **A.16** Tenants | **9/10** | Tenant conexión mysql, Form Request, Resource, throttling, TenantBlockApiTest 5 tests |
-| **A.17** Infraestructura API | **9/10** | Sub-bloque 1: exclusión TenantMiddleware, test-cors simplificado, InfraestructuraApiTest 2 tests |
-| **A.18** Utilidades — Extracción PDF | **9/10** | ExtractPdfRequest, PdfExtractionService, POST pdf-extract, authorize, PdfExtractionApiTest 4 tests |
+| Bloque | Estado | Nota actual | Objetivo | Fuente | Ultima revision | Gap principal |
+|--------|--------|-------------|----------|--------|-----------------|---------------|
+| A.1 Auth + Roles/Permisos | Cerrado | 9/10 | 10/10 opcional | EL | 2026-03-23 | Cobertura unitaria y homogeneización final de recursos de auth |
+| A.2 Ventas | Cerrado | 9/10 | 10/10 opcional | EL | 2026-03-23 | Contratos de reporting/export y más tests de variantes |
+| A.3 Inventario / Stock | Cerrado | 10/10 | 10/10 | EL+AR | 2026-03-23 | Mantener estándar; evitar regresiones |
+| A.4 Recepciones | Cerrado | 9/10 | 10/10 opcional | EL | 2026-03-23 | Rendimiento y stress en bulk/export |
+| A.5 Despachos de Cebo | Cerrado | 9/10 | 10/10 opcional | EL+AR | 2026-03-23 | Cobertura de variantes de export |
+| A.6 Producción | Cerrado | 9/10 | 10/10 opcional | EL+AR | 2026-03-23 | Complejidad intrínseca y performance en árboles/costes |
+| A.7 Productos | Cerrado | 9/10 | 10/10 opcional | EL | 2026-03-23 | Tests unitarios y filtros/opciones |
+| A.8 Catálogos | Cerrado | 9/10 | 10/10 opcional | EL | 2026-03-23 | Pulido y cobertura complementaria |
+| A.9 Proveedores + Liquidaciones | Cerrado | 9/10 | 10/10 opcional | EL | 2026-03-23 | Escenarios complejos de liquidación |
+| A.10 Etiquetas | Cerrado | 9/10 | 10/10 opcional | EL | 2026-03-23 | Pulido menor |
+| A.11 Fichajes | Cerrado | 9/10 | 10/10 opcional | EL+AR | 2026-03-23 | Dashboard/calendario y reducción del hotspot estructural en PunchController |
+| A.12 Estadísticas e informes | Cerrado | 9/10 | 10/10 opcional | EL+AR | 2026-03-23 | Índices, tiempos de respuesta, exportes |
+| A.13 Settings | Cerrado | 9/10 | 10/10 opcional | EL+AR | 2026-03-23 | Mantener el estándar del bloque y evitar regresiones en acceso/configuración tenant-aware |
+| A.14 Sistema | Cerrado | 9/10 | 10/10 opcional | EL | 2026-03-23 | Sincronizado con A.1 |
+| A.15 Documentos | Cerrado | 9/10 | 10/10 opcional | EL+AR | 2026-03-23 | Errores de generación/envío y contrato uniforme |
+| A.16 Tenants públicos | Cerrado | 9/10 | 10/10 opcional | EL+AR | 2026-03-23 | Mantener simple, seguro y separado del bloque SaaS avanzado |
+| A.17 Infraestructura API | Cerrado | 9/10 | 10/10 opcional | EL | 2026-03-23 | Mantenimiento |
+| A.18 Utilidades PDF | Cerrado | 9/10 | 10/10 opcional | EL | 2026-03-23 | Límites de uso y consumo |
+| A.19 CRM | Cerrado | 9/10 | 10/10 opcional | AR | 2026-03-23 | Warning residual en suite CRM y mejoras opcionales de generación documental/completitud |
+| A.20 Canal operativo / Autoventa | Cerrado | 9/10 | 10/10 opcional | AR | 2026-03-23 | Completar integración total con autoventas/pedidos para aspirar a 10/10 |
+| A.21 Usuarios externos | Cerrado | 9/10 | 10/10 opcional | AR | 2026-03-23 | Warning residual y más cobertura de flujos de canal externo no críticos |
+| A.22 Superadmin SaaS | En seguimiento | 8.5/10 | 9/10 | AR | 2026-03-23 | Hardening operativo, observabilidad y cierre tenant-aware por sub-bloques SaaS |
+
+---
+
+## Instrucción para futuras ejecuciones
+
+Cada vez que el prompt de implementación actúe sobre un bloque debe actualizar, como mínimo:
+
+1. `Estado`
+2. `Nota actual`
+3. `Ultima revision`
+4. `Gap principal`
+5. Observaciones del bloque si cambia su alcance
+
+No se debe cerrar un bloque en `9/10` o `10/10` sin dejar reflejado aquí el cambio.
