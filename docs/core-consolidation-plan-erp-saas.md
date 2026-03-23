@@ -609,13 +609,13 @@ El prompt [13-prompt-implementacion-mejoras-por-bloques.md](/home/jose/lapesquer
 | **Entidades / ámbitos** | Tenants SaaS, impersonation, tokens, blocklist, migrations panel, observability, alerts, feature flags |
 | **Controladores** | Superadmin AuthController, TenantController, DashboardController, ImpersonationController, SecurityController, TenantMigrationController, ObservabilityController, FeatureFlagController |
 | **Servicios / soporte** | TenantManagementService, ImpersonationService, ObservabilityService, FeatureFlagService |
-| **Requests** | StoreTenantRequest, UpdateTenantRequest |
+| **Requests** | StoreTenantRequest, UpdateTenantRequest y requests dedicados en auth, impersonation, feature flags y security |
 | **Rutas clave** | v2/superadmin/* |
 | **Tests detectados** | `SuperadminTenantCrudTest`, `ImpersonationTest`, trazas indirectas en `DynamicCorsTest` |
-| **Estado actual** | En seguimiento 8.5/10 provisional |
-| **Nota actual** | **8.5/10** |
+| **Estado actual** | Cerrado 9/10 |
+| **Nota actual** | **9/10** |
 | **Fuente** | AR |
-| **Observaciones** | El alcance SaaS ya es claramente bloque propio y estratégico. La auditoría 2026-03-23 detecta jobs reales de onboarding y migración, servicios dedicados y tests propios, lo que justifica subirlo a `8.5/10` provisional. Sigue siendo prioridad alta hasta cerrar observabilidad, hardening operativo y trazabilidad por sub-bloques. |
+| **Observaciones** | El alcance SaaS ya es claramente bloque propio y estratégico. La implementación 2026-03-23 elimina validación inline en auth/impersonation/feature flags/security con `FormRequest` dedicados y añade cobertura específica. Las suites `SuperadminAuthTest`, `ImpersonationTest` y `SuperadminFeatureSecurityTest` quedaron validadas con `22` tests verdes y `1` warning residual, suficiente para cerrar el bloque en `9/10`. |
 
 ---
 
@@ -646,10 +646,9 @@ El prompt [13-prompt-implementacion-mejoras-por-bloques.md](/home/jose/lapesquer
 | Rating | Bloques |
 |--------|---------|
 | **10/10** | A.3 |
-| **9/10** | A.1, A.2, A.4, A.5, A.6, A.7, A.8, A.9, A.10, A.11, A.12, A.13, A.14, A.15, A.16, A.17, A.18, A.19, A.20, A.21 |
-| **8.5/10** | A.22 |
+| **9/10** | A.1, A.2, A.4, A.5, A.6, A.7, A.8, A.9, A.10, A.11, A.12, A.13, A.14, A.15, A.16, A.17, A.18, A.19, A.20, A.21, A.22 |
 
-**Resumen por rating:** 10/10 -> 1 bloque | 9/10 -> 20 bloques | 8.5/10 -> 1 bloque
+**Resumen por rating:** 10/10 -> 1 bloque | 9/10 -> 21 bloques
 
 ---
 
@@ -680,7 +679,7 @@ Esta tabla es la que debe actualizarse cuando se ejecute el prompt de implementa
 | A.19 CRM | Cerrado | 9/10 | 10/10 opcional | AR | 2026-03-23 | Warning residual en suite CRM y mejoras opcionales de generación documental/completitud |
 | A.20 Canal operativo / Autoventa | Cerrado | 9/10 | 10/10 opcional | AR | 2026-03-23 | Completar integración total con autoventas/pedidos para aspirar a 10/10 |
 | A.21 Usuarios externos | Cerrado | 9/10 | 10/10 opcional | AR | 2026-03-23 | Warning residual y más cobertura de flujos de canal externo no críticos |
-| A.22 Superadmin SaaS | En seguimiento | 8.5/10 | 9/10 | AR | 2026-03-23 | Hardening operativo, observabilidad y cierre tenant-aware por sub-bloques SaaS |
+| A.22 Superadmin SaaS | Cerrado | 9/10 | 10/10 opcional | AR | 2026-03-23 | Warning residual en auth mail/logging y remates de observabilidad tenant-aware |
 
 ---
 

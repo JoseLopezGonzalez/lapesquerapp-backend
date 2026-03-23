@@ -51,7 +51,7 @@ class CommercialInteractionService
             ->paginate($request->input('perPage', 10));
     }
 
-    public static function store(array $validated, User $user): CommercialInteraction
+    public static function store(array $validated, User $user): array
     {
         if (empty($validated['prospectId']) === empty($validated['customerId'])) {
             throw ValidationException::withMessages([
@@ -87,8 +87,14 @@ class CommercialInteractionService
             $nextActionAt = $validated['nextActionAt'] ?? null;
 
             // 1 pending por target: desde una interacción materializamos la agenda en agenda_actions.
+            $agenda = [
+                'mode' => null,
+                'completedAction' => null,
+                'createdAction' => null,
+            ];
+
             if (! empty($validated['prospectId'])) {
-                CrmAgendaService::createPendingOrCompleteFromInteraction(
+                $agenda = CrmAgendaService::syncFromInteraction(
                     $user,
                     'prospect',
                     (int) $validated['prospectId'],
@@ -100,7 +106,7 @@ class CommercialInteractionService
             }
 
             if (! empty($validated['customerId'])) {
-                CrmAgendaService::createPendingOrCompleteFromInteraction(
+                $agenda = CrmAgendaService::syncFromInteraction(
                     $user,
                     'customer',
                     (int) $validated['customerId'],
@@ -124,7 +130,14 @@ class CommercialInteractionService
                 $prospect->update($updates);
             }
 
-            return $interaction->load(['salesperson', 'prospect.country', 'customer.country']);
+            return [
+                'interaction' => $interaction->load(['salesperson', 'prospect.country', 'customer.country']),
+                'agenda' => [
+                    'mode' => $agenda['mode'],
+                    'completedAction' => $agenda['completedAction']?->toArrayAssoc(),
+                    'createdAction' => $agenda['createdAction']?->toArrayAssoc(),
+                ],
+            ];
         });
     }
 

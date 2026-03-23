@@ -19,11 +19,12 @@ class CommercialInteractionController extends Controller
     public function store(StoreCommercialInteractionRequest $request)
     {
         $this->authorize('create', CommercialInteraction::class);
-        $interaction = CommercialInteractionService::store($request->validated(), $request->user());
+        $result = CommercialInteractionService::store($request->validated(), $request->user());
 
         return response()->json([
             'message' => 'Interacción registrada correctamente.',
-            'data' => new CommercialInteractionResource($interaction),
+            'data' => new CommercialInteractionResource($result['interaction']),
+            'agenda' => $result['agenda'],
         ], 201);
     }
 

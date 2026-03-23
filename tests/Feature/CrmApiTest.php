@@ -155,7 +155,11 @@ class CrmApiTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonPath('data.prospectId', $prospect->id)
-            ->assertJsonPath('data.type', 'call');
+            ->assertJsonPath('data.type', 'call')
+            ->assertJsonPath('agenda.mode', 'created')
+            ->assertJsonPath('agenda.completedAction', null)
+            ->assertJsonPath('agenda.createdAction.status', 'pending')
+            ->assertJsonPath('agenda.createdAction.description', 'Enviar oferta');
 
         $prospect->refresh();
         $this->assertNotNull($prospect->last_contact_at);
@@ -314,10 +318,286 @@ class CrmApiTest extends TestCase
             ]);
 
         $done->assertStatus(201);
+        $done->assertJsonPath('agenda.mode', 'completed')
+            ->assertJsonPath('agenda.completedAction.agendaActionId', $pending->id)
+            ->assertJsonPath('agenda.completedAction.status', 'done')
+            ->assertJsonPath('agenda.createdAction', null);
 
         $agendaAfter = AgendaAction::query()->find($pending->id);
         $this->assertSame('done', $agendaAfter->status);
         $this->assertSame($done->json('data.id'), $agendaAfter->completed_interaction_id);
+    }
+
+    public function test_interaction_can_complete_and_create_next_action_for_prospect(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Combined Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+
+        $createPending = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/commercial-interactions', [
+                'prospectId' => $prospect->id,
+                'type' => 'call',
+                'occurredAt' => now()->subDay()->toISOString(),
+                'summary' => 'Primera tarea',
+                'result' => 'pending',
+                'nextActionNote' => 'Visita inicial',
+                'nextActionAt' => now()->addDay()->format('Y-m-d'),
+            ]);
+
+        $createPending->assertStatus(201);
+
+        $pending = AgendaAction::query()
+            ->where('target_type', 'prospect')
+            ->where('target_id', $prospect->id)
+            ->where('status', 'pending')
+            ->first();
+
+        $this->assertNotNull($pending);
+
+        $response = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/commercial-interactions', [
+                'prospectId' => $prospect->id,
+                'type' => 'visit',
+                'occurredAt' => now()->toISOString(),
+                'summary' => 'Visita realizada y siguiente paso',
+                'result' => 'interested',
+                'agendaActionId' => $pending->id,
+                'nextActionAt' => now()->addDays(3)->format('Y-m-d'),
+                'nextActionNote' => 'Enviar propuesta final',
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('agenda.mode', 'completed_and_created')
+            ->assertJsonPath('agenda.completedAction.agendaActionId', $pending->id)
+            ->assertJsonPath('agenda.completedAction.status', 'done')
+            ->assertJsonPath('agenda.createdAction.status', 'pending')
+            ->assertJsonPath('agenda.createdAction.previousActionId', $pending->id)
+            ->assertJsonPath('agenda.createdAction.scheduledAt', now()->addDays(3)->format('Y-m-d'))
+            ->assertJsonPath('agenda.createdAction.description', 'Enviar propuesta final');
+
+        $pending->refresh();
+        $this->assertSame('done', $pending->status);
+        $this->assertSame($response->json('data.id'), $pending->completed_interaction_id);
+
+        $newId = $response->json('agenda.createdAction.agendaActionId');
+        $newPending = AgendaAction::query()->find($newId);
+
+        $this->assertNotNull($newPending);
+        $this->assertSame('pending', $newPending->status);
+        $this->assertSame($pending->id, (int) $newPending->previous_action_id);
+        $this->assertSame($response->json('data.id'), $newPending->source_interaction_id);
+
+        $prospect->refresh();
+        $this->assertEquals(now()->addDays(3)->format('Y-m-d'), $prospect->next_action_at?->format('Y-m-d'));
+        $this->assertSame('Enviar propuesta final', $prospect->next_action_note);
+    }
+
+    public function test_interaction_can_complete_and_create_next_action_for_customer(): void
+    {
+        $customer = Customer::create([
+            'name' => 'Combined Customer',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'emails' => 'combined@test.com;',
+            'contact_info' => 'Contacto principal',
+        ]);
+
+        $createPending = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/commercial-interactions', [
+                'customerId' => $customer->id,
+                'type' => 'email',
+                'occurredAt' => now()->subDay()->toISOString(),
+                'summary' => 'Seguimiento inicial',
+                'result' => 'pending',
+                'nextActionNote' => 'Llamar para cerrar',
+                'nextActionAt' => now()->addDay()->format('Y-m-d'),
+            ]);
+
+        $createPending->assertStatus(201);
+
+        $pending = AgendaAction::query()
+            ->where('target_type', 'customer')
+            ->where('target_id', $customer->id)
+            ->where('status', 'pending')
+            ->first();
+
+        $this->assertNotNull($pending);
+
+        $response = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/commercial-interactions', [
+                'customerId' => $customer->id,
+                'type' => 'call',
+                'occurredAt' => now()->toISOString(),
+                'summary' => 'Cerramos y agendamos siguiente',
+                'result' => 'pending',
+                'agendaActionId' => $pending->id,
+                'nextActionAt' => now()->addDays(4)->format('Y-m-d'),
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('agenda.mode', 'completed_and_created')
+            ->assertJsonPath('agenda.completedAction.agendaActionId', $pending->id)
+            ->assertJsonPath('agenda.createdAction.previousActionId', $pending->id)
+            ->assertJsonPath('agenda.createdAction.description', null);
+
+        $pending->refresh();
+        $this->assertSame('done', $pending->status);
+
+        $newPending = AgendaAction::query()->find($response->json('agenda.createdAction.agendaActionId'));
+        $this->assertNotNull($newPending);
+        $this->assertSame($response->json('data.id'), $newPending->source_interaction_id);
+    }
+
+    public function test_combined_interaction_rejects_when_agenda_action_is_not_pending(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Combined Invalid Status Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+
+        $doneAction = AgendaAction::create([
+            'target_type' => 'prospect',
+            'target_id' => $prospect->id,
+            'scheduled_at' => now()->subDay()->format('Y-m-d'),
+            'description' => 'Ya hecha',
+            'status' => 'done',
+        ]);
+
+        $response = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/commercial-interactions', [
+                'prospectId' => $prospect->id,
+                'type' => 'call',
+                'occurredAt' => now()->toISOString(),
+                'summary' => 'Intento invalido',
+                'result' => 'pending',
+                'agendaActionId' => $doneAction->id,
+                'nextActionAt' => now()->addDay()->format('Y-m-d'),
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['agendaActionId']);
+
+        $this->assertDatabaseMissing('commercial_interactions', [
+            'summary' => 'Intento invalido',
+        ], 'tenant');
+    }
+
+    public function test_combined_interaction_rejects_when_agenda_action_does_not_exist(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Combined Missing Agenda Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+
+        $response = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/commercial-interactions', [
+                'prospectId' => $prospect->id,
+                'type' => 'call',
+                'occurredAt' => now()->toISOString(),
+                'summary' => 'Intento con agenda inexistente',
+                'result' => 'pending',
+                'agendaActionId' => 999999,
+                'nextActionAt' => now()->addDay()->format('Y-m-d'),
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['agendaActionId']);
+
+        $this->assertDatabaseMissing('commercial_interactions', [
+            'summary' => 'Intento con agenda inexistente',
+        ], 'tenant');
+    }
+
+    public function test_combined_interaction_rejects_when_agenda_action_belongs_to_other_target(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Combined Owner Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+
+        $otherProspect = Prospect::create([
+            'company_name' => 'Other Combined Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+
+        $otherPending = AgendaAction::create([
+            'target_type' => 'prospect',
+            'target_id' => $otherProspect->id,
+            'scheduled_at' => now()->addDay()->format('Y-m-d'),
+            'description' => 'Otra tarea',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/commercial-interactions', [
+                'prospectId' => $prospect->id,
+                'type' => 'call',
+                'occurredAt' => now()->toISOString(),
+                'summary' => 'Intento con target incorrecto',
+                'result' => 'pending',
+                'agendaActionId' => $otherPending->id,
+                'nextActionAt' => now()->addDays(2)->format('Y-m-d'),
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['agendaActionId']);
+    }
+
+    public function test_combined_interaction_rejects_when_another_pending_action_remains_active(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Combined Conflict Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+
+        $currentPending = AgendaAction::create([
+            'target_type' => 'prospect',
+            'target_id' => $prospect->id,
+            'scheduled_at' => now()->addDay()->format('Y-m-d'),
+            'description' => 'Actual',
+            'status' => 'pending',
+        ]);
+
+        AgendaAction::create([
+            'target_type' => 'prospect',
+            'target_id' => $prospect->id,
+            'scheduled_at' => now()->addDays(2)->format('Y-m-d'),
+            'description' => 'Pendiente extra',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/commercial-interactions', [
+                'prospectId' => $prospect->id,
+                'type' => 'call',
+                'occurredAt' => now()->toISOString(),
+                'summary' => 'Intento con conflicto',
+                'result' => 'pending',
+                'agendaActionId' => $currentPending->id,
+                'nextActionAt' => now()->addDays(4)->format('Y-m-d'),
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['nextActionAt']);
+
+        $currentPending->refresh();
+        $this->assertSame('pending', $currentPending->status);
+        $this->assertDatabaseMissing('commercial_interactions', [
+            'summary' => 'Intento con conflicto',
+        ], 'tenant');
     }
 
     public function test_reschedule_and_cancel_agenda_action_updates_status_and_history(): void

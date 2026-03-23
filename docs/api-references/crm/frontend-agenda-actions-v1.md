@@ -137,7 +137,7 @@ Endpoint:
 - `POST /api/v2/commercial-interactions`
 
 Regla:
-1. Si en la interacción llega `nextActionAt`:
+1. Si en la interacción llega `nextActionAt` y NO llega `agendaActionId`:
    - el backend crea una `agenda_actions` con `status=pending` para el target indicado
    - la `description` proviene de `nextActionNote` (si viene, si no puede ser `null`/vacío según el caso)
 2. Si el mismo target ya tiene una `pending` activa:
@@ -202,7 +202,49 @@ Consecuencias para la UI:
 Errores típicos:
 - `422` si intentas cerrar sin `agendaActionId` (cuando `nextActionAt` no está presente)
 
-### C) Reprogramar desde la agenda
+### C) Marcar como hecho y crear la siguiente desde la misma interacción
+Regla:
+- si la interacción incluye `agendaActionId` y `nextActionAt`, el backend:
+  - marca la acción actual como `done`
+  - crea una nueva `agenda_actions.pending`
+  - enlaza la nueva con `previousActionId = agendaActionId`
+- `nextActionNote` es opcional; si no se envía, la nueva acción se crea con `description = null`
+
+Ejemplo:
+```json
+{
+  "prospectId": 10,
+  "type": "visit",
+  "occurredAt": "2026-03-17T12:10:00Z",
+  "summary": "Visita realizada y siguiente paso",
+  "result": "interested",
+  "agendaActionId": 123,
+  "nextActionAt": "2026-03-20",
+  "nextActionNote": "Enviar propuesta final"
+}
+```
+
+Respuesta relevante:
+```json
+{
+  "agenda": {
+    "mode": "completed_and_created",
+    "completedAction": {
+      "agendaActionId": 123,
+      "status": "done"
+    },
+    "createdAction": {
+      "agendaActionId": 124,
+      "scheduledAt": "2026-03-20",
+      "description": "Enviar propuesta final",
+      "status": "pending",
+      "previousActionId": 123
+    }
+  }
+}
+```
+
+### D) Reprogramar desde la agenda
 Endpoints:
 - `POST /api/v2/crm/agenda/{id}/reschedule`
 
@@ -221,7 +263,11 @@ Entrada conceptual:
 }
 ```
 
-### D) Cancelar desde la agenda
+Importante:
+- `reschedule` NO marca la acción anterior como `done`
+- el combinado desde interacción sí hace `done + pending`
+
+### E) Cancelar desde la agenda
 Endpoint:
 - `POST /api/v2/crm/agenda/{id}/cancel`
 
@@ -268,6 +314,14 @@ Cuándo ocurre:
 Qué significa:
 - para V1 el cierre siempre debe referenciar la acción concreta a marcar `done`
 
+### 422: combinado inválido
+
+Ocurre si:
+- `agendaActionId` no existe
+- `agendaActionId` no está en `pending`
+- `agendaActionId` no corresponde al target de la interacción
+- al cerrar la actual sigue existiendo otra `pending` activa para ese target y no se puede crear la nueva
+
 ---
 
 ## Resumen operativo (para alinear UI)
@@ -287,4 +341,3 @@ Qué significa:
 
 5. Para leer la vista:
    - dashboard y agenda leen `agenda_actions`
-

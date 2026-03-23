@@ -341,6 +341,21 @@ Errores típicos:
 }
 ```
 
+#### Payload para cerrar y programar la siguiente en una sola interacción
+
+```json
+{
+  "prospectId": 10,
+  "type": "visit",
+  "occurredAt": "2026-03-17T12:10:00Z",
+  "summary": "Visita realizada y siguiente paso",
+  "result": "interested",
+  "agendaActionId": 123,
+  "nextActionAt": "2026-03-20",
+  "nextActionNote": "Enviar propuesta final"
+}
+```
+
 #### Reglas backend
 
 - Debe venir exactamente uno entre `prospectId` y `customerId`
@@ -349,15 +364,64 @@ Errores típicos:
   - se actualiza `last_contact_at`
   - si llega `nextActionAt`, se copian fecha y `nextActionNote` a `prospects.next_action_at` y `prospects.next_action_note`
   - si no llega `nextActionAt`, se limpian fecha y descripción de la próxima acción
+- Semántica de agenda en `POST /api/v2/commercial-interactions`:
+  - `nextActionAt` sin `agendaActionId`: crea una `agenda_actions.pending`
+  - `agendaActionId` sin `nextActionAt`: marca esa acción como `done`
+  - `agendaActionId + nextActionAt`: marca la actual como `done` y crea una nueva `pending` enlazada
+
+#### Respuesta de escritura relevante
+
+Además de `data` con la interacción, el backend devuelve un bloque raíz `agenda`:
+
+```json
+{
+  "message": "Interacción registrada correctamente.",
+  "data": {
+    "id": 501,
+    "prospectId": 10,
+    "type": "visit",
+    "occurredAt": "2026-03-17T12:10:00Z",
+    "summary": "Visita realizada y siguiente paso",
+    "result": "interested",
+    "nextActionNote": "Enviar propuesta final",
+    "nextActionAt": "2026-03-20"
+  },
+  "agenda": {
+    "mode": "completed_and_created",
+    "completedAction": {
+      "agendaActionId": 123,
+      "targetType": "prospect",
+      "targetId": 10,
+      "scheduledAt": "2026-03-18",
+      "description": "Llamada previa",
+      "status": "done",
+      "previousActionId": null
+    },
+    "createdAction": {
+      "agendaActionId": 124,
+      "targetType": "prospect",
+      "targetId": 10,
+      "scheduledAt": "2026-03-20",
+      "description": "Enviar propuesta final",
+      "status": "pending",
+      "previousActionId": 123
+    }
+  }
+}
+```
 
 #### Implicación importante para frontend
 
-La resolución de una tarea pendiente mediante interacción se consigue enviando una nueva interacción sin `nextActionAt`.
+- Para “Marcar hecha” sin siguiente acción: enviar `agendaActionId` y no enviar `nextActionAt`
+- Para “Marcar hecha y programar siguiente”: enviar `agendaActionId + nextActionAt + nextActionNote?`
+- Usar `POST /api/v2/crm/agenda/{id}/reschedule` solo cuando la intención sea reprogramar una pendiente existente sin marcarla `done`
 
 Errores típicos:
 
 - `422` si faltan ambos targets o vienen ambos
 - `422` si el comercial apunta a un target ajeno
+- `422` si `agendaActionId` no existe, no está `pending` o pertenece a otro target
+- `422` si al crear la nueva acción ya queda otra `pending` activa para ese target
 - `403` si intenta leer una interacción fuera de su scope
 
 ---
@@ -833,12 +897,20 @@ Opción A. Registrar una interacción sin nueva acción:
 
 - `POST /api/v2/commercial-interactions`
 - sin `nextActionAt`
+- con `agendaActionId`
 
-Opción B. Reprogramar:
+Opción B. Registrar una interacción cerrando la actual y dejando la siguiente preparada:
 
-- `POST /api/v2/prospects/{id}/schedule-action`
+- `POST /api/v2/commercial-interactions`
+- con `agendaActionId`
+- con `nextActionAt`
+- con `nextActionNote` opcional
 
-Opción C. Limpiar sin interacción:
+Opción C. Reprogramar:
+
+- `POST /api/v2/crm/agenda/{id}/reschedule`
+
+Opción D. Limpiar sin interacción:
 
 - `DELETE /api/v2/prospects/{id}/next-action`
 

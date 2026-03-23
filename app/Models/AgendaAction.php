@@ -35,7 +35,7 @@ class AgendaAction extends Model
             'scheduledAt' => $this->scheduled_at?->format('Y-m-d'),
             'description' => $this->description,
             'status' => $this->status,
+            'previousActionId' => $this->previous_action_id,
         ];
     }
 }
-

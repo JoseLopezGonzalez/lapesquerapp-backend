@@ -10,8 +10,10 @@
 
 1. Llamar a `POST /api/v2/commercial-interactions`
 2. Si la interacción es sobre prospecto, la API actualiza `last_contact_at`
-3. Si llega `nextActionAt`, la agenda queda reprogramada
-4. Si no llega `nextActionAt`, la agenda pendiente se limpia en el prospecto
+3. Si llega `nextActionAt` sin `agendaActionId`, la API crea una nueva acción `pending`
+4. Si llega `agendaActionId` sin `nextActionAt`, la API marca esa acción como `done`
+5. Si llegan `agendaActionId + nextActionAt`, la API marca la actual como `done` y crea una nueva `pending` enlazada
+6. Si no llega `nextActionAt`, en prospecto se limpia `next_action_at/next_action_note` legacy
 
 ## 3. Enviar oferta desde prospecto
 

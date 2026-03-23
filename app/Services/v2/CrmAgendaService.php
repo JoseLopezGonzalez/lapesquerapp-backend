@@ -3,22 +3,21 @@
 namespace App\Services\v2;
 
 use App\Enums\Role;
-use App\Models\CommercialInteraction;
 use App\Models\AgendaAction;
+use App\Models\CommercialInteraction;
 use App\Models\Customer;
 use App\Models\Prospect;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class CrmAgendaService
 {
     public const TARGET_PROSPECT = 'prospect';
+
     public const TARGET_CUSTOMER = 'customer';
 
     /**
@@ -130,10 +129,14 @@ class CrmAgendaService
     }
 
     /**
-     * Convenience: si hay nextActionAt crea pending; si no, marca done.
-     * La marcacion “done” siempre usa el agendaActionId recibido desde el front (ligadura explícita).
+     * Sincroniza la agenda desde una interacción.
+     *
+     * Modos soportados:
+     * - created: llega nextActionAt sin agendaActionId
+     * - completed: llega agendaActionId sin nextActionAt
+     * - completed_and_created: llegan agendaActionId y nextActionAt
      */
-    public static function createPendingOrCompleteFromInteraction(
+    public static function syncFromInteraction(
         Authenticatable $user,
         string $targetType,
         int $targetId,
@@ -141,17 +144,47 @@ class CrmAgendaService
         ?string $nextActionAt,
         ?string $nextActionNote,
         ?int $agendaActionId
-    ): AgendaAction {
-        if ($nextActionAt !== null) {
-            return self::createPendingFromInteraction(
+    ): array {
+        if ($nextActionAt !== null && $agendaActionId !== null) {
+            $completed = self::completeFromInteraction(
+                $user,
+                $agendaActionId,
+                $interactionId,
+                $targetType,
+                $targetId
+            );
+
+            $created = self::createPendingFromInteraction(
                 $user,
                 $targetType,
                 $targetId,
                 $nextActionAt,
                 $nextActionNote,
                 $interactionId,
-                null
+                $agendaActionId
             );
+
+            return [
+                'mode' => 'completed_and_created',
+                'completedAction' => $completed,
+                'createdAction' => $created,
+            ];
+        }
+
+        if ($nextActionAt !== null) {
+            return [
+                'mode' => 'created',
+                'completedAction' => null,
+                'createdAction' => self::createPendingFromInteraction(
+                    $user,
+                    $targetType,
+                    $targetId,
+                    $nextActionAt,
+                    $nextActionNote,
+                    $interactionId,
+                    null
+                ),
+            ];
         }
 
         if ($agendaActionId === null) {
@@ -160,13 +193,17 @@ class CrmAgendaService
             ]);
         }
 
-        return self::completeFromInteraction(
-            $user,
-            $agendaActionId,
-            $interactionId,
-            $targetType,
-            $targetId
-        );
+        return [
+            'mode' => 'completed',
+            'completedAction' => self::completeFromInteraction(
+                $user,
+                $agendaActionId,
+                $interactionId,
+                $targetType,
+                $targetId
+            ),
+            'createdAction' => null,
+        ];
     }
 
     /**
@@ -241,7 +278,6 @@ class CrmAgendaService
 
         return DB::transaction(function () use (
             $action,
-            $user,
             $newScheduledAt,
             $effectiveDescription,
             $sourceInteractionId
@@ -319,6 +355,7 @@ class CrmAgendaService
         foreach ($prospects as $prospect) {
             if (self::getPendingForTarget(self::TARGET_PROSPECT, (int) $prospect->id)) {
                 $skipped++;
+
                 continue;
             }
 
@@ -345,12 +382,14 @@ class CrmAgendaService
 
             if (self::getPendingForTarget(self::TARGET_CUSTOMER, $customerId)) {
                 $skipped++;
+
                 continue;
             }
 
             if ($interaction->next_action_at === null) {
                 // Si la última interacción no dejó próxima acción, no creamos pending.
                 $skipped++;
+
                 continue;
             }
 
@@ -487,4 +526,3 @@ class CrmAgendaService
         })->values()->all();
     }
 }
-
