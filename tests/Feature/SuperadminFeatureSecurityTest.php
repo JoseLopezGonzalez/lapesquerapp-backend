@@ -8,10 +8,12 @@ use App\Models\Tenant;
 use App\Sanctum\SuperadminPersonalAccessToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ConfiguresTenantConnection;
 use Tests\TestCase;
 
 class SuperadminFeatureSecurityTest extends TestCase
 {
+    use ConfiguresTenantConnection;
     use RefreshDatabase;
 
     private ?SuperadminUser $superadmin = null;

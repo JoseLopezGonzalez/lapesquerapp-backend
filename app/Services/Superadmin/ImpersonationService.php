@@ -8,7 +8,6 @@ use App\Models\ImpersonationRequest;
 use App\Models\SuperadminUser;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Sanctum\SuperadminPersonalAccessToken;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -28,16 +27,16 @@ class ImpersonationService
 
         $request = ImpersonationRequest::create([
             'superadmin_user_id' => $superadmin->id,
-            'tenant_id'          => $tenant->id,
-            'target_user_id'     => $targetUserId,
-            'status'             => 'pending',
-            'token'              => hash('sha256', $token),
+            'tenant_id' => $tenant->id,
+            'target_user_id' => $targetUserId,
+            'status' => 'pending',
+            'token' => hash('sha256', $token),
         ]);
 
         $targetUser = $this->getTenantUser($tenant, $targetUserId);
 
         $approveUrl = URL::signedRoute('impersonation.approve', ['token' => $token]);
-        $rejectUrl  = URL::signedRoute('impersonation.reject', ['token' => $token]);
+        $rejectUrl = URL::signedRoute('impersonation.reject', ['token' => $token]);
 
         Mail::to($targetUser->email)->send(
             new ImpersonationRequestEmail($tenant->name, $approveUrl, $rejectUrl)
@@ -51,13 +50,13 @@ class ImpersonationService
      */
     public function approve(string $rawToken): ImpersonationRequest
     {
-        $hashed  = hash('sha256', $rawToken);
+        $hashed = hash('sha256', $rawToken);
         $request = ImpersonationRequest::where('token', $hashed)->pending()->firstOrFail();
 
         $request->update([
-            'status'      => 'approved',
+            'status' => 'approved',
             'approved_at' => now('UTC'),
-            'expires_at'  => now('UTC')->addMinutes(30),
+            'expires_at' => now('UTC')->addMinutes(30),
         ]);
 
         return $request;
@@ -68,7 +67,7 @@ class ImpersonationService
      */
     public function reject(string $rawToken): ImpersonationRequest
     {
-        $hashed  = hash('sha256', $rawToken);
+        $hashed = hash('sha256', $rawToken);
         $request = ImpersonationRequest::where('token', $hashed)->pending()->firstOrFail();
 
         $request->update(['status' => 'rejected']);
@@ -119,7 +118,6 @@ class ImpersonationService
             ->where('tokenable_type', User::class)
             ->where('tokenable_id', $log->target_user_id)
             ->where('name', 'impersonation')
-            ->whereNull('deleted_at')
             ->delete();
     }
 
@@ -175,19 +173,19 @@ class ImpersonationService
 
         $log = ImpersonationLog::create([
             'superadmin_user_id' => $superadmin->id,
-            'tenant_id'          => $tenant->id,
-            'target_user_id'     => $targetUserId,
-            'mode'               => $mode,
-            'reason'             => $reason,
-            'started_at'         => now('UTC'),
+            'tenant_id' => $tenant->id,
+            'target_user_id' => $targetUserId,
+            'mode' => $mode,
+            'reason' => $reason,
+            'started_at' => now('UTC'),
         ]);
 
         $redirectUrl = "https://{$tenant->subdomain}.lapesquerapp.es/auth/impersonate?token={$token}";
 
         return [
             'impersonation_token' => $token,
-            'redirect_url'        => $redirectUrl,
-            'log_id'              => $log->id,
+            'redirect_url' => $redirectUrl,
+            'log_id' => $log->id,
         ];
     }
 
