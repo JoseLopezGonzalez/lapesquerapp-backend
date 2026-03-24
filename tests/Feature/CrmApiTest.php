@@ -54,6 +54,8 @@ class CrmApiTest extends TestCase
         $create = $this->withHeaders($this->commercialHeaders())
             ->postJson('/api/v2/prospects', [
                 'companyName' => 'Acme Prospect',
+                'address' => 'Calle Mayor 1, 28013 Madrid',
+                'website' => 'https://acme.example.com',
                 'countryId' => $country->id,
                 'origin' => 'direct',
                 'notes' => 'Primer contacto',
@@ -66,6 +68,8 @@ class CrmApiTest extends TestCase
 
         $create->assertStatus(201)
             ->assertJsonPath('data.companyName', 'Acme Prospect')
+            ->assertJsonPath('data.address', 'Calle Mayor 1, 28013 Madrid')
+            ->assertJsonPath('data.website', 'https://acme.example.com')
             ->assertJsonPath('data.salesperson.id', $this->commercialSalesperson->id)
             ->assertJsonPath('warnings', []);
 
@@ -702,6 +706,7 @@ class CrmApiTest extends TestCase
         $paymentTerm = PaymentTerm::firstOrCreate(['name' => '30 dias CRM']);
         $prospect = Prospect::create([
             'company_name' => 'Convert Prospect',
+            'address' => 'Polígono Industrial Norte, nave 12',
             'salesperson_id' => $this->commercialSalesperson->id,
             'status' => Prospect::STATUS_OFFER_SENT,
             'origin' => Prospect::ORIGIN_DIRECT,
@@ -732,6 +737,8 @@ class CrmApiTest extends TestCase
             'id' => $prospect->customer_id,
             'name' => 'Convert Prospect',
             'payment_term_id' => $paymentTerm->id,
+            'billing_address' => 'Polígono Industrial Norte, nave 12',
+            'shipping_address' => 'Polígono Industrial Norte, nave 12',
         ], 'tenant');
         $this->assertDatabaseHas('offers', [
             'prospect_id' => null,

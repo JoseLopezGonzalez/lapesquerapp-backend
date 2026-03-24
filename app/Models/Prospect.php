@@ -22,21 +22,35 @@ class Prospect extends Model
     public const STATUS_DISCARDED = 'discarded';
 
     public const ORIGIN_CONXEMAR = 'conxemar';
+
     public const ORIGIN_DIRECT = 'direct';
+
     public const ORIGIN_REFERRAL = 'referral';
+
     public const ORIGIN_WEB = 'web';
 
     public const ORIGIN_INBOUND_CALL = 'inbound_call';
+
     public const ORIGIN_EMAIL = 'email';
+
     public const ORIGIN_WEB_FORM = 'web_form';
+
     public const ORIGIN_WHATSAPP = 'whatsapp';
+
     public const ORIGIN_LINKEDIN = 'linkedin';
+
     public const ORIGIN_EVENT = 'event';
+
     public const ORIGIN_AGENT = 'agent';
+
     public const ORIGIN_MARKETING_CAMPAIGN = 'marketing_campaign';
+
     public const ORIGIN_REACTIVATION = 'reactivation';
+
     public const ORIGIN_ONLINE_SEARCH = 'online_search';
+
     public const ORIGIN_GOOGLE_MAPS = 'google_maps';
+
     public const ORIGIN_AI_SOURCED = 'ai_sourced';
 
     public const ORIGIN_OTHER = 'other';
@@ -44,6 +58,8 @@ class Prospect extends Model
     protected $fillable = [
         'salesperson_id',
         'company_name',
+        'address',
+        'website',
         'country_id',
         'species_interest',
         'origin',
@@ -146,6 +162,8 @@ class Prospect extends Model
         return [
             'id' => $this->id,
             'companyName' => $this->company_name,
+            'address' => $this->address,
+            'website' => $this->website,
             'country' => $this->country?->toArrayAssoc(),
             'speciesInterest' => $this->species_interest ?? [],
             'origin' => $this->origin,

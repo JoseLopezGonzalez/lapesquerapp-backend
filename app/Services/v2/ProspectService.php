@@ -3,8 +3,8 @@
 namespace App\Services\v2;
 
 use App\Enums\Role;
-use App\Models\Customer;
 use App\Models\AgendaAction;
+use App\Models\Customer;
 use App\Models\Offer;
 use App\Models\Prospect;
 use App\Models\ProspectContact;
@@ -26,7 +26,11 @@ class ProspectService
 
         if ($request->filled('search')) {
             $search = $request->input('search');
-            $query->where('company_name', 'like', '%'.$search.'%');
+            $query->where(function (Builder $q) use ($search) {
+                $q->where('company_name', 'like', '%'.$search.'%')
+                    ->orWhere('address', 'like', '%'.$search.'%')
+                    ->orWhere('website', 'like', '%'.$search.'%');
+            });
         }
 
         if ($request->filled('status')) {
@@ -59,6 +63,8 @@ class ProspectService
         $prospect = Prospect::create([
             'salesperson_id' => $salespersonId,
             'company_name' => $validated['companyName'],
+            'address' => $validated['address'] ?? null,
+            'website' => $validated['website'] ?? null,
             'country_id' => $validated['countryId'] ?? null,
             'species_interest' => $validated['speciesInterest'] ?? [],
             'origin' => $validated['origin'] ?? Prospect::ORIGIN_OTHER,
@@ -87,6 +93,8 @@ class ProspectService
         $prospect->update([
             'salesperson_id' => self::resolveSalespersonId($validated['salespersonId'] ?? $prospect->salesperson_id, $user),
             'company_name' => $validated['companyName'],
+            'address' => array_key_exists('address', $validated) ? $validated['address'] : $prospect->address,
+            'website' => array_key_exists('website', $validated) ? $validated['website'] : $prospect->website,
             'country_id' => $validated['countryId'] ?? null,
             'species_interest' => $validated['speciesInterest'] ?? [],
             'origin' => $validated['origin'] ?? Prospect::ORIGIN_OTHER,
@@ -246,10 +254,14 @@ class ProspectService
                 $primaryContact->phone ? 'Tel: '.$primaryContact->phone : null,
             ]);
 
+            $address = filled($prospect->address) ? $prospect->address : null;
+
             $customer = Customer::create([
                 'name' => $prospect->company_name,
                 'country_id' => $prospect->country_id,
                 'salesperson_id' => $prospect->salesperson_id,
+                'billing_address' => $address,
+                'shipping_address' => $address,
                 'emails' => $primaryContact->email ? trim($primaryContact->email).';' : null,
                 'contact_info' => implode(' | ', $contactInfoParts),
                 'payment_term_id' => $acceptedOffer?->payment_term_id,
