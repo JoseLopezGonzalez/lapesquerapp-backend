@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,7 +20,9 @@ class TenantMiddleware
             return response()->json(['error' => 'Tenant not specified'], 400);
         }
 
-        $tenant = Tenant::where('subdomain', $subdomain)->first();
+        $tenant = Cache::remember("tenant_mw:{$subdomain}", 300, function () use ($subdomain) {
+            return Tenant::where('subdomain', $subdomain)->first();
+        });
 
         if (!$tenant) {
             return response()->json(['error' => 'Tenant not found'], 404);
@@ -47,7 +50,6 @@ class TenantMiddleware
 
         DB::purge('tenant');
         DB::reconnect('tenant');
-        DB::connection('tenant')->statement("SET time_zone = '+00:00'");
 
         if (config('app.debug')) {
             Log::info('Tenant connection established', [

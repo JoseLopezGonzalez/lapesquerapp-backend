@@ -59,7 +59,7 @@ class RawMaterialReceptionListService
 
         $query->orderBy('date', 'desc');
 
-        $perPage = $request->input('perPage', 12);
+        $perPage = min((int) $request->input('perPage', 12), 100);
 
         return $query->paginate($perPage);
     }

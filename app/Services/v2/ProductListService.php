@@ -18,7 +18,7 @@ class ProductListService
         $query->with(['family.category', 'family', 'species.fishingGear', 'captureZone']);
         $query = self::applyFilters($query, $request);
         $query->orderBy('name', 'asc');
-        $perPage = $request->input('perPage', 14);
+        $perPage = min((int) $request->input('perPage', 14), 100);
 
         return $query->paginate($perPage);
     }

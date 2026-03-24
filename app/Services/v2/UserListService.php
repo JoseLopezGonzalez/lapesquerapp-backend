@@ -19,7 +19,7 @@ class UserListService
         $sort = $request->input('sort', 'created_at');
         $direction = $request->input('direction', 'desc');
         $query->orderBy($sort, $direction);
-        $perPage = $request->input('perPage', 10);
+        $perPage = min((int) $request->input('perPage', 10), 100);
 
         return $query->paginate($perPage);
     }

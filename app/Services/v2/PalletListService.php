@@ -23,7 +23,7 @@ class PalletListService
         $filters = $request->all();
         $query = self::applyFilters($query, $filters);
         $query->orderBy('id', 'desc');
-        $perPage = $request->input('perPage', 10);
+        $perPage = min((int) $request->input('perPage', 10), 100);
 
         return $query->paginate($perPage);
     }

@@ -28,6 +28,6 @@ class FieldOperatorListService
             $query->where('user_id', $request->integer('userId'));
         }
 
-        return $query->orderBy('name')->paginate($request->input('perPage', 10));
+        return $query->orderBy('name')->paginate(min((int) $request->input('perPage', 10), 100));
     }
 }

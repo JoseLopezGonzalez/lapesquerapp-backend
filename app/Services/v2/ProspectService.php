@@ -49,7 +49,7 @@ class ProspectService
             ->orderByRaw('CASE WHEN next_action_at IS NULL THEN 1 ELSE 0 END')
             ->orderBy('next_action_at')
             ->orderBy('company_name')
-            ->paginate($request->input('perPage', 10));
+            ->paginate(min((int) $request->input('perPage', 10), 100));
     }
 
     public static function store(array $validated, User $user): array

@@ -51,7 +51,7 @@ class OfferService
             $query->whereIn('salesperson_id', $request->input('salespeople'));
         }
 
-        return $query->orderByDesc('created_at')->paginate($request->input('perPage', 10));
+        return $query->orderByDesc('created_at')->paginate(min((int) $request->input('perPage', 10), 100));
     }
 
     public static function store(array $validated, User $user): Offer

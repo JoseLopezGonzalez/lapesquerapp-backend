@@ -32,7 +32,7 @@ class SalespersonListService
 
         $query->orderBy('name', 'asc');
 
-        $perPage = $request->input('perPage', 10);
+        $perPage = min((int) $request->input('perPage', 10), 100);
 
         return $query->paginate($perPage);
     }

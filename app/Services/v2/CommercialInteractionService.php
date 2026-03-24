@@ -48,7 +48,7 @@ class CommercialInteractionService
 
         return $query
             ->orderByDesc('occurred_at')
-            ->paginate($request->input('perPage', 10));
+            ->paginate(min((int) $request->input('perPage', 10), 100));
     }
 
     public static function store(array $validated, User $user): array

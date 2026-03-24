@@ -27,10 +27,14 @@ class PunchEventWriteService
         }
 
         $timestamp = now('UTC');
-        $eventType = $this->determineEventType($employee, $timestamp);
 
         DB::beginTransaction();
         try {
+            // determineEventType debe estar dentro de la transacción para que lockForUpdate sea efectivo.
+            // De lo contrario, dos requests NFC simultáneos del mismo empleado pueden determinar
+            // el mismo event_type independientemente (race condition TOCTOU).
+            $eventType = $this->determineEventType($employee, $timestamp);
+
             $punchEvent = PunchEvent::create([
                 'employee_id' => $employee->id,
                 'event_type' => $eventType,
@@ -327,6 +331,7 @@ class PunchEventWriteService
             ->where('timestamp', '>=', $startOfDay)
             ->where('timestamp', '<=', $endOfDay)
             ->orderBy('timestamp', 'desc')
+            ->lockForUpdate()
             ->first();
 
         if (!$lastEventSameDay || $lastEventSameDay->event_type === PunchEvent::TYPE_OUT) {

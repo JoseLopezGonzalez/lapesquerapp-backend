@@ -18,7 +18,7 @@ class CeboDispatchListService
         $query->with('supplier', 'products.product');
         $query = self::applyFilters($query, $request);
         $query->orderBy('date', 'desc');
-        $perPage = $request->input('perPage', 12);
+        $perPage = min((int) $request->input('perPage', 12), 100);
 
         return $query->paginate($perPage);
     }

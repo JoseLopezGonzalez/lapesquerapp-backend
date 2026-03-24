@@ -101,10 +101,21 @@ class AuthController extends Controller
     {
         $hashedToken = hash('sha256', $request->token);
 
-        $record = MagicLinkToken::valid()
-            ->magicLink()
-            ->where('token', $hashedToken)
-            ->first();
+        // lockForUpdate + markAsUsed dentro de la misma transacción previene TOCTOU:
+        // el lock se mantiene hasta el commit, garantizando consumo atómico del token.
+        $record = DB::transaction(function () use ($hashedToken) {
+            $token = MagicLinkToken::valid()
+                ->magicLink()
+                ->where('token', $hashedToken)
+                ->lockForUpdate()
+                ->first();
+
+            if ($token) {
+                $token->markAsUsed();
+            }
+
+            return $token;
+        });
 
         if (! $record) {
             return response()->json([
@@ -121,7 +132,6 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $record->markAsUsed();
         $this->recordLoginAttempt($request, true, $actor->email);
 
         return $this->tokenResponse($actor);
@@ -134,11 +144,22 @@ class AuthController extends Controller
 
     public function verifyOtp(VerifyOtpRequest $request)
     {
-        $record = MagicLinkToken::valid()
-            ->otp()
-            ->where('email', $request->email)
-            ->where('otp_code', $request->code)
-            ->first();
+        // lockForUpdate + markAsUsed dentro de la misma transacción previene TOCTOU:
+        // el lock se mantiene hasta el commit, garantizando consumo atómico del token.
+        $record = DB::transaction(function () use ($request) {
+            $token = MagicLinkToken::valid()
+                ->otp()
+                ->where('email', $request->email)
+                ->where('otp_code', $request->code)
+                ->lockForUpdate()
+                ->first();
+
+            if ($token) {
+                $token->markAsUsed();
+            }
+
+            return $token;
+        });
 
         if (! $record) {
             return response()->json([
@@ -155,7 +176,6 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $record->markAsUsed();
         $this->recordLoginAttempt($request, true, $record->email);
 
         return $this->tokenResponse($actor);

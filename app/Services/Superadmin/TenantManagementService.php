@@ -248,5 +248,6 @@ class TenantManagementService
     public function invalidateCorsCache(string $subdomain): void
     {
         Cache::forget("cors:tenant:{$subdomain}");
+        Cache::forget("tenant_mw:{$subdomain}");
     }
 }

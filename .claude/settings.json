@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(echo EXIT:$?)"
+      "Bash(echo EXIT:$?)",
+      "Bash(for f:*)",
+      "Bash(do php:*)",
+      "Bash(done)"
     ]
   }
 }

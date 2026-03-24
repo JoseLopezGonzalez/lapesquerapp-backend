@@ -156,7 +156,7 @@ class OrderListService
 
         $query->orderBy('load_date', 'desc');
 
-        $perPage = $request->input('perPage', 10);
+        $perPage = min((int) $request->input('perPage', 10), 100);
 
         return $query->paginate($perPage);
     }
