@@ -244,4 +244,102 @@ class ProductionBlockApiTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['consumptions.0.consumed_weight_kg']);
     }
+
+    public function test_production_show_uses_final_outputs_for_total_output_weight(): void
+    {
+        [$production, $parentRecord, $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $parentProduct = $this->createValidProduct($species, $captureZone, '31');
+        $finalProduct = $this->createValidProduct($species, $captureZone, '32');
+
+        // Output intermedio del nodo padre (no debe contar en total global).
+        ProductionOutput::create([
+            'production_record_id' => $parentRecord->id,
+            'product_id' => $parentProduct->id,
+            'lot_id' => 'L-INTERMEDIATE',
+            'boxes' => 10,
+            'weight_kg' => 100,
+        ]);
+
+        // Output final del nodo hijo (sí debe contar en total global).
+        ProductionOutput::create([
+            'production_record_id' => $childRecord->id,
+            'product_id' => $finalProduct->id,
+            'lot_id' => 'L-FINAL',
+            'boxes' => 4,
+            'weight_kg' => 40,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/' . $production->id);
+
+        $response->assertOk()
+            ->assertJsonPath('data.totalOutputWeight', 40)
+            ->assertJsonPath('data.totalOutputBoxes', 4);
+    }
+
+    public function test_production_reconciliation_declared_totals_use_final_outputs_only(): void
+    {
+        [$production, $parentRecord, $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $parentProduct = $this->createValidProduct($species, $captureZone, '41');
+        $finalProduct = $this->createValidProduct($species, $captureZone, '42');
+
+        ProductionOutput::create([
+            'production_record_id' => $parentRecord->id,
+            'product_id' => $parentProduct->id,
+            'lot_id' => 'L-INTERMEDIATE-REC',
+            'boxes' => 10,
+            'weight_kg' => 100,
+        ]);
+
+        ProductionOutput::create([
+            'production_record_id' => $childRecord->id,
+            'product_id' => $finalProduct->id,
+            'lot_id' => 'L-FINAL-REC',
+            'boxes' => 4,
+            'weight_kg' => 40,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/' . $production->id . '/reconciliation');
+
+        $response->assertOk()
+            ->assertJsonPath('data.declared.weight_kg', 40)
+            ->assertJsonPath('data.declared.boxes', 4);
+    }
+
+    public function test_production_totals_endpoint_uses_final_outputs_only(): void
+    {
+        [$production, $parentRecord, $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $parentProduct = $this->createValidProduct($species, $captureZone, '51');
+        $finalProduct = $this->createValidProduct($species, $captureZone, '52');
+
+        ProductionOutput::create([
+            'production_record_id' => $parentRecord->id,
+            'product_id' => $parentProduct->id,
+            'lot_id' => 'L-INTERMEDIATE-TOTALS',
+            'boxes' => 10,
+            'weight_kg' => 100,
+        ]);
+
+        ProductionOutput::create([
+            'production_record_id' => $childRecord->id,
+            'product_id' => $finalProduct->id,
+            'lot_id' => 'L-FINAL-TOTALS',
+            'boxes' => 4,
+            'weight_kg' => 40,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/' . $production->id . '/totals');
+
+        $response->assertOk()
+            ->assertJsonPath('data.totalOutputWeight', 40)
+            ->assertJsonPath('data.totalOutputBoxes', 4);
+    }
 }

@@ -842,7 +842,9 @@ class Production extends Model
      */
     public function getTotalOutputWeightAttribute()
     {
-        return $this->allOutputs()->sum('weight_kg');
+        $finalOutputsTotals = $this->getFinalNodesOutputsTotals();
+
+        return (float) $finalOutputsTotals['weight'];
     }
 
     /**
@@ -858,7 +860,9 @@ class Production extends Model
      */
     public function getTotalOutputBoxesAttribute()
     {
-        return $this->allOutputs()->sum('boxes');
+        $finalOutputsTotals = $this->getFinalNodesOutputsTotals();
+
+        return (int) $finalOutputsTotals['boxes'];
     }
 
     /**

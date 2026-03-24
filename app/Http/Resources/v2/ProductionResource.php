@@ -14,9 +14,11 @@ class ProductionResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        // Calcular diferencia para determinar si hay pérdida o ganancia (igual que ProductionRecord)
-        $inputWeight = $this->total_input_weight;
-        $outputWeight = $this->total_output_weight;
+        // Alinear métricas globales con la lógica del lote:
+        // input = stock inputs, output = outputs de nodos finales.
+        $globalTotals = $this->calculateGlobalTotals();
+        $inputWeight = (float) ($globalTotals['totalInputWeight'] ?? 0);
+        $outputWeight = (float) ($globalTotals['totalOutputWeight'] ?? 0);
         $difference = $inputWeight - $outputWeight;
         
         // Calcular waste (solo si hay pérdida)
@@ -63,8 +65,8 @@ class ProductionResource extends JsonResource
             // Totales básicos (siempre incluidos para consistencia con ProductionRecord)
             'totalInputWeight' => round($inputWeight, 2),
             'totalOutputWeight' => round($outputWeight, 2),
-            'totalInputBoxes' => $this->total_input_boxes,
-            'totalOutputBoxes' => $this->total_output_boxes,
+            'totalInputBoxes' => (int) ($globalTotals['totalInputBoxes'] ?? 0),
+            'totalOutputBoxes' => (int) ($globalTotals['totalOutputBoxes'] ?? 0),
             // Merma y rendimiento (igual que ProductionRecord)
             'waste' => $waste,
             'wastePercentage' => $wastePercentage,
