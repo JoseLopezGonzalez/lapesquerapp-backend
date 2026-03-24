@@ -5,7 +5,8 @@
       "Bash(for f:*)",
       "Bash(do php:*)",
       "Bash(done)",
-      "Read(//home/jose/lapesquerapp-backend/**)"
+      "Read(//home/jose/lapesquerapp-backend/**)",
+      "Bash(composer require:*)"
     ]
   }
 }
