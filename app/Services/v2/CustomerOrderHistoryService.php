@@ -12,6 +12,47 @@ use function normalizeDateToBusiness;
 class CustomerOrderHistoryService
 {
     /**
+     * Obtener metadatos de rangos con histórico de pedidos del cliente.
+     */
+    public static function getOrderHistoryRanges(Customer $customer): array
+    {
+        $baseQuery = Order::where('customer_id', $customer->id)
+            ->whereNotNull('load_date');
+
+        $firstOrderDate = $baseQuery->min('load_date');
+        $lastOrderDate = $baseQuery->max('load_date');
+
+        $availableYears = self::getAvailableYears($customer);
+
+        $yearMonthRows = Order::where('customer_id', $customer->id)
+            ->whereNotNull('load_date')
+            ->selectRaw('YEAR(load_date) as year, MONTH(load_date) as month')
+            ->distinct()
+            ->orderBy('year', 'desc')
+            ->orderBy('month', 'asc')
+            ->get();
+
+        $availableMonthsByYear = [];
+        foreach ($yearMonthRows as $row) {
+            $year = (string) $row->year;
+            $month = (int) $row->month;
+
+            if (!isset($availableMonthsByYear[$year])) {
+                $availableMonthsByYear[$year] = [];
+            }
+
+            $availableMonthsByYear[$year][] = $month;
+        }
+
+        return [
+            'first_order_date' => self::formatLoadDate($firstOrderDate),
+            'last_order_date' => self::formatLoadDate($lastOrderDate),
+            'available_years' => $availableYears,
+            'available_months_by_year' => $availableMonthsByYear,
+        ];
+    }
+
+    /**
      * Obtener el historial completo de pedidos del cliente.
      * Devuelve un resumen de todos los productos pedidos, incluyendo trend vs período anterior.
      */

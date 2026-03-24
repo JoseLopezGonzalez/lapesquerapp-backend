@@ -245,4 +245,20 @@ class CustomerController extends Controller
             'data' => $result['data'],
         ]);
     }
+
+    /**
+     * Obtener rangos disponibles del historial de pedidos del cliente.
+     */
+    public function getOrderHistoryRanges(string $id)
+    {
+        $customer = Customer::findOrFail($id);
+        $this->authorize('view', $customer);
+
+        $ranges = CustomerOrderHistoryService::getOrderHistoryRanges($customer);
+
+        return response()->json([
+            'message' => 'Rangos de historial de pedidos del cliente obtenidos correctamente.',
+            'data' => $ranges,
+        ]);
+    }
 }

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\Role;
 use App\Models\Country;
 use App\Models\Customer;
+use App\Models\Order;
 use App\Models\PaymentTerm;
 use App\Models\Salesperson;
 use App\Models\Tenant;
@@ -198,5 +199,111 @@ class CustomerApiTest extends TestCase
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('customers', ['id' => $customer->id], 'tenant');
+    }
+
+    public function test_can_get_customer_order_history_ranges(): void
+    {
+        $paymentTerm = PaymentTerm::firstOrCreate(['name' => 'Contado']);
+        $salesperson = Salesperson::firstOrCreate(['name' => 'Comercial Test']);
+        $country = Country::firstOrCreate(['name' => 'España']);
+        $transport = Transport::firstOrCreate(
+            ['name' => 'Transporte Test Customer'],
+            ['vat_number' => 'B' . uniqid(), 'address' => 'Calle Test', 'emails' => 't@test.com']
+        );
+
+        $customer = Customer::create([
+            'name' => 'Cliente Ranges ' . uniqid(),
+            'vat_number' => 'B' . uniqid(),
+            'billing_address' => 'Dir fact',
+            'shipping_address' => 'Dir env',
+            'payment_term_id' => $paymentTerm->id,
+            'salesperson_id' => $salesperson->id,
+            'country_id' => $country->id,
+            'transport_id' => $transport->id,
+            'emails' => 'c@test.com',
+            'contact_info' => 'Contact',
+        ]);
+
+        Order::create([
+            'customer_id' => $customer->id,
+            'payment_term_id' => $paymentTerm->id,
+            'billing_address' => 'Dir fact',
+            'shipping_address' => 'Dir env',
+            'salesperson_id' => $salesperson->id,
+            'emails' => 'ventas@test.com',
+            'transport_id' => $transport->id,
+            'entry_date' => '2024-03-01',
+            'load_date' => '2024-03-15',
+            'status' => 'pending',
+        ]);
+
+        Order::create([
+            'customer_id' => $customer->id,
+            'payment_term_id' => $paymentTerm->id,
+            'billing_address' => 'Dir fact',
+            'shipping_address' => 'Dir env',
+            'salesperson_id' => $salesperson->id,
+            'emails' => 'ventas@test.com',
+            'transport_id' => $transport->id,
+            'entry_date' => '2024-08-01',
+            'load_date' => '2024-08-20',
+            'status' => 'pending',
+        ]);
+
+        Order::create([
+            'customer_id' => $customer->id,
+            'payment_term_id' => $paymentTerm->id,
+            'billing_address' => 'Dir fact',
+            'shipping_address' => 'Dir env',
+            'salesperson_id' => $salesperson->id,
+            'emails' => 'ventas@test.com',
+            'transport_id' => $transport->id,
+            'entry_date' => '2025-01-01',
+            'load_date' => '2025-01-10',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/customers/' . $customer->id . '/order-history/ranges');
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.first_order_date', '2024-03-15');
+        $response->assertJsonPath('data.last_order_date', '2025-01-10');
+        $response->assertJsonPath('data.available_years', [2025, 2024]);
+        $response->assertJsonPath('data.available_months_by_year.2025', [1]);
+        $response->assertJsonPath('data.available_months_by_year.2024', [3, 8]);
+    }
+
+    public function test_get_customer_order_history_ranges_returns_empty_when_no_orders(): void
+    {
+        $paymentTerm = PaymentTerm::firstOrCreate(['name' => 'Contado']);
+        $salesperson = Salesperson::firstOrCreate(['name' => 'Comercial Test']);
+        $country = Country::firstOrCreate(['name' => 'España']);
+        $transport = Transport::firstOrCreate(
+            ['name' => 'Transporte Test Customer'],
+            ['vat_number' => 'B' . uniqid(), 'address' => 'Calle Test', 'emails' => 't@test.com']
+        );
+
+        $customer = Customer::create([
+            'name' => 'Cliente Sin Pedidos ' . uniqid(),
+            'vat_number' => 'B' . uniqid(),
+            'billing_address' => 'Dir fact',
+            'shipping_address' => 'Dir env',
+            'payment_term_id' => $paymentTerm->id,
+            'salesperson_id' => $salesperson->id,
+            'country_id' => $country->id,
+            'transport_id' => $transport->id,
+            'emails' => 'c@test.com',
+            'contact_info' => 'Contact',
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/customers/' . $customer->id . '/order-history/ranges');
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.first_order_date', null);
+        $response->assertJsonPath('data.last_order_date', null);
+        $response->assertJsonPath('data.available_years', []);
+        $response->assertJsonPath('data.available_months_by_year', []);
     }
 }

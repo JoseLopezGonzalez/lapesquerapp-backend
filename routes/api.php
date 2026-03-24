@@ -388,6 +388,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::apiResource('customers', V2CustomerController::class);
         Route::delete('customers', [V2CustomerController::class, 'destroyMultiple']);
         Route::get('customers/{customer}/order-history', [V2CustomerController::class, 'getOrderHistory'])->name('customers.order_history');
+        Route::get('customers/{customer}/order-history/ranges', [V2CustomerController::class, 'getOrderHistoryRanges'])->name('customers.order_history_ranges');
         Route::put('customers/{customer}/assignment', [V2CustomerController::class, 'updateAssignment'])->name('customers.assignment');
 
         Route::apiResource('suppliers', V2SupplierController::class);
