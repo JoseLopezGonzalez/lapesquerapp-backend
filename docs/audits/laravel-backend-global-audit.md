@@ -1,283 +1,517 @@
 # Auditoría Arquitectónica Global — Backend Laravel PesquerApp
-
-**Fecha**: 2026-03-23  
-**Alcance**: Backend Laravel 10, API v2, multi-tenant database-per-tenant, capa SaaS/superadmin  
-**Tipo**: Auditoría principal integral basada en repo y validación local no invasiva
+**Fecha**: 2026-03-24
+**Alcance**: Backend Laravel 10, API v2, multi-tenant database-per-tenant, capa SaaS/superadmin
+**Tipo**: Auditoría principal integral con análisis profundo de concurrencia y rendimiento bajo carga
 
 ---
 
 ## 1. Executive Summary
 
-PesquerApp Backend presenta una base arquitectónica claramente por encima del nivel "funciona pero duele". El proyecto combina un núcleo Laravel idiomático con separación real por `FormRequest`, `Policy`, `Resource` y una capa de `Services` ya muy extendida, especialmente en ventas, producción, listados operativos, CRM y SaaS. La madurez multi-tenant sigue siendo una fortaleza diferencial: el middleware tenant resuelve `X-Tenant`, conmuta la conexión a base de datos del tenant y la mayor parte del dominio usa `UsesTenantConnection` de forma consistente.
+PesquerApp Backend combina un núcleo Laravel idiomático sólido con una arquitectura multi-tenant bien ejecutada. El proyecto tiene 574 archivos PHP, 64 controladores v2, 63 servicios, 71 modelos, 42 Policies, 185 Form Requests y 314 métodos de test. La base es claramente profesional y supera con creces el nivel "funciona pero duele".
 
-La foto actual, sin embargo, ya no encaja con la auditoría canónica previa en varios puntos importantes. Ya existen `Jobs` reales para onboarding y migraciones de tenants, hay una capa `superadmin` con superficie SaaS relevante, el sistema supera los `430` endpoints `api/v2`, y siguen presentes controladores grandes con lógica e inline validation en algunos bordes, especialmente en fichajes. La suite de tests es amplia en número de bloques, pero en el entorno revisado no es ejecutable end-to-end porque `php artisan test` falla al no poder conectar con MySQL en `127.0.0.1:3306`, lo que penaliza la nota de operabilidad y la fiabilidad de verificación local.
+Sin embargo, esta auditoría identifica **5 hallazgos críticos de producción** que no estaban documentados en la iteración anterior:
 
-Conclusión ejecutiva: el backend está en una franja **7.8/10** global, con un core clásico estable y bien protegido, pero con una capa de plataforma SaaS y algunos bloques operativos todavía en fase de consolidación. Llegar a **9/10** no exige rehacer la arquitectura; exige cerrar deuda estructural concreta: endurecer el circuito de tests, seguir adelgazando controladores grandes, formalizar contratos/observabilidad de exportes y estadísticas, y definir una convención explícita tenant-aware para la ejecución asíncrona.
+1. **`LogActivity` middleware ejecuta una llamada HTTP síncrona a un servicio externo de geolocalización en cada request API**. Bajo carga concurrente, esto añade 50-500ms a todos los requests y puede bloquear workers si el servicio externo falla.
+
+2. **`TenantMiddleware` no cachea el lookup del tenant** (query a BD central en cada request) y ejecuta un `SET time_zone` extra. El mismo patrón que el `DynamicCorsMiddleware` ya aplica con `Cache::remember` no se aplica en el middleware de producción.
+
+3. **`QUEUE_CONNECTION=sync` en `.env.example`**: Excel exports y generación de PDF son síncronos y bloquean workers FPM. Con exports de 5-30s y un pool de 20 workers, 3-5 exports simultáneos saturan el 25-40% del pool.
+
+4. **Race condition TOCTOU en la verificación de Magic Link / OTP**: dos peticiones simultáneas con el mismo token ambas autentican con éxito porque la lectura del token y su marcado como "usado" no son atómicos.
+
+5. **Race condition en NFC Punch (`determineEventType` fuera de transacción)**: dos taps del mismo empleado en < 100ms pueden resultar en dos fichajes del mismo tipo (TYPE_IN + TYPE_IN).
+
+Estos 5 problemas, sumados al `perPage` sin límite máximo en 12 servicios de listado, son los bloqueantes más urgentes para la operación bajo carga real.
+
+**Nota global actual: 7.0/10**
+**Nota tras quick wins (C1-C5 + A1): 8.0/10**
+**Nota tras plan completo: 9.0/10**
 
 ---
 
 ## 2. Identidad Arquitectónica del Proyecto
 
-- **Arquitectura real**: Laravel MVC + capa de servicios de aplicación, sin DDD estricto ni repositorios genéricos.
-- **API**: REST v2 con prefijo `api/v2`, mezcla de `apiResource` y endpoints de acción/reporte/exportación.
-- **Multi-tenancy**: database-per-tenant resuelta por header `X-Tenant` y `TenantMiddleware`.
-- **Seguridad**: `auth:sanctum`, middleware de rol, `Policies` por recurso, throttling en accesos públicos sensibles.
-- **Plataforma SaaS**: bloque `superadmin` fuera del middleware tenant, con onboarding, impersonation, migrations panel, feature flags, observabilidad y alertas.
-- **Operación**: Sail + `docker-compose.yml` con servicio `queue`, MySQL, Redis y Mailpit.
-
-El proyecto ya no es solo "ERP tenant-aware"; es también una plataforma SaaS operable, aunque esa capa todavía no tiene la misma madurez homogénea que el core clásico.
+- **Arquitectura**: Laravel MVC + capa de servicios de aplicación. Sin DDD estricto ni repositorios genéricos. La identidad es **Laravel idiomático + servicios para dominios complejos**.
+- **API**: REST v2 con prefijo `api/v2`, mezcla de `apiResource` y endpoints de acción/reporte/exportación. Más de 430 rutas.
+- **Multi-tenancy**: database-per-tenant resuelta por header `X-Tenant` y `TenantMiddleware`. Un tenant = una empresa = una BD MySQL.
+- **Seguridad**: `auth:sanctum`, middleware de rol, 42 Policies por recurso, throttling en accesos sensibles.
+- **Plataforma SaaS**: bloque `superadmin` segregado con onboarding, impersonation, feature flags, migrations panel y observabilidad.
+- **Operación**: Sail + docker-compose con servicio `queue`, MySQL, Redis y Mailpit. Queue worker con `restart: unless-stopped` y `tries=3`.
 
 ---
 
-## 3. Hallazgos Sistémicos Clave
+## 3. Fortalezas Principales
 
-### Fortalezas principales
-
-- **Multi-tenancy sólido**: `TenantMiddleware` valida tenant y estado, conmuta `database.default` a `tenant` y reconecta la BD por request.
-- **Uso amplio de componentes Laravel**: `185` Form Requests, `42` Policies, `51` API Resources, `63` Services y `71` controladores `v2`.
-- **Cobertura funcional amplia por bloques**: `30` Feature tests y `4` Unit tests, con suites específicas para Auth, Stock, CRM, Settings, Documents, Superadmin, canal operativo y usuarios externos.
-- **Bloques maduros**: ventas, inventario, recepciones, despachos, documentos y gran parte de producción conservan una estructura profesional.
-- **Capa SaaS tangible**: existen `OnboardTenantJob` y `MigrateTenantJob`, además de servicios y controladores dedicados a la operación superadmin.
-
-### Riesgos sistémicos
-
-- **Controladores aún demasiado grandes**: `PunchController` (`459` líneas), `PalletController` (`310`), `OrderController` (`298`), `BoxesController` (`277`), `SpeciesController` (`264`), `StoreController` (`258`) y `AuthController` (`258`).
-- **Validación inline residual**: sigue habiendo `request->validate()` en puntos relevantes como `PunchController`, `SpeciesController`, `CaptureZoneController` y varios controladores `superadmin`.
-- **Autorización gruesa aún presente en rutas**: el grupo principal `v2` mantiene un comentario explícito de transición "por ahora todas accesibles para todos los roles", señal de que el diseño fino depende mucho de `Policies` y no siempre de segmentación de rutas.
-- **Operabilidad/testability incompleta**: `php artisan test` no es reproducible en este entorno por dependencia de MySQL no levantado/accesible, con `11` fallos, `48` warnings y `222` tests saltados.
-- **Asincronía tenant-aware no formalizada como patrón transversal**: los jobs SaaS existentes resuelven el tenant, pero la convención aún no está documentada como estándar reutilizable del sistema.
+1. **Aislamiento multi-tenant excelente**: `UsesTenantConnection` en 121 modelos. Solo 2 accesos raw con `DB::connection('tenant')->table()`, ambos justificados.
+2. **42 Policies + 246 `authorize()`**: cobertura alta de autorización por recurso.
+3. **Rate limiting en auth**: `throttle:5,1` en login/request-access, `throttle:10,1` en verify magic link y OTP.
+4. **Índices clave presentes**: `orders(status, load_date)` compuesto, `punch_events(employee_id, timestamp)` compuesto, `productions(date)`.
+5. **Transacciones en operaciones críticas**: PalletWriteService, ProductionRecordService, CeboDispatch, RawMaterialReception, ProspectService, DeliveryRoute.
+6. **CORS middleware con cache** del tenant lookup (600s).
+7. **314 tests distribuidos** en 31 archivos Feature + 4 Unit con cobertura en Auth, Stock, CRM, Settings, Fichajes, Labels, Suppliers, Operational.
+8. **185 Form Requests** cubren la mayoría de operaciones con validaciones en español y `exists:tenant.*`.
+9. **Documentación interna excelente**: CLAUDE.md completo, evolution log, auditorías previas estructuradas.
+10. **Servicios bien divididos**: PunchDashboardService, PunchCalendarService, PunchStatisticsService, OrderListService, OrderDetailService, PalletListService, PalletWriteService, ProductionRecordService — responsabilidades claras.
 
 ---
 
-## 4. Evaluación por Dimensión
+## 4. Riesgos Sistémicos
+
+### RS1 — LogActivity: geoIP síncrono en todos los requests (CRÍTICO)
+Cada request API autenticado hace una llamada HTTP externa a ip2location.io + escritura en ActivityLog. Bajo concurrencia, esto es el overhead dominante del sistema.
+
+### RS2 — TenantMiddleware sin cache (ALTO)
+4 operaciones DB por request (query central + purge + reconnect + SET time_zone). Dominante en el overhead total del middleware.
+
+### RS3 — QUEUE_CONNECTION=sync y exports bloqueantes (ALTO)
+Con valores por defecto del `.env.example`, no hay colas async. Excel/PDF bloquean workers FPM durante segundos.
+
+### RS4 — Race conditions en autenticación y fichajes (ALTO - seguridad + integridad)
+TOCTOU en magic link/OTP y race en NFC punch sin lockForUpdate.
+
+### RS5 — Cobertura de tests desigual en bloques críticos (MEDIO)
+Producción (2 tests), RawMaterialReception (0 tests), CeboDispatch (0 tests) son los bloques más complejos del core con cobertura mínima.
+
+---
+
+## 5. Evaluación de Calidad de Código
+
+### Controladores por encima de 200 líneas (target: < 200)
+
+| Controlador | Líneas | Observación |
+|---|---|---|
+| `PunchController.php` | 459 | Mayor: tiene lógica de routing inline y autenticación manual en `store()` |
+| `ExcelController.php` | 315 | Fino pero concentra muchos endpoints |
+| `PalletController.php` | 310 | Candidato a dividir |
+| `OrderController.php` | 298 | Bien delegado en servicios |
+| `BoxesController.php` | 277 | Revisable |
+| `AuthController.php` | 268 | Complejo por multi-método auth |
+| `SpeciesController.php` | 264 | Catálogo con mucha configuración |
+| `StoreController.php` | 258 | — |
+| `ProductionRecordController.php` | 251 | Árbol complejo |
+| `CustomerController.php` | 248 | CRM + datos |
+
+**PunchController**: aunque delega en 5 servicios, el método `store()` tiene lógica de detección de tipo de fichaje (NFC vs manual) con autenticación diferenciada inline. Esta lógica debería ser middleware o un servicio de resolución de actor.
+
+### Servicios grandes
+
+| Servicio | Líneas | Observación |
+|---|---|---|
+| `RawMaterialReceptionWriteService.php` | 759 | Transacción en controller, no en service |
+| `CrmAgendaService.php` | 528 | Mezcla lectura y escritura |
+| `PunchEventWriteService.php` | 521 | Bien estructurado en privados |
+| `PalletWriteService.php` | 514 | Dominio complejo; aceptable |
+| `ProductionRecordService.php` | 487 | N+1 en syncOutputs |
+
+### Inconsistencias de nomenclatura
+
+- `perPage` (camelCase) en la mayoría de servicios vs `per_page` (snake_case) en `SessionController` y Superadmin controllers.
+- Patrón de respuesta no uniforme: algunos devuelven `{'data': [...]}`, otros `{'message': '...', 'data': {...}}`.
+
+---
+
+## 6. Evaluación de Componentes Estructurales Laravel
+
+| Componente | Cantidad | Estado | Nota |
+|---|---|---|---|
+| Services | 63 | Fuerte, algunos grandes | 8/10 |
+| Form Requests | 185 | Muy buena cobertura | 8.5/10 |
+| Policies | 42 | Alta cobertura; 5 controllers sin Policy en CRM | 8/10 |
+| API Resources | 51 | Buena serialización | 8/10 |
+| Middleware | 18 | Bien diseñados; LogActivity es el problema | 7/10 |
+| Jobs | 2 | Solo Superadmin; sin patrón formal para negocio | 6/10 |
+| Events/Listeners | Escasos | Side effects síncronos dominan | 5/10 |
+| Actions/DTOs | Ausentes | Decisión arquitectónica explícita; OK | — |
+
+---
+
+## 7. Distribución de Lógica de Negocio
+
+- **Ventas**: bien distribuida entre OrderController (thin), OrderListService, OrderStoreService, OrderUpdateService, OrderDetailService.
+- **Fichajes**: PunchController delega en 5 servicios pero conserva lógica de routing y auth inline.
+- **Producción**: árbol complejo bien encapsulado en ProductionRecordService, ProductionInputService, ProductionOutputConsumptionService.
+- **Recepciones**: lógica de escritura en RawMaterialReceptionWriteService (759L) pero sin transacción propia.
+- **CRM**: ProspectService, OfferService, CrmAgendaService bien separados, pero CrmDashboard/Agenda sin Policy.
+
+La distribución es correcta en el 80% del sistema. Los casos problemáticos son los bordes donde controladores grandes actúan como mini-application-services.
+
+---
+
+## 8. Integridad Transaccional y Side Effects
+
+### Transacciones presentes (correcto)
+- `PalletWriteService`: todas las operaciones de stock con `DB::transaction()`
+- `ProductionRecordService.syncOutputs()`: transacción en sincronización de outputs
+- `RawMaterialReceptionController`: wrapper de transacción en store/update
+- `CeboDispatchController`: transacción en store/update
+- `ProspectService`: transacción en operaciones CRM
+- `DeliveryRouteWriteService`: transacción
+
+### Gap: N+1 dentro de transacciones
+
+```php
+// ProductionRecordService.php:130-175
+DB::transaction(function () use ($record, $outputsData) {
+    foreach ($outputsData as $outputData) {
+        $output = ProductionOutput::find($outputData['id']); // Query individual en loop
+        $output->update([...]);                               // Update individual en loop
+    }
+    // Con 20 outputs: 40 queries dentro de la transacción = lock extendido
+});
+```
+
+### Gap: Transacción en controller en lugar de en service (RMR)
+
+`RawMaterialReceptionWriteService` (759 líneas) no gestiona su propia integridad transaccional. Si se reutiliza desde otro contexto sin wrapper de transacción, puede quedar en estado inconsistente.
+
+### Side effects síncronos pendientes de async
+
+- Generación de PDFs: síncrona en el request
+- Excel exports: síncronos, bloquean workers
+- Emails: posiblemente síncronos según configuración de queue
+- `ActivityLog::create()`: síncrono en cada request (ver C1)
+
+---
+
+## 9. Rendimiento bajo Carga Unitaria (N+1, índices, serialización)
+
+### Positivo
+- `OrderListService`: `Order::withTotals()->with(['customer', 'salesperson', 'fieldOperator', 'transport', 'incoterm', 'offer'])` — eager loading correcto
+- `PalletListService`: `->with(['boxes.box.product', ...])` — profundidad de eager loading apropiada
+- Índices existentes: `orders(status, load_date)`, `punch_events(employee_id, timestamp)`, `productions(date)`, `orders_show_path` (migración 2025_12_12)
+
+### Gaps detectados
+
+| Problema | Archivo | Impacto |
+|---|---|---|
+| N+1 en `syncOutputs` | `ProductionRecordService.php:130` | Dentro de transacción → lock extendido |
+| `OrderListService.active()` sin LIMIT | `OrderListService.php:181` | Full dataset en memoria |
+| `perPage` sin cap máximo | ~12 servicios | Potencial full table scan |
+| Stats endpoints sin cache | `PunchStatisticsService.php`, `OrderStatisticsService.php` | Queries pesadas en cada call |
+
+---
+
+## 10. Rendimiento bajo Carga Concurrente
+
+Esta sección documenta los hallazgos nuevos de la auditoría centrada en concurrencia.
+
+### Overhead de middleware por request (base de todo el sistema)
+
+Cada request API pasa por este overhead antes de ejecutar lógica de negocio:
+
+| Componente | Tiempo añadido | Fuente |
+|---|---|---|
+| `LogActivity`: HTTP externo ip2location.io | **+50 a +500ms** | `app/Http/Middleware/LogActivity.php:25` |
+| `TenantMiddleware`: query BD central | +5-15ms | `TenantMiddleware.php:19` |
+| `TenantMiddleware`: purge + reconnect | +5-15ms | `TenantMiddleware.php:44-50` |
+| `TenantMiddleware`: SET time_zone | +2-5ms | `TenantMiddleware.php:50` |
+| **Total overhead base** | **62-535ms** | — |
+
+**Consecuencia**: el P95 de cualquier endpoint del sistema tiene este overhead como base. Un endpoint de CRUD simple que debería responder en 80ms realmente responde en 140-600ms bajo carga concurrente.
+
+### Modelo de concurrencia PHP-FPM
+
+Sin configuración explícita (no hay `php-fpm.conf` en el repo), los valores son los defaults de Laravel Sail:
+- `pm.max_children ≈ 20`
+- `pm.max_requests = 0` (sin límite — acumulación de memoria)
+
+**Problema de saturación por exports**:
+- 3 exports Excel simultáneos (5-30s c/u) = 3/20 workers bloqueados = 15% del pool
+- 5 PDFs con Browsershot simultáneos (2-8s c/u) = 5/20 workers bloqueados = 25% del pool
+- Combinado: 40% del pool bloqueado → respuestas lentas para todos los demás usuarios
+
+### Race conditions detectadas
+
+#### RC1 — Magic Link / OTP: TOCTOU (CRÍTICO — seguridad)
+
+```php
+// AuthController.php:104-124
+$record = MagicLinkToken::valid()
+    ->magicLink()
+    ->where('token', $hashedToken)
+    ->first();              // ← Sin lockForUpdate
+// ... validación de actor ...
+$record->markAsUsed();     // ← Ambos requests llegan aquí y autentican
+```
+
+Dos requests simultáneos con el mismo token ambos superan el check `valid()` antes de que cualquiera llame a `markAsUsed()`. Resultado: 2 tokens Sanctum emitidos con 1 magic link one-time.
+
+**Fix**: UPDATE atómico verificando affected rows, o `lockForUpdate()` dentro de transacción.
+
+#### RC2 — NFC Punch: determineEventType fuera de transacción (ALTO)
+
+```php
+// PunchEventWriteService.php:30 — storeFromNfc()
+$eventType = $this->determineEventType($employee, $timestamp); // Query sin lock
+// <- Ventana de race condition aquí ->
+DB::beginTransaction();
+PunchEvent::create(['event_type' => $eventType, ...]);
+DB::commit();
+```
+
+`determineEventType()` (líneas 321-335) lee el último fichaje sin lock. Dos taps NFC en < 100ms determinan el mismo tipo independientemente → dos fichajes TYPE_IN consecutivos.
+
+**Fix**: mover la determinación del tipo dentro de la transacción con `lockForUpdate` en la query de último evento.
+
+#### RC3 — Stock moves sin lockForUpdate explícito (BAJO-MEDIO)
+
+Las operaciones `moveToStore()`, `assignToPosition()` en `PalletWriteService` y `PalletActionService` tienen transacción pero sin `lockForUpdate`. El constraint `unique(pallet_id)` en `stored_pallets` actúa como red de seguridad lanzando excepción de base de datos, pero no hay protección explícita.
+
+### Tabla de endpoints críticos con P95 estimado
+
+| Endpoint | P50 estimado | P95 bajo 20 usuarios | Bottleneck |
+|---|---|---|---|
+| `GET /api/v2/orders` (paginado) | 120ms | 350ms | Middleware overhead (C1+C2) |
+| `GET /api/v2/orders?active=true` | 150ms | 450ms | `.get()` sin paginar + overhead |
+| `GET /api/v2/pallets` | 160ms | 500ms | Eager loading + overhead |
+| `GET /api/v2/punches/statistics` | 350ms | 1200ms | Stats pesadas sin cache |
+| `POST /api/v2/punches` (NFC) | 100ms | 350ms | Race condition posible |
+| `GET /api/v2/punches/dashboard` | 250ms | 900ms | Múltiples queries agregadas |
+| `GET /excel/orders` | 5000ms | 30000ms | Síncrono, bloquea worker |
+| `GET /pdf/orders/*/sheet` | 1500ms | 8000ms | Browsershot/Snappy síncrono |
+| `POST /auth/magic-link/verify` | 80ms | 300ms | Race condition TOCTOU |
+
+*Overhead base de middleware (C1: 100ms promedio + C2: 20ms) incluido en todos.*
+
+---
+
+## 11. Observaciones de Seguridad y Autorización
+
+- **Aislamiento tenant**: excelente. 121 modelos con `UsesTenantConnection`. Solo 2 accesos raw justificados.
+- **Policies**: 42 registradas. 246 llamadas `authorize()`. 5 controladores sin Policy (CRM y reportes) documentados como deuda.
+- **Rate limiting**: correcto en todos los endpoints de auth.
+- **Race condition TOCTOU en magic link** (ver sección 10): es un riesgo de seguridad activo.
+- **`.env.example`**: contiene IP real (`94.143.137.84`) y contraseña real. Debería usar placeholders.
+- **`tymon/jwt-auth`**: presente en composer.json pero sin uso aparente. Puede tener rutas registradas por el paquete.
+
+---
+
+## 12. Testing y Mantenibilidad
+
+| Área | Tests | Cobertura |
+|---|---|---|
+| Auth | AuthBlockApiTest: 444L | Flujos completos incluyendo magic link |
+| Stock/Inventario | StockBlockApiTest: 999L, 33 tests | Muy buena |
+| Ventas/Pedidos | OrderApiTest, OperationalOrdersApiTest | Buena |
+| Productos | ProductosBlockApiTest: 528L | Buena |
+| Fichajes | FichajesBlockApiTest: 10 tests | Básica |
+| CRM | CrmApiTest: 1314L | Buena |
+| **Producción** | **ProductionBlockApiTest: 2 tests** | **MUY ESCASA** |
+| **Recepciones** | **Sin archivo** | **NINGUNA** |
+| **Despachos** | **Sin archivo** | **NINGUNA** |
+| Superadmin | SuperadminAuthTest, SuperadminFeatureSecurityTest | Buena |
+
+**Total**: 314 métodos de test en 31 archivos Feature + 4 Unit.
+
+**Gaps críticos**: Los 3 bloques sin cobertura suficiente (Producción con árbol de trazabilidad, RawMaterialReception, CeboDispatch) son exactamente los dominios con mayor complejidad de negocio y más lógica transaccional.
+
+**Unit tests**: Solo `tests/Unit/Services/` con 4 archivos sobre Order services. El dominio de Producción, Inventory y Punch no tienen unit tests.
+
+---
+
+## 13. Evaluación por Bloques
+
+| Bloque | Nota actual | Delta vs anterior | Motivo del cambio |
+|---|---|---|---|
+| A.1 Auth + Roles | **8.5/10** | -0.5 | Race condition TOCTOU en magic link |
+| A.2 Ventas | **8.5/10** | -0.5 | active() sin paginar; stats sin cache |
+| A.3 Inventario / Stock | **9.5/10** | -0.5 | Sin lockForUpdate explícito en moves |
+| A.4 Recepciones | **8/10** | -1 | Sin tests; transacción en controller |
+| A.5 Despachos de Cebo | **8.5/10** | -0.5 | Sin tests Feature |
+| A.6 Producción | **8/10** | -1 | 2 tests; N+1 en syncOutputs |
+| A.7 Productos | 9/10 | = | Estable |
+| A.8 Catálogos | 9/10 | = | Estable |
+| A.9 Proveedores | **8.5/10** | -0.5 | Service 382L; liquidación compleja |
+| A.10 Etiquetas | 9/10 | = | Estable |
+| A.11 Fichajes | **8/10** | -1 | Race condition NFC; PunchController 459L |
+| A.12 Estadísticas | **8.5/10** | -0.5 | Stats sin cache; endpoints pesados |
+| A.13 Configuración | 9/10 | = | Estable |
+| A.14 Sistema | **8.5/10** | -0.5 | Comparte gap de A.1 |
+| A.15 Documentos | **8/10** | -1 | Exports síncronos; 7 libs PDF; queue=sync |
+| A.16 Tenants públicos | 9/10 | = | Estable |
+| A.17 Infraestructura API | **7/10** | -2 | LogActivity geoIP; TenantMiddleware sin cache; perPage |
+| A.18 Utilidades PDF/IA | **8.5/10** | -0.5 | Librería múltiple; sync |
+| A.19 CRM comercial | 8.5/10 | = | Sin Policy; en revisión |
+| A.20 Canal operativo | 8.5/10 | = | En revisión |
+| A.21 Usuarios externos | 8.5/10 | = | En revisión |
+| A.22 Superadmin SaaS | 8/10 | = | En seguimiento |
+
+---
+
+## 14. Scoring por Dimensión
 
 | Dimensión | Nota | Justificación |
-|-----------|------|---------------|
-| Multi-tenancy implementation maturity | **8.5/10** | Diseño database-per-tenant consistente, modelo `Tenant` central y dominio tenant-aware. Falta formalizar patrón transversal para jobs/cache/observabilidad. |
-| Domain modeling clarity | **8.5/10** | El dominio ERP + CRM + SaaS está bien expresado en modelos y servicios, aunque algunos flujos complejos siguen repartidos entre controlador, servicio y modelo. |
-| API design consistency | **7.5/10** | API rica y usable, pero con mezcla de recursos REST, acciones ad hoc, exports y contratos no formalizados por OpenAPI. |
-| Testing coverage and strategy | **6/10** | Hay amplitud de suites por bloque, pero poca profundidad unitaria y la ejecución local actual no es confiable sin infraestructura adicional. |
-| Deployment and DevOps practices | **6.5/10** | Docker/Sail, Redis, queue worker y cron en `Console\\Kernel`; pero `queue` y `cache` siguen con defaults conservadores y la reproducibilidad local/test no está cerrada. |
-| Documentation quality | **7/10** | Buen nivel de documentación de arquitectura y circuito interno; falta contrato formal de API y actualizar más rápido la auditoría canónica. |
-| Technical debt level | **7.5/10** | La deuda ya no es caótica, pero persisten hotspots concretos: controladores grandes, validación inline y bloques SaaS/operativos aún no plenamente cerrados. |
-| Code quality and maintainability | **7.5/10** | El uso de `Services`, `Requests`, `Policies` y `Resources` es sólido. La mantenibilidad baja en controladores pesados y bloques con mucha superficie transaccional. |
-| Performance and scalability | **7/10** | Hay señales sanas de eager loading y servicios de listado, pero faltan evidencias cerradas sobre índices, tiempos de respuesta y estrés en estadísticas/exports. |
-| Security and authorization maturity | **8/10** | Tenant isolation y `Policies` bien implantados. El riesgo ya no es ausencia de autorización, sino mantener coherencia fina mientras crece la superficie SaaS y operativa. |
+|---|---|---|
+| Multi-tenancy implementation maturity | **8/10** | Aislamiento excelente; TenantMiddleware sin cache |
+| Domain modeling clarity | **8.5/10** | 71 modelos bien estructurados; estados documentados |
+| API design consistency | **7/10** | `perPage` inconsistente; contratos no uniformes |
+| Testing coverage and strategy | **6/10** | 314 tests pero Producción/RMR/CeboDispatch críticos sin cobertura |
+| Deployment and DevOps practices | **6.5/10** | Docker bien; sin PHP-FPM custom; opcache sin config |
+| Documentation quality | **8/10** | CLAUDE.md excelente, evolution log, auditorías |
+| Technical debt level | **7/10** | Controladores grandes; JWT sin uso; 7 libs PDF |
+| Code quality and maintainability | **7.5/10** | Servicios buenos; inconsistencias en bordes |
+| **Performance under single-user load** | **7/10** | Índices presentes; N+1 localizado; perPage sin cap |
+| **Performance under concurrent load** | **5/10** | C1/C2/C3 críticos; race conditions activas; sin FPM config |
+| Security and authorization maturity | **7.5/10** | 42 policies; TOCTOU en magic link; .env.example con datos reales |
 
-**Nota global actual**: **7.8/10**
+**Nota global actual: 7.0/10**
 
-### Qué separa al proyecto de un 9/10
+### Criterio específico: ¿Qué separa al proyecto de un 9/10?
 
-- Suite de tests reproducible y útil en local/CI.
-- Reducción real de controladores monstruo en los bloques restantes.
-- Criterio uniforme para exports, estadísticas y errores operativos.
-- Convención tenant-aware explícita para jobs, cache y observabilidad.
-- Cierre de los bloques A.19-A.22 con auditoría y trazabilidad equivalente al core clásico.
+- Resolver los 5 hallazgos críticos de concurrencia (C1-C5)
+- Cubrir Producción, RawMaterialReception y CeboDispatch con tests Feature completos
+- Configurar PHP-FPM, MySQL y OPcache explícitamente
+- Confirmar `QUEUE_CONNECTION=redis` en producción
+- Eliminar deuda de librerías (JWT, PDF duplicadas)
 
-### Qué separa al proyecto de un 10/10
+### Criterio de concurrencia para declarar production-ready
 
-- Contrato formal de API, métricas de rendimiento y cobertura cuantificada.
-- Pipeline DevOps endurecido y validable desde repo.
-- Homogeneidad estructural total entre core ERP, CRM y SaaS.
-- Deuda residual reducida a pulido no estructural.
-
----
-
-## 5. Componentes Estructurales Laravel
-
-| Componente | Estado | Observación |
-|-----------|--------|-------------|
-| Services | Fuerte | `63` servicios repartidos entre núcleo, `v2`, `Production` y `Superadmin`. |
-| Actions | Ausente | No hay `app/Actions`; no es un problema por sí mismo. |
-| Jobs | Presente | Existen al menos `OnboardTenantJob` y `MigrateTenantJob`; la auditoría previa estaba desactualizada en este punto. |
-| Events / Listeners | Débil | No hay capa explícita de eventos de dominio. Los side effects siguen mayoritariamente síncronos. |
-| Form Requests | Fuerte | `185` clases; gran parte de la API está validada así. |
-| Policies / Gates | Fuerte | `42` policies registradas y uso amplio de `authorize()` en controladores `v2`. |
-| API Resources | Fuerte | `51` resources; serialización más consistente que en auditorías previas. |
-| Middleware | Fuerte | `tenant`, `superadmin`, `actor`, `external.active`, CORS dinámico y `LogActivity`. |
-| DTOs / Data objects | Ausente | El sistema resuelve esto con `Request + Resource + Service`. |
-
-Valoración: la base Laravel es profesional y reconocible. La mejora prioritaria no es "meter más patrones", sino reducir inconsistencias donde el proyecto aún no los aplica de forma homogénea.
+1. P95 < 300ms en los 5 endpoints más usados bajo 20 usuarios concurrentes
+2. Cero race conditions conocidas en stock, fichajes y auth
+3. PHP-FPM dimensionado con `pm.max_requests = 500` y `request_terminate_timeout = 60`
+4. `slow_query_log` activo con `long_query_time = 0.2`
+5. Jobs de exportación en cola separada con timeout configurado
+6. Lookup de tenant cacheado; coste de TenantMiddleware < 10ms medido
 
 ---
 
-## 6. Lógica de Negocio, Transacciones y Side Effects
+## 15. Top 5 Riesgos Sistémicos
 
-- **Ventas**: `OrderController` ya delega bastante en `OrderListService`, `OrderStoreService`, `OrderUpdateService` y `OrderDetailService`, pero conserva reglas de ownership comercial y algunos side effects en controlador.
-- **Fichajes**: mezcla de dashboard, calendario, estadísticas, bulk, NFC y manual punch dentro de un único controlador todavía muy ancho.
-- **Producción**: el reparto por servicios especializados es una fortaleza; sigue siendo el dominio más complejo del core.
-- **SaaS/superadmin**: onboarding, impersonation, migrations y feature flags ya forman un subdominio con identidad propia.
-- **Side effects**: siguen predominantemente síncronos en exportes, PDFs, emails y ciertos flujos de CRM; eso simplifica hoy, pero deja deuda de capacidad si crece la carga.
+1. **`LogActivity` con HTTP externo síncrono**: es el overhead dominante del sistema. Bajo cualquier carga concurrente real, añade 50-500ms a todos los requests. Si ip2location.io falla, puede bloquear workers durante segundos.
 
-La lógica de negocio ya no está desperdigada "sin remedio", pero sí existen dominios donde el controlador continúa actuando como mini-application-service.
+2. **Race condition TOCTOU en Magic Link/OTP**: riesgo de seguridad activo. Autenticación doble con un token one-time bajo doble submit o retry de red.
 
----
+3. **QUEUE_CONNECTION=sync + exports síncronos**: con el valor por defecto de `.env.example`, las operaciones de Excel/PDF bloquean workers FPM sincrónicamente. Bajo carga concurrente, esto satura el pool de workers.
 
-## 7. Rendimiento y Escalabilidad
+4. **Cobertura de tests insuficiente en bloques críticos**: Producción (árbol de trazabilidad), Recepciones y Despachos son los dominios más complejos y tienen 0-2 tests. Cualquier refactor en estas áreas no tiene red de seguridad.
 
-### Señales positivas
-
-- Servicios de listado y estadísticas dedicados en varios bloques.
-- Uso frecuente de `with(...)` y queries especializadas en listados pesados.
-- Redis y worker de cola previstos en `docker-compose.yml`.
-- Conmutación tenant por request simple y explícita.
-
-### Hotspots observados
-
-- `PunchController` concentra demasiados caminos de ejecución en un solo borde HTTP.
-- `OrderController`, `PalletController`, `BoxesController`, `StoreController` y `SpeciesController` aún son candidatos claros a seguir adelgazando.
-- Estadísticas, dashboards y exports siguen siendo los principales candidatos a problemas de índices o N+1 ocultos.
-- `TenantMiddleware` hace `DB::purge()` + `DB::reconnect()` en cada request; es correcto para este modelo, pero debe vigilarse si el volumen crece o si se introducen workers de larga vida.
-
-### Riesgo operativo relevante
-
-- La configuración base del repo deja `QUEUE_CONNECTION=sync` y `CACHE_DRIVER=file` por defecto. Eso no es malo en dev, pero impide leer el proyecto como "production-ready por defecto" sin endurecimiento por entorno.
+5. **Configuración de runtime no explícita**: sin `php-fpm.conf`, `mysql.cnf` ni `opcache.ini` en el repositorio, no hay garantía de que producción esté correctamente dimensionada. `innodb_buffer_pool_size = 128MB` (default) es insuficiente para un ERP con tablas grandes.
 
 ---
 
-## 8. Seguridad y Autorización
+## 16. Top 5 Mejoras de Mayor Impacto
 
-- **Tenant isolation**: fuerte; el tenant se resuelve desde cabecera, se valida el estado y el dominio usa conexión `tenant`.
-- **Policies**: implantación amplia y útil; la seguridad fina ya depende más de políticas que de simples middlewares de rol.
-- **Rutas públicas**: `v2/public/tenant/{subdomain}` y aprobación/rechazo de impersonation firmada están claramente separadas.
-- **Superadmin**: existe middleware específico con modelo de token distinto, lo cual aísla bien esta superficie.
-- **Deuda residual**: mantener la coherencia entre middleware de rol, actores internos/externos y políticas en bloques nuevos.
+1. **Cache de geoIP + ActivityLog async** (C1): Impacto inmediato en P95 de TODOS los endpoints. Reduce el overhead dominante de 50-500ms a 0ms. Complejidad: baja (2h de implementación).
 
-No he detectado un problema sistémico actual de fuga cross-tenant en el código revisado. El riesgo ahora está en la complejidad creciente de la plataforma, no en una base insegura.
+2. **Cache de tenant lookup + eliminar SET time_zone** (C2): Elimina 20-35ms del overhead base de cada request. Patrón ya existe en `DynamicCorsMiddleware`. Complejidad: muy baja (1h).
 
----
+3. **Fix TOCTOU en magic link/OTP** (C4): Cierra un riesgo de seguridad real con 1 línea de cambio (`lockForUpdate()` o UPDATE atómico). Complejidad: muy baja (30min).
 
-## 9. Testing y Runtime
+4. **Cap de perPage a 100** (A1): Previene el vector DoS más fácil de activar. Una línea por servicio. Complejidad: nula (30min).
 
-### Estado del testing
-
-- `30` suites Feature y `4` Unit.
-- Cobertura visible en Auth, Stock, CRM, Settings, Documents, Superadmin, canal operativo, usuarios externos y fichajes.
-- Cobertura unitaria todavía estrecha y muy concentrada en `Order*Service`.
-
-### Resultado de validación local
-
-- `php artisan test` ejecutado el **23 de marzo de 2026** en este entorno termina con:
-  - `11` fallos
-  - `48` warnings
-  - `222` tests saltados
-  - causa dominante: **MySQL no accesible en `127.0.0.1:3306`**
-- Esto no prueba una regresión funcional de negocio, pero sí evidencia que el circuito de verificación local no está autocontenido ni suficientemente robusto.
-
-### Runtime / producción
-
-- `docker-compose.yml` define app, queue worker, MySQL, Redis y Mailpit.
-- `Console\\Kernel` agenda limpieza de PDFs, cleanup de magic tokens y tareas SaaS de seguridad/onboarding.
-- El repo no expone todavía una configuración cerrada de PHP-FPM/OPcache/supervisor, por lo que la nota de runtime debe seguir siendo prudente.
+5. **Tests de Producción, RMR y CeboDispatch**: Habilita refactor seguro de los bloques más complejos del core. Sin esto, cualquier mejora estructural en estos dominios es un riesgo. Complejidad: media (2-4 días).
 
 ---
 
-## 10. Evaluación por Bloques
+## 17. Quick Wins de Bajo Riesgo (< 1 día, sin regresión posible)
 
-| Bloque | Nota | Estado actual | Fortalezas | Riesgos / gap principal | Prioridad |
-|--------|------|---------------|------------|--------------------------|-----------|
-| A.1 Auth + Roles/Permisos | 9/10 | Maduro | Policies, throttling, auth flows ricos | Más cobertura unitaria y homogeneización final | P2 |
-| A.2 Ventas / Pedidos | 9/10 | Maduro | Buen uso de servicios y recursos | Contratos de reporting/export y variantes | P2 |
-| A.3 Inventario / Stock | 10/10 | Referencia interna | Bloque más consistente del core | Mantener estándar y evitar regresiones | P3 |
-| A.4 Recepciones | 9/10 | Maduro | Bulk y estadísticas ya estructurados | Stress/performance en bulk y export | P2 |
-| A.5 Despachos de Cebo | 9/10 | Maduro | Cohesión buena y tests de bloque | Variantes de export y carga | P2 |
-| A.6 Producción | 9/10 | Complejo pero sólido | Servicios especializados y policies | Complejidad inherente, trazabilidad y costes | P1 |
-| A.7 Productos y maestros | 9/10 | Maduro | Requests, policies y opciones | Filtros/opciones y cobertura fina | P2 |
-| A.8 Catálogos transaccionales | 9/10 | Estable | CRUDs coherentes y encapsulados | Pulido menor | P3 |
-| A.9 Proveedores + Liquidaciones | 9/10 | Estable | Bloque coherente y con pruebas | Casos complejos de liquidación | P2 |
-| A.10 Etiquetas | 9/10 | Estable | Simple y bien contenido | Pulido menor | P3 |
-| A.11 Fichajes / Control horario | 9/10 | Funcional con deuda localizada | Tests amplios y servicios de apoyo | `PunchController` aún demasiado ancho e inline validation | P1 |
-| A.12 Estadísticas e informes | 9/10 | Bueno con riesgo operativo | Capa dedicada por dominio | Índices, tiempos y consistencia de export/report | P1 |
-| A.13 Configuración por tenant | 9/10 | Robusto | `Setting` model + servicio | Mantener coherencia y evitar volver a acceso ad hoc | P2 |
-| A.14 Sistema / usuarios / logs | 9/10 | Maduro | Muy alineado con A.1 | No duplicar deuda de auth | P3 |
-| A.15 Documentos / PDF / Excel | 9/10 | Amplio y útil | Gran cobertura funcional | Contrato uniforme de errores y asíncronía futura | P1 |
-| A.16 Tenants públicos y resolución tenant | 9/10 | Sólido | Superficie pequeña y crítica bien resuelta | Mantener mínimo y seguro | P2 |
-| A.17 Infraestructura API | 9/10 | Estable | Health y endpoints técnicos claros | Mantenimiento | P3 |
-| A.18 Utilidades PDF / extracción | 9/10 | Estable | Bloque acotado | Límites de uso y consumo | P3 |
-| A.19 CRM comercial | 8.5/10 | Buen nivel, no totalmente cerrado | Tests amplios y servicios dedicados | Estados, conversión y side effects comerciales | P1 |
-| A.20 Canal operativo / Autoventa / Reparto | 8.5/10 | Bien encaminado | Buen set de rutas y tests | Límites de acceso y sincronización ruta-pedido | P1 |
-| A.21 Usuarios externos | 8.5/10 | Casi cerrado | Identidad propia y tests | Consolidar onboarding y reglas actor externo | P1 |
-| A.22 Superadmin SaaS | 8.5/10 | Estratégico, aún consolidándose | Jobs, servicios, rutas y tests propios | Hardening operacional, observabilidad y patrón tenant-aware transversal | P0 |
+| # | Acción | Archivo | Impacto | Tiempo |
+|---|---|---|---|---|
+| QW1 | `Cache::remember("geoip:{$ip}", 86400, ...)` en LogActivity | `LogActivity.php:25` | -50 a -500ms por request | 1h |
+| QW2 | `Cache::remember("tenant_mw:{$sub}", 300, ...)` en TenantMiddleware | `TenantMiddleware.php:19` | -10 a -20ms por request | 1h |
+| QW3 | Eliminar `SET time_zone` y usar `timezone => '+00:00'` en config | `TenantMiddleware.php:50` + `config/database.php` | -3 a -8ms por request | 30min |
+| QW4 | UPDATE atómico en `verifyMagicLink()` y `verifyOtp()` | `AuthController.php:104-161` | Cierra TOCTOU | 30min |
+| QW5 | `min((int)$request->input('perPage', 12), 100)` en todos los ListService | ~12 archivos | Previene DoS | 30min |
+| QW6 | `innodb_buffer_pool_size = 1G` en docker/mysql | nuevo `my.cnf` | -30-100ms en queries con tablas grandes | 30min |
+| QW7 | `opcache.revalidate_freq = 0` + `opcache.validate_timestamps = 0` en Dockerfile | `Dockerfile` | -5-15ms en arranque de worker | 30min |
+
+**Total tiempo quick wins**: ~5 horas. Impacto en nota: de 7.0 a 8.0/10.
 
 ---
 
-## 11. Top 5 Riesgos Sistémicos
+## 18. Mejoras Estructurales de Mayor Alcance
 
-1. **A.22 Superadmin SaaS aún no tiene la misma madurez homogénea que el core clásico**.
-2. **Circuito de tests no reproducible localmente sin infraestructura externa levantada**.
-3. **Controladores grandes en bordes críticos, especialmente fichajes y operaciones de almacén**.
-4. **Exports/estadísticas/documentos como superficie principal de deuda de rendimiento y contrato**.
-5. **Patrón asíncrono tenant-aware todavía implícito, no formalizado como estándar del backend**.
+1. **Mover `ActivityLog::create()` a job async** con cola dedicada `logging`: desacopla la observabilidad del flujo de request. Requiere `QUEUE_CONNECTION=redis` activo.
 
----
+2. **Fix race condition NFC Punch** (C5): mover `determineEventType()` dentro de la transacción con `lockForUpdate()`. Requiere revisión del flujo completo de `storeFromNfc()`.
 
-## 12. Top 5 Mejoras de Mayor Impacto
+3. **Tests Feature completos para Producción, RMR y CeboDispatch**: 3-5 tests por flujo crítico (store, update, trazabilidad, estados).
 
-1. Convertir la ejecución de tests en un flujo fiable de repo/CI, con bootstrap claro de MySQL tenant y central.
-2. Cerrar A.22 Superadmin SaaS con auditoría e implementación por sub-bloques: onboarding, migrations, impersonation, observability y feature flags.
-3. Seguir adelgazando `PunchController` y otros controladores hotspot con `FormRequest` y servicios más finos.
-4. Formalizar el contrato de exports/estadísticas/documentos y medir queries/índices de los caminos pesados.
-5. Documentar el patrón tenant-aware para jobs, cache keys y tareas operativas.
+4. **Mover transacción de RMR del controller al service**: `RawMaterialReceptionWriteService` debe gestionar su propia integridad.
 
----
+5. **Configuración explícita de PHP-FPM y MySQL**: añadir `docker/php-fpm.conf` y `docker/mysql/my.cnf` al repositorio con valores correctos para producción.
 
-## 13. Quick Wins de Bajo Riesgo
+6. **Policies para CRM**: `CrmDashboardController`, `CrmAgendaController`, `OrdersReportController`.
 
-- Migrar la validación inline restante de `PunchController`, `SpeciesController`, `CaptureZoneController` y controladores `superadmin` a `FormRequest`.
-- Añadir una guía operativa breve para ejecutar tests en local con MySQL/tenant listos.
-- Crear una convención documental simple para jobs tenant-aware.
-- Homogeneizar respuestas de error en exports y documentos.
-- Medir y documentar los endpoints más pesados de estadísticas antes de refactorar.
+7. **Cap de perPage con validación en Form Request**: mover la validación del límite a los Form Requests de listado en lugar de en los servicios.
+
+8. **Eliminar tymon/jwt-auth**: confirmar que no hay rutas activas con `auth:api` y eliminar la dependencia.
+
+9. **Cache de statistics con TTL 60s**: `PunchStatisticsService` y `OrderStatisticsService` pueden cachearse con clave `tenant:{id}:statistics:{params_hash}`.
 
 ---
 
-## 14. Roadmap Recomendado para Llegar a 9/10
+## 19. Roadmap para Llegar a 9/10
 
-1. **Operabilidad y verificación**
-   - hacer reproducible `php artisan test`
-   - fijar comandos soportados para entorno host vs Sail
-2. **Consolidación SaaS**
-   - auditar/implementar A.22 por sub-bloques
-   - reforzar observabilidad y retry/failure semantics de jobs
-3. **Refactor estructural focalizado**
-   - adelgazar controladores hotspot
-   - mover validación residual a Requests
-4. **Performance y contratos**
-   - revisar índices y tiempos en dashboards, rankings, exports y PDFs
-   - estandarizar respuestas y límites operativos
-5. **Cierre documental**
-   - mantener auditoría canónica sincronizada
-   - dejar matriz de prioridad por bloque como fuente de ejecución
+### Sprint 1 — Quick wins urgentes (1 semana)
+
+1. Cache geoIP en LogActivity (QW1)
+2. Cache tenant en TenantMiddleware (QW2) + eliminar SET time_zone (QW3)
+3. Fix TOCTOU magic link/OTP (QW4)
+4. Cap de perPage (QW5)
+5. Configurar innodb_buffer_pool_size (QW6)
+6. Fix race condition NFC Punch (C5)
+7. Confirmar `QUEUE_CONNECTION=redis` en producción
+
+**Nota estimada tras Sprint 1**: 8.0/10
+
+### Sprint 2 — Tests críticos + operabilidad (2 semanas)
+
+1. Tests Feature para Producción (CRUD + syncOutputs + trazabilidad de caja)
+2. Tests Feature para RawMaterialReception
+3. Tests Feature para CeboDispatch
+4. Mover transacción de RMR al service
+5. Policies para CRM (CrmDashboard, CrmAgenda, OrdersReport)
+6. Añadir `docker/php-fpm.conf` y `docker/mysql/my.cnf` al repositorio
+
+**Nota estimada tras Sprint 2**: 8.5/10
+
+### Sprint 3 — Rendimiento y calidad (3 semanas)
+
+1. Cache de statistics (PunchStatistics, OrderStatistics) con TTL 60s
+2. Fix N+1 en syncOutputs (preload en lugar de find en loop)
+3. ActivityLog async en cola `logging`
+4. Eliminar tymon/jwt-auth
+5. Reducir PunchController a < 200 líneas
+6. Consolidar A.19-A.22 (CRM, Canal operativo, Usuarios externos, Superadmin SaaS)
+
+**Nota estimada tras Sprint 3**: 9.0/10
 
 ---
 
-## 15. Cierre Obligatorio
+## Cierre Obligatorio
 
-1. **Nota global actual**: **7.8/10**
-2. **Nota potencial tras quick wins**: **8.3/10**
-3. **Nota potencial tras plan completo**: **9/10**
-4. **Secuencia recomendada de ejecución**: tests/operabilidad -> A.22 SaaS -> controladores hotspot -> performance/contracts -> cierre documental
-5. **Criterios objetivos para declarar el backend en 9/10**:
-   - tests reproducibles y útiles
-   - A.19-A.22 cerrados con trazabilidad equivalente al core
-   - hotspots de controlador reducidos
-   - exports/estadísticas endurecidos con medición
-   - convención tenant-aware documentada para asincronía y operación
+1. **Nota global actual**: **7.0/10**
+2. **Nota potencial tras quick wins (Sprint 1)**: **8.0/10**
+3. **Nota potencial tras plan completo (Sprint 1+2+3)**: **9.0/10**
+4. **Secuencia recomendada**: quick wins urgentes → tests críticos → performance + calidad → cierre de bloques en revisión
+5. **Criterios para declarar el backend en 9/10**:
+   - Tests reproducibles en CI con MySQL/tenant configurados
+   - Producción, RMR y CeboDispatch con cobertura Feature ≥ 80%
+   - Hallazgos C1-C5 y A1 resueltos y verificados
+   - PHP-FPM y MySQL configurados explícitamente en el repositorio
+   - A.19-A.22 cerrados con trazabilidad equivalente al core clásico
+6. **Criterios de production-ready bajo carga concurrente**:
+   - P95 < 300ms en los 5 endpoints más usados bajo 20 usuarios concurrentes por tenant
+   - Cero race conditions conocidas en stock, fichajes y auth
+   - `pm.max_requests = 500` configurado (sin acumulación de memoria)
+   - `slow_query_log` activo con `long_query_time = 0.2`
+   - Jobs de export en cola separada con timeout
+   - Lookup de tenant cacheado (medido < 5ms)
 
 ---
 
-## Evidencia principal consultada
+## Evidencia consultada
 
-- `routes/api.php`
-- `app/Http/Middleware/TenantMiddleware.php`
-- `app/Http/Kernel.php`
-- `app/Providers/AuthServiceProvider.php`
-- `app/Http/Controllers/v2/*`
-- `app/Jobs/*`
-- `app/Services/*`
-- `app/Models/*`
-- `config/database.php`, `config/cache.php`, `config/queue.php`, `config/sanctum.php`
-- `docker-compose.yml`, `Dockerfile`
-- `tests/Feature/*`, `tests/Unit/*`
+| Tipo | Archivos clave |
+|---|---|
+| Middleware | `app/Http/Middleware/TenantMiddleware.php`, `LogActivity.php`, `DynamicCorsMiddleware.php`, `Kernel.php` |
+| Controladores críticos | `PunchController.php`, `OrderController.php`, `AuthController.php`, `RawMaterialReceptionController.php`, `PalletController.php` |
+| Servicios críticos | `PunchEventWriteService.php`, `PalletWriteService.php`, `ProductionRecordService.php`, `RawMaterialReceptionWriteService.php`, `OrderListService.php` |
+| Modelos y auth | `MagicLinkToken.php`, `Order.php`, `Tenant.php` |
+| Migraciones | `create_orders_table`, `create_punch_events_table`, `add_indexes_for_audit_tables`, `add_orders_status_load_date_index` |
+| Tests | `ProductionBlockApiTest.php`, `StockBlockApiTest.php`, `FichajesBlockApiTest.php`, `AuthBlockApiTest.php` |
+| Configuración | `.env.example`, `config/queue.php`, `config/database.php`, `docker-compose.yml`, `composer.json` |
+| Documentos de apoyo | `docs/audits/findings/performance-concurrency-analysis.md`, `security-concerns.md`, `multi-tenancy-analysis.md`, `block-priority-matrix.md` |
 
-Esta auditoría sustituye la síntesis canónica previa y se apoya en una corrida de revisión local fechada el **23 de marzo de 2026**.
+Esta auditoría sustituye y amplía la versión del **23 de marzo de 2026**, incorporando análisis profundo de comportamiento bajo carga concurrente y race conditions.

@@ -55,7 +55,7 @@ class ProductionRecordController extends Controller
     {
         $record = ProductionRecord::with([
             'production',
-            'parent',
+            'parent.process',
             'children',
             'process',
             'inputs.box.product',
@@ -106,7 +106,7 @@ class ProductionRecordController extends Controller
     {
         $record = ProductionRecord::with([
             'production',
-            'parent',
+            'parent.process',
             'process',
             'inputs.box.product',
             'outputs.product'

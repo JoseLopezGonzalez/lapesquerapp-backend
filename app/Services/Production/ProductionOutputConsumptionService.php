@@ -238,8 +238,22 @@ class ProductionOutputConsumptionService
             $consumedBoxes = ProductionOutputConsumption::where('production_output_id', $output->id)
                 ->sum('consumed_boxes');
 
-            $availableWeight = max(0, $output->weight_kg - $consumedWeight);
-            $availableBoxes = max(0, $output->boxes - $consumedBoxes);
+            $currentRecordConsumedWeight = ProductionOutputConsumption::where('production_record_id', $productionRecordId)
+                ->where('production_output_id', $output->id)
+                ->sum('consumed_weight_kg');
+
+            $currentRecordConsumedBoxes = ProductionOutputConsumption::where('production_record_id', $productionRecordId)
+                ->where('production_output_id', $output->id)
+                ->sum('consumed_boxes');
+
+            // In edit mode, availability must exclude the current record's own consumption.
+            // This allows the record to keep/update an already assigned output.
+            $consumedByOthersWeight = max(0, $consumedWeight - $currentRecordConsumedWeight);
+            $consumedByOthersBoxes = max(0, $consumedBoxes - $currentRecordConsumedBoxes);
+
+            $availableWeight = max(0, $output->weight_kg - $consumedByOthersWeight);
+            $availableBoxes = max(0, $output->boxes - $consumedByOthersBoxes);
+            $hasExistingConsumption = $currentRecordConsumedWeight > 0 || $currentRecordConsumedBoxes > 0;
 
             return [
                 'output' => $output,
@@ -249,12 +263,10 @@ class ProductionOutputConsumptionService
                 'consumedBoxes' => $consumedBoxes,
                 'availableWeight' => $availableWeight,
                 'availableBoxes' => $availableBoxes,
-                'hasExistingConsumption' => ProductionOutputConsumption::where('production_record_id', $productionRecordId)
-                    ->where('production_output_id', $output->id)
-                    ->exists(),
+                'hasExistingConsumption' => $hasExistingConsumption,
             ];
         })->filter(function ($item) {
-            return $item['availableWeight'] > 0 || $item['availableBoxes'] > 0;
+            return $item['availableWeight'] > 0 || $item['availableBoxes'] > 0 || $item['hasExistingConsumption'];
         })->values()->toArray();
     }
 }

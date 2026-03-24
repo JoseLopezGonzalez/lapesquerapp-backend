@@ -17,13 +17,14 @@ class ProductionRecordService
     public function list(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         $query = ProductionRecord::query();
-        $query->with(['production', 'parent', 'process', 'inputs.box.product', 'outputs.product']);
+        $query->with(['production', 'parent.process', 'process', 'inputs.box.product', 'outputs.product']);
 
         if (isset($filters['production_id'])) {
             $query->where('production_id', $filters['production_id']);
         }
 
-        if (isset($filters['root_only'])) {
+        $rootOnly = filter_var($filters['root_only'] ?? null, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        if ($rootOnly === true) {
             $query->whereNull('parent_record_id');
         }
 
@@ -54,7 +55,7 @@ class ProductionRecordService
     public function create(array $data): ProductionRecord
     {
         $record = ProductionRecord::create($data);
-        $record->load(['production', 'parent', 'process', 'inputs', 'outputs']);
+        $record->load(['production', 'parent.process', 'process', 'inputs', 'outputs']);
 
         return $record;
     }
@@ -65,7 +66,7 @@ class ProductionRecordService
     public function update(ProductionRecord $record, array $data): ProductionRecord
     {
         $record->update($data);
-        $record->load(['production', 'parent', 'process', 'inputs', 'outputs']);
+        $record->load(['production', 'parent.process', 'process', 'inputs', 'outputs']);
 
         return $record;
     }
@@ -102,7 +103,7 @@ class ProductionRecordService
         }
 
         $record->update(['finished_at' => now('UTC')]);
-        $record->load(['production', 'parent', 'process', 'inputs', 'outputs']);
+        $record->load(['production', 'parent.process', 'process', 'inputs', 'outputs']);
 
         return $record;
     }
@@ -176,7 +177,7 @@ class ProductionRecordService
             }
 
             $record->refresh();
-            $record->load(['production', 'parent', 'process', 'inputs', 'outputs.product']);
+            $record->load(['production', 'parent.process', 'process', 'inputs', 'outputs.product']);
 
             return [
                 'record' => $record,
@@ -312,7 +313,7 @@ class ProductionRecordService
             $record->refresh();
             $record->load([
                 'production',
-                'parent',
+                'parent.process',
                 'process',
                 'inputs.box.product',
                 'outputs.product',

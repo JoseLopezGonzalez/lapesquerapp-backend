@@ -25,7 +25,7 @@ class StoreMultipleProductionOutputConsumptionsRequest extends FormRequest
             'production_record_id' => 'required|exists:tenant.production_records,id',
             'consumptions' => 'required|array|min:1',
             'consumptions.*.production_output_id' => 'required|exists:tenant.production_outputs,id',
-            'consumptions.*.consumed_weight_kg' => 'required|numeric|min:0',
+            'consumptions.*.consumed_weight_kg' => 'required|numeric|gt:0',
             'consumptions.*.consumed_boxes' => 'nullable|integer|min:0',
             'consumptions.*.notes' => 'nullable|string',
         ];

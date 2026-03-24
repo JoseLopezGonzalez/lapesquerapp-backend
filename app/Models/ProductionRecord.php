@@ -328,7 +328,7 @@ class ProductionRecord extends Model
      */
     public function buildTree()
     {
-        $this->load('children.process', 'inputs.box.product', 'outputs.product', 'parentOutputConsumptions.productionOutput.product');
+        $this->load('children.process', 'parent.process', 'inputs.box.product', 'outputs.product', 'parentOutputConsumptions.productionOutput.product');
         
         foreach ($this->children as $child) {
             $child->buildTree();
@@ -396,7 +396,7 @@ class ProductionRecord extends Model
         // Asegurar que las relaciones estén cargadas
         $this->loadMissing([
             'production',
-            'parent',
+            'parent.process',
             'process',
             'inputs.box.product',
             'outputs.product',
