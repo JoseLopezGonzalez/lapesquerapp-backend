@@ -92,12 +92,6 @@ class User extends Authenticatable
         return $this->hasOne(FieldOperator::class);
     }
 
-    /* toasocArray */
-    public function activityLogs()
-    {
-        return $this->hasMany(ActivityLog::class);
-    }
-
     /* toArrayAssoc */
     public function toArrayAssoc()
     {

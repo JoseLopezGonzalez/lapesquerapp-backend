@@ -16,8 +16,8 @@ use Tests\Concerns\ConfiguresTenantConnection;
 use Tests\TestCase;
 
 /**
- * Feature tests for Auth block: login flow, me, logout, User CRUD, Session, ActivityLog.
- * Uses tenant + Sanctum auth. Policies: Session (viewAny/delete), ActivityLog (viewAny), User (delete refined).
+ * Feature tests for Auth block: login flow, me, logout, User CRUD, Session.
+ * Uses tenant + Sanctum auth. Policies: Session (viewAny/delete), User (delete refined).
  */
 class AuthBlockApiTest extends TestCase
 {
@@ -407,38 +407,4 @@ class AuthBlockApiTest extends TestCase
         $this->assertNull(PersonalAccessToken::find($accessToken->id));
     }
 
-    // ---------- Activity logs ----------
-
-    public function test_activity_logs_index_returns_401_without_token(): void
-    {
-        $response = $this->withHeaders([
-            'X-Tenant' => $this->tenantSubdomain,
-            'Accept' => 'application/json',
-        ])->getJson('/api/v2/activity-logs');
-
-        $response->assertStatus(401);
-    }
-
-    public function test_activity_logs_index_returns_200_for_allowed_role(): void
-    {
-        $response = $this->withHeaders($this->authHeaders())->getJson('/api/v2/activity-logs');
-
-        $response->assertStatus(200);
-        $response->assertJsonStructure(['data', 'links', 'meta']);
-    }
-
-    public function test_activity_logs_index_returns_403_for_role_without_permission(): void
-    {
-        $operario = User::create([
-            'name' => 'Operario Logs',
-            'email' => 'oplogs-' . uniqid() . '@test.com',
-            'role' => Role::Operario->value,
-            'active' => true,
-        ]);
-
-        $response = $this->withHeaders($this->authHeadersForUser($operario))
-            ->getJson('/api/v2/activity-logs');
-
-        $response->assertStatus(403);
-    }
 }

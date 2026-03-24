@@ -4,7 +4,8 @@
       "Bash(echo EXIT:$?)",
       "Bash(for f:*)",
       "Bash(do php:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Read(//home/jose/lapesquerapp-backend/**)"
     ]
   }
 }

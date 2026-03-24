@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Public\TenantController;
-use App\Http\Controllers\v2\ActivityLogController;
 use App\Http\Controllers\v2\AuthController as V2AuthController;
 use App\Http\Controllers\v2\BoxesController;
 use App\Http\Controllers\v2\CaptureZoneController as V2CaptureZoneController;
@@ -243,7 +242,6 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::post('external-users/{externalUser}/deactivate', [ExternalUserController::class, 'deactivate'])->name('v2.external-users.deactivate');
         Route::get('external-users/options', [ExternalUserController::class, 'options'])->name('v2.external-users.options');
         Route::apiResource('external-users', ExternalUserController::class)->parameters(['external-users' => 'externalUser']);
-        Route::apiResource('activity-logs', ActivityLogController::class);
 
         /* Options (catálogos y resto) */
         Route::get('settings', [SettingController::class, 'index']);
