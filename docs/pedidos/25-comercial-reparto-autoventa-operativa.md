@@ -151,6 +151,11 @@ Puede:
 - añadir **productos extra** no prefijados (crea nuevas líneas planificadas sin borrar las existentes)
 - ajustar **solo** `unit_price` e `iva` de líneas planificadas existentes (sin tocar cantidades)
 
+Notas de integridad:
+
+- La ejecución operativa se sincroniza como **estado completo**: si una caja existente no viene en el payload, backend la interpreta como **eliminada**.
+- Invariante asumida: una caja vinculada a un pedido operativo no debe consumirse en producción. Si se detectase el caso, el borrado debe bloquearse para mantener trazabilidad.
+
 No puede cambiar:
 
 - cliente

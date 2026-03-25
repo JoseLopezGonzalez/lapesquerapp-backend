@@ -34,6 +34,7 @@ class UpdateOperationalOrderRequest extends FormRequest
             'items.*.tax' => 'nullable|integer|exists:tenant.taxes,id',
 
             'boxes' => 'sometimes|array|min:1',
+            'boxes.*.id' => 'nullable|integer|exists:tenant.boxes,id',
             'boxes.*.productId' => 'required|integer|exists:tenant.products,id',
             'boxes.*.lot' => 'nullable|string|max:255',
             'boxes.*.netWeight' => 'required|numeric|min:0.01',

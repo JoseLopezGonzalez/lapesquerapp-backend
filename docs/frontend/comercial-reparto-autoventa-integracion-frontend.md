@@ -208,6 +208,10 @@ Valores:
 
 - `GET /api/v2/field/orders/{order}`
 
+Respuesta:
+
+- incluye `pallets[]` con sus `boxes[]` (cada caja incluye `id`) para poder sincronizar ejecución por estado completo.
+
 ### Actualización operativa
 
 - `PUT /api/v2/field/orders/{order}`
@@ -221,10 +225,19 @@ Payload admitido:
 
 Reglas:
 
-- **NO** se admite `status` ni `plannedProducts` (contrato legacy). Si se envían, backend devuelve `422`.\n+- se debe enviar al menos uno entre `boxes`, `plannedExtras` o `plannedAdjustments`\n+- este endpoint no cambia cliente, fechas ni condiciones comerciales\n+- `boxes[]` es la fuente de verdad de ejecución física (crea palet + cajas, idempotente por `gs1128`; fallback por `productId+lot`)\n+- `plannedExtras[]` crea **nuevas** líneas planificadas para productos no contemplados previamente (no borra lo prefijado)\n+- `plannedAdjustments[]` permite ajustar **solo** precio e IVA de una línea planificada existente (no cambia `quantity/boxes`)
+- **NO** se admite `status` ni `plannedProducts` (contrato legacy). Si se envían, backend devuelve `422`.
+- se debe enviar al menos uno entre `boxes`, `plannedExtras` o `plannedAdjustments`
+- este endpoint no cambia cliente, fechas ni condiciones comerciales
+- `boxes[]` se interpreta como **estado completo** de la ejecución:
+  - si una caja viene con `id` → se actualiza
+  - si una caja no viene con `id` → se crea
+  - si una caja existente del pedido no viene en el payload → se elimina
+- `plannedExtras[]` crea **nuevas** líneas planificadas para productos no contemplados previamente (no borra lo prefijado)
+- `plannedAdjustments[]` permite ajustar **solo** precio e IVA de una línea planificada existente (no cambia `quantity/boxes`)
 
 #### `boxes[]`
 
+- `id` (opcional; si existe, se usa para update)
 - `productId`
 - `lot` (opcional; si falta, backend genera uno)
 - `netWeight`

@@ -24,6 +24,7 @@ Permitidos:
 
 - `GET /api/v2/field/customers/options`
 - `GET /api/v2/field/products/options`
+- `GET /api/v2/field/taxes/options`
 - `GET /api/v2/field/orders`
 - `GET /api/v2/field/orders/{order}`
 - `PUT /api/v2/field/orders/{order}`

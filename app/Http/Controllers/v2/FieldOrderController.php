@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\IndexFieldOrderRequest;
 use App\Http\Requests\v2\StoreFieldAutoventaRequest;
 use App\Http\Requests\v2\UpdateOperationalOrderRequest;
+use App\Http\Resources\v2\FieldOrderDetailsResource;
 use App\Http\Resources\v2\FieldOrderResource;
 use App\Models\FieldOperator;
 use App\Models\Order;
@@ -61,7 +62,7 @@ class FieldOrderController extends Controller
         $this->authorize('viewOperational', $order);
 
         return response()->json([
-            'data' => new FieldOrderResource(OrderDetailService::getOrderForDetail((string) $order->id)),
+            'data' => new FieldOrderDetailsResource(OrderDetailService::getOrderForDetail((string) $order->id)),
         ]);
     }
 

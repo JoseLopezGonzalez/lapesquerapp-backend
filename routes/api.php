@@ -56,6 +56,7 @@ use App\Http\Controllers\v2\StoreController as V2StoreController;
 use App\Http\Controllers\v2\SupplierController as V2SupplierController;
 use App\Http\Controllers\v2\SupplierLiquidationController;
 use App\Http\Controllers\v2\TaxController;
+use App\Http\Controllers\v2\FieldTaxController;
 use App\Http\Controllers\v2\TransportController as V2TransportController;
 use App\Http\Controllers\v2\UserController;
 use Illuminate\Support\Facades\Route;
@@ -516,6 +517,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
     Route::middleware(['auth:sanctum', 'external.active', 'role:repartidor_autoventa'])->prefix('field')->group(function () {
         Route::get('customers/options', [FieldCustomerController::class, 'options']);
         Route::get('products/options', [FieldProductController::class, 'options']);
+        Route::get('taxes/options', [FieldTaxController::class, 'options']);
         Route::get('orders', [FieldOrderController::class, 'index']);
         Route::get('orders/{order}', [FieldOrderController::class, 'show']);
         Route::put('orders/{order}', [FieldOrderController::class, 'update']);

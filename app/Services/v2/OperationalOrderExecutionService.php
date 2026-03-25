@@ -23,14 +23,54 @@ class OperationalOrderExecutionService
         return DB::transaction(function () use ($order, $validated) {
             $order->load(['plannedProductDetails', 'pallets.boxes.box']);
 
-            $pallet = Pallet::create([
-                'observations' => null,
-                'status' => Pallet::STATE_SHIPPED,
-                'order_id' => $order->id,
-            ]);
-
             $boxes = $validated['boxes'] ?? [];
+
+            // Build existing execution set for delete detection (state-sync semantics).
+            $existingBoxes = collect();
+            foreach ($order->pallets as $existingPallet) {
+                foreach (($existingPallet->boxes ?? []) as $palletBox) {
+                    if ($palletBox?->box) {
+                        $existingBoxes->push($palletBox->box);
+                    }
+                }
+            }
+            $existingById = $existingBoxes->keyBy('id');
+
+            $incomingIds = collect($boxes)
+                ->map(fn ($b) => $b['id'] ?? null)
+                ->filter()
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values();
+
+            // Create (or reuse) one pallet for newly created boxes during this sync.
+            $palletForNew = $order->pallets->first();
+            if (! $palletForNew) {
+                $palletForNew = new Pallet;
+                $palletForNew->observations = null;
+                $palletForNew->status = Pallet::STATE_SHIPPED;
+                $palletForNew->order_id = $order->id;
+                $palletForNew->save();
+            }
+
+            // DELETE: any existing box for this order missing from payload.
+            $toDelete = $existingById->keys()->diff($incomingIds)->values();
+            foreach ($toDelete as $boxId) {
+                $box = $existingById->get($boxId);
+                if (! $box) {
+                    continue;
+                }
+                // Safety: if consumed by production, keep invariant explicit.
+                if ($box->productionInputs()->exists()) {
+                    throw ValidationException::withMessages([
+                        'boxes' => ['No se puede eliminar una caja ya usada en producción.'],
+                    ]);
+                }
+                $box->palletBox?->delete(); // PalletBox::delete() deletes the Box too.
+            }
+
             foreach ($boxes as $index => $boxData) {
+                $boxId = isset($boxData['id']) ? (int) $boxData['id'] : null;
                 $productId = (int) $boxData['productId'];
                 $netWeight = (float) $boxData['netWeight'];
 
@@ -46,52 +86,20 @@ class OperationalOrderExecutionService
                     $gs1128 = mb_substr($gs1128, 0, 255);
                 }
 
-                $existing = null;
-                if ($gs1128 !== '') {
-                    $candidates = Box::query()
-                        ->where('gs1_128', $gs1128)
-                        ->with(['palletBox.pallet'])
-                        ->get();
-
-                    $existing = $candidates->first(function (Box $candidate) use ($order) {
-                        $linkedOrderId = $candidate->palletBox?->pallet?->order_id;
-
-                        return $linkedOrderId === null || (int) $linkedOrderId === (int) $order->id;
-                    }) ?? $candidates->first();
-                } else {
-                    $existing = Box::query()
-                        ->where('article_id', $productId)
-                        ->where('lot', $lot)
-                        ->with(['palletBox.pallet'])
-                        ->first();
-                }
-
-                if ($existing) {
-                    $linkedOrderIds = PalletBox::query()
-                        ->where('box_id', $existing->id)
-                        ->join('pallets', 'pallet_boxes.pallet_id', '=', 'pallets.id')
-                        ->pluck('pallets.order_id')
-                        ->filter()
-                        ->map(fn ($id) => (int) $id)
-                        ->unique()
-                        ->values()
-                        ->all();
-
-                    $hasOtherOrderLink = ! empty($linkedOrderIds) && ! in_array((int) $order->id, $linkedOrderIds, true);
-                    if ($hasOtherOrderLink) {
+                if ($boxId) {
+                    $existing = Box::with(['palletBox.pallet'])->find($boxId);
+                    if (! $existing) {
                         throw ValidationException::withMessages([
-                            'boxes' => ['Una de las cajas escaneadas ya está vinculada a otro pedido.'],
+                            'boxes' => ['La caja indicada no existe.'],
+                        ]);
+                    }
+                    $linkedOrderId = $existing->palletBox?->pallet?->order_id;
+                    if ((int) $linkedOrderId !== (int) $order->id) {
+                        throw ValidationException::withMessages([
+                            'boxes' => ['Una de las cajas indicadas no pertenece al pedido.'],
                         ]);
                     }
 
-                    if (! $existing->palletBox) {
-                        PalletBox::create([
-                            'pallet_id' => $pallet->id,
-                            'box_id' => $existing->id,
-                        ]);
-                    }
-
-                    // Keep weights up to date if resent.
                     $existing->gross_weight = $boxData['grossWeight'] ?? $existing->gross_weight ?? $netWeight;
                     $existing->net_weight = $netWeight;
                     $existing->lot = $lot;
@@ -111,7 +119,7 @@ class OperationalOrderExecutionService
                 ]);
 
                 PalletBox::create([
-                    'pallet_id' => $pallet->id,
+                    'pallet_id' => $palletForNew->id,
                     'box_id' => $newBox->id,
                 ]);
             }

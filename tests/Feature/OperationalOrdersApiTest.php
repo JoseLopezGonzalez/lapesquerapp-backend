@@ -220,6 +220,40 @@ class OperationalOrdersApiTest extends TestCase
         ], 'tenant');
     }
 
+    public function test_field_user_can_fetch_order_detail_with_pallets_and_box_ids(): void
+    {
+        $order = $this->createAssignedOrder();
+
+        // Create initial execution box
+        $this->withHeaders($this->headersFor($this->fieldUser))
+            ->putJson('/api/v2/field/orders/' . $order->id, [
+                'boxes' => [[
+                    'productId' => $this->product->id,
+                    'lot' => 'DETAIL-LOT-1',
+                    'netWeight' => 1.25,
+                    'grossWeight' => 1.35,
+                    'gs1128' => 'DETAIL-GS1-1',
+                ]],
+            ])
+            ->assertStatus(200);
+
+        $response = $this->withHeaders($this->headersFor($this->fieldUser))
+            ->getJson('/api/v2/field/orders/' . $order->id);
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'data' => [
+                'id',
+                'pallets' => [
+                    ['id', 'boxes'],
+                ],
+            ],
+        ]);
+
+        $this->assertNotEmpty($response->json('data.pallets.0.boxes.0.id'));
+        $this->assertSame('DETAIL-LOT-1', $response->json('data.pallets.0.boxes.0.lot'));
+    }
+
     public function test_field_user_cannot_send_legacy_status_or_planned_products_contract(): void
     {
         $order = $this->createAssignedOrder();
@@ -301,27 +335,43 @@ class OperationalOrdersApiTest extends TestCase
         $response->assertJsonPath('data.customer.id', $this->customer->id);
     }
 
-    public function test_field_user_execution_is_idempotent_by_gs1128(): void
+    public function test_field_user_execution_is_idempotent_by_box_id_sync(): void
     {
         $order = $this->createAssignedOrder();
 
         $gs1128 = 'IDEMP-GS1-' . \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(20));
-        $payload = [
-            'boxes' => [[
-                'productId' => $this->product->id,
-                'lot' => 'IDEMP-LOT-1',
-                'netWeight' => 3.25,
-                'grossWeight' => 3.35,
-                'gs1128' => $gs1128,
-            ]],
-        ];
 
         $this->withHeaders($this->headersFor($this->fieldUser))
-            ->putJson('/api/v2/field/orders/' . $order->id, $payload)
+            ->putJson('/api/v2/field/orders/' . $order->id, [
+                'boxes' => [[
+                    'productId' => $this->product->id,
+                    'lot' => 'IDEMP-LOT-1',
+                    'netWeight' => 3.25,
+                    'grossWeight' => 3.35,
+                    'gs1128' => $gs1128,
+                ]],
+            ])
             ->assertStatus(200);
 
+        $detail = $this->withHeaders($this->headersFor($this->fieldUser))
+            ->getJson('/api/v2/field/orders/' . $order->id)
+            ->assertStatus(200)
+            ->json('data');
+
+        $box = $detail['pallets'][0]['boxes'][0];
+
+        // Second sync includes the same box by id to keep it (and update weight).
         $this->withHeaders($this->headersFor($this->fieldUser))
-            ->putJson('/api/v2/field/orders/' . $order->id, $payload)
+            ->putJson('/api/v2/field/orders/' . $order->id, [
+                'boxes' => [[
+                    'id' => $box['id'],
+                    'productId' => $this->product->id,
+                    'lot' => 'IDEMP-LOT-1',
+                    'netWeight' => 3.50,
+                    'grossWeight' => 3.60,
+                    'gs1128' => $gs1128,
+                ]],
+            ])
             ->assertStatus(200);
 
         $this->assertSame(1, \App\Models\Box::where('gs1_128', $gs1128)->count());
@@ -330,6 +380,68 @@ class OperationalOrdersApiTest extends TestCase
             'lot' => 'IDEMP-LOT-1',
             'article_id' => $this->product->id,
         ], 'tenant');
+    }
+
+    public function test_field_user_can_sync_boxes_by_id_and_delete_missing(): void
+    {
+        $order = $this->createAssignedOrder();
+
+        $this->withHeaders($this->headersFor($this->fieldUser))
+            ->putJson('/api/v2/field/orders/' . $order->id, [
+                'boxes' => [[
+                    'productId' => $this->product->id,
+                    'lot' => 'SYNC-LOT-1',
+                    'netWeight' => 1.00,
+                    'grossWeight' => 1.10,
+                    'gs1128' => 'SYNC-GS1-1',
+                ], [
+                    'productId' => $this->product->id,
+                    'lot' => 'SYNC-LOT-2',
+                    'netWeight' => 2.00,
+                    'grossWeight' => 2.10,
+                    'gs1128' => 'SYNC-GS1-2',
+                ]],
+            ])
+            ->assertStatus(200);
+
+        $detail = $this->withHeaders($this->headersFor($this->fieldUser))
+            ->getJson('/api/v2/field/orders/' . $order->id)
+            ->assertStatus(200)
+            ->json('data');
+
+        $firstBox = $detail['pallets'][0]['boxes'][0];
+        $secondBox = $detail['pallets'][0]['boxes'][1];
+
+        // Sync: keep first (update weight), delete second by omitting it.
+        $this->withHeaders($this->headersFor($this->fieldUser))
+            ->putJson('/api/v2/field/orders/' . $order->id, [
+                'boxes' => [[
+                    'id' => $firstBox['id'],
+                    'productId' => $this->product->id,
+                    'lot' => 'SYNC-LOT-1',
+                    'netWeight' => 1.50,
+                    'grossWeight' => 1.60,
+                    'gs1128' => $firstBox['gs1128'] ?? 'SYNC-GS1-1',
+                ]],
+            ])
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('boxes', [
+            'id' => $firstBox['id'],
+            'net_weight' => 1.50,
+        ], 'tenant');
+        $this->assertDatabaseMissing('boxes', [
+            'id' => $secondBox['id'],
+        ], 'tenant');
+    }
+
+    public function test_field_user_can_get_tax_options_from_field_scope(): void
+    {
+        $response = $this->withHeaders($this->headersFor($this->fieldUser))
+            ->getJson('/api/v2/field/taxes/options');
+
+        $response->assertStatus(200);
+        $response->assertJsonFragment(['id' => $this->tax->id]);
     }
 
     public function test_field_user_can_add_planned_extras_and_adjust_existing_line(): void
