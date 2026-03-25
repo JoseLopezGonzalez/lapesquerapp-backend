@@ -1092,12 +1092,26 @@ Se decidió eliminar el sistema ActivityLog en su totalidad (coste > beneficio p
 **Migración de limpieza creada:**
 - `database/migrations/companies/2026_03_24_000000_drop_activity_logs_table.php` — `Schema::dropIfExists('activity_logs')` para limpiar la tabla en todas las BDs tenant
 
-**Impacto esperado:**
+**Impacto verificado en producción:**
 - Eliminación del overhead de 200-3000ms por request (GeoIP HTTP)
 - Eliminación de la segunda reconexión MySQL + `SET time_zone` por request
-- Reducción de tiempo de respuesta en endpoints simples a < 200ms (dependiendo de DB_HOST y CACHE_DRIVER en `.env`)
+- Reducción de tiempo de respuesta en endpoints simples confirmada
 
-**Pendiente de verificar en producción:** Confirmar que `CACHE_DRIVER=redis` y `QUEUE_CONNECTION=redis` están configurados en `.env` de producción para completar la resolución de H3.
+### Configuración de producción — Redis descartado (2026-03-24)
+
+Al intentar activar `CACHE_DRIVER=redis` y `QUEUE_CONNECTION=redis` en producción se obtuvieron dos errores sucesivos:
+1. `Class "Redis" not found` — la extensión PHP `redis` no está instalada en el contenedor
+2. `Connection refused [tcp://127.0.0.1:6379]` — no hay servicio Redis corriendo (ni accesible desde el contenedor Docker), incluso tras instalar `predis/predis`
+
+**Decisión tomada:** volver a `CACHE_DRIVER=file` + `QUEUE_CONNECTION=sync` en `.env` de producción.
+
+**Justificación:** con el sistema ActivityLog eliminado, estos dos valores ya son inofensivos:
+- `CACHE_DRIVER=file` → el único consumidor crítico era `LogActivity` (GeoIP HTTP). Ya no existe. El único uso restante es el tenant lookup en `TenantMiddleware`, que al fallar el cache simplemente ejecuta una query MySQL local — microsegundos, no segundos.
+- `QUEUE_CONNECTION=sync` → el único job disparado en el request cycle era `StoreActivityLogJob`. Ya no existe. No hay ningún job que se ejecute de forma síncrona en el request.
+
+**Redis sigue siendo recomendable** a largo plazo (sesiones distribuidas, colas reales, cache de listados pesados), pero requiere añadir el servicio al Docker Compose en Coolify y posiblemente instalar la extensión `redis` en el Dockerfile. No es urgente para el rendimiento actual.
+
+**H3 (CACHE_DRIVER=file) — Estado revisado:** ✅ Resuelto de facto — el problema ya no ocurre porque su única consecuencia grave (GeoIP HTTP) fue eliminada junto con `LogActivity`.
 
 ---
 

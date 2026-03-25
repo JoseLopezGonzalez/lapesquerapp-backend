@@ -94,12 +94,12 @@ class OrderController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateOrderRequest $request, string $id)
+    public function update(UpdateOrderRequest $request, Order $order)
     {
-        $order = Order::with([
+        $order->load([
             'pallets.boxes.box.productionInputs',
             'pallets.boxes.box.product',
-        ])->findOrFail($id);
+        ]);
 
         $this->authorize('update', $order);
 
