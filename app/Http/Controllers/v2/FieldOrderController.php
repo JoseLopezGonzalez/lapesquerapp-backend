@@ -74,7 +74,7 @@ class FieldOrderController extends Controller
 
         return response()->json([
             'message' => 'Pedido operativo actualizado correctamente.',
-            'data' => new FieldOrderResource($updated),
+            'data' => new FieldOrderDetailsResource($updated),
         ]);
     }
 
