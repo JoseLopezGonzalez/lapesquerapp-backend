@@ -13,13 +13,14 @@ class FieldProductController extends Controller
         $this->authorize('viewOperationalOptions', Product::class);
 
         $products = Product::query()
-            ->select('id', 'name', 'species_id')
+            ->select('id', 'name', 'species_id', 'box_gtin')
             ->with(['species:id,name'])
             ->orderBy('name')
             ->get()
             ->map(fn (Product $product) => [
                 'id' => $product->id,
                 'name' => $product->name,
+                'boxGtin' => $product->box_gtin,
                 'species' => $product->species ? [
                     'id' => $product->species->id,
                     'name' => $product->species->name,
