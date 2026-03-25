@@ -145,10 +145,11 @@ El actor operativo puede:
 - abrirlo en `/api/v2/field/orders/{order}`
 - actualizar solo su parte operativa en `PUT /api/v2/field/orders/{order}`
 
-Puede cambiar:
+Puede:
 
-- `status`
-- líneas operativas (`plannedProducts`)
+- registrar **ejecución real** (cajas/palets) del pedido con payload de `boxes[]` (mismo shape que autoventa)
+- añadir **productos extra** no prefijados (crea nuevas líneas planificadas sin borrar las existentes)
+- ajustar **solo** `unit_price` e `iva` de líneas planificadas existentes (sin tocar cantidades)
 
 No puede cambiar:
 

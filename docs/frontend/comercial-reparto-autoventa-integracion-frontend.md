@@ -214,22 +214,34 @@ Valores:
 
 Payload admitido:
 
-- `status`
-- `plannedProducts`
-
-Cada línea de `plannedProducts`:
-
-- `product`
-- `quantity`
 - `boxes`
-- `unitPrice`
-- `tax`
+- `plannedExtras` (opcional)
+- `plannedAdjustments` (opcional)
+- `items` (opcional, solo para UI/resumen)
 
 Reglas:
 
-- debe enviarse `status`, `plannedProducts` o ambos
-- `plannedProducts` se interpreta como conjunto operativo completo de líneas
-- este endpoint no cambia cliente ni condiciones comerciales
+- **NO** se admite `status` ni `plannedProducts` (contrato legacy). Si se envían, backend devuelve `422`.\n+- se debe enviar al menos uno entre `boxes`, `plannedExtras` o `plannedAdjustments`\n+- este endpoint no cambia cliente, fechas ni condiciones comerciales\n+- `boxes[]` es la fuente de verdad de ejecución física (crea palet + cajas, idempotente por `gs1128`; fallback por `productId+lot`)\n+- `plannedExtras[]` crea **nuevas** líneas planificadas para productos no contemplados previamente (no borra lo prefijado)\n+- `plannedAdjustments[]` permite ajustar **solo** precio e IVA de una línea planificada existente (no cambia `quantity/boxes`)
+
+#### `boxes[]`
+
+- `productId`
+- `lot` (opcional; si falta, backend genera uno)
+- `netWeight`
+- `grossWeight` (opcional)
+- `gs1128` (opcional; si falta, backend genera uno)
+
+#### `plannedExtras[]`
+
+- `productId`
+- `unitPrice`
+- `taxId`
+
+#### `plannedAdjustments[]`
+
+- `plannedProductDetailId`
+- `unitPrice`
+- `taxId`
 
 ## Autoventa operativa
 

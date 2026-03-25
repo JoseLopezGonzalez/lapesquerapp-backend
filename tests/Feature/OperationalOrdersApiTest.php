@@ -35,6 +35,7 @@ class OperationalOrdersApiTest extends TestCase
     private FieldOperator $fieldOperator;
     private Customer $customer;
     private Product $product;
+    private Product $extraProduct;
     private Tax $tax;
     private string $customerName;
 
@@ -121,6 +122,15 @@ class OperationalOrdersApiTest extends TestCase
             'box_gtin' => '9400000000001',
             'pallet_gtin' => '9900000000001',
         ]);
+
+        $this->extraProduct = Product::create([
+            'name' => 'Extra OO ' . Str::lower(Str::random(6)),
+            'species_id' => $species->id,
+            'capture_zone_id' => $captureZone->id,
+            'article_gtin' => '8400000000002',
+            'box_gtin' => '9400000000002',
+            'pallet_gtin' => '9900000000002',
+        ]);
     }
 
     private function headersFor(User $user): array
@@ -192,26 +202,25 @@ class OperationalOrdersApiTest extends TestCase
 
         $update = $this->withHeaders($this->headersFor($this->fieldUser))
             ->putJson('/api/v2/field/orders/' . $order->id, [
-                'status' => 'finished',
-                'plannedProducts' => [[
-                    'product' => $this->product->id,
-                    'tax' => $this->tax->id,
-                    'quantity' => 12,
-                    'boxes' => 3,
-                    'unitPrice' => 5.25,
+                'boxes' => [[
+                    'productId' => $this->product->id,
+                    'lot' => 'FIELD-LOT-1',
+                    'netWeight' => 5.25,
+                    'grossWeight' => 5.40,
+                    'gs1128' => 'FIELD-GS1-1',
                 ]],
             ]);
 
         $update->assertStatus(200);
-        $update->assertJsonPath('data.status', 'finished');
-        $this->assertDatabaseHas('order_planned_product_details', [
-            'order_id' => $order->id,
-            'quantity' => 12,
-            'boxes' => 3,
+        $update->assertJsonPath('data.id', $order->id);
+        $this->assertDatabaseHas('boxes', [
+            'article_id' => $this->product->id,
+            'lot' => 'FIELD-LOT-1',
+            'gs1_128' => 'FIELD-GS1-1',
         ], 'tenant');
     }
 
-    public function test_field_user_can_update_only_status_without_resending_planned_products(): void
+    public function test_field_user_cannot_send_legacy_status_or_planned_products_contract(): void
     {
         $order = $this->createAssignedOrder();
 
@@ -220,13 +229,8 @@ class OperationalOrdersApiTest extends TestCase
                 'status' => 'finished',
             ]);
 
-        $response->assertStatus(200);
-        $response->assertJsonPath('data.status', 'finished');
-        $this->assertDatabaseHas('order_planned_product_details', [
-            'order_id' => $order->id,
-            'quantity' => 10,
-            'boxes' => 2,
-        ], 'tenant');
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['status']);
     }
 
     public function test_field_user_can_create_autoventa_with_new_operational_customer(): void
@@ -295,6 +299,79 @@ class OperationalOrdersApiTest extends TestCase
 
         $response->assertStatus(201);
         $response->assertJsonPath('data.customer.id', $this->customer->id);
+    }
+
+    public function test_field_user_execution_is_idempotent_by_gs1128(): void
+    {
+        $order = $this->createAssignedOrder();
+
+        $gs1128 = 'IDEMP-GS1-' . \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(20));
+        $payload = [
+            'boxes' => [[
+                'productId' => $this->product->id,
+                'lot' => 'IDEMP-LOT-1',
+                'netWeight' => 3.25,
+                'grossWeight' => 3.35,
+                'gs1128' => $gs1128,
+            ]],
+        ];
+
+        $this->withHeaders($this->headersFor($this->fieldUser))
+            ->putJson('/api/v2/field/orders/' . $order->id, $payload)
+            ->assertStatus(200);
+
+        $this->withHeaders($this->headersFor($this->fieldUser))
+            ->putJson('/api/v2/field/orders/' . $order->id, $payload)
+            ->assertStatus(200);
+
+        $this->assertSame(1, \App\Models\Box::where('gs1_128', $gs1128)->count());
+        $this->assertDatabaseHas('boxes', [
+            'gs1_128' => $gs1128,
+            'lot' => 'IDEMP-LOT-1',
+            'article_id' => $this->product->id,
+        ], 'tenant');
+    }
+
+    public function test_field_user_can_add_planned_extras_and_adjust_existing_line(): void
+    {
+        $order = $this->createAssignedOrder();
+        $planned = OrderPlannedProductDetail::where('order_id', $order->id)->firstOrFail();
+
+        $response = $this->withHeaders($this->headersFor($this->fieldUser))
+            ->putJson('/api/v2/field/orders/' . $order->id, [
+                'boxes' => [[
+                    'productId' => $this->extraProduct->id,
+                    'lot' => 'EXTRA-LOT-1',
+                    'netWeight' => 2.50,
+                    'grossWeight' => 2.60,
+                    'gs1128' => 'EXTRA-GS1-1',
+                ]],
+                'plannedExtras' => [[
+                    'productId' => $this->extraProduct->id,
+                    'unitPrice' => 9.99,
+                    'taxId' => $this->tax->id,
+                ]],
+                'plannedAdjustments' => [[
+                    'plannedProductDetailId' => $planned->id,
+                    'unitPrice' => 6.25,
+                    'taxId' => $this->tax->id,
+                ]],
+            ]);
+
+        $response->assertStatus(200);
+
+        $this->assertDatabaseHas('order_planned_product_details', [
+            'order_id' => $order->id,
+            'product_id' => $this->extraProduct->id,
+            'boxes' => 1,
+        ], 'tenant');
+
+        $this->assertDatabaseHas('order_planned_product_details', [
+            'id' => $planned->id,
+            'order_id' => $order->id,
+            'unit_price' => 6.25,
+            'tax_id' => $this->tax->id,
+        ], 'tenant');
     }
 
     public function test_field_user_cannot_create_autoventa_for_existing_unassigned_customer(): void

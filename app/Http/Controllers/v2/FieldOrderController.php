@@ -9,7 +9,7 @@ use App\Http\Requests\v2\UpdateOperationalOrderRequest;
 use App\Http\Resources\v2\FieldOrderResource;
 use App\Models\FieldOperator;
 use App\Models\Order;
-use App\Services\v2\OperationalOrderUpdateService;
+use App\Services\v2\OperationalOrderExecutionService;
 use App\Services\v2\OrderDetailService;
 use App\Services\v2\OrderStoreService;
 use Illuminate\Http\Request;
@@ -67,7 +67,9 @@ class FieldOrderController extends Controller
 
     public function update(UpdateOperationalOrderRequest $request, Order $order)
     {
-        $updated = OperationalOrderUpdateService::update($order, $request->validated());
+        $this->authorize('updateOperational', $order);
+
+        $updated = OperationalOrderExecutionService::execute($order, $request->validated());
 
         return response()->json([
             'message' => 'Pedido operativo actualizado correctamente.',

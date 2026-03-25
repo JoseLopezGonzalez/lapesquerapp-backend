@@ -97,6 +97,10 @@ El actor operativo:
 - puede ver y actualizar operativamente sus pedidos
 - no puede modificar cliente ni condiciones comerciales
 
+Nota:
+
+- la actualización operativa de pedido (`PUT /api/v2/field/orders/{order}`) se limita a:\n+  - ejecución por `boxes[]` (cajas/palets)\n+  - `plannedExtras[]` (nuevas líneas no prefijadas)\n+  - `plannedAdjustments[]` (solo precio/IVA)\n+- no se admite cambio de `status` desde el perímetro operativo
+
 ### Autoventa
 
 Puede:
