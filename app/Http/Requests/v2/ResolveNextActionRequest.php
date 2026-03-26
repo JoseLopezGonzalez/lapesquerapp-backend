@@ -16,7 +16,7 @@ class ResolveNextActionRequest extends FormRequest
         return [
             'targetType' => 'required|string|in:prospect,customer',
             'targetId' => 'required|integer',
-            'strategy' => 'required|string|in:keep,update,reschedule,override,create_if_none',
+            'strategy' => 'required|string|in:keep,reschedule,reschedule_with_description,override,create_if_none',
             'nextActionAt' => 'nullable|date',
             'description' => 'nullable|string|max:255',
             'reason' => 'nullable|string|max:1000',
@@ -44,23 +44,27 @@ class ResolveNextActionRequest extends FormRequest
                 }
             }
 
-            if ($strategy === 'update') {
-                if (! $has('description')) {
-                    $validator->errors()->add('description', 'INVALID_STRATEGY_FIELDS: update requiere description.');
-                }
-                foreach (['nextActionAt', 'reason'] as $field) {
-                    if ($has($field)) {
-                        $validator->errors()->add($field, 'INVALID_STRATEGY_FIELDS: update no permite '.$field.'.');
-                    }
-                }
-            }
-
             if ($strategy === 'reschedule') {
                 if (! $has('nextActionAt')) {
                     $validator->errors()->add('nextActionAt', 'INVALID_STRATEGY_FIELDS: reschedule requiere nextActionAt.');
                 }
+                if ($has('description')) {
+                    $validator->errors()->add('description', 'INVALID_STRATEGY_FIELDS: reschedule no permite description.');
+                }
                 if ($has('reason')) {
                     $validator->errors()->add('reason', 'INVALID_STRATEGY_FIELDS: reschedule no permite reason.');
+                }
+            }
+
+            if ($strategy === 'reschedule_with_description') {
+                if (! $has('nextActionAt')) {
+                    $validator->errors()->add('nextActionAt', 'INVALID_STRATEGY_FIELDS: reschedule_with_description requiere nextActionAt.');
+                }
+                if (! $has('description')) {
+                    $validator->errors()->add('description', 'INVALID_STRATEGY_FIELDS: reschedule_with_description requiere description.');
+                }
+                if ($has('reason')) {
+                    $validator->errors()->add('reason', 'INVALID_STRATEGY_FIELDS: reschedule_with_description no permite reason.');
                 }
             }
 

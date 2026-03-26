@@ -114,7 +114,7 @@ Payload base:
 {
   "targetType": "prospect",
   "targetId": 10,
-  "strategy": "keep|update|reschedule|override|create_if_none",
+  "strategy": "keep|reschedule|reschedule_with_description|override|create_if_none",
   "nextActionAt": "2026-03-25",
   "description": "Enviar condiciones",
   "reason": "Cambio de contexto",
@@ -126,8 +126,8 @@ Payload base:
 Validación por strategy:
 
 - `keep`: no admite `nextActionAt`, `description`, `reason`, `sourceInteractionId`
-- `update`: requiere `description`, no admite `nextActionAt` ni `reason`
-- `reschedule`: requiere `nextActionAt`, `description` opcional, no admite `reason`
+- `reschedule`: requiere `nextActionAt`, no admite `description` ni `reason`
+- `reschedule_with_description`: requiere `nextActionAt` y `description`, no admite `reason`
 - `override`: requiere `nextActionAt` y `reason`, `description` opcional
 - `create_if_none`: requiere `nextActionAt`, `description` opcional, no admite `reason`
 

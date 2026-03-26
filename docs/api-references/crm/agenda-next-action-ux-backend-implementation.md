@@ -35,7 +35,7 @@ Payload base:
 {
   "targetType": "prospect|customer",
   "targetId": 10,
-  "strategy": "keep|update|reschedule|override|create_if_none",
+  "strategy": "keep|reschedule|reschedule_with_description|override|create_if_none",
   "nextActionAt": "2026-03-20",
   "description": "Enviar propuesta",
   "reason": "Sobrescrita por nueva acción",
@@ -113,7 +113,7 @@ Este bloque resume, en lenguaje de negocio, **qué cambia** y **qué reglas qued
 | Desacoplar interacción de agenda (Paso 1 independiente)                  | `IMPLEMENTADO` | ✅     | Interacción libre ya no depende de sincronizar agenda    |
 | `agendaActionId` opcional en `StoreCommercialInteractionRequest`         | `IMPLEMENTADO` | ✅     | Se admite ausencia de `agendaActionId` en Paso 1         |
 | Endpoint `POST /crm/agenda/resolve-next-action` (Paso 2)                 | `IMPLEMENTADO` | ✅     | Ruta + request + controlador + servicio                  |
-| Estrategias `keep/update/reschedule/override/create_if_none`             | `IMPLEMENTADO` | ✅     | Implementadas en `CrmAgendaService::resolveNextAction()` |
+| Estrategias `keep/reschedule/reschedule_with_description/override/create_if_none` | `IMPLEMENTADO` | ✅     | Implementadas en `CrmAgendaService::resolveNextAction()` |
 | Campo `reason`/`cancel_reason` en `agenda_actions`                       | `IMPLEMENTADO` | ✅     | Campo `reason` añadido en migración                      |
 | Endpoint `GET /crm/agenda/pending` (preflight)                           | `IMPLEMENTADO` | ✅     | Devuelve pending + `isOverdue`/`daysOverdue`             |
 | Códigos de error estables (`PENDING_EXISTS`, `STALE_PENDING`…)           | `IMPLEMENTADO` | ✅     | Soportado con `DomainValidationException` + `code`       |
@@ -468,7 +468,7 @@ Payload sugerido (S1):
 {
   "targetType": "prospect|customer",
   "targetId": 10,
-  "strategy": "keep|update|reschedule|override|create_if_none",
+  "strategy": "keep|reschedule|reschedule_with_description|override|create_if_none",
   "nextActionAt": "2026-03-20",
   "description": "Enviar propuesta",
   "reason": "Sobrescrita por nueva acción",
@@ -481,12 +481,11 @@ Tabla de validación (S1, **estricta**):
 - `keep`
   - **prohíbe**: `nextActionAt`, `description`, `reason`, `sourceInteractionId`
   - Nota: `keep` no cambia agenda; si se necesita auditoría/telemetría, se debe modelar explícitamente (p. ej. `agenda_events` o ActivityLog dedicado).
-- `update` (editar contenido de la pending actual)
-  - **requiere**: `description`
-  - **prohíbe**: `nextActionAt`, `reason`
-- `reschedule` (reprogramar como cadena)
+- `reschedule` (reprogramar fecha sin tocar texto)
   - **requiere**: `nextActionAt`
-  - **permite**: `description` (si se quiere actualizar también el texto al reprogramar)
+  - **prohíbe**: `description`, `reason`
+- `reschedule_with_description` (reprogramar fecha y actualizar texto)
+  - **requiere**: `nextActionAt`, `description`
   - **prohíbe**: `reason`
 - `override` (sobreescribir = cancelar + crear nueva)
   - **requiere**: `nextActionAt` y `reason`
@@ -499,8 +498,8 @@ Tabla de validación (S1, **estricta**):
 Semántica (consistente con modelo de cadena `previousActionId`):
 
 - `keep`: no cambia nada en agenda.
-- `update`: edita **solo** la `description` de la pending actual.
-- `reschedule`: la acción anterior deja de ser `pending` (pasa a `reprogrammed`) y se crea una **nueva** `pending` con `previous_action_id` apuntando a la anterior.
+- `reschedule`: la acción anterior deja de ser `pending` (pasa a `reprogrammed`) y se crea una **nueva** `pending` conservando la `description` previa.
+- `reschedule_with_description`: igual que `reschedule`, pero la nueva `pending` usa la `description` enviada.
 - `override`: la acción anterior deja de ser `pending` (pasa a `cancelled`), se guarda `reason`, y se crea una **nueva** `pending` con `previous_action_id` apuntando a la anterior.
 - `create_if_none`: si no existe pending, crea una pending nueva (equivalente a “programar próxima acción” normal).
 
@@ -817,8 +816,8 @@ Usar este checklist para validar integración con el documento hermano del front
    - con `nextActionAt` => `agenda.mode = completed_and_created`
 4. `POST /crm/agenda/resolve-next-action`:
    - `keep` devuelve `changed=false`
-   - `update` actualiza solo `description`
-   - `reschedule` crea cadena `reprogrammed -> pending`
+   - `reschedule` crea cadena `reprogrammed -> pending` conservando texto
+   - `reschedule_with_description` crea cadena `reprogrammed -> pending` actualizando texto
    - `override` crea cadena `cancelled(reason) -> pending`
    - `create_if_none` falla con `PENDING_EXISTS` si ya hay pending
 5. `GET /crm/agenda/pending`:

@@ -777,6 +777,96 @@ class CrmApiTest extends TestCase
         $this->assertSame('Cambio de contexto', $current->reason);
     }
 
+    public function test_resolve_next_action_reschedule_rejects_description_and_keeps_previous_text(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Resolve Reschedule Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/schedule-action', [
+                'nextActionAt' => now()->addDay()->format('Y-m-d'),
+                'nextActionNote' => 'Texto original',
+            ])->assertStatus(200);
+
+        $pending = AgendaAction::query()
+            ->where('target_type', 'prospect')
+            ->where('target_id', $prospect->id)
+            ->where('status', 'pending')
+            ->firstOrFail();
+
+        $invalid = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/crm/agenda/resolve-next-action', [
+                'targetType' => 'prospect',
+                'targetId' => $prospect->id,
+                'strategy' => 'reschedule',
+                'nextActionAt' => now()->addDays(2)->format('Y-m-d'),
+                'description' => 'No permitido en reschedule',
+                'expectedPendingId' => $pending->id,
+            ]);
+
+        $invalid->assertStatus(422)
+            ->assertJsonPath('code', 'INVALID_STRATEGY_FIELDS')
+            ->assertJsonValidationErrors(['description']);
+
+        $response = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/crm/agenda/resolve-next-action', [
+                'targetType' => 'prospect',
+                'targetId' => $prospect->id,
+                'strategy' => 'reschedule',
+                'nextActionAt' => now()->addDays(3)->format('Y-m-d'),
+                'expectedPendingId' => $pending->id,
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.strategy', 'reschedule')
+            ->assertJsonPath('data.currentPending.description', 'Texto original')
+            ->assertJsonPath('data.currentPending.previousActionId', $pending->id);
+    }
+
+    public function test_resolve_next_action_reschedule_with_description_updates_text_and_date(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Resolve Reschedule With Description Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/schedule-action', [
+                'nextActionAt' => now()->addDay()->format('Y-m-d'),
+                'nextActionNote' => 'Texto base',
+            ])->assertStatus(200);
+
+        $pending = AgendaAction::query()
+            ->where('target_type', 'prospect')
+            ->where('target_id', $prospect->id)
+            ->where('status', 'pending')
+            ->firstOrFail();
+
+        $response = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/crm/agenda/resolve-next-action', [
+                'targetType' => 'prospect',
+                'targetId' => $prospect->id,
+                'strategy' => 'reschedule_with_description',
+                'nextActionAt' => now()->addDays(4)->format('Y-m-d'),
+                'description' => 'Texto actualizado',
+                'expectedPendingId' => $pending->id,
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.strategy', 'reschedule_with_description')
+            ->assertJsonPath('data.changed', true)
+            ->assertJsonPath('data.previousPending.status', 'reprogrammed')
+            ->assertJsonPath('data.currentPending.status', 'pending')
+            ->assertJsonPath('data.currentPending.description', 'Texto actualizado')
+            ->assertJsonPath('data.currentPending.previousActionId', $pending->id);
+    }
+
     public function test_resolve_next_action_returns_domain_codes_for_pending_exists_and_stale_pending(): void
     {
         $prospect = Prospect::create([

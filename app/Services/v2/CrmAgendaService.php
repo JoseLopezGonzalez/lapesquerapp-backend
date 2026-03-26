@@ -420,23 +420,6 @@ class CrmAgendaService
                     }
                 }
 
-                if ($strategy === 'update') {
-                    if (! $pending) {
-                        throw new DomainValidationException(
-                            'NO_PENDING_TO_UPDATE',
-                            'No existe una acción pendiente para actualizar.',
-                            ['strategy' => ['NO_PENDING_TO_UPDATE: no existe pending activa.']]
-                        );
-                    }
-
-                    $pending->update([
-                        'description' => $description,
-                    ]);
-                    $previousAfter = $pending->fresh();
-                    $current = $previousAfter;
-                    $changed = true;
-                }
-
                 if ($strategy === 'reschedule') {
                     if (! $pending) {
                         throw new DomainValidationException(
@@ -453,7 +436,32 @@ class CrmAgendaService
                         'target_type' => $targetType,
                         'target_id' => $targetId,
                         'scheduled_at' => $nextActionAt,
-                        'description' => $description ?? $pending->description,
+                        'description' => $pending->description,
+                        'status' => 'pending',
+                        'source_interaction_id' => $sourceInteractionId,
+                        'previous_action_id' => $pending->id,
+                    ]);
+                    $current = $new->fresh();
+                    $changed = true;
+                }
+
+                if ($strategy === 'reschedule_with_description') {
+                    if (! $pending) {
+                        throw new DomainValidationException(
+                            'NO_PENDING_TO_UPDATE',
+                            'No existe una acción pendiente para reprogramar.',
+                            ['strategy' => ['NO_PENDING_TO_UPDATE: no existe pending activa.']]
+                        );
+                    }
+
+                    $pending->update(['status' => 'reprogrammed']);
+                    $previousAfter = $pending->fresh();
+
+                    $new = AgendaAction::create([
+                        'target_type' => $targetType,
+                        'target_id' => $targetId,
+                        'scheduled_at' => $nextActionAt,
+                        'description' => $description,
                         'status' => 'pending',
                         'source_interaction_id' => $sourceInteractionId,
                         'previous_action_id' => $pending->id,
