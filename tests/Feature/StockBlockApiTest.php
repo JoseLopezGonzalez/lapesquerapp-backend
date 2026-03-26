@@ -21,6 +21,7 @@ use Database\Seeders\CaptureZonesSeeder;
 use Database\Seeders\FishingGearSeeder;
 use Database\Seeders\ProductCategorySeeder;
 use Database\Seeders\ProductFamilySeeder;
+use Database\Seeders\ProductSeeder;
 use Database\Seeders\SpeciesSeeder;
 use Database\Seeders\SupplierSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -52,7 +53,6 @@ class StockBlockApiTest extends TestCase
 
     /**
      * Seed tenant with minimal data for raw material reception tests (supplier, product).
-     * We do not run ProductSeeder from tests because it uses $this->command->info() which is null in PHPUnit.
      */
     private function seedTenantForReceptions(): void
     {
@@ -66,21 +66,7 @@ class StockBlockApiTest extends TestCase
         (new FishingGearSeeder)->run();
         (new SpeciesSeeder)->run();
         (new SupplierSeeder)->run();
-        // Create one product manually (ProductSeeder uses $this->command in PHPUnit)
-        $species = \App\Models\Species::first();
-        $zone = \App\Models\CaptureZone::first();
-        $family = \App\Models\ProductFamily::first();
-        if ($species && $zone && $family && Product::count() === 0) {
-            Product::create([
-                'name' => 'Producto Test Recepciones',
-                'species_id' => $species->id,
-                'capture_zone_id' => $zone->id,
-                'family_id' => $family->id,
-                'article_gtin' => null,
-                'box_gtin' => null,
-                'pallet_gtin' => null,
-            ]);
-        }
+        (new ProductSeeder)->run();
     }
 
     /**

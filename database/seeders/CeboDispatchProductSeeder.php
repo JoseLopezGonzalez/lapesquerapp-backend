@@ -22,7 +22,7 @@ class CeboDispatchProductSeeder extends Seeder
         $products = Product::all();
 
         if ($dispatches->isEmpty() || $products->isEmpty()) {
-            $this->command->warn('CeboDispatchProductSeeder: Ejecuta antes CeboDispatchSeeder y ProductSeeder.');
+            $this->command?->warn('CeboDispatchProductSeeder: Ejecuta antes CeboDispatchSeeder y ProductSeeder.');
             return;
         }
 

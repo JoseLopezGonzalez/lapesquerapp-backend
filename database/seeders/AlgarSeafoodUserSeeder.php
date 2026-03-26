@@ -28,6 +28,6 @@ class AlgarSeafoodUserSeeder extends Seeder
             $user->update(['role' => 'operario']);
         }
 
-        $this->command->info("Usuario Algar Seafood creado: {$user->email}");
+        $this->command?->info("Usuario Algar Seafood creado: {$user->email}");
     }
 }

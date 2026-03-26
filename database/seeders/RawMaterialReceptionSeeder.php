@@ -20,7 +20,7 @@ class RawMaterialReceptionSeeder extends Seeder
     {
         $suppliers = Supplier::all();
         if ($suppliers->isEmpty()) {
-            $this->command->warn('RawMaterialReceptionSeeder: Ejecuta antes SupplierSeeder.');
+            $this->command?->warn('RawMaterialReceptionSeeder: Ejecuta antes SupplierSeeder.');
             return;
         }
 

@@ -28,7 +28,7 @@ class CustomerSeeder extends Seeder
         $transport = Transport::first();
 
         if (!$country || !$paymentTerm || !$salesperson || !$transport) {
-            $this->command->warn('CustomerSeeder: Ejecuta antes Countries, PaymentTerms, Salespeople y Transports.');
+            $this->command?->warn('CustomerSeeder: Ejecuta antes Countries, PaymentTerms, Salespeople y Transports.');
             return;
         }
 

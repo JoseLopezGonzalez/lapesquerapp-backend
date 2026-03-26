@@ -29,6 +29,6 @@ class StoreOperatorUserSeeder extends Seeder
             $user->update(['role' => 'operario']);
         }
 
-        $this->command->info("Usuario operario creado: {$user->email}");
+        $this->command?->info("Usuario operario creado: {$user->email}");
     }
 }

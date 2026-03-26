@@ -2,17 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Enums\Role;
-use App\Models\Country;
-use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Pallet;
-use App\Models\PaymentTerm;
-use App\Models\Salesperson;
-use App\Models\Tenant;
-use App\Models\Transport;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\BuildsOperationsScenario;
 use Tests\Concerns\ConfiguresTenantConnection;
 use Tests\TestCase;
 
@@ -20,6 +13,7 @@ class OrderApiTest extends TestCase
 {
     use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use BuildsOperationsScenario;
 
     private ?string $token = null;
     private ?string $tenantSubdomain = null;
@@ -34,24 +28,9 @@ class OrderApiTest extends TestCase
 
     private function createTenantAndUser(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'order-' . uniqid();
-        Tenant::create([
-            'name' => 'Test Tenant Order',
-            'subdomain' => $slug,
-            'database' => $database,
-            'status' => 'active',
-        ]);
-
-        $user = User::create([
-            'name' => 'Test User',
-            'email' => $slug . '@test.com',
-            'password' => bcrypt('password'),
-            'role' => Role::Administrador->value,
-        ]);
-
-        $this->token = $user->createToken('test')->plainTextToken;
-        $this->tenantSubdomain = $slug;
+        $result = $this->createTenantAndAdminUser('order');
+        $this->tenantSubdomain = $result['slug'];
+        $this->token = $result['token'];
     }
 
     private function authHeaders(): array
@@ -65,45 +44,17 @@ class OrderApiTest extends TestCase
 
     private function createOrderDependencies(): array
     {
-        $country = Country::firstOrCreate(['name' => 'España']);
-        $paymentTerm = PaymentTerm::firstOrCreate(['name' => 'Contado']);
-        $transport = Transport::firstOrCreate(
-            ['name' => 'Transport OrderApiTest ' . uniqid()],
-            ['vat_number' => 'B' . uniqid(), 'address' => 'A', 'emails' => 't@t.com']
-        );
-        $salesperson = Salesperson::firstOrCreate(['name' => 'Comercial Order Test']);
-        $customer = Customer::create([
-            'name' => 'C ' . uniqid(),
-            'vat_number' => 'B' . uniqid(),
-            'payment_term_id' => $paymentTerm->id,
-            'billing_address' => 'B',
-            'shipping_address' => 'S',
-            'salesperson_id' => $salesperson->id,
-            'emails' => 'c@c.com',
-            'contact_info' => 'C',
-            'country_id' => $country->id,
-            'transport_id' => $transport->id,
-        ]);
+        $context = $this->createSalesContext('Order');
+        $customer = $this->createCustomerForTest($context, 'Order');
 
-        return compact('country', 'paymentTerm', 'transport', 'salesperson', 'customer');
+        return array_merge($context, compact('customer'));
     }
 
     private function createOrder(?array $deps = null): Order
     {
         $deps = $deps ?? $this->createOrderDependencies();
 
-        return Order::create([
-            'customer_id' => $deps['customer']->id,
-            'entry_date' => now()->format('Y-m-d'),
-            'load_date' => now()->addDay()->format('Y-m-d'),
-            'payment_term_id' => $deps['paymentTerm']->id,
-            'salesperson_id' => $deps['salesperson']->id,
-            'transport_id' => $deps['transport']->id,
-            'billing_address' => 'B',
-            'shipping_address' => 'S',
-            'emails' => 'test@test.com',
-            'status' => 'pending',
-        ]);
+        return $this->createOrderForTest($deps['customer'], $deps);
     }
 
     // ---- LIST ----

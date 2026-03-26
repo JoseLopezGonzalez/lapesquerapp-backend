@@ -18,7 +18,7 @@ class PalletSeeder extends Seeder
     public function run(): void
     {
         if (Pallet::count() >= 20) {
-            $this->command->info('PalletSeeder: Ya existen suficientes palés. Omitiendo creación.');
+            $this->command?->info('PalletSeeder: Ya existen suficientes palés. Omitiendo creación.');
             return;
         }
 

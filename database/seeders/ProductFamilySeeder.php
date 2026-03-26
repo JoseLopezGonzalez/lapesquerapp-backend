@@ -20,7 +20,7 @@ class ProductFamilySeeder extends Seeder
         $congeladoCategory = ProductCategory::where('name', 'Congelado')->first();
 
         if (! $frescoCategory || ! $congeladoCategory) {
-            $this->command->warn('ProductFamilySeeder: Ejecuta antes ProductCategorySeeder.');
+            $this->command?->warn('ProductFamilySeeder: Ejecuta antes ProductCategorySeeder.');
             return;
         }
 

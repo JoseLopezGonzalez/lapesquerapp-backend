@@ -3,29 +3,23 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-use App\Models\Pallet;
-
-class StoredPallet extends Model
+class StoredBox extends Model
 {
     use UsesTenantConnection;
     use HasFactory;
-    //protected $table = 'pallet_positions_store';
+
+    protected $fillable = ['store_id', 'box_id', 'position'];
 
     public function box()
     {
         return $this->belongsTo(Box::class, 'box_id');
     }
 
-    public function toArrayAssoc()
+    public function store()
     {
-
-        return array_merge($this->pallet->toArrayAssoc(), [
-            //'storeId' => $this->store_id,
-            'position' => $this->position,
-        ]);
+        return $this->belongsTo(Store::class, 'store_id');
     }
 }

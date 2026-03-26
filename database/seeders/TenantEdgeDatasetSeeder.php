@@ -15,6 +15,8 @@ class TenantEdgeDatasetSeeder extends Seeder
         $this->call([
             TenantExtendedDatasetSeeder::class,
             TenantEdgeCasesSeeder::class,
+            TenantPermissionsScenariosSeeder::class,
+            TenantDataAnomaliesSeeder::class,
         ]);
     }
 }

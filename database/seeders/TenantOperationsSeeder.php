@@ -20,6 +20,7 @@ class TenantOperationsSeeder extends Seeder
             PalletSeeder::class,
             PalletBoxSeeder::class,
             StoredPalletSeeder::class,
+            StoredBoxSeeder::class,
             OrderPalletSeeder::class,
         ]);
     }

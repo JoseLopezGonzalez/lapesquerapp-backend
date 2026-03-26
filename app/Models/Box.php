@@ -92,6 +92,11 @@ class Box extends Model
         return $this->hasOne(PalletBox::class, 'box_id');
     }
 
+    public function storedBox()
+    {
+        return $this->hasOne(StoredBox::class, 'box_id');
+    }
+
     public function getPalletAttribute()
     {
         /* Si no palletBox return null*/

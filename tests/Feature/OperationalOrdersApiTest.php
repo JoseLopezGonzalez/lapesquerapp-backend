@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Models\Species;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\Concerns\BuildsOperationsScenario;
 use Tests\Concerns\ConfiguresTenantConnection;
 use Tests\TestCase;
 
@@ -28,6 +29,7 @@ class OperationalOrdersApiTest extends TestCase
 {
     use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use BuildsOperationsScenario;
 
     private string $tenantSubdomain;
     private User $adminUser;
@@ -72,19 +74,14 @@ class OperationalOrdersApiTest extends TestCase
             'user_id' => $this->fieldUser->id,
         ]);
 
-        $paymentTerm = PaymentTerm::firstOrCreate(['name' => 'Contado OO']);
-        $country = Country::firstOrCreate(['name' => 'España OO']);
-        $transport = Transport::firstOrCreate(
-            ['name' => 'Transport OO'],
-            ['vat_number' => 'B' . uniqid(), 'address' => 'Street', 'emails' => 'transport@example.com']
-        );
+        $salesCtx = $this->createSalesContext('OO');
 
         $this->customerName = 'Cliente OO ' . Str::lower(Str::random(8));
 
         $this->customer = Customer::create([
             'name' => $this->customerName,
             'vat_number' => null,
-            'payment_term_id' => $paymentTerm->id,
+            'payment_term_id' => $salesCtx['paymentTerm']->id,
             'billing_address' => 'B',
             'shipping_address' => 'S',
             'salesperson_id' => null,
@@ -93,8 +90,8 @@ class OperationalOrdersApiTest extends TestCase
             'created_by_user_id' => $this->adminUser->id,
             'emails' => null,
             'contact_info' => null,
-            'country_id' => $country->id,
-            'transport_id' => $transport->id,
+            'country_id' => $salesCtx['country']->id,
+            'transport_id' => $salesCtx['transport']->id,
         ]);
 
         $this->tax = Tax::firstOrCreate(

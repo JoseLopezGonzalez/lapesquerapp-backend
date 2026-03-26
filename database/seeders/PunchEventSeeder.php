@@ -20,7 +20,7 @@ class PunchEventSeeder extends Seeder
     {
         $employees = Employee::all();
         if ($employees->isEmpty()) {
-            $this->command->warn('PunchEventSeeder: Ejecuta antes EmployeeSeeder.');
+            $this->command?->warn('PunchEventSeeder: Ejecuta antes EmployeeSeeder.');
             return;
         }
 

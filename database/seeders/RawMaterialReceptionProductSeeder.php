@@ -23,7 +23,7 @@ class RawMaterialReceptionProductSeeder extends Seeder
         $products = Product::all();
 
         if ($receptions->isEmpty() || $products->isEmpty()) {
-            $this->command->warn('RawMaterialReceptionProductSeeder: Ejecuta antes RawMaterialReceptionSeeder y ProductSeeder.');
+            $this->command?->warn('RawMaterialReceptionProductSeeder: Ejecuta antes RawMaterialReceptionSeeder y ProductSeeder.');
             return;
         }
 

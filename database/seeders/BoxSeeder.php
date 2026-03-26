@@ -17,7 +17,7 @@ class BoxSeeder extends Seeder
     public function run(): void
     {
         if (Box::count() >= 30) {
-            $this->command->info('BoxSeeder: Ya existen suficientes cajas. Omitiendo creación.');
+            $this->command?->info('BoxSeeder: Ya existen suficientes cajas. Omitiendo creación.');
             return;
         }
 
@@ -25,7 +25,7 @@ class BoxSeeder extends Seeder
 
         $products = Product::all();
         if ($products->isEmpty()) {
-            $this->command->warn('BoxSeeder: Ejecuta antes ProductSeeder.');
+            $this->command?->warn('BoxSeeder: Ejecuta antes ProductSeeder.');
             return;
         }
 

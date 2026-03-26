@@ -24,12 +24,12 @@ class OrderPlannedProductDetailSeeder extends Seeder
         $tax = Tax::first();
 
         if ($orders->isEmpty() || $products->isEmpty()) {
-            $this->command->warn('OrderPlannedProductDetailSeeder: Ejecuta antes OrderSeeder y ProductSeeder.');
+            $this->command?->warn('OrderPlannedProductDetailSeeder: Ejecuta antes OrderSeeder y ProductSeeder.');
             return;
         }
 
         if (! $tax) {
-            $this->command->warn('OrderPlannedProductDetailSeeder: opcional TaxSeeder para tax_id.');
+            $this->command?->warn('OrderPlannedProductDetailSeeder: opcional TaxSeeder para tax_id.');
         }
 
         foreach ($orders as $order) {

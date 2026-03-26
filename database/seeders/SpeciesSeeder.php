@@ -18,7 +18,7 @@ class SpeciesSeeder extends Seeder
         $gearId = $arrastre?->id ?? $nasas?->id ?? FishingGear::first()?->id;
 
         if (!$gearId) {
-            $this->command->warn('SpeciesSeeder: No hay artes de pesca. Ejecuta antes FishingGearSeeder.');
+            $this->command?->warn('SpeciesSeeder: No hay artes de pesca. Ejecuta antes FishingGearSeeder.');
             return;
         }
 

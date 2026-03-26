@@ -21,7 +21,7 @@ class CeboDispatchSeeder extends Seeder
     {
         $suppliers = Supplier::all();
         if ($suppliers->isEmpty()) {
-            $this->command->warn('CeboDispatchSeeder: Ejecuta antes SupplierSeeder.');
+            $this->command?->warn('CeboDispatchSeeder: Ejecuta antes SupplierSeeder.');
             return;
         }
 

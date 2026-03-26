@@ -19,14 +19,14 @@ class PalletTimelineSeeder extends Seeder
     public function run(): void
     {
         if (! app()->environment('local')) {
-            $this->command->info('PalletTimelineSeeder: Solo se ejecuta en entorno local. Omitiendo.');
+            $this->command?->info('PalletTimelineSeeder: Solo se ejecuta en entorno local. Omitiendo.');
 
             return;
         }
 
         $pallets = Pallet::orderBy('id')->take(2)->get();
         if ($pallets->isEmpty()) {
-            $this->command->warn('PalletTimelineSeeder: No hay palets. Ejecuta antes PalletSeeder.');
+            $this->command?->warn('PalletTimelineSeeder: No hay palets. Ejecuta antes PalletSeeder.');
 
             return;
         }
@@ -295,6 +295,6 @@ class PalletTimelineSeeder extends Seeder
             $pallet->save();
         }
 
-        $this->command->info('PalletTimelineSeeder: Timeline completo asignado a ' . $pallets->count() . ' palet(s).');
+        $this->command?->info('PalletTimelineSeeder: Timeline completo asignado a ' . $pallets->count() . ' palet(s).');
     }
 }

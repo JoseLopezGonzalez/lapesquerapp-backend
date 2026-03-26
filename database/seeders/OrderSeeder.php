@@ -27,7 +27,7 @@ class OrderSeeder extends Seeder
 
         $customers = Customer::all();
         if ($customers->isEmpty()) {
-            $this->command->warn('OrderSeeder: Ejecuta antes CustomerSeeder.');
+            $this->command?->warn('OrderSeeder: Ejecuta antes CustomerSeeder.');
             return;
         }
 
@@ -38,7 +38,7 @@ class OrderSeeder extends Seeder
         $incoterm = Incoterm::first();
 
         if (! $paymentTerm || ! $salesperson || ! $transport || ! $incoterm) {
-            $this->command->warn('OrderSeeder: Faltan PaymentTerms, Salespeople, Transports o Incoterms.');
+            $this->command?->warn('OrderSeeder: Faltan PaymentTerms, Salespeople, Transports o Incoterms.');
             return;
         }
 
