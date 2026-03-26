@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Store;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class StoreFactory extends Factory
 {
+    protected $model = Store::class;
+
     /**
      * Define the model's default state.
      *
@@ -17,9 +20,12 @@ class StoreFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => $this->faker->word,
+            'name' => 'Almacén ' . $this->faker->unique()->city(),
             'temperature' => $this->faker->randomFloat(2, -20, 20),
             'capacity' => $this->faker->randomFloat(2, 1000, 100000),
+            'map' => '{"posiciones":[{"id":1,"nombre":"U1","x":40,"y":40,"width":460,"height":238,"tipo":"center"}],"elementos":{"fondos":[{"x":0,"y":0,"width":665,"height":1510}],"textos":[]}}',
+            'store_type' => 'interno',
+            'external_user_id' => null,
         ];
     }
 }

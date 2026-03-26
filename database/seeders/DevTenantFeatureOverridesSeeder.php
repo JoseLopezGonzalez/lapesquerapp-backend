@@ -19,7 +19,7 @@ class DevTenantFeatureOverridesSeeder extends Seeder
         $tenant = Tenant::where('subdomain', 'dev')->first();
 
         if (!$tenant) {
-            $this->command->warn('DevTenantFeatureOverridesSeeder: tenant dev no encontrado en tabla tenants.');
+            $this->command?->warn('DevTenantFeatureOverridesSeeder: tenant dev no encontrado en tabla tenants.');
 
             return;
         }
@@ -43,7 +43,6 @@ class DevTenantFeatureOverridesSeeder extends Seeder
             );
         }
 
-        $this->command->info("DevTenantFeatureOverridesSeeder: habilitados " . $flagKeys->count() . " flags para tenant dev.");
+        $this->command?->info("DevTenantFeatureOverridesSeeder: habilitados " . $flagKeys->count() . " flags para tenant dev.");
     }
 }
-

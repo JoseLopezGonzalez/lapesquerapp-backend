@@ -27,7 +27,7 @@ class SuperadminUserSeeder extends Seeder
                 ['name' => $data['name']]
             );
 
-            $this->command->info("Superadmin listo: {$user->email}");
+            $this->command?->info("Superadmin listo: {$user->email}");
         }
     }
 }

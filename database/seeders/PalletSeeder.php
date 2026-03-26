@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Pallet;
 use App\Models\Order;
+use App\Models\RawMaterialReception;
 use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
 
@@ -24,6 +25,7 @@ class PalletSeeder extends Seeder
         $faker = Faker::create('es_ES');
 
         $orders = Order::all();
+        $receptions = RawMaterialReception::all();
         $statuses = [
             Pallet::STATE_REGISTERED,
             Pallet::STATE_STORED,
@@ -39,14 +41,20 @@ class PalletSeeder extends Seeder
         for ($i = 0; $i < $toCreate; $i++) {
             $status = $faker->randomElement($statuses);
             $orderId = null;
+            $receptionId = null;
             if ($orders->isNotEmpty() && in_array($status, [Pallet::STATE_SHIPPED], true)) {
                 $orderId = $faker->optional(0.6)->randomElement($orders->pluck('id')->toArray());
+            }
+
+            if ($receptions->isNotEmpty() && in_array($status, [Pallet::STATE_REGISTERED, Pallet::STATE_STORED], true)) {
+                $receptionId = $faker->optional(0.45)->randomElement($receptions->pluck('id')->toArray());
             }
 
             Pallet::create([
                 'observations' => $faker->optional(0.3)->sentence(),
                 'status' => $status,
                 'order_id' => $orderId,
+                'reception_id' => $receptionId,
             ]);
         }
     }

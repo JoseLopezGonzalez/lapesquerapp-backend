@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\TenantSeedDataset;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
@@ -9,12 +10,20 @@ use App\Models\Tenant;
 
 class SeedTenants extends Command
 {
-    protected $signature = 'tenants:seed {--class=}';
+    protected $signature = 'tenants:seed {--class=} {--dataset=base}';
 
     protected $description = 'Ejecuta seeders en todas las bases de datos de los tenants';
 
     public function handle(): int
     {
+        $dataset = $this->option('dataset');
+
+        if (! TenantSeedDataset::isValid($dataset)) {
+            $this->error('Dataset no valido. Usa uno de: '.implode(', ', TenantSeedDataset::values()));
+
+            return Command::FAILURE;
+        }
+
         $tenants = Tenant::active()->get();
 
         foreach ($tenants as $tenant) {
@@ -39,6 +48,8 @@ class SeedTenants extends Command
             // Si se especifica una clase específica
             if ($this->option('class')) {
                 $params['--class'] = $this->option('class');
+            } else {
+                $params['--class'] = TenantSeedDataset::seederClassFor($dataset);
             }
 
             // Ejecutar seeder

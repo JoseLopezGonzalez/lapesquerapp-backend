@@ -2,9 +2,6 @@
 
 namespace App\Mail;
 
-use PDF; // Al principio de tu archivo PHP donde necesitas usar DomPDF
-
-
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;

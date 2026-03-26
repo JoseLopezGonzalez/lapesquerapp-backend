@@ -89,6 +89,34 @@ Cada seeder debe incluir en cabecera o comentario:
 
 ---
 
+## 10. Niveles oficiales de dataset
+
+El proyecto ya debe distinguir explícitamente entre tres niveles de siembra tenant:
+
+| Nivel | Seeder raíz | Uso |
+|--------|-------------|-----|
+| **`base`** | `TenantDatabaseSeeder` | Desarrollo diario y flujo estándar. Debe dejar un tenant completamente usable sin ruido extremo. |
+| **`extended`** | `TenantExtendedDatasetSeeder` | QA manual, demos internas y revisión visual con más volumen y escenarios de UI. |
+| **`edge`** | `TenantEdgeDatasetSeeder` | Casos raros, anomalías controladas, permisos y datasets de estrés funcional. |
+
+### Regla práctica
+
+- `base` nunca debe incluir datos confusos o extremos por defecto.
+- `extended` puede añadir más volumen y escenarios visuales, pero debe seguir siendo navegable.
+- `edge` puede sembrar datos raros o conflictivos, siempre con nombres y notas claramente identificables.
+
+### Comandos esperados
+
+- `php artisan tenants:dev-migrate --seed --dataset=base`
+- `php artisan tenants:dev-migrate --seed --dataset=extended`
+- `php artisan tenants:dev-migrate --seed --dataset=edge`
+- `php artisan tenants:migrate --seed --dataset=base`
+- `php artisan tenants:seed --dataset=extended`
+
+Si se usa `--class`, esa clase específica tiene prioridad sobre `--dataset`.
+
+---
+
 ## Resumen
 
 | Aspecto | Recomendación |

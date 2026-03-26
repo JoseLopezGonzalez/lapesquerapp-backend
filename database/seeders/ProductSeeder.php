@@ -35,7 +35,7 @@ class ProductSeeder extends Seeder
         $congeladoEviscerado = $families->firstWhere('name', 'Congelado eviscerado');
 
         if ($species->isEmpty() || $zones->isEmpty()) {
-            $this->command->warn('ProductSeeder: Ejecuta antes SpeciesSeeder y CaptureZonesSeeder.');
+            $this->command?->warn('ProductSeeder: Ejecuta antes SpeciesSeeder y CaptureZonesSeeder.');
             return;
         }
 
@@ -87,7 +87,7 @@ class ProductSeeder extends Seeder
         // Productos extra con nombres realistas (Merluza, Calamar, Sepia)
         $currentCount = Product::count();
         if ($currentCount >= 25) {
-            $this->command->info('ProductSeeder: Ya existen suficientes productos. Omitiendo productos extra.');
+            $this->command?->info('ProductSeeder: Ya existen suficientes productos. Omitiendo productos extra.');
             return;
         }
         $extraProducts = [

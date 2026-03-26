@@ -12,9 +12,9 @@ use App\Models\ProductionOutput;
 use App\Models\ProductionOutputConsumption;
 use App\Models\ProductionRecord;
 use App\Models\Species;
-use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\BuildsProductionScenario;
 use Tests\Concerns\ConfiguresTenantConnection;
 use Tests\TestCase;
 
@@ -24,6 +24,7 @@ use Tests\TestCase;
  */
 class ProductionBlockApiTest extends TestCase
 {
+    use BuildsProductionScenario;
     use RefreshDatabase;
     use ConfiguresTenantConnection;
 
@@ -41,24 +42,11 @@ class ProductionBlockApiTest extends TestCase
 
     private function createTenantAndUser(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
         $slug = 'production-' . uniqid();
-        Tenant::create([
-            'name' => 'Test Tenant Production',
-            'subdomain' => $slug,
-            'database' => $database,
-            'status' => 'active',
-        ]);
+        $scenario = $this->createProductionScenario($slug);
 
-        $user = User::create([
-            'name' => 'Test User Production',
-            'email' => $slug . '@test.com',
-            'password' => bcrypt('password'),
-            'role' => Role::Administrador->value,
-        ]);
-
-        $this->token = $user->createToken('test')->plainTextToken;
-        $this->tenantSubdomain = $slug;
+        $this->token = $scenario['user']->createToken('test')->plainTextToken;
+        $this->tenantSubdomain = $scenario['slug'];
     }
 
     private function authHeaders(): array
@@ -98,41 +86,9 @@ class ProductionBlockApiTest extends TestCase
 
     private function createProductionWithRecords(): array
     {
-        $gear = FishingGear::create(['name' => 'Nasas']);
-        $species = Species::create([
-            'name' => 'Bacalao',
-            'scientific_name' => 'Gadus',
-            'fao' => 'COD',
-            'image' => 'https://example.com/species-cod.png',
-            'fishing_gear_id' => $gear->id,
-        ]);
-        $captureZone = CaptureZone::factory()->create();
+        $scenario = $this->createProductionScenario('production-graph-'.uniqid());
 
-        $production = Production::create([
-            'lot' => 'LOT-' . uniqid(),
-            'date' => now()->toDateString(),
-            'species_id' => $species->id,
-            'capture_zone_id' => $captureZone->id,
-            'opened_at' => now(),
-        ]);
-
-        $parentProcess = Process::create(['name' => 'Corte', 'type' => 'process']);
-        $childProcess = Process::create(['name' => 'Envasado', 'type' => 'final']);
-
-        $parentRecord = ProductionRecord::create([
-            'production_id' => $production->id,
-            'process_id' => $parentProcess->id,
-            'started_at' => now()->subHour(),
-        ]);
-
-        $childRecord = ProductionRecord::create([
-            'production_id' => $production->id,
-            'parent_record_id' => $parentRecord->id,
-            'process_id' => $childProcess->id,
-            'started_at' => now(),
-        ]);
-
-        return [$production, $parentRecord, $childRecord];
+        return [$scenario['production'], $scenario['parentRecord'], $scenario['childRecord']];
     }
 
     private function createValidProduct(Species $species, CaptureZone $captureZone, string $suffix = '01'): Product

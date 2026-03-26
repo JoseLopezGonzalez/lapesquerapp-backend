@@ -203,9 +203,6 @@ return [
 
     'aliases' => Facade::defaultAliases()->merge([
         // 'Example' => App\Facades\Example::class,
-        'PDF' => Barryvdh\DomPDF\Facade::class, // Eliminar
-        'PDF' => Barryvdh\Snappy\Facades\SnappyPdf::class,
-        'SnappyImage' => Barryvdh\Snappy\Facades\SnappyImage::class,
         /* 'Excel' => Maatwebsite\Excel\Facades\Excel::class, */
 
 

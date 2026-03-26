@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\CaptureZone;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class CaptureZoneFactory extends Factory
 {
+    protected $model = CaptureZone::class;
+
     /**
      * Define the model's default state.
      *
@@ -17,7 +20,7 @@ class CaptureZoneFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => $this->faker->word,
+            'name' => 'Zona ' . $this->faker->unique()->bothify('FAO-##'),
         ];
     }
 }

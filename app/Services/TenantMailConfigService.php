@@ -16,13 +16,15 @@ class TenantMailConfigService
      */
     public function configureTenantMailer(): void
     {
+        // En local/testing, SIEMPRE usamos la configuración global de Laravel (.env),
+        // para no depender de `company.mail.*` y evitar roturas por datasets/seeders.
+        if (app()->environment('local', 'testing')) {
+            return;
+        }
+
         // Obtener configuración del tenant
         $mailHost = $this->getTenantSetting('company.mail.host');
 
-        // En desarrollo: si el tenant no tiene mail configurado, usar la config por defecto (Mailpit desde .env)
-        if (app()->environment('local', 'testing') && empty($mailHost)) {
-            return;
-        }
         $mailPort = $this->getTenantSetting('company.mail.port');
         $mailEncryption = $this->getTenantSetting('company.mail.encryption');
         $mailUsername = $this->getTenantSetting('company.mail.username');
@@ -42,16 +44,11 @@ class TenantMailConfigService
             $missingFields[] = 'Puerto SMTP';
         }
 
-        if (empty($mailEncryption)) {
-            $missingFields[] = 'Encriptación (TLS/SSL)';
-        }
-
-        if (empty($mailUsername)) {
-            $missingFields[] = 'Usuario SMTP';
-        }
-
-        if (empty($mailPassword)) {
-            $missingFields[] = 'Contraseña SMTP';
+        // En otros entornos: permitir encryption vacío (null) y exigir que username/password vengan en pareja.
+        $hasUsername = ! empty($mailUsername);
+        $hasPassword = ! empty($mailPassword);
+        if ($hasUsername xor $hasPassword) {
+            $missingFields[] = $hasUsername ? 'Contraseña SMTP' : 'Usuario SMTP';
         }
 
         if (empty($mailFromAddress)) {
@@ -71,7 +68,7 @@ class TenantMailConfigService
         Config::set('mail.default', $mailMailer);
         Config::set('mail.mailers.smtp.host', $mailHost);
         Config::set('mail.mailers.smtp.port', (int) $mailPort);
-        Config::set('mail.mailers.smtp.encryption', $mailEncryption);
+        Config::set('mail.mailers.smtp.encryption', $mailEncryption ?: null);
         Config::set('mail.mailers.smtp.username', $mailUsername);
         Config::set('mail.mailers.smtp.password', $mailPassword);
 

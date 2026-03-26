@@ -61,7 +61,7 @@ class Pallet extends Model
         ];
     }
 
-    protected $fillable = ['observations', 'status', 'reception_id', 'timeline'];
+    protected $fillable = ['observations', 'status', 'order_id', 'reception_id', 'timeline'];
 
     protected $casts = [
         'timeline' => 'array',

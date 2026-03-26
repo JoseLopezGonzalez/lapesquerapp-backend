@@ -80,6 +80,6 @@ class FeatureFlagSeeder extends Seeder
             }
         }
 
-        $this->command->info('FeatureFlagSeeder: ' . (count(self::FLAGS) * 3) . ' flags seeded.');
+        $this->command?->info('FeatureFlagSeeder: ' . (count(self::FLAGS) * 3) . ' flags seeded.');
     }
 }

@@ -4,26 +4,21 @@ namespace Tests\Feature;
 
 use App\Enums\Role;
 use App\Models\AgendaAction;
-use App\Models\CaptureZone;
 use App\Models\Country;
 use App\Models\Customer;
-use App\Models\FishingGear;
-use App\Models\Incoterm;
-use App\Models\Offer;
-use App\Models\PaymentTerm;
-use App\Models\Product;
 use App\Models\Prospect;
 use App\Models\Salesperson;
 use App\Models\Setting;
-use App\Models\Tax;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\BuildsCrmScenario;
 use Tests\Concerns\ConfiguresTenantConnection;
 use Tests\TestCase;
 
 class CrmApiTest extends TestCase
 {
+    use BuildsCrmScenario;
     use ConfiguresTenantConnection;
     use RefreshDatabase;
 
@@ -1221,6 +1216,23 @@ class CrmApiTest extends TestCase
             ->assertJsonMissing(['company.mail.password' => 'secret']);
     }
 
+    public function test_crm_scenario_helper_builds_offer_ready_dependencies(): void
+    {
+        $deps = $this->createOfferDependencies();
+
+        $this->assertSame($this->commercialSalesperson->id, $deps['primarySalesperson']->id);
+        $this->assertSame($this->otherSalesperson->id, $deps['secondarySalesperson']->id);
+        $this->assertSame($this->commercialSalesperson->id, $deps['mainProspect']->salesperson_id);
+        $this->assertSame($this->otherSalesperson->id, $deps['secondaryProspect']->salesperson_id);
+        $this->assertNotNull($deps['country']->id);
+        $this->assertNotNull($deps['paymentTerm']->id);
+        $this->assertNotNull($deps['incoterm']->id);
+        $this->assertNotNull($deps['tax']->id);
+        $this->assertNotNull($deps['transport']->id);
+        $this->assertNotNull($deps['product']->id);
+        $this->assertNotNull($deps['customer']->id);
+    }
+
     private function createTenantAndActors(): void
     {
         $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
@@ -1266,33 +1278,10 @@ class CrmApiTest extends TestCase
 
     private function createOfferDependencies(): array
     {
-        $country = Country::firstOrCreate(['name' => 'Italia CRM']);
-        $paymentTerm = PaymentTerm::firstOrCreate(['name' => 'Pago contado CRM']);
-        $incoterm = Incoterm::firstOrCreate(['code' => 'FOB'], ['description' => 'Free on Board']);
-        $tax = Tax::firstOrCreate(['name' => 'IVA CRM'], ['rate' => 21]);
-        $transport = \App\Models\Transport::firstOrCreate(
-            ['name' => 'Transport CRM'],
-            ['vat_number' => 'B'.uniqid(), 'address' => 'Street', 'emails' => 'transport@test.com']
+        return $this->createCrmScenarioDependencies(
+            $this->commercialSalesperson,
+            $this->otherSalesperson,
         );
-        $fishingGear = FishingGear::firstOrCreate(['name' => 'Arrastre CRM']);
-        $species = \App\Models\Species::create([
-            'name' => 'Especie CRM '.uniqid(),
-            'scientific_name' => 'Species crm '.uniqid(),
-            'fao' => 'CRM',
-            'image' => 'https://example.test/species-crm.png',
-            'fishing_gear_id' => $fishingGear->id,
-        ]);
-        $captureZone = CaptureZone::factory()->create();
-        $product = Product::create([
-            'name' => 'Producto CRM',
-            'species_id' => $species->id,
-            'capture_zone_id' => $captureZone->id,
-            'article_gtin' => '8400000000001',
-            'box_gtin' => '9400000000001',
-            'pallet_gtin' => '9900000000001',
-        ]);
-
-        return compact('country', 'paymentTerm', 'incoterm', 'tax', 'transport', 'product');
     }
 
     private function commercialHeaders(): array

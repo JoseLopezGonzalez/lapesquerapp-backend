@@ -8,14 +8,15 @@ use App\Models\FieldOperator;
 use App\Models\RouteStop;
 use App\Models\RouteTemplate;
 use App\Models\Salesperson;
-use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\BuildsRouteScenario;
 use Tests\Concerns\ConfiguresTenantConnection;
 use Tests\TestCase;
 
 class RouteManagementApiTest extends TestCase
 {
+    use BuildsRouteScenario;
     use ConfiguresTenantConnection;
     use RefreshDatabase;
 
@@ -38,48 +39,16 @@ class RouteManagementApiTest extends TestCase
         $this->ensureDatabaseReachable();
         parent::setUp();
         $this->setUpTenantConnection();
-
-        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
         $slug = 'routes-'.uniqid();
-        Tenant::create([
-            'name' => 'Routes Tenant',
-            'subdomain' => $slug,
-            'database' => $database,
-            'status' => 'active',
-        ]);
+        $scenario = $this->createRouteScenario($slug);
 
-        $this->tenantSubdomain = $slug;
-        $this->adminUser = User::create([
-            'name' => 'Admin',
-            'email' => $slug.'-admin@test.com',
-            'role' => Role::Administrador->value,
-            'active' => true,
-        ]);
-        $this->fieldUser = User::create([
-            'name' => 'Field User',
-            'email' => $slug.'-field@test.com',
-            'role' => Role::RepartidorAutoventa->value,
-            'active' => true,
-        ]);
-        $this->commercialUser = User::create([
-            'name' => 'Commercial User',
-            'email' => $slug.'-commercial@test.com',
-            'role' => Role::Comercial->value,
-            'active' => true,
-        ]);
-        $this->fieldOperator = FieldOperator::create([
-            'name' => 'Repartidor Test',
-            'user_id' => $this->fieldUser->id,
-        ]);
-        $this->commercialSalesperson = Salesperson::create([
-            'name' => 'Commercial Salesperson',
-            'emails' => 'commercial@test.com;',
-            'user_id' => $this->commercialUser->id,
-        ]);
-        $this->otherSalesperson = Salesperson::create([
-            'name' => 'Other Salesperson',
-            'emails' => 'other@test.com;',
-        ]);
+        $this->tenantSubdomain = $scenario['slug'];
+        $this->adminUser = $scenario['adminUser'];
+        $this->fieldUser = $scenario['fieldUser'];
+        $this->commercialUser = $scenario['commercialUser'];
+        $this->fieldOperator = $scenario['fieldOperator'];
+        $this->commercialSalesperson = $scenario['commercialSalesperson'];
+        $this->otherSalesperson = $scenario['otherSalesperson'];
     }
 
     private function headersFor(User $user): array
@@ -260,5 +229,17 @@ class RouteManagementApiTest extends TestCase
 
         $ownTemplate->assertStatus(201)
             ->assertJsonPath('data.salesperson.id', $this->commercialSalesperson->id);
+    }
+
+    public function test_route_scenario_helper_creates_reusable_base_graph(): void
+    {
+        $scenario = $this->createRouteScenario('routes-helper-'.uniqid());
+
+        $this->assertNotNull($scenario['customer']->id);
+        $this->assertNotNull($scenario['prospect']->id);
+        $this->assertNotNull($scenario['order']->id);
+        $this->assertSame($scenario['route']->id, $scenario['order']->route_id);
+        $this->assertSame($scenario['routeStop']->id, $scenario['order']->route_stop_id);
+        $this->assertSame($scenario['template']->id, $scenario['route']->route_template_id);
     }
 }

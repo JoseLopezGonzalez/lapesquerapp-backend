@@ -11,7 +11,7 @@ use Faker\Factory as Faker;
 /**
  * Líneas de producto de recepciones de materia prima — entorno tipo producción.
  * Inspirado en patrones reales: reception_id, product_id, lot (null), net_weight (0.7–105 kg), price (null).
- * Solo añade líneas que no existan (firstOrCreate por reception_id + product_id + lot).
+ * Solo añade líneas que no existan (evita duplicar reception_id + product_id).
  */
 class RawMaterialReceptionProductSeeder extends Seeder
 {
@@ -45,20 +45,22 @@ class RawMaterialReceptionProductSeeder extends Seeder
 
             $exists = RawMaterialReceptionProduct::where('reception_id', $reception->id)
                 ->where('product_id', $product->id)
-                ->whereNull('lot')
                 ->exists();
             if ($exists) {
                 continue;
             }
 
             $netWeight = $faker->randomFloat(2, 0.7, 105);
+            $lot = $faker->boolean(70)
+                ? $faker->dateTimeBetween('-4 months', 'now')->format('dmy') . $faker->optional(0.25)->passthrough('OCC' . $faker->numerify('#####'))
+                : null;
 
             RawMaterialReceptionProduct::create([
                 'reception_id' => $reception->id,
                 'product_id' => $product->id,
-                'lot' => null,
+                'lot' => $lot,
                 'net_weight' => $netWeight,
-                'price' => null,
+                'price' => $faker->optional(0.75)->randomFloat(3, 1.5, 14),
             ]);
             $created++;
         }

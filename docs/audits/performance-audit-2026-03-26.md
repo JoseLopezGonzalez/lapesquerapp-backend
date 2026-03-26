@@ -388,13 +388,13 @@ Los porcentajes de mejora son estimaciones relativas al total del sobrecoste té
 
 | #   | Acción                                                                          | Impacto   | Esfuerzo | Riesgo   | Plazo      | % mejora estimado | Estado          |
 | --- | ------------------------------------------------------------------------------- | --------- | -------- | -------- | ---------- | :---------------: | :-------------: |
-| 1   | Cambiar `QUEUE_CONNECTION=redis` en env                                         | CRÍTICO   | Muy bajo | Muy bajo | Inmediato  | ~15 %             | ⬜ Por implementar |
-| 2   | Cambiar `CACHE_DRIVER=redis`, `SESSION_DRIVER=redis`                            | Alto      | Muy bajo | Muy bajo | Inmediato  | ~5 %              | ⬜ Por implementar |
-| 3   | Remover paquetes muertos (jwt, dompdf, spatie-pdf, cloud-doc-ai)                | Alto      | Bajo     | Muy bajo | Sprint 1   | ~4 %              | ⬜ Por implementar |
-| 4   | Corregir session.php fallback y alias PDF duplicado                             | Medio     | Muy bajo | Muy bajo | Sprint 1   | ~1 %              | ⬜ Por implementar |
-| 5   | Índices en `boxes.lot` y `boxes.gs1_128`                                        | Alto      | Bajo     | Muy bajo | Sprint 1   | ~5 %              | ⬜ Por implementar |
-| 6   | Activar `preventLazyLoading()` en local                                         | Alto (DX) | Muy bajo | Muy bajo | Sprint 1   | ~3 % (DX)         | ⬜ Por implementar |
-| 7   | `route:cache` / `config:cache` en deploy                                        | Medio     | Bajo     | Bajo     | Sprint 1   | ~2 %              | ⬜ Por implementar |
+| 1   | Cambiar `QUEUE_CONNECTION=redis` en env                                         | CRÍTICO   | Muy bajo | Muy bajo | Inmediato  | ~15 %             | ✅ Implementado |
+| 2   | Cambiar `CACHE_DRIVER=redis`, `SESSION_DRIVER=redis`                            | Alto      | Muy bajo | Muy bajo | Inmediato  | ~5 %              | ✅ Implementado |
+| 3   | Remover paquetes muertos (jwt, dompdf, snappy, spatie-pdf, cloud-doc-ai)        | Alto      | Bajo     | Muy bajo | Sprint 1   | ~4 %              | ✅ Implementado |
+| 4   | Corregir session.php fallback y alias PDF duplicado                             | Medio     | Muy bajo | Muy bajo | Sprint 1   | ~1 %              | ✅ Implementado |
+| 5   | Índices en `boxes.lot` y `boxes.gs1_128`                                        | Alto      | Bajo     | Muy bajo | Sprint 1   | ~5 %              | ✅ Migración creada (pendiente `migrate:companies`) |
+| 6   | Activar `preventLazyLoading()` en local                                         | Alto (DX) | Muy bajo | Muy bajo | Sprint 1   | ~3 % (DX)         | ✅ Implementado |
+| 7   | `route:cache` / `config:cache` en deploy                                        | Medio     | Bajo     | Bajo     | Sprint 1   | ~2 %              | ⬜ Por implementar (pipeline de deploy) |
 | 8   | Mover PDF generation a `GeneratePdfJob`                                         | CRÍTICO   | Alto     | Medio    | Sprint 2   | ~20 %             | ⬜ Por implementar |
 | 9   | Mover Excel exports a `GenerateExcelJob`                                        | CRÍTICO   | Alto     | Medio    | Sprint 2   | ~15 %             | ⬜ Por implementar |
 | 10  | Eliminar `.load()` de `Order::getTotalNetWeightAttribute`                       | Alto      | Medio    | Medio    | Sprint 2   | ~6 %              | ⬜ Por implementar |

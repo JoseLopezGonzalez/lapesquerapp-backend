@@ -54,7 +54,7 @@ class CeboDispatchProductSeeder extends Seeder
                 'dispatch_id' => $dispatch->id,
                 'product_id' => $product->id,
                 'net_weight' => $netWeight,
-                'price' => null,
+                'price' => $faker->optional(0.6)->randomFloat(3, 0.5, 7),
             ]);
             $created++;
         }

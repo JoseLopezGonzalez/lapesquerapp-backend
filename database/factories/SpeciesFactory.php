@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Species;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class SpeciesFactory extends Factory
 {
+    protected $model = Species::class;
+
     /**
      * Define the model's default state.
      *
@@ -17,9 +20,9 @@ class SpeciesFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => $this->faker->word,
-            'scientific_name' => $this->faker->word,
-            'fao' => $this->faker->word,
+            'name' => 'Especie ' . $this->faker->unique()->word,
+            'scientific_name' => $this->faker->unique()->lexify('Species ?????'),
+            'fao' => strtoupper($this->faker->unique()->lexify('???')),
             'image' => $this->faker->imageUrl(),
         ];
     }

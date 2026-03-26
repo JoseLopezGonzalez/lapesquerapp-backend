@@ -2,13 +2,14 @@
 
 namespace App\Console\Commands;
 
+use App\Support\TenantSeedDataset;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
 class TenantDevMigrate extends Command
 {
-    protected $signature = 'tenants:dev-migrate {--fresh} {--seed}';
+    protected $signature = 'tenants:dev-migrate {--fresh} {--seed} {--dataset=base}';
 
     protected $description = 'Ejecuta las migraciones de tenant (companies) sobre la BD por defecto. Para desarrollo con Sail cuando no hay tenants registrados o se usa la misma BD.';
 
@@ -44,10 +45,20 @@ class TenantDevMigrate extends Command
         $this->line(Artisan::output());
 
         if ($this->option('seed')) {
+            $dataset = $this->option('dataset');
+
+            if (! TenantSeedDataset::isValid($dataset)) {
+                $this->error('Dataset no valido. Usa uno de: '.implode(', ', TenantSeedDataset::values()));
+
+                return Command::FAILURE;
+            }
+
+            $seederClass = TenantSeedDataset::seederClassFor($dataset);
+
             $this->info('Sembrando tenant...');
             Artisan::call('db:seed', [
                 '--database' => 'tenant',
-                '--class' => 'TenantDatabaseSeeder',
+                '--class' => $seederClass,
                 '--force' => true,
             ]);
             $this->line(Artisan::output());
