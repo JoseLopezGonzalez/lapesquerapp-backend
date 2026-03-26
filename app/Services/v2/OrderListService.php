@@ -39,7 +39,16 @@ class OrderListService
         if ($request->has('active')) {
             if ($request->active == 'true') {
                 $query = Order::withTotals()
-                    ->with(['customer', 'salesperson', 'fieldOperator', 'transport', 'incoterm', 'offer'])
+                    ->with([
+                        'customer',
+                        'salesperson',
+                        'fieldOperator',
+                        'transport',
+                        'incoterm',
+                        'offer',
+                        'plannedProductDetails',
+                        'plannedProductDetails.tax',
+                    ])
                     ->where(function ($query) {
                         $query->where('status', 'pending')
                             ->orWhereDate('load_date', '>=', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
@@ -49,7 +58,16 @@ class OrderListService
                 return $query->get();
             }
             $query = Order::withTotals()
-                ->with(['customer', 'salesperson', 'fieldOperator', 'transport', 'incoterm', 'offer'])
+                ->with([
+                    'customer',
+                    'salesperson',
+                    'fieldOperator',
+                    'transport',
+                    'incoterm',
+                    'offer',
+                    'plannedProductDetails',
+                    'plannedProductDetails.tax',
+                ])
                 ->where('status', 'finished')
                 ->whereDate('load_date', '<', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
             self::scopeForComercial($query, $user);
@@ -57,7 +75,16 @@ class OrderListService
             return $query->get();
         }
 
-        $query = Order::withTotals()->with(['customer', 'salesperson', 'fieldOperator', 'transport', 'incoterm', 'offer']);
+        $query = Order::withTotals()->with([
+            'customer',
+            'salesperson',
+            'fieldOperator',
+            'transport',
+            'incoterm',
+            'offer',
+            'plannedProductDetails',
+            'plannedProductDetails.tax',
+        ]);
         self::scopeForComercial($query, $user);
 
         if ($request->has('customers')) {

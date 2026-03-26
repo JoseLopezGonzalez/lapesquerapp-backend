@@ -752,7 +752,7 @@ El backend ya soporta ✅:
 | Crear acción pending directa                  | `POST /crm/agenda`                                     | `CrmAgendaService`                              |
 | Crear acción pending desde interacción        | `POST /commercial-interactions` (con `nextActionAt`)   | `CommercialInteractionService::store()`         |
 | Reschedule (crea cadena `previous_action_id`) | `POST /crm/agenda/{id}/reschedule`                     | `CrmAgendaService::reschedule()`                |
-| Cancel                                        | `POST /crm/agenda/{id}/cancel`                         | `CrmAgendaService::cancel()`                    |
+| Cancel                                        | `POST /crm/agenda/{id}/cancel` (requiere `reason`)    | `CrmAgendaService::cancel()`                    |
 | Completar desde interacción                   | `POST /commercial-interactions` (con `agendaActionId`) | `CrmAgendaService::completeFromInteraction()`   |
 
 

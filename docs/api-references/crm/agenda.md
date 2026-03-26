@@ -23,6 +23,7 @@ Respuesta:
         "scheduledAt": "2026-03-20",
         "description": "Enviar oferta",
         "status": "pending",
+        "reason": null,
         "target": { "type": "prospect", "id": 10 },
         "label": "Acme Seafood"
       }
@@ -75,7 +76,13 @@ Payload:
 
 ## POST /crm/agenda/{id}/cancel
 
-No body requerido.
+Payload:
+
+```json
+{
+  "reason": "Cliente pospone compra"
+}
+```
 
 ## GET /crm/agenda/pending (preflight)
 

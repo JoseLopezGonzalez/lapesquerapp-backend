@@ -619,11 +619,24 @@ class CrmApiTest extends TestCase
 
         // Cancel la nueva
         $cancel = $this->withHeaders($this->commercialHeaders())
-            ->postJson('/api/v2/crm/agenda/'.$newId.'/cancel');
+            ->postJson('/api/v2/crm/agenda/'.$newId.'/cancel', [
+                'reason' => 'No aplica por cambio de prioridad',
+            ]);
 
-        $cancel->assertStatus(200);
+        $cancel->assertStatus(200)
+            ->assertJsonPath('data.status', 'cancelled')
+            ->assertJsonPath('data.reason', 'No aplica por cambio de prioridad');
         $cancelled = AgendaAction::query()->find($newId);
         $this->assertSame('cancelled', $cancelled->status);
+        $this->assertSame('No aplica por cambio de prioridad', $cancelled->reason);
+
+        $calendar = $this->withHeaders($this->commercialHeaders())
+            ->getJson('/api/v2/crm/agenda');
+        $calendar->assertStatus(200);
+        $cancelledItem = collect($calendar->json('data.events'))
+            ->firstWhere('agendaActionId', $newId);
+        $this->assertNotNull($cancelledItem);
+        $this->assertSame('No aplica por cambio de prioridad', $cancelledItem['reason']);
     }
 
     public function test_reschedule_without_next_action_note_inherits_previous_description(): void

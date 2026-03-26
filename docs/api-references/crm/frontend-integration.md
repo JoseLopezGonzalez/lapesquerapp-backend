@@ -920,6 +920,7 @@ Opción C: operaciones legacy de agenda
 
 - `POST /api/v2/crm/agenda/{id}/reschedule`
 - `POST /api/v2/crm/agenda/{id}/cancel`
+  - requiere body `{ "reason": "..." }`
 
 ### Flujo 4. Enviar oferta desde prospecto
 

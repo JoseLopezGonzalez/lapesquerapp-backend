@@ -13,7 +13,9 @@ class CancelCrmAgendaActionRequest extends FormRequest
 
     public function rules(): array
     {
-        return [];
+        return [
+            'reason' => 'required|string|max:1000',
+        ];
     }
 }
 

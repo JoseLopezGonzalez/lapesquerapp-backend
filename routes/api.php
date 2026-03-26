@@ -208,7 +208,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('/stores/options', [V2StoreController::class, 'options']);
         Route::get('/products/options', [V2ProductController::class, 'options']);
         Route::get('stores', [V2StoreController::class, 'index']);
-        Route::get('stores/{store}', [V2StoreController::class, 'show']);
+        Route::get('stores/{store}', [V2StoreController::class, 'show'])->whereNumber('store');
 
         Route::post('/pallets/assign-to-position', [V2PalletController::class, 'assignToPosition']);
         Route::post('/pallets/move-to-store', [V2PalletController::class, 'moveToStore']);
@@ -369,8 +369,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::delete('product-families', [ProductFamilyController::class, 'destroyMultiple']);
 
         Route::post('stores', [V2StoreController::class, 'store']);
-        Route::put('stores/{store}', [V2StoreController::class, 'update']);
-        Route::delete('stores/{store}', [V2StoreController::class, 'destroy']);
+        Route::put('stores/{store}', [V2StoreController::class, 'update'])->whereNumber('store');
+        Route::delete('stores/{store}', [V2StoreController::class, 'destroy'])->whereNumber('store');
         Route::delete('stores', [V2StoreController::class, 'deleteMultiple']);
 
         Route::apiResource('payment-terms', V2PaymentTermController::class);

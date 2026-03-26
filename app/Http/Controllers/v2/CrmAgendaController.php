@@ -88,9 +88,12 @@ class CrmAgendaController extends Controller
 
     public function cancel(CancelCrmAgendaActionRequest $request, string $id): JsonResponse
     {
+        $v = $request->validated();
+
         $action = CrmAgendaService::cancel(
             $request->user(),
             (int) $id,
+            $v['reason'],
         );
 
         return response()->json([

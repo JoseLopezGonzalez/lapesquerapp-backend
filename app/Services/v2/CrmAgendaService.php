@@ -304,7 +304,8 @@ class CrmAgendaService
 
     public static function cancel(
         Authenticatable $user,
-        int $agendaActionId
+        int $agendaActionId,
+        string $reason
     ): AgendaAction {
         $action = AgendaAction::query()->where('id', $agendaActionId)->first();
         if (! $action) {
@@ -321,7 +322,10 @@ class CrmAgendaService
             ]);
         }
 
-        $action->update(['status' => 'cancelled']);
+        $action->update([
+            'status' => 'cancelled',
+            'reason' => $reason,
+        ]);
 
         return $action->fresh();
     }
@@ -757,6 +761,7 @@ class CrmAgendaService
                 'scheduledAt' => $action->scheduled_at?->format('Y-m-d'),
                 'description' => $action->description,
                 'status' => $action->status,
+                'reason' => $action->reason,
                 'target' => [
                     'type' => $action->target_type,
                     'id' => $action->target_id,
