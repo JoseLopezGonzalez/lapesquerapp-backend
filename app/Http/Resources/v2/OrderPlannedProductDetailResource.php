@@ -16,10 +16,10 @@ class OrderPlannedProductDetailResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'product' => $this->product->toArrayAssoc(),
+            'product' => $this->relationLoaded('product') ? $this->product?->toArrayAssoc() : null,
             'quantity' => $this->quantity,
             'boxes' => $this->boxes,
-            'tax' => $this->tax->toArrayAssoc(),
+            'tax' => $this->relationLoaded('tax') ? $this->tax?->toArrayAssoc() : null,
             'orderId' => $this->order_id,
             'unitPrice' => $this->unit_price,
         ];

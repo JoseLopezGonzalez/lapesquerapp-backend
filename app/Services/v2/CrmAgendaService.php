@@ -3,6 +3,7 @@
 namespace App\Services\v2;
 
 use App\Enums\Role;
+use App\Exceptions\DomainValidationException;
 use App\Models\AgendaAction;
 use App\Models\CommercialInteraction;
 use App\Models\Customer;
@@ -325,6 +326,211 @@ class CrmAgendaService
         return $action->fresh();
     }
 
+    public static function pendingSnapshot(
+        Authenticatable $user,
+        string $targetType,
+        int $targetId
+    ): ?array {
+        self::ensureAllowedTarget($user, $targetType, $targetId);
+
+        $pending = self::getPendingForTarget($targetType, $targetId);
+        if (! $pending) {
+            return null;
+        }
+
+        $today = Carbon::today(config('app.business_timezone', 'Europe/Madrid'));
+        $scheduledAt = Carbon::parse($pending->scheduled_at?->format('Y-m-d'), config('app.business_timezone', 'Europe/Madrid'));
+        $daysOverdue = $scheduledAt->isBefore($today) ? $scheduledAt->diffInDays($today) : 0;
+
+        return array_merge($pending->toArrayAssoc(), [
+            'isOverdue' => $daysOverdue > 0,
+            'daysOverdue' => $daysOverdue,
+        ]);
+    }
+
+    public static function resolveNextAction(
+        Authenticatable $user,
+        string $targetType,
+        int $targetId,
+        string $strategy,
+        ?string $nextActionAt = null,
+        ?string $description = null,
+        ?string $reason = null,
+        ?int $sourceInteractionId = null,
+        ?int $expectedPendingId = null
+    ): array {
+        self::ensureAllowedTarget($user, $targetType, $targetId);
+
+        $connection = DB::connection('tenant');
+        $driver = $connection->getDriverName();
+        $lockKey = sprintf('crm_next_action:%s:%d', $targetType, $targetId);
+        $lockAcquired = false;
+
+        try {
+            if ($driver === 'mysql') {
+                $lockRow = $connection->selectOne('SELECT GET_LOCK(?, 10) AS l', [$lockKey]);
+                $lockAcquired = (int) ($lockRow->l ?? 0) === 1;
+                if (! $lockAcquired) {
+                    throw new DomainValidationException(
+                        'STALE_PENDING',
+                        'La próxima acción ha cambiado. Recarga y revisa el estado actual.',
+                        ['lock' => ['STALE_PENDING: no se pudo adquirir lock de resolución para este target.']]
+                    );
+                }
+            }
+
+            return $connection->transaction(function () use (
+                $targetType,
+                $targetId,
+                $strategy,
+                $nextActionAt,
+                $description,
+                $reason,
+                $sourceInteractionId,
+                $expectedPendingId
+            ) {
+                $pending = AgendaAction::query()
+                    ->where('target_type', $targetType)
+                    ->where('target_id', $targetId)
+                    ->where('status', 'pending')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($expectedPendingId !== null) {
+                    if (! $pending || (int) $pending->id !== (int) $expectedPendingId) {
+                        throw new DomainValidationException(
+                            'STALE_PENDING',
+                            'La próxima acción ha cambiado. Recarga y revisa el estado actual.',
+                            ['expectedPendingId' => ['STALE_PENDING: la acción pendiente ya no coincide con la vista del usuario.']]
+                        );
+                    }
+                }
+
+                $previousAfter = $pending;
+                $current = $pending;
+                $changed = false;
+
+                if ($strategy === 'keep') {
+                    if (! $pending) {
+                        throw new DomainValidationException(
+                            'NO_PENDING_TO_UPDATE',
+                            'No existe una acción pendiente para mantener.',
+                            ['strategy' => ['NO_PENDING_TO_UPDATE: no existe pending activa.']]
+                        );
+                    }
+                }
+
+                if ($strategy === 'update') {
+                    if (! $pending) {
+                        throw new DomainValidationException(
+                            'NO_PENDING_TO_UPDATE',
+                            'No existe una acción pendiente para actualizar.',
+                            ['strategy' => ['NO_PENDING_TO_UPDATE: no existe pending activa.']]
+                        );
+                    }
+
+                    $pending->update([
+                        'description' => $description,
+                    ]);
+                    $previousAfter = $pending->fresh();
+                    $current = $previousAfter;
+                    $changed = true;
+                }
+
+                if ($strategy === 'reschedule') {
+                    if (! $pending) {
+                        throw new DomainValidationException(
+                            'NO_PENDING_TO_UPDATE',
+                            'No existe una acción pendiente para reprogramar.',
+                            ['strategy' => ['NO_PENDING_TO_UPDATE: no existe pending activa.']]
+                        );
+                    }
+
+                    $pending->update(['status' => 'reprogrammed']);
+                    $previousAfter = $pending->fresh();
+
+                    $new = AgendaAction::create([
+                        'target_type' => $targetType,
+                        'target_id' => $targetId,
+                        'scheduled_at' => $nextActionAt,
+                        'description' => $description ?? $pending->description,
+                        'status' => 'pending',
+                        'source_interaction_id' => $sourceInteractionId,
+                        'previous_action_id' => $pending->id,
+                    ]);
+                    $current = $new->fresh();
+                    $changed = true;
+                }
+
+                if ($strategy === 'override') {
+                    if (! $pending) {
+                        throw new DomainValidationException(
+                            'NO_PENDING_TO_UPDATE',
+                            'No existe una acción pendiente para sobreescribir.',
+                            ['strategy' => ['NO_PENDING_TO_UPDATE: no existe pending activa.']]
+                        );
+                    }
+
+                    $pending->update([
+                        'status' => 'cancelled',
+                        'reason' => $reason,
+                    ]);
+                    $previousAfter = $pending->fresh();
+
+                    $new = AgendaAction::create([
+                        'target_type' => $targetType,
+                        'target_id' => $targetId,
+                        'scheduled_at' => $nextActionAt,
+                        'description' => $description,
+                        'status' => 'pending',
+                        'reason' => null,
+                        'source_interaction_id' => $sourceInteractionId,
+                        'previous_action_id' => $pending->id,
+                    ]);
+                    $current = $new->fresh();
+                    $changed = true;
+                }
+
+                if ($strategy === 'create_if_none') {
+                    if ($pending) {
+                        throw new DomainValidationException(
+                            'PENDING_EXISTS',
+                            'Ya existe una acción pendiente activa para este target.',
+                            ['strategy' => ['PENDING_EXISTS: ya existe pending activa.']]
+                        );
+                    }
+
+                    $new = AgendaAction::create([
+                        'target_type' => $targetType,
+                        'target_id' => $targetId,
+                        'scheduled_at' => $nextActionAt,
+                        'description' => $description,
+                        'status' => 'pending',
+                        'reason' => null,
+                        'source_interaction_id' => $sourceInteractionId,
+                        'previous_action_id' => null,
+                    ]);
+                    $current = $new->fresh();
+                    $previousAfter = null;
+                    $changed = true;
+                }
+
+                self::syncLegacyProspectNextAction($targetType, $targetId, $current);
+
+                return [
+                    'strategy' => $strategy,
+                    'changed' => $changed,
+                    'previousPending' => $previousAfter?->toArrayAssoc(),
+                    'currentPending' => $current?->toArrayAssoc(),
+                ];
+            });
+        } finally {
+            if ($driver === 'mysql' && $lockAcquired) {
+                $connection->select('SELECT RELEASE_LOCK(?)', [$lockKey]);
+            }
+        }
+    }
+
     public static function getPendingForTarget(string $targetType, int $targetId): ?AgendaAction
     {
         return AgendaAction::query()
@@ -332,6 +538,32 @@ class CrmAgendaService
             ->where('target_id', $targetId)
             ->where('status', 'pending')
             ->first();
+    }
+
+    private static function syncLegacyProspectNextAction(string $targetType, int $targetId, ?AgendaAction $currentPending): void
+    {
+        if ($targetType !== self::TARGET_PROSPECT) {
+            return;
+        }
+
+        $prospect = Prospect::query()->find($targetId);
+        if (! $prospect) {
+            return;
+        }
+
+        if ($currentPending) {
+            $prospect->update([
+                'next_action_at' => $currentPending->scheduled_at?->format('Y-m-d'),
+                'next_action_note' => $currentPending->description,
+            ]);
+
+            return;
+        }
+
+        $prospect->update([
+            'next_action_at' => null,
+            'next_action_note' => null,
+        ]);
     }
 
     /**

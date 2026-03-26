@@ -81,7 +81,7 @@ class Store extends Model
             'temperature' => $this->temperature,
             'capacity' => $this->capacity,
             'storeType' => $this->store_type,
-            'externalUser' => $this->externalUser ? [
+            'externalUser' => $this->relationLoaded('externalUser') && $this->externalUser ? [
                 'id' => $this->externalUser->id,
                 'name' => $this->externalUser->name,
                 'email' => $this->externalUser->email,
@@ -106,7 +106,7 @@ class Store extends Model
             'temperature' => $this->temperature,
             'capacity' => $this->capacity,
             'storeType' => $this->store_type,
-            'externalUser' => $this->externalUser ? [
+            'externalUser' => $this->relationLoaded('externalUser') && $this->externalUser ? [
                 'id' => $this->externalUser->id,
                 'name' => $this->externalUser->name,
                 'email' => $this->externalUser->email,

@@ -148,27 +148,24 @@ class CrmApiTest extends TestCase
                 'occurredAt' => now()->subHour()->toISOString(),
                 'summary' => 'Llamada de seguimiento',
                 'result' => 'pending',
-                'nextActionNote' => 'Enviar oferta',
-                'nextActionAt' => now()->addDay()->format('Y-m-d'),
             ]);
 
         $response->assertStatus(201)
             ->assertJsonPath('data.prospectId', $prospect->id)
             ->assertJsonPath('data.type', 'call')
-            ->assertJsonPath('agenda.mode', 'created')
+            ->assertJsonPath('agenda.mode', null)
             ->assertJsonPath('agenda.completedAction', null)
-            ->assertJsonPath('agenda.createdAction.status', 'pending')
-            ->assertJsonPath('agenda.createdAction.description', 'Enviar oferta');
+            ->assertJsonPath('agenda.createdAction', null);
 
         $prospect->refresh();
         $this->assertNotNull($prospect->last_contact_at);
-        $this->assertEquals(now()->addDay()->format('Y-m-d'), $prospect->next_action_at?->format('Y-m-d'));
-        $this->assertEquals('Enviar oferta', $prospect->next_action_note);
+        $this->assertNull($prospect->next_action_at);
+        $this->assertNull($prospect->next_action_note);
 
         $show = $this->withHeaders($this->commercialHeaders())
             ->getJson('/api/v2/prospects/'.$prospect->id);
         $show->assertStatus(200)
-            ->assertJsonPath('data.nextActionNote', 'Enviar oferta');
+            ->assertJsonPath('data.nextActionNote', null);
     }
 
     public function test_interaction_requires_exactly_one_target(): void
@@ -240,15 +237,10 @@ class CrmApiTest extends TestCase
         ]);
 
         $this->withHeaders($this->commercialHeaders())
-            ->postJson('/api/v2/commercial-interactions', [
-                'prospectId' => $prospect->id,
-                'type' => 'call',
-                'occurredAt' => now()->subHour()->toISOString(),
-                'summary' => 'Primera agenda',
-                'result' => 'pending',
-                'nextActionNote' => 'Primera nota',
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/schedule-action', [
                 'nextActionAt' => now()->addDay()->format('Y-m-d'),
-            ])->assertStatus(201);
+                'nextActionNote' => 'Primera nota',
+            ])->assertStatus(200);
 
         $this->withHeaders($this->commercialHeaders())
             ->postJson('/api/v2/commercial-interactions', [
@@ -259,7 +251,8 @@ class CrmApiTest extends TestCase
                 'result' => 'pending',
                 'nextActionNote' => 'Segunda nota',
                 'nextActionAt' => now()->addDays(2)->format('Y-m-d'),
-            ])->assertStatus(422);
+            ])->assertStatus(422)
+            ->assertJsonValidationErrors(['nextActionAt']);
     }
 
     public function test_done_requires_agenda_action_id_when_next_action_at_is_null(): void
@@ -271,19 +264,11 @@ class CrmApiTest extends TestCase
             'origin' => Prospect::ORIGIN_DIRECT,
         ]);
 
-        // Creamos pending con nextActionAt
-        $createPending = $this->withHeaders($this->commercialHeaders())
-            ->postJson('/api/v2/commercial-interactions', [
-                'prospectId' => $prospect->id,
-                'type' => 'email',
-                'occurredAt' => now()->subHour()->toISOString(),
-                'summary' => 'Agenda a cumplir',
-                'result' => 'pending',
-                'nextActionNote' => 'Tarea a hacer',
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/schedule-action', [
                 'nextActionAt' => now()->addDay()->format('Y-m-d'),
-            ]);
-
-        $createPending->assertStatus(201);
+                'nextActionNote' => 'Tarea a hacer',
+            ])->assertStatus(200);
 
         $pending = AgendaAction::query()
             ->where('target_type', 'prospect')
@@ -293,7 +278,7 @@ class CrmApiTest extends TestCase
 
         $this->assertNotNull($pending);
 
-        // Cerramos SIN agendaActionId -> 422
+        // Cerramos SIN agendaActionId -> ahora sí se guarda interacción (paso 1 desacoplado)
         $withoutAgendaActionId = $this->withHeaders($this->commercialHeaders())
             ->postJson('/api/v2/commercial-interactions', [
                 'prospectId' => $prospect->id,
@@ -303,7 +288,8 @@ class CrmApiTest extends TestCase
                 'result' => 'pending',
             ]);
 
-        $withoutAgendaActionId->assertStatus(422);
+        $withoutAgendaActionId->assertStatus(201)
+            ->assertJsonPath('agenda.mode', null);
 
         // Cerramos CON agendaActionId -> OK, y se marca done.
         $done = $this->withHeaders($this->commercialHeaders())
@@ -336,18 +322,11 @@ class CrmApiTest extends TestCase
             'origin' => Prospect::ORIGIN_DIRECT,
         ]);
 
-        $createPending = $this->withHeaders($this->commercialHeaders())
-            ->postJson('/api/v2/commercial-interactions', [
-                'prospectId' => $prospect->id,
-                'type' => 'call',
-                'occurredAt' => now()->subDay()->toISOString(),
-                'summary' => 'Primera tarea',
-                'result' => 'pending',
-                'nextActionNote' => 'Visita inicial',
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/schedule-action', [
                 'nextActionAt' => now()->addDay()->format('Y-m-d'),
-            ]);
-
-        $createPending->assertStatus(201);
+                'nextActionNote' => 'Visita inicial',
+            ])->assertStatus(200);
 
         $pending = AgendaAction::query()
             ->where('target_type', 'prospect')
@@ -404,18 +383,13 @@ class CrmApiTest extends TestCase
             'contact_info' => 'Contacto principal',
         ]);
 
-        $createPending = $this->withHeaders($this->commercialHeaders())
-            ->postJson('/api/v2/commercial-interactions', [
-                'customerId' => $customer->id,
-                'type' => 'email',
-                'occurredAt' => now()->subDay()->toISOString(),
-                'summary' => 'Seguimiento inicial',
-                'result' => 'pending',
-                'nextActionNote' => 'Llamar para cerrar',
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/crm/agenda', [
+                'targetType' => 'customer',
+                'targetId' => $customer->id,
                 'nextActionAt' => now()->addDay()->format('Y-m-d'),
-            ]);
-
-        $createPending->assertStatus(201);
+                'nextActionNote' => 'Llamar para cerrar',
+            ])->assertStatus(201);
 
         $pending = AgendaAction::query()
             ->where('target_type', 'customer')
@@ -696,6 +670,188 @@ class CrmApiTest extends TestCase
         $this->assertSame($pending->id, (int) $new->previous_action_id);
     }
 
+    public function test_step1_fails_fast_when_next_action_fields_are_sent_without_agenda_action_id(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Fail Fast Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+
+        $response = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/commercial-interactions', [
+                'prospectId' => $prospect->id,
+                'type' => 'call',
+                'occurredAt' => now()->toISOString(),
+                'summary' => 'Intento mezclar paso 2',
+                'result' => 'pending',
+                'nextActionAt' => now()->addDay()->format('Y-m-d'),
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('code', 'VALIDATION_ERROR')
+            ->assertJsonValidationErrors(['nextActionAt']);
+    }
+
+    public function test_step1_rejects_next_action_note_without_next_action_at_even_with_agenda_action_id(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Legacy Note Guard Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/schedule-action', [
+                'nextActionAt' => now()->addDay()->format('Y-m-d'),
+                'nextActionNote' => 'Pendiente base',
+            ])->assertStatus(200);
+
+        $pending = AgendaAction::query()
+            ->where('target_type', 'prospect')
+            ->where('target_id', $prospect->id)
+            ->where('status', 'pending')
+            ->firstOrFail();
+
+        $response = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/commercial-interactions', [
+                'prospectId' => $prospect->id,
+                'type' => 'call',
+                'occurredAt' => now()->toISOString(),
+                'summary' => 'Intento invalido de nota suelta',
+                'result' => 'pending',
+                'agendaActionId' => $pending->id,
+                'nextActionNote' => 'No debería pasar',
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('code', 'VALIDATION_ERROR')
+            ->assertJsonValidationErrors(['nextActionNote']);
+    }
+
+    public function test_resolve_next_action_override_returns_expected_contract_and_reason(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Resolve Override Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/schedule-action', [
+                'nextActionAt' => now()->addDay()->format('Y-m-d'),
+                'nextActionNote' => 'Pendiente original',
+            ])->assertStatus(200);
+
+        $current = AgendaAction::query()
+            ->where('target_type', 'prospect')
+            ->where('target_id', $prospect->id)
+            ->where('status', 'pending')
+            ->firstOrFail();
+
+        $response = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/crm/agenda/resolve-next-action', [
+                'targetType' => 'prospect',
+                'targetId' => $prospect->id,
+                'strategy' => 'override',
+                'nextActionAt' => now()->addDays(3)->format('Y-m-d'),
+                'description' => 'Nueva prioridad',
+                'reason' => 'Cambio de contexto',
+                'expectedPendingId' => $current->id,
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.strategy', 'override')
+            ->assertJsonPath('data.changed', true)
+            ->assertJsonPath('data.previousPending.agendaActionId', $current->id)
+            ->assertJsonPath('data.previousPending.status', 'cancelled')
+            ->assertJsonPath('data.previousPending.reason', 'Cambio de contexto')
+            ->assertJsonPath('data.currentPending.status', 'pending')
+            ->assertJsonPath('data.currentPending.previousActionId', $current->id);
+
+        $current->refresh();
+        $this->assertSame('cancelled', $current->status);
+        $this->assertSame('Cambio de contexto', $current->reason);
+    }
+
+    public function test_resolve_next_action_returns_domain_codes_for_pending_exists_and_stale_pending(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Resolve Codes Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/schedule-action', [
+                'nextActionAt' => now()->addDay()->format('Y-m-d'),
+                'nextActionNote' => 'Pendiente activa',
+            ])->assertStatus(200);
+
+        $pending = AgendaAction::query()
+            ->where('target_type', 'prospect')
+            ->where('target_id', $prospect->id)
+            ->where('status', 'pending')
+            ->firstOrFail();
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/crm/agenda/resolve-next-action', [
+                'targetType' => 'prospect',
+                'targetId' => $prospect->id,
+                'strategy' => 'create_if_none',
+                'nextActionAt' => now()->addDays(2)->format('Y-m-d'),
+            ])->assertStatus(422)
+            ->assertJsonPath('code', 'PENDING_EXISTS');
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/crm/agenda/resolve-next-action', [
+                'targetType' => 'prospect',
+                'targetId' => $prospect->id,
+                'strategy' => 'override',
+                'nextActionAt' => now()->addDays(4)->format('Y-m-d'),
+                'description' => 'Nueva',
+                'reason' => 'Prueba stale',
+                'expectedPendingId' => $pending->id + 999,
+            ])->assertStatus(422)
+            ->assertJsonPath('code', 'STALE_PENDING');
+    }
+
+    public function test_preflight_pending_returns_overdue_fields(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Preflight Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+
+        $none = $this->withHeaders($this->commercialHeaders())
+            ->getJson('/api/v2/crm/agenda/pending?targetType=prospect&targetId='.$prospect->id);
+        $none->assertStatus(200)->assertJsonPath('data', null);
+
+        AgendaAction::create([
+            'target_type' => 'prospect',
+            'target_id' => $prospect->id,
+            'scheduled_at' => now()->subDays(2)->format('Y-m-d'),
+            'description' => 'Vencida',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->withHeaders($this->commercialHeaders())
+            ->getJson('/api/v2/crm/agenda/pending?targetType=prospect&targetId='.$prospect->id);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.targetType', 'prospect')
+            ->assertJsonPath('data.targetId', $prospect->id)
+            ->assertJsonPath('data.isOverdue', true);
+
+        $this->assertGreaterThanOrEqual(1, (int) $response->json('data.daysOverdue'));
+    }
+
     public function test_prospect_can_be_converted_to_customer(): void
     {
         $paymentTerm = PaymentTerm::firstOrCreate(['name' => '30 dias CRM']);
@@ -910,9 +1066,13 @@ class CrmApiTest extends TestCase
                 'occurredAt' => now()->subHour()->toISOString(),
                 'summary' => 'Recordatorio de hoy',
                 'result' => 'pending',
-                'nextActionNote' => 'Enviar recordatorio',
-                'nextActionAt' => now()->format('Y-m-d'),
             ])->assertStatus(201);
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/schedule-action', [
+                'nextActionAt' => now()->format('Y-m-d'),
+                'nextActionNote' => 'Enviar recordatorio',
+            ])->assertStatus(200);
 
         $response = $this->withHeaders($this->commercialHeaders())
             ->getJson('/api/v2/crm/dashboard');
@@ -1161,8 +1321,13 @@ class CrmApiTest extends TestCase
                 'occurredAt' => now()->subHour()->toISOString(),
                 'summary' => 'Interaccion de hoy',
                 'result' => 'pending',
-                'nextActionAt' => now()->format('Y-m-d'),
             ])->assertStatus(201);
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$staleProspect->id.'/schedule-action', [
+                'nextActionAt' => now()->format('Y-m-d'),
+                'nextActionNote' => 'Seguimiento hoy',
+            ])->assertStatus(200);
 
         // La agenda “pending” ahora vive en `agenda_actions`:
         // creamos la pending para `todayProspect` vía el endpoint legacy-wrapper.

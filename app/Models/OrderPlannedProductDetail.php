@@ -51,8 +51,8 @@ class OrderPlannedProductDetail  extends Model
         return [
             'id' => $this->id,
             'orderId' => $this->order_id,
-            'product' => $this->product->toArrayAssoc(),
-            'tax' => $this->tax->toArrayAssoc(),
+            'product' => $this->relationLoaded('product') ? $this->product?->toArrayAssoc() : null,
+            'tax' => $this->relationLoaded('tax') ? $this->tax?->toArrayAssoc() : null,
             'quantity' => $this->quantity,
             'boxes' => $this->boxes,
             'unitPrice' => $this->unit_price,

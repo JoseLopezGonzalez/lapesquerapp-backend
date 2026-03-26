@@ -14,6 +14,17 @@ class ProductionOutputConsumptionResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $productionOutput = $this->relationLoaded('productionOutput') ? $this->productionOutput : null;
+        $productionOutputProduct = $productionOutput && $productionOutput->relationLoaded('product')
+            ? $productionOutput->product
+            : null;
+        $parentRecord = $productionOutput && $productionOutput->relationLoaded('productionRecord')
+            ? $productionOutput->productionRecord
+            : null;
+        $parentProcess = $parentRecord && $parentRecord->relationLoaded('process')
+            ? $parentRecord->process
+            : null;
+
         return [
             'id' => $this->id,
             'productionRecordId' => $this->production_record_id,
@@ -28,10 +39,10 @@ class ProductionOutputConsumptionResource extends JsonResource
             }),
             
             // Información del producto
-            'product' => $this->when($this->productionOutput && $this->productionOutput->product, function () {
+            'product' => $this->when($productionOutputProduct, function () use ($productionOutputProduct) {
                 return [
-                    'id' => $this->productionOutput->product->id,
-                    'name' => $this->productionOutput->product->name,
+                    'id' => $productionOutputProduct->id,
+                    'name' => $productionOutputProduct->name,
                 ];
             }),
             
@@ -41,12 +52,12 @@ class ProductionOutputConsumptionResource extends JsonResource
             }),
             
             // Información del proceso padre (del output)
-            'parentRecord' => $this->when($this->productionOutput && $this->productionOutput->productionRecord, function () {
+            'parentRecord' => $this->when($parentRecord, function () use ($parentRecord, $parentProcess) {
                 return [
-                    'id' => $this->productionOutput->productionRecord->id,
-                    'process' => $this->productionOutput->productionRecord->process ? [
-                        'id' => $this->productionOutput->productionRecord->process->id,
-                        'name' => $this->productionOutput->productionRecord->process->name,
+                    'id' => $parentRecord->id,
+                    'process' => $parentProcess ? [
+                        'id' => $parentProcess->id,
+                        'name' => $parentProcess->name,
                     ] : null,
                 ];
             }),
@@ -58,17 +69,17 @@ class ProductionOutputConsumptionResource extends JsonResource
             'boxesConsumptionPercentage' => round($this->boxes_consumption_percentage, 2),
             
             // Información del output original para referencia
-            'outputTotalWeight' => $this->when($this->productionOutput, function () {
-                return $this->productionOutput->weight_kg ?? 0;
+            'outputTotalWeight' => $this->when($productionOutput, function () use ($productionOutput) {
+                return $productionOutput->weight_kg ?? 0;
             }),
-            'outputTotalBoxes' => $this->when($this->productionOutput, function () {
-                return $this->productionOutput->boxes ?? 0;
+            'outputTotalBoxes' => $this->when($productionOutput, function () use ($productionOutput) {
+                return $productionOutput->boxes ?? 0;
             }),
-            'outputAvailableWeight' => $this->when($this->productionOutput, function () {
-                return $this->productionOutput->available_weight_kg ?? 0;
+            'outputAvailableWeight' => $this->when($productionOutput, function () use ($productionOutput) {
+                return $productionOutput->available_weight_kg ?? 0;
             }),
-            'outputAvailableBoxes' => $this->when($this->productionOutput, function () {
-                return $this->productionOutput->available_boxes ?? 0;
+            'outputAvailableBoxes' => $this->when($productionOutput, function () use ($productionOutput) {
+                return $productionOutput->available_boxes ?? 0;
             }),
             
             'createdAt' => $this->created_at?->toIso8601String(),

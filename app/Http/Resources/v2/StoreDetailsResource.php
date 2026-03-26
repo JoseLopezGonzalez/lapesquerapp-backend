@@ -20,7 +20,7 @@ class StoreDetailsResource extends JsonResource
             'temperature' => $this->temperature,
             'capacity' => $this->capacity,
             'storeType' => $this->store_type,
-            'externalUser' => $this->externalUser ? [
+            'externalUser' => $this->relationLoaded('externalUser') && $this->externalUser ? [
                 'id' => $this->externalUser->id,
                 'name' => $this->externalUser->name,
                 'email' => $this->externalUser->email,
@@ -29,11 +29,11 @@ class StoreDetailsResource extends JsonResource
             'netWeightPallets' => $this->netWeightPallets,
             'totalNetWeight' => $this->totalNetWeight,
             'content' => [
-                'pallets' => $this->palletsV2->map(function ($pallet) {
+                'pallets' => $this->relationLoaded('palletsV2') ? $this->palletsV2->map(function ($pallet) {
                     /* return $pallet->toArrayAssocV2(); */ /* resource */
                     return $pallet->toArrayAssocV2();
 
-                }),
+                }) : [],
                 'boxes' => [],
                 'bigBoxes' => [],
             ],

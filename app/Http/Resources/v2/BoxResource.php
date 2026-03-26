@@ -15,19 +15,20 @@ class BoxResource extends JsonResource
     public function toArray(Request $request): array
     {
         $production = $this->production;
+        $product = $this->relationLoaded('product') ? $this->product : null;
         
         return [
             'id' => $this->id,
-            'palletId' => $this->pallet ? $this->pallet->id : null,
-            'product' => [
-                'species' => $this->product->species->toArrayAssoc(),
-                'captureZone' => $this->product->captureZone->toArrayAssoc(),
-                'articleGtin' => $this->product->article_gtin,
-                'boxGtin' => $this->product->box_gtin,
-                'palletGtin' => $this->product->pallet_gtin,
-                'name' => $this->product->name,
-                'id' => $this->product->id,
-            ],
+            'palletId' => $this->relationLoaded('pallet') && $this->pallet ? $this->pallet->id : null,
+            'product' => $product ? [
+                'species' => $product->relationLoaded('species') ? $product->species?->toArrayAssoc() : null,
+                'captureZone' => $product->relationLoaded('captureZone') ? $product->captureZone?->toArrayAssoc() : null,
+                'articleGtin' => $product->article_gtin,
+                'boxGtin' => $product->box_gtin,
+                'palletGtin' => $product->pallet_gtin,
+                'name' => $product->name,
+                'id' => $product->id,
+            ] : null,
             'lot' => $this->lot,
             'gs1128' => $this->gs1_128,
             'grossWeight' => $this->gross_weight,

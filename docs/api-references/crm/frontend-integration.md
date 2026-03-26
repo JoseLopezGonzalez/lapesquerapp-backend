@@ -362,12 +362,23 @@ Errores típicos:
 - En V1 las interacciones no se editan
 - Si la interacción es sobre prospecto:
   - se actualiza `last_contact_at`
-  - si llega `nextActionAt`, se copian fecha y `nextActionNote` a `prospects.next_action_at` y `prospects.next_action_note`
-  - si no llega `nextActionAt`, se limpian fecha y descripción de la próxima acción
-- Semántica de agenda en `POST /api/v2/commercial-interactions`:
-  - `nextActionAt` sin `agendaActionId`: crea una `agenda_actions.pending`
-  - `agendaActionId` sin `nextActionAt`: marca esa acción como `done`
-  - `agendaActionId + nextActionAt`: marca la actual como `done` y crea una nueva `pending` enlazada
+  - en interacción libre (sin agendaActionId) no toca `next_action_*`
+  - en flujo legacy con `agendaActionId + nextActionAt`, replica a `prospects.next_action_*`
+- Semántica de agenda actual en `POST /api/v2/commercial-interactions`:
+  - sin `agendaActionId` y sin campos de próxima acción: guarda interacción, `agenda.mode = null`
+  - sin `agendaActionId` y con `nextActionAt/nextActionNote`: `422` fail-fast
+  - `agendaActionId` sin `nextActionAt`: `completed`
+  - `agendaActionId + nextActionAt`: `completed_and_created` (compat)
+
+#### Endpoint nuevo de resolución de próxima acción (Paso 2)
+
+- `POST /api/v2/crm/agenda/resolve-next-action`
+- `GET /api/v2/crm/agenda/pending` (preflight)
+
+Regla de flujo recomendada:
+
+1. Guardar interacción (`POST /commercial-interactions`)
+2. Resolver próxima acción (`POST /crm/agenda/resolve-next-action`)
 
 #### Respuesta de escritura relevante
 
@@ -412,8 +423,9 @@ Además de `data` con la interacción, el backend devuelve un bloque raíz `agen
 
 #### Implicación importante para frontend
 
-- Para “Marcar hecha” sin siguiente acción: enviar `agendaActionId` y no enviar `nextActionAt`
-- Para “Marcar hecha y programar siguiente”: enviar `agendaActionId + nextActionAt + nextActionNote?`
+- Para interacción libre (nueva UX 2 pasos): no enviar `nextActionAt/nextActionNote` en Paso 1.
+- Para “Marcar hecha” sin siguiente acción: enviar `agendaActionId` y no enviar `nextActionAt`.
+- Para “Marcar hecha y programar siguiente” (compat): enviar `agendaActionId + nextActionAt + nextActionNote?`.
 - Usar `POST /api/v2/crm/agenda/{id}/reschedule` solo cuando la intención sea reprogramar una pendiente existente sin marcarla `done`
 
 Errores típicos:
@@ -421,7 +433,8 @@ Errores típicos:
 - `422` si faltan ambos targets o vienen ambos
 - `422` si el comercial apunta a un target ajeno
 - `422` si `agendaActionId` no existe, no está `pending` o pertenece a otro target
-- `422` si al crear la nueva acción ya queda otra `pending` activa para ese target
+- `422` fail-fast si se intenta gestionar próxima acción en Paso 1 sin `agendaActionId`
+- `422` con `code` de dominio en Paso 2 (`PENDING_EXISTS`, `NO_PENDING_TO_UPDATE`, `STALE_PENDING`)
 - `403` si intenta leer una interacción fuera de su scope
 
 ---
@@ -889,30 +902,24 @@ Esto aplica en:
 1. `POST /api/v2/commercial-interactions`
 2. si es sobre prospecto:
    - se actualiza `last_contact_at`
-   - se actualiza o limpia `next_action_at` y `next_action_note`
+3. si corresponde agenda:
+   - ejecutar `POST /api/v2/crm/agenda/resolve-next-action`
 
 ### Flujo 3. Resolver una acción pendiente
 
-Opción A. Registrar una interacción sin nueva acción:
+Opción A (recomendada): interacción + resolución en 2 pasos
 
-- `POST /api/v2/commercial-interactions`
-- sin `nextActionAt`
-- con `agendaActionId`
+- Paso 1: `POST /api/v2/commercial-interactions`
+- Paso 2: `POST /api/v2/crm/agenda/resolve-next-action`
 
-Opción B. Registrar una interacción cerrando la actual y dejando la siguiente preparada:
+Opción B (compat): cerrar y crear siguiente en una sola interacción
 
-- `POST /api/v2/commercial-interactions`
-- con `agendaActionId`
-- con `nextActionAt`
-- con `nextActionNote` opcional
+- `POST /api/v2/commercial-interactions` con `agendaActionId + nextActionAt`
 
-Opción C. Reprogramar:
+Opción C: operaciones legacy de agenda
 
 - `POST /api/v2/crm/agenda/{id}/reschedule`
-
-Opción D. Limpiar sin interacción:
-
-- `DELETE /api/v2/prospects/{id}/next-action`
+- `POST /api/v2/crm/agenda/{id}/cancel`
 
 ### Flujo 4. Enviar oferta desde prospecto
 

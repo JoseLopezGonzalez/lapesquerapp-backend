@@ -11,6 +11,7 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\QueryException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use App\Exceptions\DomainValidationException;
 
 class Handler extends ExceptionHandler
 {
@@ -42,13 +43,24 @@ class Handler extends ExceptionHandler
         if ($request->expectsJson() || $request->is('api/*')) {
 
             // Manejar errores de validación
+            if ($exception instanceof DomainValidationException) {
+                return response()->json([
+                    'message' => $exception->getMessage(),
+                    'userMessage' => $exception->userMessage,
+                    'code' => $exception->domainCode,
+                    'errors' => $exception->errors,
+                ], $exception->status);
+            }
+
             if ($exception instanceof ValidationException) {
                 $errors = $exception->errors();
                 $userMessage = $this->formatValidationErrorsForUser($errors);
+                $domainCode = $this->detectDomainCodeFromValidationErrors($errors, $request) ?? 'VALIDATION_ERROR';
 
                 return response()->json([
                     'message' => 'Error de validación.',
                     'userMessage' => $userMessage,
+                    'code' => $domainCode,
                     'errors' => $errors, // Detalles técnicos para programadores
                 ], 422); // 422 Unprocessable Entity
             }
@@ -227,6 +239,36 @@ class Handler extends ExceptionHandler
         }
         
         return 'Hay errores en los datos enviados.';
+    }
+
+    private function detectDomainCodeFromValidationErrors(array $errors, $request = null): ?string
+    {
+        // Para resolve-next-action, cualquier error de validación de request
+        // se considera INVALID_STRATEGY_FIELDS por contrato de API.
+        if ($request && $request->is('api/v2/crm/agenda/resolve-next-action')) {
+            return 'INVALID_STRATEGY_FIELDS';
+        }
+
+        $knownCodes = [
+            'INVALID_STRATEGY_FIELDS',
+            'PENDING_EXISTS',
+            'NO_PENDING_TO_UPDATE',
+            'STALE_PENDING',
+            'TARGET_MISMATCH',
+            'PENDING_NOT_ACTIVE',
+        ];
+
+        foreach ($errors as $fieldErrors) {
+            foreach ($fieldErrors as $error) {
+                foreach ($knownCodes as $code) {
+                    if (str_contains((string) $error, $code)) {
+                        return $code;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
     
     /**

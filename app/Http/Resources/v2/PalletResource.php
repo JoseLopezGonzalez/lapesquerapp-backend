@@ -14,33 +14,36 @@ class PalletResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $boxes = $this->relationLoaded('boxes') ? $this->boxes : collect();
+        $store = $this->relationLoaded('store') ? $this->store : null;
+
         return [
             'id' => $this->id,
             'observations' => $this->observations,
             'state' => $this->stateArray,
-            'productsNames' => $this->productsNames,
-            'boxes' => $this->boxes->map(function ($box) {
+            'productsNames' => $this->relationLoaded('boxes') ? $this->productsNames : [],
+            'boxes' => $boxes->map(function ($box) {
                 return $box->toArrayAssocV2();
             }),
-            'lots' => $this->lots,
-            'netWeight' => $this->netWeight !== null ? round($this->netWeight, 3) : null,
+            'lots' => $this->relationLoaded('boxes') ? $this->lots : [],
+            'netWeight' => $this->relationLoaded('boxes') && $this->netWeight !== null ? round($this->netWeight, 3) : null,
             'position' => $this->position,
             'store' => /* si es null o no */
-                $this->store ? [
-                    'id' => $this->store->id,
-                    'name' => $this->store->name,
+                $store ? [
+                    'id' => $store->id,
+                    'name' => $store->name,
                 ] : null,
             'orderId' => $this->order_id,
-            'numberOfBoxes' => $this->numberOfBoxes,
+            'numberOfBoxes' => $this->relationLoaded('boxes') ? $this->numberOfBoxes : 0,
             // Campos calculados para cajas disponibles y usadas
-            'availableBoxesCount' => $this->availableBoxesCount,
-            'usedBoxesCount' => $this->usedBoxesCount,
-            'totalAvailableWeight' => $this->totalAvailableWeight !== null ? round($this->totalAvailableWeight, 3) : null,
-            'totalUsedWeight' => $this->totalUsedWeight !== null ? round($this->totalUsedWeight, 3) : null,
+            'availableBoxesCount' => $this->relationLoaded('boxes') ? $this->availableBoxesCount : 0,
+            'usedBoxesCount' => $this->relationLoaded('boxes') ? $this->usedBoxesCount : 0,
+            'totalAvailableWeight' => $this->relationLoaded('boxes') && $this->totalAvailableWeight !== null ? round($this->totalAvailableWeight, 3) : 0,
+            'totalUsedWeight' => $this->relationLoaded('boxes') && $this->totalUsedWeight !== null ? round($this->totalUsedWeight, 3) : 0,
             // Nuevos campos de recepción y coste
             'receptionId' => $this->reception_id,
-            'costPerKg' => $this->cost_per_kg !== null ? round($this->cost_per_kg, 4) : null,
-            'totalCost' => $this->total_cost !== null ? round($this->total_cost, 2) : null,
+            'costPerKg' => $this->relationLoaded('boxes') && $this->cost_per_kg !== null ? round($this->cost_per_kg, 4) : null,
+            'totalCost' => $this->relationLoaded('boxes') && $this->total_cost !== null ? round($this->total_cost, 2) : null,
         ];
     }
 }

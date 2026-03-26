@@ -690,44 +690,64 @@ class Pallet extends Model
 
     public function toArrayAssoc()
     {
+        $boxes = $this->relationLoaded('boxes') ? $this->boxes : collect();
+        $products = [];
+        $lots = [];
+
+        foreach ($boxes as $box) {
+            if (! $box || ! $box->relationLoaded('box') || ! $box->box) {
+                continue;
+            }
+
+            if (! in_array($box->box->lot, $lots, true)) {
+                $lots[] = $box->box->lot;
+            }
+
+            if ($box->box->relationLoaded('product') && $box->box->product) {
+                $products[$box->box->product->id] = $box->box->product->name;
+            }
+        }
+
         return [
             'id' => $this->id,
             'observations' => $this->observations,
             'state' => $this->stateArray,
-            'boxes' => $this->boxes ? $this->boxes->map(function ($box) {
+            'boxes' => $boxes->map(function ($box) {
                 return $box->toArrayAssoc();
-            }) : [],
-            'netWeight' => $this->netWeight,
-            'productsNames' => $this->productsNames,
-            'lots' => $this->lots,
-            'numberOfBoxes' => $this->numberOfBoxes,
+            }),
+            'netWeight' => $boxes->sum(fn ($box) => $box->net_weight ?? 0),
+            'productsNames' => array_values($products),
+            'lots' => $lots,
+            'numberOfBoxes' => $boxes->count(),
         ];
     }
 
     public function toArrayAssocV2()
     {
+        $boxesV2 = $this->relationLoaded('boxesV2') ? $this->boxesV2 : collect();
+
         return [
             'id' => $this->id,
             'observations' => $this->observations,
             'state' => $this->stateArray,
-            'boxes' => $this->boxesV2 ? $this->boxesV2->map(function ($box) {
+            'boxes' => $boxesV2->map(function ($box) {
                 return $box ? $box->toArrayAssocV2() : null;
-            })->filter() : [],
-            'netWeight' => $this->netWeight,
-            'productsNames' => $this->productsNames,
-            'lots' => $this->lots,
-            'numberOfBoxes' => $this->numberOfBoxes,
+            })->filter(),
+            'netWeight' => $this->relationLoaded('boxes') ? $this->netWeight : 0,
+            'productsNames' => $this->relationLoaded('boxes') ? $this->productsNames : [],
+            'lots' => $this->relationLoaded('boxes') ? $this->lots : [],
+            'numberOfBoxes' => $this->relationLoaded('boxes') ? $this->numberOfBoxes : 0,
             'position' => $this->positionV2,
             'orderId' => $this->order_id,
             // Campos calculados para cajas disponibles y usadas
-            'availableBoxesCount' => $this->availableBoxesCount,
-            'usedBoxesCount' => $this->usedBoxesCount,
-            'totalAvailableWeight' => $this->totalAvailableWeight !== null ? round($this->totalAvailableWeight, 3) : null,
-            'totalUsedWeight' => $this->totalUsedWeight !== null ? round($this->totalUsedWeight, 3) : null,
+            'availableBoxesCount' => $this->relationLoaded('boxes') ? $this->availableBoxesCount : 0,
+            'usedBoxesCount' => $this->relationLoaded('boxes') ? $this->usedBoxesCount : 0,
+            'totalAvailableWeight' => $this->relationLoaded('boxes') && $this->totalAvailableWeight !== null ? round($this->totalAvailableWeight, 3) : 0,
+            'totalUsedWeight' => $this->relationLoaded('boxes') && $this->totalUsedWeight !== null ? round($this->totalUsedWeight, 3) : 0,
             // Nuevos campos de recepción y coste
             'receptionId' => $this->reception_id,
-            'costPerKg' => $this->cost_per_kg !== null ? round($this->cost_per_kg, 4) : null,
-            'totalCost' => $this->total_cost !== null ? round($this->total_cost, 2) : null,
+            'costPerKg' => $this->relationLoaded('boxes') && $this->cost_per_kg !== null ? round($this->cost_per_kg, 4) : null,
+            'totalCost' => $this->relationLoaded('boxes') && $this->total_cost !== null ? round($this->total_cost, 2) : null,
         ];
     }
 

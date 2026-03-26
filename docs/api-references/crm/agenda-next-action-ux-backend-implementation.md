@@ -2,8 +2,79 @@
 
 Documento vivo para discusión y aterrizaje técnico (backend) del flujo UX de **Próxima acción / Acción pendiente** en el rol comercial.
 
-> **Última revisión de estado**: 2026-03-26
+> **Última revisión de estado**: 2026-03-26 (implementación backend actualizada)
 > **Nota canónica**: para contrato API / integración backend, la sección **“Dependencias Backend (spec para implementación)”** prevalece sobre secciones anteriores si hubiera discrepancias de naming o semántica.
+
+---
+
+## Resumen de integración frontend (estado real implementado)
+
+Este bloque está escrito como referencia rápida “as-built” para el frontend.
+
+### Flujo en producción (2 pasos + compat legacy)
+
+1. **Paso 1** (`POST /api/v2/commercial-interactions`): registrar interacción.
+2. **Paso 2** (`POST /api/v2/crm/agenda/resolve-next-action`): gestionar próxima acción.
+
+Compatibilidad mantenida:
+
+- Si llega `agendaActionId` + `nextActionAt` en Paso 1, se permite `completed_and_created` (flujo legado de “marcar hecha y crear siguiente”).
+
+### Reglas efectivas de Paso 1 (`/commercial-interactions`)
+
+- Sin `agendaActionId` y sin campos de próxima acción: **201**, guarda interacción y `agenda.mode = null`.
+- Sin `agendaActionId` pero con `nextActionAt`/`nextActionNote`: **422 fail-fast** (forzar Paso 2).
+- Con `agendaActionId` y sin `nextActionAt`: **201**, `agenda.mode = completed`.
+- Con `agendaActionId` y con `nextActionAt` (`nextActionNote` opcional legacy): **201**, `agenda.mode = completed_and_created`.
+
+### Reglas efectivas de Paso 2 (`/crm/agenda/resolve-next-action`)
+
+Payload base:
+
+```json
+{
+  "targetType": "prospect|customer",
+  "targetId": 10,
+  "strategy": "keep|update|reschedule|override|create_if_none",
+  "nextActionAt": "2026-03-20",
+  "description": "Enviar propuesta",
+  "reason": "Sobrescrita por nueva acción",
+  "sourceInteractionId": 501,
+  "expectedPendingId": 123
+}
+```
+
+Respuesta base:
+
+```json
+{
+  "message": "Próxima acción actualizada correctamente.",
+  "data": {
+    "strategy": "override",
+    "changed": true,
+    "previousPending": { "...": "..." },
+    "currentPending": { "...": "..." }
+  }
+}
+```
+
+### Preflight implementado
+
+- `GET /api/v2/crm/agenda/pending?targetType=...&targetId=...`
+- Devuelve:
+  - `data: null` si no hay pending
+  - o pending con `isOverdue` y `daysOverdue`
+
+### Códigos de error disponibles
+
+- Dominio (servicio): `PENDING_EXISTS`, `NO_PENDING_TO_UPDATE`, `STALE_PENDING`.
+- Validación request: `VALIDATION_ERROR` (incluye casos de `INVALID_STRATEGY_FIELDS` en mensajes de detalle).
+
+### Campos canónicos
+
+- Paso 1 (`/commercial-interactions`): `nextActionNote` se mantiene por compat legado.
+- Paso 2 (`/resolve-next-action`): campo canónico de texto de acción es `description`.
+- Persistencia en agenda: `agenda_actions.description`.
 
 ---
 
@@ -34,41 +105,33 @@ Este bloque resume, en lenguaje de negocio, **qué cambia** y **qué reglas qued
 | ------------------------------------------------------------------------ | -------------- | ----- | -------------------------------------------------------- |
 | Fundación agenda: CRUD (crear/listar/cancelar/reprogramar)               | `IMPLEMENTADO` | ✅     | `CrmAgendaService`, `CrmAgendaController`                |
 | `POST /commercial-interactions` (flujo actual acoplado)                  | `IMPLEMENTADO` | ✅     | Guarda interacción + sync agenda en una sola transacción |
-| `POST /commercial-interactions` — Paso 1 desacoplado ("siempre guardar") | `PENDIENTE`    | ❌     | Requiere ajustes B+C; ver sección de fricciones          |
+| `POST /commercial-interactions` — Paso 1 desacoplado ("siempre guardar") | `IMPLEMENTADO` | ✅     | Guarda interacción sin agenda cuando no llega `agendaActionId` |
 | Reprogramación con cadena (`previous_action_id`)                         | `IMPLEMENTADO` | ✅     | `CrmAgendaService::reschedule()`                         |
 | Status `reprogrammed` en `agenda_actions`                                | `IMPLEMENTADO` | ✅     | Migración `2026_03_19`                                   |
 | Campos `source_interaction_id` y `previous_action_id`                    | `IMPLEMENTADO` | ✅     | Modelo y migración `2026_03_18`                          |
 | Campo `description` canónico en `agenda_actions`                         | `IMPLEMENTADO` | ✅     | En `fillable` y `toArrayAssoc()`                         |
-| Desacoplar interacción de agenda (Paso 1 independiente)                  | `PENDIENTE`    | ❌     | Interacción y agenda siguen en la misma transacción      |
-| `agendaActionId` opcional en `StoreCommercialInteractionRequest`         | `PENDIENTE`    | ❌     | Hoy obligatorio cuando no llega `nextActionAt`           |
-| Endpoint `POST /crm/agenda/resolve-next-action` (Paso 2)                 | `PENDIENTE`    | ❌     | No existe controlador, request ni ruta                   |
-| Estrategias `keep/update/reschedule/override/create_if_none`             | `PENDIENTE`    | ❌     | Solo existe reschedule/cancel/complete en servicio       |
-| Campo `reason`/`cancel_reason` en `agenda_actions`                       | `PENDIENTE`    | ❌     | No existe en modelo ni en migración                      |
-| Endpoint `GET /crm/agenda/pending` (preflight)                           | `PENDIENTE`    | ❌     | No existe ruta; `getPendingForTarget()` interno existe   |
-| Códigos de error estables (`PENDING_EXISTS`, `STALE_PENDING`…)           | `PENDIENTE`    | ❌     | Hoy solo `ValidationException` genérica con mensaje      |
-| Contrato de respuesta enriquecido (`previousPending`/`currentPending`)   | `PENDIENTE`    | ❌     | No existe en ningún endpoint                             |
+| Desacoplar interacción de agenda (Paso 1 independiente)                  | `IMPLEMENTADO` | ✅     | Interacción libre ya no depende de sincronizar agenda    |
+| `agendaActionId` opcional en `StoreCommercialInteractionRequest`         | `IMPLEMENTADO` | ✅     | Se admite ausencia de `agendaActionId` en Paso 1         |
+| Endpoint `POST /crm/agenda/resolve-next-action` (Paso 2)                 | `IMPLEMENTADO` | ✅     | Ruta + request + controlador + servicio                  |
+| Estrategias `keep/update/reschedule/override/create_if_none`             | `IMPLEMENTADO` | ✅     | Implementadas en `CrmAgendaService::resolveNextAction()` |
+| Campo `reason`/`cancel_reason` en `agenda_actions`                       | `IMPLEMENTADO` | ✅     | Campo `reason` añadido en migración                      |
+| Endpoint `GET /crm/agenda/pending` (preflight)                           | `IMPLEMENTADO` | ✅     | Devuelve pending + `isOverdue`/`daysOverdue`             |
+| Códigos de error estables (`PENDING_EXISTS`, `STALE_PENDING`…)           | `IMPLEMENTADO` | ✅     | Soportado con `DomainValidationException` + `code`       |
+| Contrato de respuesta enriquecido (`previousPending`/`currentPending`)   | `IMPLEMENTADO` | ✅     | Respuesta estándar de `resolve-next-action`              |
 
 
-### Orden de implementación recomendado
+### Estado de ejecución del plan
 
-Para evitar PRs que no desbloqueen nada al frontend:
+Plan ejecutado en backend en 3 bloques:
 
-**Sprint 1 — Desbloquear "siempre guardar interacción" (Paso 1)**
+1. **Paso 1 desacoplado**: interacción libre guardable + fail-fast de campos de próxima acción fuera de flujo.
+2. **Paso 2 implementado**: `resolve-next-action` con estrategias, respuesta uniforme y errores de dominio.
+3. **Preflight implementado**: endpoint de pending activa con derivados de vencimiento.
 
-1. Desacoplar transacción en `CommercialInteractionService::store()` → interacción se guarda aunque agenda falle (frición C)
-2. Hacer `agendaActionId` verdaderamente opcional en `StoreCommercialInteractionRequest` (fricción B)
-3. Definir semántica final del Paso 1 (tabla de casos: `agendaActionId` + `nextActionAt` / solo uno / ninguno)
+Pendiente de coordinación con frontend:
 
-**Sprint 2 — `resolve-next-action` (Paso 2)**
-4. Migración: añadir `reason` a `agenda_actions`
-5. `ResolveNextActionRequest` con validación por estrategia
-6. `CrmAgendaService`: métodos `update`, `override` (y reutilizar `reschedule`/`cancel` para las estrategias equivalentes)
-7. Controlador + ruta `POST /crm/agenda/resolve-next-action`
-8. Códigos de error estables y contrato de respuesta (`previousPending`/`currentPending`/`changed`)
-
-**Sprint 3 — Preflight y pulido**
-9. Ruta `GET /crm/agenda/pending` expone `getPendingForTarget()` ya existente
-10. Campos derivados `isOverdue`/`daysOverdue` en respuesta preflight
+- Ajustar consumo de `code` y `errors` para UX final de mensajes.
+- Validar secuencias reales de UI (wizard 2 pasos + panel contextual) con QA conjunto.
 
 ---
 
@@ -348,7 +411,7 @@ Para evitar confusión entre `nextActionNote` / “note” / `description`:
 | Tabla `agenda_actions` (backend)                       | `**description**`    | Nombre canónico.                                                                                                    |
 
 
-### 1) Cerrar contrato de `POST /api/v2/commercial-interactions` — ❌ PENDIENTE
+### 1) Contrato de `POST /api/v2/commercial-interactions` — ✅ IMPLEMENTADO
 
 Cambios de contrato:
 
@@ -384,7 +447,7 @@ Nota de diseño:
 
 - El frontend, tras guardar la interacción, lanza el Paso 2 (gestión de próxima acción) llamando a `resolve-next-action`.
 
-### 2) Endpoint atómico para Paso 2: “Gestionar próxima acción” por target — ❌ PENDIENTE
+### 2) Endpoint atómico para Paso 2: “Gestionar próxima acción” por target — ✅ IMPLEMENTADO
 
 > No existe ningún artefacto de este endpoint: no hay ruta, controlador ni request. El método interno `CrmAgendaService::getPendingForTarget()` existe pero no está expuesto públicamente.
 
@@ -628,11 +691,11 @@ No-go (para evitar caminos alternativos):
 
 - Si una interacción se registra **sin** `agendaActionId`, la **única** vía para crear/modificar/reprogramar/sobreescribir la próxima acción es `resolve-next-action`.
 
-### 3) Persistencia del “motivo” (reason) del override — ❌ PENDIENTE
+### 3) Persistencia del “motivo” (reason) del override — ✅ IMPLEMENTADO
 
-Actualmente `agenda_actions` no tiene campos de reason. Confirmado en la migración `2026_03_18_130000_create_agenda_actions_table.php`. Para cumplir D2, se recomienda añadir:
+`agenda_actions` ya incluye campo `reason` mediante migración incremental `2026_03_26_180000_add_reason_to_agenda_actions_table.php`.
 
-- `reason` (text) o `cancel_reason` (text) (nombrar uno y estandarizarlo)
+- Campo implementado: `reason` (text nullable)
 
 Mínimos recomendados de trazabilidad:
 
@@ -644,9 +707,9 @@ Opcionales (si se quiere auditoría fuerte y debugging fácil):
 - `cancelled_at`, `reprogrammed_at`, `done_at` (o equivalente)
 - `cancel_source_interaction_id` (si el override se decide en Paso 2 y no en el mismo POST de interacción)
 
-### 4) Preflight: endpoint para obtener la pending actual de un target — ❌ PENDIENTE
+### 4) Preflight: endpoint para obtener la pending actual de un target — ✅ IMPLEMENTADO
 
-> El método `CrmAgendaService::getPendingForTarget()` ya existe internamente. Solo falta exponer la ruta y un controlador/método de lectura.
+> El método `CrmAgendaService::getPendingForTarget()` se expone vía endpoint `GET /api/v2/crm/agenda/pending`.
 
 Crear endpoint de lectura:
 
@@ -724,11 +787,11 @@ La propuesta mantiene esos endpoints y añade/ajusta lo mínimo para:
   - `database/migrations/companies/2026_03_18_130000_create_agenda_actions_table.php`
   - `database/migrations/companies/2026_03_19_000100_allow_reprogrammed_status_in_agenda_actions.php`
 
-### Artefactos pendientes de crear ❌
+### Artefactos incorporados en esta iteración ✅
 
-- `app/Http/Controllers/v2/ResolveNextActionController.php` (o método en `CrmAgendaController`)
 - `app/Http/Requests/v2/ResolveNextActionRequest.php`
-- Migración: añadir campo `reason`/`cancel_reason` a `agenda_actions`
+- `app/Http/Requests/v2/ShowCrmAgendaPendingRequest.php`
+- Migración: `database/migrations/companies/2026_03_26_180000_add_reason_to_agenda_actions_table.php`
 - Ruta: `POST /api/v2/crm/agenda/resolve-next-action`
 - Ruta: `GET /api/v2/crm/agenda/pending`
 
@@ -739,35 +802,28 @@ La propuesta mantiene esos endpoints y añade/ajusta lo mínimo para:
 
 ---
 
-## Definition of Done
+## Checklist de validación frontend (post-implementación)
 
-El backend de este bloque se considera **completo** cuando:
+Usar este checklist para validar integración con el documento hermano del frontend:
 
-### Sprint 1 — Paso 1 desacoplado
-
-- Una interacción se guarda correctamente aunque `resolve-next-action` falle o no se llame.
-- `POST /commercial-interactions` acepta `agendaActionId` ausente **sin** requerir `nextActionAt`.
-- Los 4 casos de la tabla de semántica del Paso 1 funcionan correctamente (done / completed_and_created / solo interacción / 422 fail fast).
-- Ningún error de agenda provoca rollback de la interacción — la interacción se guarda siempre, independientemente del estado de agenda.
-
-### Sprint 2 — `resolve-next-action`
-
-- La estrategia `keep` no muta nada en DB y devuelve `changed: false`.
-- La estrategia `update` edita solo `description` de la pending activa.
-- La estrategia `reschedule` marca la anterior como `reprogrammed` y crea nueva pending con `previous_action_id`.
-- La estrategia `override` marca la anterior como `cancelled`, guarda `reason`, y crea nueva pending con `previous_action_id`.
-- La estrategia `create_if_none` crea pending solo si no existe; devuelve error si existe (código: `PENDING_EXISTS`).
-- La operación es **atómica** (transacción) y usa lock optimista o `SELECT … FOR UPDATE` para evitar race conditions.
-- Todos los errores devuelven `code` estable (`PENDING_EXISTS`, `NO_PENDING_TO_UPDATE`, `STALE_PENDING`, etc.).
-- La respuesta incluye siempre `previousPending`, `currentPending` y `changed`.
-
-### Sprint 3 — Preflight
-
-- `GET /crm/agenda/pending?targetType=...&targetId=...` devuelve `data: null` o la pending activa con `isOverdue` y `daysOverdue`.
-- El endpoint es de solo lectura y no muta estado.
-
-### Transversal
-
-- Ninguna operación del bloque produce inconsistencias de "2 pending activas para el mismo target".
-- Los tests de feature cubren al menos: crear interacción sin agenda, los 5 estrategias de `resolve-next-action`, preflight con y sin pending.
+1. `POST /commercial-interactions` sin `agendaActionId` y sin campos de próxima acción:
+   - guarda interacción (`201`)
+   - `agenda.mode = null`
+2. `POST /commercial-interactions` sin `agendaActionId` pero con `nextActionAt/nextActionNote`:
+   - responde `422`
+   - `code = VALIDATION_ERROR`
+3. `POST /commercial-interactions` con `agendaActionId`:
+   - sin `nextActionAt` => `agenda.mode = completed`
+   - con `nextActionAt` => `agenda.mode = completed_and_created`
+4. `POST /crm/agenda/resolve-next-action`:
+   - `keep` devuelve `changed=false`
+   - `update` actualiza solo `description`
+   - `reschedule` crea cadena `reprogrammed -> pending`
+   - `override` crea cadena `cancelled(reason) -> pending`
+   - `create_if_none` falla con `PENDING_EXISTS` si ya hay pending
+5. `GET /crm/agenda/pending`:
+   - devuelve `data=null` si no hay pending
+   - devuelve `isOverdue` y `daysOverdue` si hay pending
+6. Errores de dominio de Paso 2:
+   - `PENDING_EXISTS`, `NO_PENDING_TO_UPDATE`, `STALE_PENDING` deben mostrarse como mensajes UX accionables.
 

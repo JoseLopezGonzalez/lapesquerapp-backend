@@ -284,7 +284,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('/crm/dashboard', [CrmDashboardController::class, 'index']);
         Route::get('/crm/agenda', [\App\Http\Controllers\v2\CrmAgendaController::class, 'calendar']);
         Route::get('/crm/agenda/summary', [\App\Http\Controllers\v2\CrmAgendaController::class, 'summary']);
+        Route::get('/crm/agenda/pending', [\App\Http\Controllers\v2\CrmAgendaController::class, 'pending']);
         Route::post('/crm/agenda', [\App\Http\Controllers\v2\CrmAgendaController::class, 'store']);
+        Route::post('/crm/agenda/resolve-next-action', [\App\Http\Controllers\v2\CrmAgendaController::class, 'resolveNextAction']);
         Route::post('/crm/agenda/{id}/reschedule', [\App\Http\Controllers\v2\CrmAgendaController::class, 'reschedule']);
         Route::post('/crm/agenda/{id}/cancel', [\App\Http\Controllers\v2\CrmAgendaController::class, 'cancel']);
         Route::get('/prospects/{id}/contacts', [ProspectController::class, 'contacts']);

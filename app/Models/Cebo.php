@@ -26,11 +26,13 @@ class Cebo extends Model
 
     public function toArrayAssoc()
     {
+        $product = $this->relationLoaded('product') ? $this->product : null;
+
         return [
             'id' => $this->id,
-            'name' => $this->product->name,
+            'name' => $product?->name,
             'fixed' => $this->fixed,
-            'product' => $this->product->toArrayAssoc(),
+            'product' => $product?->toArrayAssoc(),
         ];
     }
 }

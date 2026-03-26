@@ -6,9 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\CancelCrmAgendaActionRequest;
 use App\Http\Requests\v2\IndexCrmAgendaRequest;
 use App\Http\Requests\v2\IndexCrmAgendaSummaryRequest;
+use App\Http\Requests\v2\ResolveNextActionRequest;
 use App\Http\Requests\v2\RescheduleCrmAgendaActionRequest;
+use App\Http\Requests\v2\ShowCrmAgendaPendingRequest;
 use App\Http\Requests\v2\StoreCrmAgendaActionRequest;
-use App\Models\AgendaAction;
 use App\Services\v2\CrmAgendaService;
 use Illuminate\Http\JsonResponse;
 
@@ -95,6 +96,43 @@ class CrmAgendaController extends Controller
         return response()->json([
             'message' => 'Acción cancelada correctamente.',
             'data' => $action->toArrayAssoc(),
+        ]);
+    }
+
+    public function resolveNextAction(ResolveNextActionRequest $request): JsonResponse
+    {
+        $v = $request->validated();
+
+        $result = CrmAgendaService::resolveNextAction(
+            $request->user(),
+            $v['targetType'],
+            (int) $v['targetId'],
+            $v['strategy'],
+            $v['nextActionAt'] ?? null,
+            $v['description'] ?? null,
+            $v['reason'] ?? null,
+            isset($v['sourceInteractionId']) ? (int) $v['sourceInteractionId'] : null,
+            isset($v['expectedPendingId']) ? (int) $v['expectedPendingId'] : null
+        );
+
+        return response()->json([
+            'message' => 'Próxima acción actualizada correctamente.',
+            'data' => $result,
+        ]);
+    }
+
+    public function pending(ShowCrmAgendaPendingRequest $request): JsonResponse
+    {
+        $v = $request->validated();
+
+        $snapshot = CrmAgendaService::pendingSnapshot(
+            $request->user(),
+            $v['targetType'],
+            (int) $v['targetId']
+        );
+
+        return response()->json([
+            'data' => $snapshot,
         ]);
     }
 }

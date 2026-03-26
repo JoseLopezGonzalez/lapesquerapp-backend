@@ -13,8 +13,8 @@ class RouteTemplateResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'description' => $this->description,
-            'salesperson' => $this->salesperson?->toArrayAssoc(),
-            'fieldOperator' => $this->fieldOperator?->toArrayAssoc(),
+            'salesperson' => $this->relationLoaded('salesperson') ? $this->salesperson?->toArrayAssoc() : null,
+            'fieldOperator' => $this->relationLoaded('fieldOperator') ? $this->fieldOperator?->toArrayAssoc() : null,
             'createdByUserId' => $this->created_by_user_id,
             'isActive' => (bool) $this->is_active,
             'stops' => $this->whenLoaded('stops', fn () => $this->stops->map(fn ($stop) => [

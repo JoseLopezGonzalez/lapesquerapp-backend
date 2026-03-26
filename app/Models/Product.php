@@ -58,10 +58,12 @@ class Product extends Model
         return [
             'id' => $this->id,
             'name' => $this->name, // Campo directo desde BD
-            'species' => $this->species ? ($this->species->toArrayAssoc() ?? []) : [],
-            'captureZone' => $this->captureZone ? ($this->captureZone->toArrayAssoc() ?? []) : [],
-            'category' => ($this->family && $this->family->category) ? ($this->family->category->toArrayAssoc() ?? []) : [],
-            'family' => $this->family ? ($this->family->toArrayAssoc() ?? []) : [],
+            'species' => $this->relationLoaded('species') ? ($this->species?->toArrayAssoc() ?? []) : [],
+            'captureZone' => $this->relationLoaded('captureZone') ? ($this->captureZone?->toArrayAssoc() ?? []) : [],
+            'category' => $this->relationLoaded('family') && $this->family && $this->family->relationLoaded('category')
+                ? ($this->family->category?->toArrayAssoc() ?? [])
+                : [],
+            'family' => $this->relationLoaded('family') ? ($this->family?->toArrayAssoc() ?? []) : [],
             'articleGtin' => $this->article_gtin,
             'boxGtin' => $this->box_gtin,
             'palletGtin' => $this->pallet_gtin,

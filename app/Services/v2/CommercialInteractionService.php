@@ -61,16 +61,55 @@ class CommercialInteractionService
 
         self::ensureTargetIsAccessible($validated, $user);
 
-        return DB::transaction(function () use ($validated, $user) {
-            $salespersonId = $user->hasRole(Role::Comercial->value)
-                ? $user->salesperson?->id
-                : self::resolveTargetSalespersonId($validated);
+        $salespersonId = $user->hasRole(Role::Comercial->value)
+            ? $user->salesperson?->id
+            : self::resolveTargetSalespersonId($validated);
 
-            if (! $salespersonId) {
-                throw ValidationException::withMessages([
-                    'salesperson' => ['No se pudo resolver el comercial de la interacción.'],
-                ]);
+        if (! $salespersonId) {
+            throw ValidationException::withMessages([
+                'salesperson' => ['No se pudo resolver el comercial de la interacción.'],
+            ]);
+        }
+
+        $hasAgendaActionId = ! empty($validated['agendaActionId']);
+
+        if (! $hasAgendaActionId) {
+            $interaction = CommercialInteraction::create([
+                'prospect_id' => $validated['prospectId'] ?? null,
+                'customer_id' => $validated['customerId'] ?? null,
+                'salesperson_id' => $salespersonId,
+                'type' => $validated['type'],
+                'occurred_at' => $validated['occurredAt'],
+                'summary' => $validated['summary'],
+                'result' => $validated['result'],
+                'next_action_note' => null,
+                'next_action_at' => null,
+            ]);
+
+            if (! empty($validated['prospectId'])) {
+                $prospect = Prospect::findOrFail($validated['prospectId']);
+                $updates = [
+                    'last_contact_at' => $validated['occurredAt'],
+                ];
+                if ($prospect->status === Prospect::STATUS_NEW) {
+                    $updates['status'] = Prospect::STATUS_FOLLOWING;
+                }
+                $prospect->update($updates);
             }
+
+            return [
+                'interaction' => $interaction->load(['salesperson', 'prospect.country', 'customer.country']),
+                'agenda' => [
+                    'mode' => null,
+                    'completedAction' => null,
+                    'createdAction' => null,
+                ],
+            ];
+        }
+
+        return DB::transaction(function () use ($validated, $salespersonId, $user) {
+            $nextActionAt = $validated['nextActionAt'] ?? null;
+            $nextActionNote = $validated['nextActionNote'] ?? null;
 
             $interaction = CommercialInteraction::create([
                 'prospect_id' => $validated['prospectId'] ?? null,
@@ -80,13 +119,10 @@ class CommercialInteractionService
                 'occurred_at' => $validated['occurredAt'],
                 'summary' => $validated['summary'],
                 'result' => $validated['result'],
-                'next_action_note' => $validated['nextActionNote'] ?? null,
-                'next_action_at' => $validated['nextActionAt'] ?? null,
+                'next_action_note' => $nextActionAt !== null ? $nextActionNote : null,
+                'next_action_at' => $nextActionAt,
             ]);
 
-            $nextActionAt = $validated['nextActionAt'] ?? null;
-
-            // 1 pending por target: desde una interacción materializamos la agenda en agenda_actions.
             $agenda = [
                 'mode' => null,
                 'completedAction' => null,
@@ -100,7 +136,7 @@ class CommercialInteractionService
                     (int) $validated['prospectId'],
                     $interaction->id,
                     $nextActionAt,
-                    $validated['nextActionNote'] ?? null,
+                    $nextActionNote,
                     $validated['agendaActionId'] ?? null
                 );
             }
@@ -112,7 +148,7 @@ class CommercialInteractionService
                     (int) $validated['customerId'],
                     $interaction->id,
                     $nextActionAt,
-                    $validated['nextActionNote'] ?? null,
+                    $nextActionNote,
                     $validated['agendaActionId'] ?? null
                 );
             }
@@ -122,7 +158,7 @@ class CommercialInteractionService
                 $updates = [
                     'last_contact_at' => $validated['occurredAt'],
                     'next_action_at' => $nextActionAt,
-                    'next_action_note' => $nextActionAt !== null ? ($validated['nextActionNote'] ?? null) : null,
+                    'next_action_note' => $nextActionAt !== null ? $nextActionNote : null,
                 ];
                 if ($prospect->status === Prospect::STATUS_NEW) {
                     $updates['status'] = Prospect::STATUS_FOLLOWING;

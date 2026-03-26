@@ -16,7 +16,7 @@ class FieldOrderDetailsResource extends JsonResource
             'entryDate' => $this->entry_date,
             'loadDate' => $this->load_date,
             'buyerReference' => $this->buyer_reference,
-            'customer' => $this->customer ? [
+            'customer' => $this->relationLoaded('customer') && $this->customer ? [
                 'id' => $this->customer->id,
                 'name' => $this->customer->name,
             ] : null,
@@ -25,12 +25,16 @@ class FieldOrderDetailsResource extends JsonResource
             'routeStopId' => $this->route_stop_id,
 
             // planned
-            'plannedProductDetails' => $this->plannedProductDetails?->map(fn ($detail) => $detail->toArrayAssoc())->values(),
+            'plannedProductDetails' => $this->relationLoaded('plannedProductDetails')
+                ? $this->plannedProductDetails->map(fn ($detail) => $detail->toArrayAssoc())->values()
+                : [],
 
             // execution (match full order detail expectations: pallets -> boxes include box.id)
             // Use toArrayAssoc() because OrderDetailService eagerly loads `pallets.boxes.box`,
             // while V2 representation depends on `boxesV2` relation.
-            'pallets' => $this->pallets?->map(fn ($pallet) => $pallet->toArrayAssoc())->values(),
+            'pallets' => $this->relationLoaded('pallets')
+                ? $this->pallets->map(fn ($pallet) => $pallet->toArrayAssoc())->values()
+                : [],
 
             'totalBoxes' => $this->totalBoxes,
             'totalNetWeight' => $this->totalNetWeight,

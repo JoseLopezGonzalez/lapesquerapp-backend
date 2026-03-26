@@ -16,8 +16,8 @@ class DeliveryRouteResource extends JsonResource
             'description' => $this->description,
             'routeDate' => $this->route_date,
             'status' => $this->status,
-            'salesperson' => $this->salesperson?->toArrayAssoc(),
-            'fieldOperator' => $this->fieldOperator?->toArrayAssoc(),
+            'salesperson' => $this->relationLoaded('salesperson') ? $this->salesperson?->toArrayAssoc() : null,
+            'fieldOperator' => $this->relationLoaded('fieldOperator') ? $this->fieldOperator?->toArrayAssoc() : null,
             'createdByUserId' => $this->created_by_user_id,
             'stops' => $this->whenLoaded('stops', fn () => $this->stops->map(fn ($stop) => [
                 'id' => $stop->id,

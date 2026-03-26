@@ -46,7 +46,7 @@ class ProductionRecordResource extends JsonResource
             'parent' => $this->whenLoaded('parent', function () {
                 return [
                     'id' => $this->parent->id,
-                    'process' => $this->parent->process ? [
+                    'process' => $this->parent->relationLoaded('process') && $this->parent->process ? [
                         'id' => $this->parent->process->id,
                         'name' => $this->parent->process->name,
                     ] : null,

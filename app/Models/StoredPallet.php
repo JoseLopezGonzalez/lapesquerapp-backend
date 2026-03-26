@@ -32,7 +32,10 @@ class StoredPallet extends Model
 
     public function toArrayAssoc()
     {
-        return array_merge($this->pallet->toArrayAssoc(), [
+        return array_merge($this->relationLoaded('pallet') && $this->pallet ? $this->pallet->toArrayAssoc() : [
+            'id' => $this->pallet_id,
+            'storeId' => $this->store_id,
+        ], [
             //'storeId' => $this->store_id,
             'position' => $this->position,
         ]);

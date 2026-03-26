@@ -20,7 +20,7 @@ class ProspectService
     public static function list(Request $request): LengthAwarePaginator
     {
         $query = Prospect::query()
-            ->with(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction', 'offers']);
+            ->with(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
 
         self::scopeForUser($query, $request->user());
 
@@ -80,7 +80,7 @@ class ProspectService
             self::upsertPrimaryContact($prospect, $validated['primaryContact']);
         }
 
-        $prospect->load(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction', 'offers']);
+        $prospect->load(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
 
         return [
             'prospect' => $prospect,
@@ -110,7 +110,7 @@ class ProspectService
             self::upsertPrimaryContact($prospect, $validated['primaryContact'] ?? []);
         }
 
-        $prospect->load(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction', 'offers']);
+        $prospect->load(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
 
         return [
             'prospect' => $prospect,
@@ -197,7 +197,7 @@ class ProspectService
         $prospect->next_action_note = $note;
         $prospect->save();
 
-        return $prospect->fresh(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction', 'offers']);
+        return $prospect->fresh(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
     }
 
     public static function clearNextAction(Prospect $prospect): Prospect
@@ -218,7 +218,7 @@ class ProspectService
         $prospect->next_action_note = null;
         $prospect->save();
 
-        return $prospect->fresh(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction', 'offers']);
+        return $prospect->fresh(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
     }
 
     public static function convertToCustomer(Prospect $prospect): Customer

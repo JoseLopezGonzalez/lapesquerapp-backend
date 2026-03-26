@@ -29,10 +29,24 @@ class StoreCommercialInteractionRequest extends FormRequest
     public function withValidator(\Illuminate\Validation\Validator $validator): void
     {
         $validator->after(function () use ($validator) {
-            // Regla V1: “done” en agenda requiere ligadura explícita (agendaActionId)
-            // cuando no se programa una nueva próxima acción.
-            if (! $this->filled('nextActionAt') && ! $this->filled('agendaActionId')) {
-                $validator->errors()->add('agendaActionId', 'agendaActionId es requerida cuando no se envía nextActionAt.');
+            $hasAgendaActionId = $this->filled('agendaActionId');
+            $hasNextActionPayload = $this->filled('nextActionAt') || $this->filled('nextActionNote');
+
+            // Flujo 2 pasos: sin agendaActionId no se admiten campos de próxima acción
+            // en el endpoint de interacción.
+            if (! $hasAgendaActionId && $hasNextActionPayload) {
+                $validator->errors()->add(
+                    'nextActionAt',
+                    'No se puede gestionar próxima acción en este paso. Registra la interacción y usa resolve-next-action.'
+                );
+            }
+
+            // Compat legacy: nextActionNote solo tiene sentido si llega nextActionAt.
+            if ($hasAgendaActionId && ! $this->filled('nextActionAt') && $this->filled('nextActionNote')) {
+                $validator->errors()->add(
+                    'nextActionNote',
+                    'nextActionNote requiere nextActionAt.'
+                );
             }
         });
     }
