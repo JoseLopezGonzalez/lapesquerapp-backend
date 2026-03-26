@@ -15,6 +15,11 @@ $app = new Illuminate\Foundation\Application(
     $_ENV['APP_BASE_PATH'] ?? dirname(__DIR__)
 );
 
+// Permite usar .env.local en desarrollo cuando exista.
+if (file_exists(dirname(__DIR__).'/.env.local')) {
+    $app->loadEnvironmentFrom('.env.local');
+}
+
 /*
 |--------------------------------------------------------------------------
 | Bind Important Interfaces
