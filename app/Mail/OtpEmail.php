@@ -22,7 +22,7 @@ class OtpEmail extends Mailable
 
         return $this->subject('Tu código de acceso')
             ->from($mailConfigService->getFromAddress(), $mailConfigService->getFromName())
-            ->markdown('emails.auth.otp', [
+            ->view('emails.auth.otp', [
                 'code' => $this->code,
                 'expiresMinutes' => $this->expiresMinutes,
             ]);

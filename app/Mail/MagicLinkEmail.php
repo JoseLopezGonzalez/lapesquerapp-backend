@@ -22,7 +22,7 @@ class MagicLinkEmail extends Mailable
 
         return $this->subject('Inicia sesión en ' . ($mailConfigService->getFromName()))
             ->from($mailConfigService->getFromAddress(), $mailConfigService->getFromName())
-            ->markdown('emails.auth.magic-link', [
+            ->view('emails.auth.magic-link', [
                 'magicLinkUrl' => $this->magicLinkUrl,
                 'expiresMinutes' => $this->expiresMinutes,
             ]);
