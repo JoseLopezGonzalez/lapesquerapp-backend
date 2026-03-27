@@ -63,8 +63,8 @@
                 <div class="border rounded-lg overflow-hidden bg-gray-50">
                     <div class="font-bold  mb-2 w-full p-2 bg-gray-800 border-b text-white">DATOS DEL CLIENTE</div>
                     <div class=" space-y-1 p-4 pt-0">
-                        <p><span class="font-medium">Nombre:</span> {{ $entity->customer->name }}</p>
-                        <p><span class="font-medium">NIF/CIF:</span>{{ $entity->customer->vat_number }}</p>
+                        <p><span class="font-medium">Nombre:</span> {{ $entity->customer?->name ?? 'N/A' }}</p>
+                        <p><span class="font-medium">NIF/CIF:</span>{{ $entity->customer?->vat_number ?? 'N/A' }}</p>
 
                         <p class="font-medium mt-2">Correos electrónicos:</p>
                         <ul class="list-disc pl-5">
@@ -82,14 +82,14 @@
                 <div class="border rounded-lg overflow-hidden bg-gray-50">
                     <div class="font-bold  mb-2 w-full p-2 bg-gray-800 border-b text-white">DATOS DE TRANSPORTE</div>
                     <div class=" space-y-1 p-4 pt-0">
-                        <p><span class="font-medium">Empresa:</span> {{ $entity->transport->name }}</p>
+                        <p><span class="font-medium">Empresa:</span> {{ $entity->transport?->name ?? 'N/A' }}</p>
                         <p class="font-medium mt-2">Correos electrónicos:</p>
                         <ul class="list-disc pl-5">
                             {{-- $entity->transport->emailsArray y $entity->ccEmailsArray --}}
-                            @foreach ($entity->transport->emailsArray as $email)
+                            @foreach ($entity->transport?->emailsArray ?? [] as $email)
                                 <li>{{ $email }}</li>
                             @endforeach
-                            @foreach ($entity->transport->ccEmailsArray as $email)
+                            @foreach ($entity->transport?->ccEmailsArray ?? [] as $email)
                                 <li>{{ $email }}</li>
                             @endforeach
 
@@ -102,12 +102,12 @@
                 <div class=" space-y-1 p-4 pt-0">
                     <h3 class="font-bold  mb-2">DIRECCIÓN DE FACTURACIÓN</h3>
                     <p class="">
-                        {!! nl2br($entity->billing_address) !!}
+                        {!! nl2br($entity->billing_address ?? '') !!}
                     </p>
                     <hr class="my-4 border-dashed border-slate-300" />
                     <h3 class="font-bold  mb-2">DIRECCIÓN DE ENVÍO</h3>
                     <p class="">
-                        {!! nl2br($entity->shipping_address) !!}
+                        {!! nl2br($entity->shipping_address ?? '') !!}
                     </p>
                 </div>
             </div>
@@ -118,11 +118,11 @@
             <div class="grid grid-cols-3 gap-4 divide-x-gray-800">
                 <div>
                     <p class="font-bold">FORMA DE PAGO</p>
-                    <p>{{ $entity->payment_term->name }}</p>
+                    <p>{{ $entity->payment_term?->name ?? 'N/A' }}</p>
                 </div>
                 <div>
                     <p class="font-bold">INCOTERM</p>
-                    <p>{{ $entity->incoterm->code }} - {{ $entity->incoterm->description }}</p>
+                    <p>{{ $entity->incoterm ? $entity->incoterm->code . ' - ' . $entity->incoterm->description : 'N/A' }}</p>
                 </div>
 
                 <div>
