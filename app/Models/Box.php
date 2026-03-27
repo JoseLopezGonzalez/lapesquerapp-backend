@@ -99,12 +99,13 @@ class Box extends Model
 
     public function getPalletAttribute()
     {
-        // Evitar lazy loading implícito cuando Model::preventLazyLoading está activo.
-        if (! $this->relationLoaded('palletBox')) {
-            return null;
+        // Preferir relación ya cargada para evitar queries extra.
+        if ($this->relationLoaded('palletBox')) {
+            return $this->palletBox?->pallet;
         }
 
-        return $this->palletBox?->pallet;
+        // Fallback compatible para serializadores que calculan coste sin eager loading explícito.
+        return $this->palletBox()->with('pallet.reception.products')->first()?->pallet;
     }
 
     /**

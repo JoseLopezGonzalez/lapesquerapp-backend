@@ -90,6 +90,9 @@ class StoreController extends Controller
         $query->with([
             'palletsV2.boxes.box.productionInputs',
             'palletsV2.boxes.box.product',
+            'palletsV2.boxes.box.product.species',
+            'palletsV2.boxes.box.product.captureZone',
+            'palletsV2.boxes.box.product.family.category',
             'externalUser',
         ]);
 
@@ -130,6 +133,10 @@ class StoreController extends Controller
         $store = Store::with([
             'palletsV2.boxes.box.productionInputs.productionRecord.production', // Cargar productionInputs para determinar disponibilidad
             'palletsV2.boxes.box.product', // Cargar product para toArrayAssocV2
+            'palletsV2.boxes.box.product.species',
+            'palletsV2.boxes.box.product.captureZone',
+            'palletsV2.boxes.box.product.family.category',
+            'palletsV2.boxes.box.palletBox.pallet.reception.products',
             'palletsV2.storedPallet', // Cargar storedPallet para posición
             'externalUser',
         ])->findOrFail($id);
