@@ -22,7 +22,7 @@ class ProductionInputService
         }
 
         $input = ProductionInput::create($data);
-        $input->load(['productionRecord', 'box.product', 'box.palletBox.pallet']);
+        $input->load(['productionRecord', 'box.product', 'box.product.species', 'box.product.captureZone', 'box.palletBox.pallet']);
 
         // Actualizar estado del palet si existe
         // Acceder al palet a través de palletBox para evitar problemas con accessors
@@ -60,7 +60,7 @@ class ProductionInputService
                         'box_id' => $boxId,
                     ]);
 
-                    $input->load(['productionRecord', 'box.product', 'box.palletBox.pallet']);
+                    $input->load(['productionRecord', 'box.product', 'box.product.species', 'box.product.captureZone', 'box.palletBox.pallet']);
                     $created[] = $input;
                     
                     // Track pallet for state update (avoid duplicates)

@@ -64,9 +64,13 @@ class RawMaterialReceptionWriteService
         ]);
 
         if ($reception->creation_mode === RawMaterialReception::CREATION_MODE_PALLETS) {
-            self::updatePalletsFromRequest($reception, $data['pallets'] ?? [], $data['prices'] ?? []);
+            if (array_key_exists('pallets', $data)) {
+                self::updatePalletsFromRequest($reception, $data['pallets'] ?? [], $data['prices'] ?? []);
+            }
         } else {
-            self::updateDetailsFromRequest($reception, $data['details'] ?? [], (int) $data['supplier']['id']);
+            if (array_key_exists('details', $data)) {
+                self::updateDetailsFromRequest($reception, $data['details'], (int) $data['supplier']['id']);
+            }
         }
     }
 

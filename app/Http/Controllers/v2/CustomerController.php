@@ -84,7 +84,13 @@ class CustomerController extends Controller
      */
     public function show(string $id)
     {
-        $customer = Customer::findOrFail($id);
+        $customer = Customer::with([
+            'payment_term',
+            'salesperson',
+            'fieldOperator',
+            'country',
+            'transport',
+        ])->findOrFail($id);
         $this->authorize('view', $customer);
 
         return response()->json([

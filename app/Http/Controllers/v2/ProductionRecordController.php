@@ -59,8 +59,11 @@ class ProductionRecordController extends Controller
             'children',
             'process',
             'inputs.box.product',
+            'inputs.box.product.species',
+            'inputs.box.product.captureZone',
             'outputs.product',
-            'parentOutputConsumptions.productionOutput.product'
+            'parentOutputConsumptions.productionOutput.product',
+            'parentOutputConsumptions.productionOutput.productionRecord.process',
         ])->findOrFail($id);
         $this->authorize('view', $record);
 

@@ -39,6 +39,9 @@ class PalletListService
             'reception',
             'boxes.box.productionInputs.productionRecord.production',
             'boxes.box.product',
+            'boxes.box.product.species',
+            'boxes.box.product.captureZone',
+            'boxes.box.product.family.category',
             'boxes.box.palletBox.pallet.reception.products',
         ]);
     }
@@ -201,7 +204,13 @@ class PalletListService
                     ->whereDoesntHave('productionInputs');
             })
             ->with([
-                'boxes.box' => fn ($q) => $q->with(['product', 'productionInputs.productionRecord.production']),
+                'boxes.box' => fn ($q) => $q->with([
+                    'product',
+                    'product.species',
+                    'product.captureZone',
+                    'product.family.category',
+                    'productionInputs.productionRecord.production',
+                ]),
                 'storedPallet',
                 'reception',
             ])
@@ -268,6 +277,9 @@ class PalletListService
             ->whereIn('status', [Pallet::STATE_REGISTERED, Pallet::STATE_STORED])
             ->with([
                 'boxes.box.product',
+                'boxes.box.product.species',
+                'boxes.box.product.captureZone',
+                'boxes.box.product.family.category',
                 'boxes.box.productionInputs',
                 'storedPallet.store',
                 'reception',

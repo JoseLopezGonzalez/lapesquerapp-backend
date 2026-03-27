@@ -23,7 +23,7 @@ class ProductionInputController extends Controller
     public function index(IndexProductionInputRequest $request)
     {
         $query = ProductionInput::query();
-        $query->with(['productionRecord', 'box.product']);
+        $query->with(['productionRecord', 'box.product', 'box.product.species', 'box.product.captureZone']);
 
         if ($request->filled('production_record_id')) {
             $query->where('production_record_id', $request->production_record_id);
@@ -83,7 +83,7 @@ class ProductionInputController extends Controller
      */
     public function show(string $id)
     {
-        $input = ProductionInput::with(['productionRecord', 'box.product'])
+        $input = ProductionInput::with(['productionRecord', 'box.product', 'box.product.species', 'box.product.captureZone'])
             ->findOrFail($id);
         $this->authorize('view', $input);
 

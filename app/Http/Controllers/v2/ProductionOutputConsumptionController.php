@@ -24,7 +24,7 @@ class ProductionOutputConsumptionController extends Controller
     public function index(IndexProductionOutputConsumptionRequest $request)
     {
         $query = ProductionOutputConsumption::query();
-        $query->with(['productionRecord.process', 'productionOutput.product']);
+        $query->with(['productionRecord.process', 'productionOutput.product', 'productionOutput.productionRecord.process']);
 
         if ($request->filled('production_record_id')) {
             $query->where('production_record_id', $request->production_record_id);
@@ -67,7 +67,7 @@ class ProductionOutputConsumptionController extends Controller
      */
     public function show(string $id)
     {
-        $consumption = ProductionOutputConsumption::with(['productionRecord.process', 'productionOutput.product'])
+        $consumption = ProductionOutputConsumption::with(['productionRecord.process', 'productionOutput.product', 'productionOutput.productionRecord.process'])
             ->findOrFail($id);
         $this->authorize('view', $consumption);
 

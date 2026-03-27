@@ -17,7 +17,7 @@ class ProductionRecordService
     public function list(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         $query = ProductionRecord::query();
-        $query->with(['production', 'parent.process', 'process', 'inputs.box.product', 'outputs.product']);
+        $query->with(['production', 'parent.process', 'process', 'inputs.box.product', 'inputs.box.product.species', 'inputs.box.product.captureZone', 'outputs.product']);
 
         if (isset($filters['production_id'])) {
             $query->where('production_id', $filters['production_id']);
