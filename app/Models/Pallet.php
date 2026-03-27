@@ -725,14 +725,22 @@ class Pallet extends Model
     public function toArrayAssocV2()
     {
         $boxesV2 = $this->relationLoaded('boxesV2') ? $this->boxesV2 : collect();
+        $boxesPayload = $boxesV2->map(function ($box) {
+            return $box ? $box->toArrayAssocV2() : null;
+        })->filter();
+
+        // Backward-compatible fallback for endpoints that eager-load `boxes` (PalletBox).
+        if ($boxesPayload->isEmpty() && $this->relationLoaded('boxes')) {
+            $boxesPayload = $this->boxes->map(function ($palletBox) {
+                return $palletBox?->box?->toArrayAssocV2();
+            })->filter();
+        }
 
         return [
             'id' => $this->id,
             'observations' => $this->observations,
             'state' => $this->stateArray,
-            'boxes' => $boxesV2->map(function ($box) {
-                return $box ? $box->toArrayAssocV2() : null;
-            })->filter(),
+            'boxes' => $boxesPayload,
             'netWeight' => $this->relationLoaded('boxes') ? $this->netWeight : 0,
             'productsNames' => $this->relationLoaded('boxes') ? $this->productsNames : [],
             'lots' => $this->relationLoaded('boxes') ? $this->lots : [],
