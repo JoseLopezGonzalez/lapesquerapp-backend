@@ -39,6 +39,7 @@ class PalletListService
             'reception',
             'boxes.box.productionInputs.productionRecord.production',
             'boxes.box.product',
+            'boxes.box.palletBox.pallet.reception.products',
         ]);
     }
 

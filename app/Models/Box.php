@@ -99,8 +99,12 @@ class Box extends Model
 
     public function getPalletAttribute()
     {
-        /* Si no palletBox return null*/
-        return $this->palletBox ? $this->palletBox->pallet : null;
+        // Evitar lazy loading implícito cuando Model::preventLazyLoading está activo.
+        if (! $this->relationLoaded('palletBox')) {
+            return null;
+        }
+
+        return $this->palletBox?->pallet;
     }
 
     /**

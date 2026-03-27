@@ -86,8 +86,12 @@ class StoreController extends Controller
         /* ORDER */
         $query->orderBy('name', 'asc');
 
-        // Cargar la relación palletsV2 para evitar errores en toArrayAssoc()
-        $query->with(['palletsV2', 'externalUser']);
+        // Cargar relaciones necesarias para serialización sin lazy loading.
+        $query->with([
+            'palletsV2.boxes.box.productionInputs',
+            'palletsV2.boxes.box.product',
+            'externalUser',
+        ]);
 
         $perPage = $request->input('perPage', 12); //  Default a 10 si no se proporciona
 
