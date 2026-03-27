@@ -466,10 +466,27 @@ class RawMaterialReceptionWriteService
             $pallet->observations = "Auto-generado desde recepción #{$reception->id}";
             $pallet->save();
             $pallet->load('boxes.box.productionInputs');
+            $hasUsedBoxes = false;
             foreach ($pallet->boxes as $palletBox) {
                 if ($palletBox->box && $palletBox->box->productionInputs()->exists()) {
+                    $hasUsedBoxes = true;
+                    break;
+                }
+            }
+            if ($hasUsedBoxes) {
+                if (! self::detailsMatchCurrentProducts($reception, $details)) {
                     throw new \Exception("RECEPTION_LINES_MODE: No se puede modificar la recepción porque hay materia prima siendo usada en producción");
                 }
+                // Las líneas no han cambiado: solo actualizar precios en reception.products
+                foreach ($details as $detail) {
+                    $productId = $detail['product']['id'];
+                    if (isset($detail['price'])) {
+                        $reception->products()
+                            ->where('product_id', $productId)
+                            ->update(['price' => $detail['price']]);
+                    }
+                }
+                return;
             }
             foreach ($pallet->boxes as $palletBox) {
                 Box::find($palletBox->box_id)?->delete();
@@ -759,5 +776,43 @@ class RawMaterialReceptionWriteService
             PalletTimelineService::buildPalletUpdatedAction($details, true),
             $details
         );
+    }
+
+    /**
+     * Compara los detalles entrantes con los productos actuales de la recepción.
+     * Devuelve true si no hay cambios relevantes en las líneas (producto, lote, peso neto).
+     */
+    private static function detailsMatchCurrentProducts(RawMaterialReception $reception, array $details): bool
+    {
+        $reception->loadMissing('products');
+        $currentProducts = $reception->products;
+
+        if (count($details) !== $currentProducts->count()) {
+            return false;
+        }
+
+        foreach ($details as $detail) {
+            $productId = (int) $detail['product']['id'];
+            $incomingWeight = (float) $detail['netWeight'];
+            $incomingLot = $detail['lot'] ?? null;
+
+            $match = $currentProducts->first(function ($p) use ($productId, $incomingLot) {
+                if ($p->product_id !== $productId) {
+                    return false;
+                }
+                // Si el frontend envía lote, debe coincidir; si no, aceptar cualquier lote del mismo producto
+                return $incomingLot === null || $p->lot === $incomingLot;
+            });
+
+            if (! $match) {
+                return false;
+            }
+
+            if (abs($match->net_weight - $incomingWeight) > 0.01) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
