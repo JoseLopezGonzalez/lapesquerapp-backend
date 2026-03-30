@@ -298,4 +298,98 @@ class ProductionBlockApiTest extends TestCase
             ->assertJsonPath('data.totalOutputWeight', 40)
             ->assertJsonPath('data.totalOutputBoxes', 4);
     }
+
+    public function test_sync_outputs_allows_empty_array_and_deletes_existing_outputs(): void
+    {
+        [, , $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $product = $this->createValidProduct($species, $captureZone, '61');
+
+        $output = ProductionOutput::create([
+            'production_record_id' => $childRecord->id,
+            'product_id' => $product->id,
+            'lot_id' => 'L-DELETE-ALL',
+            'boxes' => 2,
+            'weight_kg' => 20,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->putJson('/api/v2/production-records/' . $childRecord->id . '/outputs', [
+                'outputs' => [],
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('summary.created', 0)
+            ->assertJsonPath('summary.updated', 0)
+            ->assertJsonPath('summary.deleted', 1);
+
+        $this->assertNull(ProductionOutput::query()->find($output->id));
+    }
+
+    public function test_sync_outputs_with_empty_array_rejects_deletion_when_output_has_consumptions(): void
+    {
+        [, $parentRecord, $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $product = $this->createValidProduct($species, $captureZone, '62');
+
+        $output = ProductionOutput::create([
+            'production_record_id' => $parentRecord->id,
+            'product_id' => $product->id,
+            'lot_id' => 'L-WITH-CONSUMPTION',
+            'boxes' => 3,
+            'weight_kg' => 30,
+        ]);
+
+        ProductionOutputConsumption::create([
+            'production_record_id' => $childRecord->id,
+            'production_output_id' => $output->id,
+            'consumed_weight_kg' => 10,
+            'consumed_boxes' => 1,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->putJson('/api/v2/production-records/' . $parentRecord->id . '/outputs', [
+                'outputs' => [],
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('message', 'Error al sincronizar las salidas.');
+    }
+
+    public function test_sync_consumptions_allows_empty_array_and_deletes_existing_consumptions(): void
+    {
+        [, $parentRecord, $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $product = $this->createValidProduct($species, $captureZone, '63');
+
+        $output = ProductionOutput::create([
+            'production_record_id' => $parentRecord->id,
+            'product_id' => $product->id,
+            'lot_id' => 'L-CONSUMPTION-DELETE',
+            'boxes' => 4,
+            'weight_kg' => 40,
+        ]);
+
+        $consumption = ProductionOutputConsumption::create([
+            'production_record_id' => $childRecord->id,
+            'production_output_id' => $output->id,
+            'consumed_weight_kg' => 8,
+            'consumed_boxes' => 1,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->putJson('/api/v2/production-records/' . $childRecord->id . '/parent-output-consumptions', [
+                'consumptions' => [],
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('summary.created', 0)
+            ->assertJsonPath('summary.updated', 0)
+            ->assertJsonPath('summary.deleted', 1);
+
+        $this->assertNull(ProductionOutputConsumption::query()->find($consumption->id));
+    }
 }

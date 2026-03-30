@@ -22,7 +22,8 @@ class SyncProductionConsumptionsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'consumptions' => 'required|array',
+            // Keep sync semantics consistent: allow explicit empty array to remove all consumptions.
+            'consumptions' => 'present|array',
             'consumptions.*.id' => 'sometimes|nullable|integer|exists:tenant.production_output_consumptions,id',
             'consumptions.*.production_output_id' => 'required|exists:tenant.production_outputs,id',
             'consumptions.*.consumed_weight_kg' => 'required|numeric|gt:0',

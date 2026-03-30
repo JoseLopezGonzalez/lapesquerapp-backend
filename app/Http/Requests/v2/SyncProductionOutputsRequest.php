@@ -22,7 +22,8 @@ class SyncProductionOutputsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'outputs' => 'required|array',
+            // `present` allows explicit empty array (`outputs: []`) for full sync delete intent.
+            'outputs' => 'present|array',
             'outputs.*.id' => 'sometimes|nullable|integer|exists:tenant.production_outputs,id',
             'outputs.*.product_id' => 'required|exists:tenant.products,id',
             'outputs.*.lot_id' => 'nullable|string',
