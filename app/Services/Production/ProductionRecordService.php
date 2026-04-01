@@ -17,7 +17,7 @@ class ProductionRecordService
     public function list(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         $query = ProductionRecord::query();
-        $query->with(['production', 'parent.process', 'process', 'inputs.box.product', 'inputs.box.product.species', 'inputs.box.product.captureZone', 'outputs.product']);
+        $query->with(['production', 'parent.process', 'process', 'inputs.box.product', 'inputs.box.palletBox', 'inputs.box.product.species', 'inputs.box.product.captureZone', 'outputs.product']);
 
         if (isset($filters['production_id'])) {
             $query->where('production_id', $filters['production_id']);
@@ -316,6 +316,7 @@ class ProductionRecordService
                 'parent.process',
                 'process',
                 'inputs.box.product',
+                'inputs.box.palletBox',
                 'outputs.product',
                 'parentOutputConsumptions.productionOutput.product'
             ]);
@@ -343,7 +344,7 @@ class ProductionRecordService
             'production',
             'process',
             'inputs.box.product',
-            'inputs.box.pallet.reception',
+            'inputs.box.palletBox.pallet.reception',
             'parentOutputConsumptions.productionOutput.product',
             'parentOutputConsumptions.productionOutput.productionRecord.process',
         ]);
@@ -366,7 +367,7 @@ class ProductionRecordService
                 'costPerKg' => $box->cost_per_kg !== null ? (float) $box->cost_per_kg : null,
                 'totalCost' => $box->total_cost !== null ? (float) $box->total_cost : null,
                 'gs1128' => $box->gs1_128,
-                'palletId' => $box->pallet_id,
+                'palletId' => $box->palletBox?->pallet_id,
             ];
         })->filter()->values();
 

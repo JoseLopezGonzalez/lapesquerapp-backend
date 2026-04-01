@@ -16,10 +16,18 @@ class BoxResource extends JsonResource
     {
         $production = $this->production;
         $product = $this->relationLoaded('product') ? $this->product : null;
+        $palletId = null;
+
+        if ($this->relationLoaded('palletBox')) {
+            $palletId = $this->palletBox?->pallet_id;
+        } elseif ($this->pallet) {
+            // Fallback para mantener compatibilidad si no hubo eager loading explícito.
+            $palletId = $this->pallet->id;
+        }
         
         return [
             'id' => $this->id,
-            'palletId' => $this->relationLoaded('pallet') && $this->pallet ? $this->pallet->id : null,
+            'palletId' => $palletId,
             'product' => $product ? [
                 'species' => $product->relationLoaded('species') ? $product->species?->toArrayAssoc() : null,
                 'captureZone' => $product->relationLoaded('captureZone') ? $product->captureZone?->toArrayAssoc() : null,
