@@ -19,7 +19,15 @@ class OrderExportFilterService
      */
     public function applyFilters(Request $request): Builder
     {
-        $query = Order::query();
+        $query = Order::query()->with([
+            'customer',
+            'transport',
+            'payment_term',
+            'incoterm',
+            'pallets.boxes.box.productionInputs',
+            'pallets.boxes.box.product.species.fishingGear',
+            'pallets.boxes.box.product.captureZone',
+        ]);
 
         $user = $request->user();
         if ($user && $user->hasRole(Role::Comercial->value) && $user->salesperson) {
