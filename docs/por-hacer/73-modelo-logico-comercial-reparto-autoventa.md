@@ -217,7 +217,7 @@ Separar el actor repartidor de la autoventa no es solo un cambio de permisos o d
 
 #### El comercial no puede editar ni borrar clientes
 
-`CustomerPolicy` restringe `update` y `delete` a roles distintos de `comercial`. El comercial actual puede crear y ver sus clientes, pero **no puede modificarlos**. Esto afecta a la propuesta: la futura acción de "asignar un owner comercial a un cliente nacido en autoventa" no puede ejecutarla el propio comercial desde la interfaz actual. Requeriría un nuevo endpoint con autorización específica, o ampliar explícitamente el permiso de forma controlada.
+`CustomerPolicy` permite ahora `update` para el rol `comercial` **solo si el cliente es suyo** (mismo `salesperson_id`). Esto habilita correcciones de ficha (direcciones, NIF, emails, notas, etc.) sin ampliar visibilidad.\n+\n+Se mantiene una restricción clave: el comercial **no puede cambiar** el `salesperson_id` del cliente (no puede “robar”/reasignar ownership comercial).\n+\n+Consecuencia para la propuesta: la acción de “asignar un owner comercial a un cliente nacido en autoventa” sigue siendo una operación **administrativa/backoffice** (no un update “normal” del comercial), porque implica cambiar `salesperson_id`.
 
 #### `AutoventaStoreService` requiere un `Salesperson` vinculado al usuario
 

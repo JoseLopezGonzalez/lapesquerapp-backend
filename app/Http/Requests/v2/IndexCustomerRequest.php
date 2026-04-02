@@ -17,6 +17,7 @@ class IndexCustomerRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'search' => 'nullable|string|max:255',
             'id' => 'nullable|integer',
             'ids' => 'nullable|array',
             'ids.*' => 'integer',

@@ -379,10 +379,14 @@ X-Tenant: empresa1
 
 ### Buscar Clientes
 ```http
-GET /v2/customers?name=ejemplo&salespeople[]=1&countries[]=1
+GET /v2/customers?search=Mer&perPage=12&page=1
 Authorization: Bearer {token}
 X-Tenant: empresa1
 ```
+
+**Notas**:
+- `search` hace búsqueda parcial (LIKE) en varios campos del cliente (por ejemplo: `name`, `vat_number`, direcciones, emails, códigos externos, alias).
+- Si prefieres búsqueda por nombre “solo nombre”, usa `name=...` (también LIKE).
 
 ---
 

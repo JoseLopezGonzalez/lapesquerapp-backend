@@ -20,7 +20,7 @@ Este documento define de forma **persistente** las restricciones de autorizació
 | Ámbito                   | Permitido                                                                                                                                                                         | No permitido                                                                                                                  |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | **Pedidos**         | Listar solo los suyos (paginated, active, options, export, report). Crear solo para clientes suyos. Ver detalle solo de pedidos suyos. Estadísticas y production-view solo con sus datos (solo lectura). Ver incidencias de sus pedidos. PDFs: hoja de pedido, nota de carga, nota de carga valorada. | Editar, borrar, cambiar estado, vincular/desvincular palets. Ver pedidos de otros. Gestionar incidencias (crear/editar/borrar). Enviar documentos por email (por lo pronto). Otros PDFs (por lo pronto). |
-| **Clientes**        | Listar solo los suyos. Crear clientes asociándolos a sí mismo como comercial. Ver detalle solo de clientes suyos.                                                               | Editar, borrar. Ver/listar clientes de otros comerciales.                                                                     |
+| **Clientes**        | Listar solo los suyos. Crear clientes asociándolos a sí mismo como comercial. Ver detalle solo de clientes suyos. **Editar sus clientes** (direcciones, contacto, notas, NIF, emails, país, forma de pago, transporte, etc.). | Borrar. Ver/listar clientes de otros comerciales. **Cambiar el comercial asignado** (`salesperson_id`) de un cliente. |
 | **Otras entidades** | Ver únicamente lo necesario en **options** para sus acciones. **Salespeople/options**: solo su propio registro. Ver **settings** (whitelist de keys genéricas, no críticas). | Editar, borrar, ver detalle o listados completos de entidades que no sean Order/Customer (salvo options y settings acotados). |
 | **Settings**        | Ver whitelist (company.name, company.logo_url, etc.; excluir company.mail.* y sensibles).                                                                                        | Editar settings.                                                                                                              |
 
@@ -114,8 +114,7 @@ Este documento define de forma **persistente** las restricciones de autorizació
 
 #### 3.2.4 Editar / Borrar
 
-- **Regla**: El comercial **no puede** editar ni borrar clientes.
-- **Policy**: `CustomerPolicy::update`, `delete`, `restore`, `forceDelete` → para rol comercial devolver `false`.
+- **Regla**: El comercial **sí puede editar** un cliente **solo si es suyo** (`customer.salesperson_id = $user->salesperson->id`).\n+  - Puede modificar campos “operativos/comerciales” del cliente (direcciones, NIF, emails, contacto, notas, país, forma de pago, transporte, asignación de repartidor/estado operativo, etc.).\n+  - **No puede** cambiar el `salesperson_id` (comercial asignado), aunque lo envíe en el payload.\n+- **Policy**:\n+  - `CustomerPolicy::update($user, $customer)` → para comercial, `true` solo si el cliente es suyo.\n+  - `CustomerPolicy::delete`, `restore`, `forceDelete` → para rol comercial devolver `false`.\n+- **Implementación** (backend): ignorar `salesperson_id` cuando el usuario es comercial (update y assignment).
 
 ---
 

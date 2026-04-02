@@ -107,6 +107,9 @@ class CustomerController extends Controller
         $this->authorize('update', $customer);
 
         $validated = $request->validated();
+        if ($request->user()->hasRole(Role::Comercial->value)) {
+            unset($validated['salesperson_id']);
+        }
 
         $allEmails = [];
         foreach ($validated['emails'] ?? [] as $email) {
@@ -128,7 +131,7 @@ class CustomerController extends Controller
             'accounting_notes' => $validated['accounting_notes'] ?? null,
             'emails' => $validated['emails'] ?? null,
             'contact_info' => $validated['contact_info'] ?? null,
-            'salesperson_id' => $validated['salesperson_id'] ?? null,
+            'salesperson_id' => $validated['salesperson_id'] ?? $customer->salesperson_id,
             'country_id' => $validated['country_id'] ?? null,
             'payment_term_id' => $validated['payment_term_id'] ?? null,
             'transport_id' => $validated['transport_id'] ?? null,
@@ -149,6 +152,9 @@ class CustomerController extends Controller
     public function updateAssignment(UpdateCustomerAssignmentRequest $request, Customer $customer)
     {
         $validated = $request->validated();
+        if ($request->user()->hasRole(Role::Comercial->value)) {
+            unset($validated['salesperson_id']);
+        }
 
         $customer->update([
             'salesperson_id' => array_key_exists('salesperson_id', $validated) ? $validated['salesperson_id'] : $customer->salesperson_id,

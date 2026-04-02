@@ -48,6 +48,37 @@ class CustomerApiTest extends TestCase
         $response->assertJsonStructure(['data', 'links', 'meta']);
     }
 
+    public function test_can_search_customers_by_search_param(): void
+    {
+        Customer::query()->delete();
+
+        $ctx = $this->salesContext;
+        $needle = 'Mer-' . uniqid();
+
+        $match = Customer::factory()->create([
+            'name' => 'Cliente ' . $needle,
+            'payment_term_id' => $ctx['paymentTerm']->id,
+            'salesperson_id' => $ctx['salesperson']->id,
+            'country_id' => $ctx['country']->id,
+            'transport_id' => $ctx['transport']->id,
+        ]);
+        $otherName = 'Cliente Otro ' . uniqid();
+        Customer::factory()->create([
+            'name' => $otherName,
+            'payment_term_id' => $ctx['paymentTerm']->id,
+            'salesperson_id' => $ctx['salesperson']->id,
+            'country_id' => $ctx['country']->id,
+            'transport_id' => $ctx['transport']->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/customers?search=' . urlencode($needle) . '&perPage=50');
+
+        $response->assertStatus(200);
+        $response->assertJsonFragment(['id' => $match->id, 'name' => $match->name]);
+        $response->assertJsonMissing(['name' => $otherName]);
+    }
+
     public function test_can_create_customer(): void
     {
         $ctx = $this->salesContext;

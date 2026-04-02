@@ -25,6 +25,21 @@ class CustomerListService
             $query->where('salesperson_id', $user->salesperson->id);
         }
 
+        if ($request->filled('search')) {
+            $search = (string) $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('vat_number', 'like', '%' . $search . '%')
+                    ->orWhere('billing_address', 'like', '%' . $search . '%')
+                    ->orWhere('shipping_address', 'like', '%' . $search . '%')
+                    ->orWhere('contact_info', 'like', '%' . $search . '%')
+                    ->orWhere('emails', 'like', '%' . $search . '%')
+                    ->orWhere('a3erp_code', 'like', '%' . $search . '%')
+                    ->orWhere('facilcom_code', 'like', '%' . $search . '%')
+                    ->orWhere('alias', 'like', '%' . $search . '%');
+            });
+        }
+
         if ($request->filled('id')) {
             $query->where('id', $request->input('id'));
         }

@@ -59,7 +59,7 @@ class CustomerPolicy
 
     /**
      * Determine if the user can update the customer.
-     * Comercial: cannot update.
+     * Comercial: only their own customers (salesperson_id matches).
      */
     public function update(User $user, Customer $customer): bool
     {
@@ -67,7 +67,7 @@ class CustomerPolicy
             return false;
         }
         if ($user->hasRole(Role::Comercial->value)) {
-            return false;
+            return $user->salesperson !== null && $customer->salesperson_id === $user->salesperson->id;
         }
         return $user->hasAnyRole($this->allowedRoles());
     }
