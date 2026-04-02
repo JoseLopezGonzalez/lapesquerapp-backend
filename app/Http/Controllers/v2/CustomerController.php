@@ -10,7 +10,9 @@ use App\Http\Requests\v2\StoreCustomerRequest;
 use App\Http\Requests\v2\UpdateCustomerAssignmentRequest;
 use App\Http\Requests\v2\UpdateCustomerRequest;
 use App\Http\Resources\v2\CustomerResource;
+use App\Models\CommercialInteraction;
 use App\Models\Customer;
+use App\Models\Prospect;
 use App\Services\v2\CustomerListService;
 use App\Services\v2\CustomerOrderHistoryService;
 use Illuminate\Http\Request;
@@ -239,6 +241,38 @@ class CustomerController extends Controller
         $customers = $query->get();
 
         return response()->json($customers);
+    }
+
+    /**
+     * Devuelve el historial unificado de interacciones del cliente:
+     * - Interacciones propias del cliente (isFromProspect=false)
+     * - Interacciones del prospecto convertido, si existe (isFromProspect=true)
+     * Ordenadas por occurred_at DESC.
+     */
+    public function interactions(string $id)
+    {
+        $customer = Customer::findOrFail($id);
+        $this->authorize('view', $customer);
+
+        $customerInteractions = CommercialInteraction::with('salesperson')
+            ->where('customer_id', $customer->id)
+            ->get()
+            ->map(fn ($i) => array_merge($i->toArrayAssoc(), ['isFromProspect' => false]));
+
+        $prospect = Prospect::where('customer_id', $customer->id)->first();
+        $prospectInteractions = collect();
+        if ($prospect) {
+            $prospectInteractions = CommercialInteraction::with('salesperson')
+                ->where('prospect_id', $prospect->id)
+                ->get()
+                ->map(fn ($i) => array_merge($i->toArrayAssoc(), ['isFromProspect' => true]));
+        }
+
+        $all = $customerInteractions->concat($prospectInteractions)
+            ->sortByDesc('occurredAt')
+            ->values();
+
+        return response()->json(['data' => $all]);
     }
 
     /**

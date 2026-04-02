@@ -958,11 +958,12 @@ class CrmApiTest extends TestCase
     public function test_prospect_can_be_converted_to_customer(): void
     {
         $paymentTerm = PaymentTerm::firstOrCreate(['name' => '30 dias CRM']);
+        // La conversión acepta cualquier estado (aquí usamos STATUS_NEW)
         $prospect = Prospect::create([
             'company_name' => 'Convert Prospect',
             'address' => 'Polígono Industrial Norte, nave 12',
             'salesperson_id' => $this->commercialSalesperson->id,
-            'status' => Prospect::STATUS_OFFER_SENT,
+            'status' => Prospect::STATUS_NEW,
             'origin' => Prospect::ORIGIN_DIRECT,
         ]);
         $prospect->contacts()->create([
@@ -997,6 +998,178 @@ class CrmApiTest extends TestCase
         $this->assertDatabaseHas('offers', [
             'prospect_id' => null,
             'customer_id' => $prospect->customer_id,
+        ], 'tenant');
+    }
+
+    public function test_conversion_blocked_if_already_converted_with_active_customer(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Already Converted Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+        $prospect->contacts()->create([
+            'name' => 'Pedro',
+            'phone' => '600111222',
+            'email' => 'pedro@already.test',
+            'is_primary' => true,
+        ]);
+
+        // Primera conversión: OK
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/convert-to-customer')
+            ->assertStatus(200);
+
+        // Segunda conversión: debe fallar con 422
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/convert-to-customer')
+            ->assertStatus(422)
+            ->assertJsonPath('errors.status.0', 'Este prospecto ya ha sido convertido a cliente.');
+    }
+
+    public function test_reconversion_allowed_if_historical_without_active_customer(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'Reconvert Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+        $prospect->contacts()->create([
+            'name' => 'Laura',
+            'phone' => '699888777',
+            'email' => 'laura@reconvert.test',
+            'is_primary' => true,
+        ]);
+
+        // Primera conversión
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/convert-to-customer')
+            ->assertStatus(200);
+
+        $prospect->refresh();
+        // Simular customer eliminado: desvinculamos el customer_id
+        $prospect->update(['customer_id' => null]);
+
+        // Reconversión debe ser permitida
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/convert-to-customer')
+            ->assertStatus(200);
+    }
+
+    public function test_conversion_consolidates_all_contacts_into_contact_info(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'MultiContact Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+        $prospect->contacts()->create([
+            'name' => 'Ana',
+            'role' => 'Gerente',
+            'phone' => '600000001',
+            'email' => 'ana@multi.test',
+            'is_primary' => true,
+        ]);
+        $prospect->contacts()->create([
+            'name' => 'Carlos',
+            'role' => 'Compras',
+            'phone' => '600000002',
+            'email' => 'carlos@multi.test',
+            'is_primary' => false,
+        ]);
+
+        $response = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/convert-to-customer')
+            ->assertStatus(200);
+
+        $prospect->refresh();
+        $customer = \App\Models\Customer::find($prospect->customer_id);
+
+        // El contacto primario debe ir primero
+        $this->assertStringContainsString('Ana', $customer->contact_info);
+        $this->assertStringContainsString('Carlos', $customer->contact_info);
+        $this->assertStringContainsString('Cargo: Gerente', $customer->contact_info);
+        $this->assertStringContainsString('Email: ana@multi.test', $customer->contact_info);
+        // Ana debe ir antes que Carlos (primario primero)
+        $this->assertLessThan(strpos($customer->contact_info, 'Carlos'), strpos($customer->contact_info, 'Ana'));
+    }
+
+    public function test_conversion_consolidates_all_contact_emails(): void
+    {
+        $prospect = Prospect::create([
+            'company_name' => 'MultiEmail Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+        $prospect->contacts()->create([
+            'name' => 'Eva',
+            'phone' => '611000001',
+            'email' => 'eva@emails.test',
+            'is_primary' => true,
+        ]);
+        $prospect->contacts()->create([
+            'name' => 'Rodrigo',
+            'phone' => '611000002',
+            'email' => 'rodrigo@emails.test',
+            'is_primary' => false,
+        ]);
+        // Contacto sin email: no debe aparecer en emails
+        $prospect->contacts()->create([
+            'name' => 'Sin Email',
+            'phone' => '611000003',
+            'is_primary' => false,
+        ]);
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/convert-to-customer')
+            ->assertStatus(200);
+
+        $prospect->refresh();
+        $customer = \App\Models\Customer::find($prospect->customer_id);
+
+        $this->assertStringContainsString('eva@emails.test;', $customer->emails);
+        $this->assertStringContainsString('rodrigo@emails.test;', $customer->emails);
+        $this->assertStringNotContainsString('CC:', $customer->emails);
+    }
+
+    public function test_conversion_applies_extra_data_from_payload(): void
+    {
+        $paymentTerm = PaymentTerm::firstOrCreate(['name' => '60 dias CRM extra']);
+        $prospect = Prospect::create([
+            'company_name' => 'ExtraData Prospect',
+            'address' => 'Dirección original',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_NEW,
+            'origin' => Prospect::ORIGIN_DIRECT,
+        ]);
+        $prospect->contacts()->create([
+            'name' => 'Hugo',
+            'phone' => '622333444',
+            'is_primary' => true,
+        ]);
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/convert-to-customer', [
+                'vatNumber'        => 'ES12345678A',
+                'billingAddress'   => 'Facturación específica',
+                'shippingAddress'  => 'Envío específico',
+                'paymentTermId'    => $paymentTerm->id,
+                'a3erpCode'        => 'A3-CODE-001',
+            ])
+            ->assertStatus(200);
+
+        $prospect->refresh();
+        $this->assertDatabaseHas('customers', [
+            'id'              => $prospect->customer_id,
+            'vat_number'      => 'ES12345678A',
+            'billing_address' => 'Facturación específica',
+            'shipping_address' => 'Envío específico',
+            'payment_term_id' => $paymentTerm->id,
+            'a3erp_code'      => 'A3-CODE-001',
         ], 'tenant');
     }
 
@@ -1178,7 +1351,7 @@ class CrmApiTest extends TestCase
             ])->assertStatus(200);
 
         $response = $this->withHeaders($this->commercialHeaders())
-            ->getJson('/api/v2/crm/dashboard');
+            ->getJson('/api/v2/crm/dashboard/pending-actions');
 
         $response->assertStatus(200)
             ->assertJsonPath('data.counters.remindersToday', 1)
@@ -1440,24 +1613,82 @@ class CrmApiTest extends TestCase
                 'nextActionNote' => 'Llamar hoy',
             ])->assertStatus(200);
 
-        $response = $this->withHeaders($this->commercialHeaders())
-            ->getJson('/api/v2/crm/dashboard');
+        $pendingResponse = $this->withHeaders($this->commercialHeaders())
+            ->getJson('/api/v2/crm/dashboard/pending-actions');
+        $customersResponse = $this->withHeaders($this->commercialHeaders())
+            ->getJson('/api/v2/crm/dashboard/customers');
+        $prospectsResponse = $this->withHeaders($this->commercialHeaders())
+            ->getJson('/api/v2/crm/dashboard/prospects');
 
-        $response->assertStatus(200)
+        $pendingResponse->assertStatus(200)
             ->assertJsonPath('data.counters.remindersToday', 2)
+            ->assertJsonFragment(['type' => 'prospect', 'label' => 'Stale Prospect']);
+
+        $customersResponse->assertStatus(200)
             ->assertJsonPath('data.counters.inactiveCustomers', 1)
-            ->assertJsonPath('data.counters.prospectsWithoutActivity', 0)
             ->assertJsonFragment(['name' => 'Inactive Customer'])
-            ->assertJsonFragment(['type' => 'prospect', 'label' => 'Stale Prospect'])
             ->assertJsonMissing(['name' => 'Other Customer']);
 
-        $remindersToday = $response->json('data.reminders_today');
+        $prospectsResponse->assertStatus(200)
+            ->assertJsonPath('data.counters.prospectsWithoutActivity', 0);
+
+        $remindersToday = $pendingResponse->json('data.reminders_today');
         $todayProspectReminder = collect($remindersToday)->firstWhere('label', 'Today Prospect');
         $this->assertNotNull($todayProspectReminder);
         $this->assertSame('Llamar hoy', $todayProspectReminder['nextActionNote']);
 
         $this->assertNotNull($customer->id);
         $this->assertNotNull($otherCustomer->id);
+    }
+
+    public function test_crm_dashboard_supports_split_endpoints(): void
+    {
+        $country = Country::firstOrCreate(['name' => 'Dashboard Split CRM']);
+
+        $prospect = Prospect::create([
+            'company_name' => 'Split Prospect',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'status' => Prospect::STATUS_FOLLOWING,
+            'origin' => Prospect::ORIGIN_DIRECT,
+            'last_contact_at' => now()->subDays(10),
+        ]);
+
+        $customer = Customer::create([
+            'name' => 'Split Customer',
+            'salesperson_id' => $this->commercialSalesperson->id,
+            'country_id' => $country->id,
+            'emails' => 'split@test.com;',
+            'contact_info' => 'Contacto split',
+        ]);
+
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects/'.$prospect->id.'/schedule-action', [
+                'nextActionAt' => now()->subDay()->format('Y-m-d'),
+                'nextActionNote' => 'Accion vencida',
+            ])->assertStatus(200);
+
+        $pendingActionsResponse = $this->withHeaders($this->commercialHeaders())
+            ->getJson('/api/v2/crm/dashboard/pending-actions');
+
+        $pendingActionsResponse->assertStatus(200)
+            ->assertJsonPath('data.counters.overdueActions', 1)
+            ->assertJsonFragment(['label' => 'Split Prospect']);
+
+        $customersResponse = $this->withHeaders($this->commercialHeaders())
+            ->getJson('/api/v2/crm/dashboard/customers');
+
+        $customersResponse->assertStatus(200)
+            ->assertJsonPath('data.counters.inactiveCustomers', 1)
+            ->assertJsonFragment(['name' => 'Split Customer']);
+
+        $prospectsResponse = $this->withHeaders($this->commercialHeaders())
+            ->getJson('/api/v2/crm/dashboard/prospects');
+
+        $prospectsResponse->assertStatus(200)
+            ->assertJsonPath('data.counters.prospectsWithoutActivity', 1)
+            ->assertJsonFragment(['companyName' => 'Split Prospect']);
+
+        $this->assertNotNull($customer->id);
     }
 
     public function test_existing_salespeople_options_and_settings_still_respect_commercial_scope(): void

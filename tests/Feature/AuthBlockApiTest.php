@@ -169,7 +169,7 @@ class AuthBlockApiTest extends TestCase
             ->assertStatus(403);
 
         $this->withHeaders($headers)
-            ->getJson('/api/v2/crm/dashboard')
+            ->getJson('/api/v2/crm/dashboard/pending-actions')
             ->assertStatus(403);
 
         $this->withHeaders($headers)

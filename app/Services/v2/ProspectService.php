@@ -221,60 +221,82 @@ class ProspectService
         return $prospect->fresh(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
     }
 
-    public static function convertToCustomer(Prospect $prospect): Customer
+    public static function convertToCustomer(Prospect $prospect, array $extraData = []): Customer
     {
-        if ($prospect->status !== Prospect::STATUS_OFFER_SENT) {
-            throw ValidationException::withMessages([
-                'status' => ['Solo se puede convertir un prospecto en estado offer_sent.'],
-            ]);
-        }
+        return DB::transaction(function () use ($prospect, $extraData) {
+            // Bloquear el prospecto para evitar conversiones concurrentes
+            $prospect = Prospect::lockForUpdate()->findOrFail($prospect->id);
+            $prospect->load('contacts');
 
-        $primaryContact = $prospect->primaryContact()->first();
-        if (! $primaryContact) {
-            throw ValidationException::withMessages([
-                'primaryContact' => ['Debe existir un contacto primario para convertir el prospecto.'],
-            ]);
-        }
+            // Validar idempotencia: ya convertido con cliente activo
+            if ($prospect->status === Prospect::STATUS_CUSTOMER && $prospect->customer_id !== null) {
+                $customerExists = Customer::where('id', $prospect->customer_id)->exists();
+                if ($customerExists) {
+                    throw ValidationException::withMessages([
+                        'status' => ['Este prospecto ya ha sido convertido a cliente.'],
+                    ]);
+                }
+            }
 
-        if (blank($primaryContact->phone) && blank($primaryContact->email)) {
-            throw ValidationException::withMessages([
-                'primaryContact' => ['El contacto primario debe tener al menos teléfono o email.'],
-            ]);
-        }
+            // Validar contacto primario
+            $primaryContact = $prospect->contacts->firstWhere('is_primary', true);
+            if (! $primaryContact) {
+                throw ValidationException::withMessages([
+                    'primaryContact' => ['Debe existir un contacto primario para convertir el prospecto.'],
+                ]);
+            }
 
-        return DB::transaction(function () use ($prospect, $primaryContact) {
-            $acceptedOffer = $prospect->offers()
-                ->where('status', Offer::STATUS_ACCEPTED)
-                ->latest('accepted_at')
-                ->first();
+            if (blank($primaryContact->phone) && blank($primaryContact->email)) {
+                throw ValidationException::withMessages([
+                    'primaryContact' => ['El contacto primario debe tener al menos teléfono o email.'],
+                ]);
+            }
 
-            $contactInfoParts = array_filter([
-                $primaryContact->name,
-                $primaryContact->role ? 'Cargo: '.$primaryContact->role : null,
-                $primaryContact->phone ? 'Tel: '.$primaryContact->phone : null,
-            ]);
+            // Determinar payment_term_id: payload tiene prioridad sobre oferta aceptada
+            $paymentTermId = $extraData['paymentTermId'] ?? null;
+            if (! $paymentTermId) {
+                $acceptedOffer = $prospect->offers()
+                    ->where('status', Offer::STATUS_ACCEPTED)
+                    ->latest('accepted_at')
+                    ->first();
+                $paymentTermId = $acceptedOffer?->payment_term_id;
+            }
 
+            // Consolidar emails de todos los contactos (sin duplicados, sin CC:)
+            $emails = self::buildCustomerEmails($prospect->contacts);
+
+            // Consolidar contact_info de todos los contactos (formato multilinea acordado)
+            $contactInfo = self::buildCustomerContactInfo($prospect->contacts, $primaryContact);
+
+            // Dirección base del prospecto (se sobreescribe si el payload la trae)
             $address = filled($prospect->address) ? $prospect->address : null;
 
             $customer = Customer::create([
-                'name' => $prospect->company_name,
-                'country_id' => $prospect->country_id,
-                'salesperson_id' => $prospect->salesperson_id,
-                'billing_address' => $address,
-                'shipping_address' => $address,
-                'emails' => $primaryContact->email ? trim($primaryContact->email).';' : null,
-                'contact_info' => implode(' | ', $contactInfoParts),
-                'payment_term_id' => $acceptedOffer?->payment_term_id,
+                'name'                => $prospect->company_name,
+                'country_id'          => $prospect->country_id,
+                'salesperson_id'      => $prospect->salesperson_id,
+                'billing_address'     => $extraData['billingAddress'] ?? $address,
+                'shipping_address'    => $extraData['shippingAddress'] ?? $address,
+                'emails'              => $emails,
+                'contact_info'        => $contactInfo,
+                'payment_term_id'     => $paymentTermId,
+                'vat_number'          => $extraData['vatNumber'] ?? null,
+                'transport_id'        => $extraData['transportId'] ?? null,
+                'a3erp_code'          => $extraData['a3erpCode'] ?? null,
+                'facilcom_code'       => $extraData['facilcomCode'] ?? null,
+                'transportation_notes' => $extraData['transportationNotes'] ?? null,
+                'production_notes'    => $extraData['productionNotes'] ?? null,
+                'accounting_notes'    => $extraData['accountingNotes'] ?? null,
             ]);
             $customer->alias = 'Cliente Nº '.$customer->id;
             $customer->save();
 
             $prospect->update([
-                'status' => Prospect::STATUS_CUSTOMER,
+                'status'      => Prospect::STATUS_CUSTOMER,
                 'customer_id' => $customer->id,
             ]);
 
-            // Transferimos la pending principal del prospecto al cliente.
+            // Transferir la acción pending activa del prospecto al cliente
             $pending = AgendaAction::query()
                 ->where('target_type', CrmAgendaService::TARGET_PROSPECT)
                 ->where('target_id', (int) $prospect->id)
@@ -294,18 +316,86 @@ class ProspectService
 
                 $pending->update([
                     'target_type' => CrmAgendaService::TARGET_CUSTOMER,
-                    'target_id' => (int) $customer->id,
+                    'target_id'   => (int) $customer->id,
                 ]);
             }
 
-            $prospect->offers()
-                ->update([
-                    'prospect_id' => null,
-                    'customer_id' => $customer->id,
-                ]);
+            // Transferir todas las ofertas del prospecto al cliente
+            $prospect->offers()->update([
+                'prospect_id' => null,
+                'customer_id' => $customer->id,
+            ]);
 
             return $customer;
         });
+    }
+
+    /**
+     * Consolida emails de todos los contactos en formato "email1;email2;" sin CC:.
+     */
+    private static function buildCustomerEmails($contacts): ?string
+    {
+        $seen = [];
+        $parts = [];
+
+        foreach ($contacts as $contact) {
+            $email = trim((string) $contact->email);
+            if (blank($email)) {
+                continue;
+            }
+            $normalized = strtolower($email);
+            if (isset($seen[$normalized])) {
+                continue;
+            }
+            $seen[$normalized] = true;
+            $parts[] = $email.';';
+        }
+
+        return $parts ? implode('', $parts) : null;
+    }
+
+    /**
+     * Construye contact_info multilinea con todos los contactos.
+     * Formato por línea: {Nombre} | Cargo: {Rol} | Tel: {Telefono} | Email: {Email}
+     * El contacto primario va primero; el resto ordenados por nombre.
+     */
+    private static function buildCustomerContactInfo($contacts, $primaryContact): ?string
+    {
+        $formatContact = function ($contact): string {
+            $parts = array_filter([
+                filled($contact->name) ? $contact->name : null,
+                filled($contact->role) ? 'Cargo: '.$contact->role : null,
+                filled($contact->phone) ? 'Tel: '.$contact->phone : null,
+                filled($contact->email) ? 'Email: '.$contact->email : null,
+            ]);
+
+            return implode(' | ', $parts);
+        };
+
+        // Deduplicar por combinación normalizada (name, email, phone)
+        $seen = [];
+        $lines = [];
+
+        $ordered = $contacts->sortBy(function ($c) use ($primaryContact) {
+            // Primario primero (sort key [0, '']), resto ordenados por nombre ([1, name])
+            return $c->id === $primaryContact->id
+                ? [0, '']
+                : [1, (string) ($c->name ?? '')];
+        });
+
+        foreach ($ordered as $contact) {
+            $key = strtolower(trim((string) $contact->name).'|'.trim((string) $contact->email).'|'.trim((string) $contact->phone));
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $line = $formatContact($contact);
+            if (filled($line)) {
+                $lines[] = $line;
+            }
+        }
+
+        return $lines ? implode("\n", $lines) : null;
     }
 
     public static function scopeForUser(Builder $query, User $user): void

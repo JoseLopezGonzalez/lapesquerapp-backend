@@ -8,10 +8,24 @@ use Illuminate\Http\Request;
 
 class CrmDashboardController extends Controller
 {
-    public function index(Request $request)
+    public function pendingActions(Request $request)
     {
         return response()->json([
-            'data' => CrmDashboardService::getData($request->user()),
+            'data' => CrmDashboardService::getPendingActionsData($request->user()),
+        ]);
+    }
+
+    public function customers(Request $request)
+    {
+        return response()->json([
+            'data' => CrmDashboardService::getCustomersData($request->user()),
+        ]);
+    }
+
+    public function prospects(Request $request)
+    {
+        return response()->json([
+            'data' => CrmDashboardService::getProspectsData($request->user()),
         ]);
     }
 }

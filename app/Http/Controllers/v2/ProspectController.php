@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\ConvertToCustomerRequest;
 use App\Http\Requests\v2\IndexProspectRequest;
 use App\Http\Requests\v2\ScheduleProspectActionRequest;
 use App\Http\Requests\v2\StoreProspectContactRequest;
@@ -111,11 +112,11 @@ class ProspectController extends Controller
         return response()->json(['message' => 'Contacto eliminado correctamente.']);
     }
 
-    public function convertToCustomer(string $id)
+    public function convertToCustomer(ConvertToCustomerRequest $request, string $id)
     {
-        $prospect = Prospect::with(['primaryContact', 'offers'])->findOrFail($id);
+        $prospect = Prospect::with(['contacts', 'offers'])->findOrFail($id);
         $this->authorize('update', $prospect);
-        $customer = ProspectService::convertToCustomer($prospect);
+        $customer = ProspectService::convertToCustomer($prospect, $request->validated());
 
         return response()->json([
             'message' => 'Prospecto convertido a cliente correctamente.',

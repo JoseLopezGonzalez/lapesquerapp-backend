@@ -3,6 +3,7 @@
 namespace App\Services\v2;
 
 use App\Enums\Role;
+use App\Models\Customer;
 use App\Models\Offer;
 use App\Models\OfferLine;
 use App\Models\Order;
@@ -209,12 +210,27 @@ class OfferService
             ]);
         }
 
-        $offer->loadMissing(['customer', 'prospect.primaryContact', 'lines']);
+        $offer->loadMissing(['customer', 'prospect', 'lines']);
 
         $customerId = $offer->customer_id;
-        if (! $customerId && $offer->prospect_id) {
-            $customerId = ProspectService::convertToCustomer($offer->prospect)->id;
-            $offer->refresh()->loadMissing('customer');
+        if (! $customerId) {
+            if ($offer->prospect_id && $offer->prospect) {
+                $prospect = $offer->prospect;
+                if ($prospect->status === Prospect::STATUS_CUSTOMER && $prospect->customer_id !== null) {
+                    $customerExists = Customer::where('id', $prospect->customer_id)->exists();
+                    if ($customerExists) {
+                        throw ValidationException::withMessages([
+                            'prospect' => ['El prospecto ya fue convertido. Usa el cliente asociado para crear el pedido.'],
+                        ]);
+                    }
+                }
+                throw ValidationException::withMessages([
+                    'prospect' => ['La oferta está vinculada a un prospecto que no ha sido convertido a cliente. Convierte el prospecto antes de crear el pedido.'],
+                ]);
+            }
+            throw ValidationException::withMessages([
+                'customer' => ['La oferta no tiene cliente asociado. No se puede crear el pedido.'],
+            ]);
         }
 
         $basePlannedProducts = $offer->lines->map(function (OfferLine $line) {

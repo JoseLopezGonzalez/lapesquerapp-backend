@@ -24,6 +24,14 @@
    - el prospecto pasa a `offer_sent`
    - `prospects.last_offer_at` se actualiza
 
+### 3.1 Conversión manual del prospecto a cliente (opcional)
+
+Si el flujo requiere **crear el cliente antes** (por ejemplo, para completar datos fiscales/operativos previos a pedido), usar:
+
+- `POST /api/v2/prospects/{id}/convert-to-customer`
+
+Reglas y detalles del contrato: ver [prospect-to-customer.md](./prospect-to-customer.md).
+
 ## 4. Aceptar oferta y crear pedido
 
 1. `POST /api/v2/offers/{id}/accept`

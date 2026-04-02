@@ -22,6 +22,7 @@ Ese documento ya reúne en un solo lugar:
 Los siguientes archivos se mantienen como desglose por recurso o soporte interno, pero no son la referencia principal para el equipo frontend:
 
 - [prospects.md](./prospects.md)
+- [prospect-to-customer.md](./prospect-to-customer.md)
 - [commercial-interactions.md](./commercial-interactions.md)
 - [offers.md](./offers.md)
 - [dashboard.md](./dashboard.md)

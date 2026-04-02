@@ -281,7 +281,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('/fishing-gears/options', [FishingGearController::class, 'options']);
         Route::get('/countries/options', [CountryController::class, 'options']);
         Route::get('/payment-terms/options', [V2PaymentTermController::class, 'options']);
-        Route::get('/crm/dashboard', [CrmDashboardController::class, 'index']);
+        Route::get('/crm/dashboard/pending-actions', [CrmDashboardController::class, 'pendingActions']);
+        Route::get('/crm/dashboard/customers', [CrmDashboardController::class, 'customers']);
+        Route::get('/crm/dashboard/prospects', [CrmDashboardController::class, 'prospects']);
         Route::get('/crm/agenda', [\App\Http\Controllers\v2\CrmAgendaController::class, 'calendar']);
         Route::get('/crm/agenda/summary', [\App\Http\Controllers\v2\CrmAgendaController::class, 'summary']);
         Route::get('/crm/agenda/pending', [\App\Http\Controllers\v2\CrmAgendaController::class, 'pending']);
@@ -388,6 +390,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::delete('pallets', [V2PalletController::class, 'destroyMultiple']);
         Route::apiResource('customers', V2CustomerController::class);
         Route::delete('customers', [V2CustomerController::class, 'destroyMultiple']);
+        Route::get('customers/{customer}/interactions', [V2CustomerController::class, 'interactions'])->name('customers.interactions');
         Route::get('customers/{customer}/order-history', [V2CustomerController::class, 'getOrderHistory'])->name('customers.order_history');
         Route::get('customers/{customer}/order-history/ranges', [V2CustomerController::class, 'getOrderHistoryRanges'])->name('customers.order_history_ranges');
         Route::put('customers/{customer}/assignment', [V2CustomerController::class, 'updateAssignment'])->name('customers.assignment');
