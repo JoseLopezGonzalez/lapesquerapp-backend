@@ -139,9 +139,9 @@ class OperationalOrdersApiTest extends TestCase
         ];
     }
 
-    private function createAssignedOrder(): Order
+    private function createAssignedOrder(array $overrides = []): Order
     {
-        $order = Order::create([
+        $order = Order::create(array_merge([
             'customer_id' => $this->customer->id,
             'entry_date' => now()->format('Y-m-d'),
             'load_date' => now()->addDay()->format('Y-m-d'),
@@ -155,7 +155,7 @@ class OperationalOrdersApiTest extends TestCase
             'emails' => null,
             'status' => Order::STATUS_PENDING,
             'order_type' => Order::ORDER_TYPE_STANDARD,
-        ]);
+        ], $overrides));
 
         OrderPlannedProductDetail::create([
             'order_id' => $order->id,
@@ -215,6 +215,40 @@ class OperationalOrdersApiTest extends TestCase
             'lot' => 'FIELD-LOT-1',
             'gs1_128' => 'FIELD-GS1-1',
         ], 'tenant');
+    }
+
+    public function test_field_user_can_filter_active_orders_with_business_logic(): void
+    {
+        $pending = $this->createAssignedOrder([
+            'status' => Order::STATUS_PENDING,
+            'load_date' => now()->subDays(3)->format('Y-m-d'),
+        ]);
+        $finishedToday = $this->createAssignedOrder([
+            'status' => Order::STATUS_FINISHED,
+            'load_date' => now()->format('Y-m-d'),
+        ]);
+        $finishedPast = $this->createAssignedOrder([
+            'status' => Order::STATUS_FINISHED,
+            'load_date' => now()->subDay()->format('Y-m-d'),
+        ]);
+
+        $activeResponse = $this->withHeaders($this->headersFor($this->fieldUser))
+            ->getJson('/api/v2/field/orders?active=true');
+
+        $activeResponse->assertStatus(200);
+        $activeIds = collect($activeResponse->json('data'))->pluck('id')->all();
+        $this->assertContains($pending->id, $activeIds);
+        $this->assertContains($finishedToday->id, $activeIds);
+        $this->assertNotContains($finishedPast->id, $activeIds);
+
+        $inactiveResponse = $this->withHeaders($this->headersFor($this->fieldUser))
+            ->getJson('/api/v2/field/orders?active=false');
+
+        $inactiveResponse->assertStatus(200);
+        $inactiveIds = collect($inactiveResponse->json('data'))->pluck('id')->all();
+        $this->assertContains($finishedPast->id, $inactiveIds);
+        $this->assertNotContains($pending->id, $inactiveIds);
+        $this->assertNotContains($finishedToday->id, $inactiveIds);
     }
 
     public function test_field_user_can_fetch_order_detail_with_pallets_and_box_ids(): void

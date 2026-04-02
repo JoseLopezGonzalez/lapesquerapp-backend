@@ -13,6 +13,7 @@ use App\Models\Order;
 use App\Services\v2\OperationalOrderExecutionService;
 use App\Services\v2\OrderDetailService;
 use App\Services\v2\OrderStoreService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class FieldOrderController extends Controller
@@ -40,7 +41,17 @@ class FieldOrderController extends Controller
             ])
             ->where('field_operator_id', $fieldOperatorId);
 
-        if ($request->filled('status')) {
+        if ($request->has('active')) {
+            if ($request->boolean('active')) {
+                $query->where(function ($query) {
+                    $query->where('status', Order::STATUS_PENDING)
+                        ->orWhereDate('load_date', '>=', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
+                });
+            } else {
+                $query->where('status', Order::STATUS_FINISHED)
+                    ->whereDate('load_date', '<', Carbon::today(config('app.business_timezone', 'Europe/Madrid')));
+            }
+        } elseif ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
 

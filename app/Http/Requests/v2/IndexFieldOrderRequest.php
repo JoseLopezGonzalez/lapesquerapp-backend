@@ -14,6 +14,7 @@ class IndexFieldOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'active' => 'nullable|string|in:true,false',
             'status' => 'nullable|string|in:pending,finished,incident',
             'orderType' => 'nullable|string|in:standard,autoventa',
             'routeId' => 'nullable|integer|exists:tenant.routes,id',
