@@ -335,21 +335,17 @@ Authorization: Bearer {access_token}
       "totalInputWeight": 1500.00,
       "totalInputCost": 7500.00
     },
-    "stockBoxes": [
+    "stockProducts": [
       {
-        "productionInputId": 1,
-        "boxId": 1,
+        "productId": 1,
         "product": {
           "id": 1,
           "name": "Producto A"
         },
-        "lot": "LOT-001",
-        "netWeight": 20.00,
-        "grossWeight": 25.00,
+        "inputCount": 10,
+        "totalWeight": 1000.00,
         "costPerKg": 5.00,
-        "totalCost": 100.00,
-        "gs1128": "1234567890123",
-        "palletId": 1
+        "totalCost": 5000.00
       }
     ],
     "parentOutputs": [
@@ -400,7 +396,7 @@ Authorization: Bearer {access_token}
 ```
 
 **Descripción:** Este endpoint devuelve toda la información necesaria para crear sources (fuentes) de outputs, incluyendo:
-- Inputs de stock (cajas) disponibles con sus costes
+- Productos consumidos desde stock, agrupados por `product_id`, con su coste medio ponderado
 - Consumos de outputs del padre disponibles con sus costes
 - Información del proceso actual
 - Totales y pesos disponibles
@@ -980,4 +976,3 @@ GET /api/v2/processes/options
   "message": "Producción no encontrada."
 }
 ```
-

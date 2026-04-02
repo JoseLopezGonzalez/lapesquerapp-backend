@@ -27,7 +27,8 @@ class CentralTenantsSeeder extends Seeder
                 'name' => 'Tenant Desarrollo',
                 'database' => $defaultTenantDatabase,
                 'status' => 'active',
-                'plan' => 'basic',
+                // enterprise: flags de plan por defecto al máximo; DevTenantFeatureOverrides refuerza todo
+                'plan' => 'enterprise',
                 'timezone' => 'Europe/Madrid',
                 'admin_email' => 'dev-admin@pesquerapp.local',
                 'onboarding_step' => 8,
@@ -35,7 +36,7 @@ class CentralTenantsSeeder extends Seeder
             [
                 'subdomain' => 'demo-suspendido',
                 'name' => 'Tenant Suspendido Demo',
-                'database' => $defaultTenantDatabase . '_suspended',
+                'database' => $defaultTenantDatabase.'_suspended',
                 'status' => 'suspended',
                 'plan' => 'pro',
                 'timezone' => 'Europe/Madrid',
@@ -45,7 +46,7 @@ class CentralTenantsSeeder extends Seeder
             [
                 'subdomain' => 'enterprise-preview',
                 'name' => 'Tenant Enterprise Preview',
-                'database' => $defaultTenantDatabase . '_enterprise',
+                'database' => $defaultTenantDatabase.'_enterprise',
                 'status' => 'pending',
                 'plan' => 'enterprise',
                 'timezone' => 'Europe/Madrid',

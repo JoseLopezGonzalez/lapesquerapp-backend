@@ -365,7 +365,19 @@ Content-Type: application/json
             "product_id": 10,
             "lot_id": "LOT-001-UPDATED",
             "boxes": 25,
-            "weight_kg": 375.00
+            "weight_kg": 375.00,
+            "sources": [
+                {
+                    "source_type": "stock_product",
+                    "product_id": 5,
+                    "contributed_weight_kg": 200.00
+                },
+                {
+                    "source_type": "parent_output",
+                    "production_output_consumption_id": 8,
+                    "contributed_weight_kg": 50.00
+                }
+            ]
         },
         {
             "product_id": 12,
@@ -378,6 +390,13 @@ Content-Type: application/json
 ```
 
 **Nota**: Este endpoint permite crear (sin `id`), actualizar (con `id`) y eliminar (no incluir en el array) todas las salidas de un proceso en una sola petición. **Recomendado para editar todas las salidas de una vez.**
+
+**Lógica actual de `sources`**:
+- `stock_product`: fuente agrupada por `product_id`, ignorando lote, pallet y caja
+- `parent_output`: mantiene el consumo concreto del padre vía `production_output_consumption_id`
+- `production_input_id` ya no forma parte del contrato operativo
+- Si se omiten `sources` al crear una salida nueva, el backend las genera automáticamente agrupando stock por producto
+- El coste de `stock_product` se calcula como media ponderada por kg usando todas las cajas/input consumidas de ese producto en el proceso
 
 ---
 
@@ -544,4 +563,3 @@ Para sincronizar todas las salidas de un proceso (crear/actualizar/eliminar en u
 - **Recomendado para editar todas las salidas de una vez**
 
 **Última actualización**: Documentación actualizada con nuevos endpoints para múltiples salidas (2025-01-XX).
-

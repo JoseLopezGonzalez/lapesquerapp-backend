@@ -8,13 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductionOutputSource extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = [
         'production_output_id',
         'source_type',
-        'production_input_id',
+        'product_id',
         'production_output_consumption_id',
         'contributed_weight_kg',
         'contributed_boxes',
@@ -30,7 +30,8 @@ class ProductionOutputSource extends Model
     /**
      * Constantes para source_type
      */
-    const SOURCE_TYPE_STOCK_BOX = 'stock_box';
+    const SOURCE_TYPE_STOCK_PRODUCT = 'stock_product';
+
     const SOURCE_TYPE_PARENT_OUTPUT = 'parent_output';
 
     /**
@@ -60,11 +61,11 @@ class ProductionOutputSource extends Model
         // IMPORTANTE: Los sources reflejan el CONSUMO REAL, no el output final
         // El porcentaje se calcula sobre el consumo total (total_input_weight del proceso)
         // El peso contribuido es el peso REAL consumido de esta fuente
-        
+
         // Si se especifica porcentaje, calcular el peso desde el consumo real
         if ($this->contribution_percentage !== null && $this->contributed_weight_kg === null) {
             // Cargar output y record si no están cargados
-            if (!$this->relationLoaded('productionOutput') && $this->production_output_id) {
+            if (! $this->relationLoaded('productionOutput') && $this->production_output_id) {
                 $this->load('productionOutput.productionRecord');
             }
             $output = $this->productionOutput;
@@ -81,7 +82,7 @@ class ProductionOutputSource extends Model
         // Si se especifica peso, calcular el porcentaje sobre el consumo real
         if ($this->contributed_weight_kg !== null && $this->contribution_percentage === null) {
             // Cargar output y record si no están cargados
-            if (!$this->relationLoaded('productionOutput') && $this->production_output_id) {
+            if (! $this->relationLoaded('productionOutput') && $this->production_output_id) {
                 $this->load('productionOutput.productionRecord');
             }
             $output = $this->productionOutput;
@@ -96,15 +97,32 @@ class ProductionOutputSource extends Model
         }
 
         // Validar consistencia de source_type
-        if ($this->source_type === self::SOURCE_TYPE_STOCK_BOX) {
-            if ($this->production_input_id === null) {
+        if ($this->source_type === self::SOURCE_TYPE_STOCK_PRODUCT) {
+            if ($this->product_id === null) {
                 throw new \InvalidArgumentException(
-                    'Si source_type es "stock_box", production_input_id debe estar presente.'
+                    'Si source_type es "stock_product", product_id debe estar presente.'
                 );
             }
             if ($this->production_output_consumption_id !== null) {
                 throw new \InvalidArgumentException(
-                    'Si source_type es "stock_box", production_output_consumption_id debe ser null.'
+                    'Si source_type es "stock_product", production_output_consumption_id debe ser null.'
+                );
+            }
+
+            if (! $this->relationLoaded('productionOutput') && $this->production_output_id) {
+                $this->load('productionOutput.productionRecord');
+            }
+
+            $record = $this->productionOutput?->productionRecord;
+            // Use a query so we never iterate ProductionInput models without box eager-loaded (lazy loading may be disabled).
+            $productExistsInInputs = $record !== null
+                && $record->inputs()
+                    ->whereHas('box', fn ($query) => $query->where('article_id', (int) $this->product_id))
+                    ->exists();
+
+            if (! $productExistsInInputs) {
+                throw new \InvalidArgumentException(
+                    'El product_id de una source stock_product debe existir entre los inputs del proceso.'
                 );
             }
         } elseif ($this->source_type === self::SOURCE_TYPE_PARENT_OUTPUT) {
@@ -113,9 +131,9 @@ class ProductionOutputSource extends Model
                     'Si source_type es "parent_output", production_output_consumption_id debe estar presente.'
                 );
             }
-            if ($this->production_input_id !== null) {
+            if ($this->product_id !== null) {
                 throw new \InvalidArgumentException(
-                    'Si source_type es "parent_output", production_input_id debe ser null.'
+                    'Si source_type es "parent_output", product_id debe ser null.'
                 );
             }
         }
@@ -130,11 +148,11 @@ class ProductionOutputSource extends Model
     }
 
     /**
-     * Relación con ProductionInput (si es stock_box)
+     * Relación con Product (si es stock_product)
      */
-    public function productionInput()
+    public function product()
     {
-        return $this->belongsTo(ProductionInput::class, 'production_input_id');
+        return $this->belongsTo(Product::class, 'product_id');
     }
 
     /**
@@ -150,44 +168,71 @@ class ProductionOutputSource extends Model
      */
     public function getSourceCostPerKgAttribute(): ?float
     {
-        if ($this->source_type === self::SOURCE_TYPE_STOCK_BOX) {
-            // Coste desde la caja del stock
-            if (!$this->relationLoaded('productionInput') && $this->production_input_id) {
-                $this->load('productionInput.box');
+        if ($this->source_type === self::SOURCE_TYPE_STOCK_PRODUCT) {
+            if (! $this->relationLoaded('productionOutput') && $this->production_output_id) {
+                $this->load('productionOutput.productionRecord');
             }
-            $input = $this->productionInput;
-            if (!$input || !$input->box) {
+
+            $output = $this->productionOutput;
+            $record = $output?->productionRecord;
+            if (! $record || ! $this->product_id) {
                 return null;
             }
-            return $input->box->cost_per_kg;
+
+            $inputs = $record->inputs()
+                ->whereHas('box', fn ($query) => $query->where('article_id', $this->product_id))
+                ->with('box')
+                ->get();
+
+            $totalWeight = 0.0;
+            $totalCost = 0.0;
+
+            foreach ($inputs as $input) {
+                $box = $input->box;
+                $weight = (float) ($box?->net_weight ?? 0);
+                $costPerKg = $box?->cost_per_kg;
+
+                if ($weight <= 0 || $costPerKg === null) {
+                    continue;
+                }
+
+                $totalWeight += $weight;
+                $totalCost += $weight * (float) $costPerKg;
+            }
+
+            if ($totalWeight <= 0) {
+                return null;
+            }
+
+            return $totalCost / $totalWeight;
         } elseif ($this->source_type === self::SOURCE_TYPE_PARENT_OUTPUT) {
             // Coste desde el output del padre (se calculará recursivamente)
-            if (!$this->relationLoaded('productionOutputConsumption') && $this->production_output_consumption_id) {
+            if (! $this->relationLoaded('productionOutputConsumption') && $this->production_output_consumption_id) {
                 $this->load('productionOutputConsumption.productionOutput');
             }
             $consumption = $this->productionOutputConsumption;
-            if (!$consumption || !$consumption->productionOutput) {
+            if (! $consumption || ! $consumption->productionOutput) {
                 return null;
             }
-            
+
             // Obtener el output padre
             $parentOutput = $consumption->productionOutput;
-            
+
             // Prevenir recursión infinita: si el output padre es el mismo que el actual, retornar null
             if ($this->production_output_id && $parentOutput->id == $this->production_output_id) {
                 return null; // Ciclo detectado
             }
-            
+
             // Calcular coste del output padre (con protección contra recursión automática)
             return $parentOutput->cost_per_kg;
         }
-        
+
         return null;
     }
 
     /**
      * Obtener el coste total que aporta esta fuente
-     * 
+     *
      * IMPORTANTE: El peso contribuido refleja el CONSUMO REAL, no el output final
      */
     public function getSourceTotalCostAttribute(): ?float
@@ -196,13 +241,13 @@ class ProductionOutputSource extends Model
         if ($costPerKg === null) {
             return null;
         }
-        
+
         // Si no tenemos el peso contribuido, intentar calcularlo desde el porcentaje
         // IMPORTANTE: El peso se calcula sobre el consumo real, no sobre el output
         $weight = $this->contributed_weight_kg;
         if ($weight === null || $weight <= 0) {
             if ($this->contribution_percentage !== null) {
-                if (!$this->relationLoaded('productionOutput') && $this->production_output_id) {
+                if (! $this->relationLoaded('productionOutput') && $this->production_output_id) {
                     $this->load('productionOutput.productionRecord');
                 }
                 $output = $this->productionOutput;
@@ -216,11 +261,11 @@ class ProductionOutputSource extends Model
                 }
             }
         }
-        
+
         if ($weight === null || $weight <= 0) {
             return null;
         }
-        
+
         return $weight * $costPerKg;
     }
 }

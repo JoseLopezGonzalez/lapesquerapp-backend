@@ -3,21 +3,20 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
 class RawMaterialReceptionProduct extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = ['reception_id', 'product_id', 'net_weight', 'price', 'lot'];
 
     public function reception()
     {
-        
+
         return $this->belongsTo(RawMaterialReception::class, 'reception_id');
     }
 
@@ -31,6 +30,7 @@ class RawMaterialReceptionProduct extends Model
     {
         /* Find RawMaterial(product_id) */
         $rawMaterial = RawMaterial::where('id', $this->product_id)->first();
+
         return $rawMaterial?->alias ?? null;
         /* return $this->product->rawMaterials->where('id', $this->product_id)->first()->alias; */
     }
@@ -40,7 +40,7 @@ class RawMaterialReceptionProduct extends Model
      */
     public function getLotAttribute(): ?string
     {
-        if (!$this->reception) {
+        if (! $this->reception_id) {
             return null;
         }
 
@@ -48,8 +48,8 @@ class RawMaterialReceptionProduct extends Model
         $box = Box::whereHas('palletBox.pallet', function ($query) {
             $query->where('reception_id', $this->reception_id);
         })
-        ->where('article_id', $this->product_id)
-        ->first();
+            ->where('article_id', $this->product_id)
+            ->first();
 
         return $box ? $box->lot : null;
     }
@@ -59,7 +59,7 @@ class RawMaterialReceptionProduct extends Model
      */
     public function getBoxesAttribute(): int
     {
-        if (!$this->reception) {
+        if (! $this->reception_id) {
             return 0;
         }
 
@@ -67,8 +67,8 @@ class RawMaterialReceptionProduct extends Model
         return Box::whereHas('palletBox.pallet', function ($query) {
             $query->where('reception_id', $this->reception_id);
         })
-        ->where('article_id', $this->product_id)
-        ->count();
+            ->where('article_id', $this->product_id)
+            ->count();
     }
 
     /**
@@ -94,5 +94,4 @@ class RawMaterialReceptionProduct extends Model
             }
         });
     }
-
 }

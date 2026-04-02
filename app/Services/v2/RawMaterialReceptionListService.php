@@ -12,12 +12,11 @@ class RawMaterialReceptionListService
      * Lista recepciones de materia prima con filtros y paginación.
      *
      * @param  Request  $request  Request con query params ya validados (IndexRawMaterialReceptionRequest)
-     * @return LengthAwarePaginator
      */
     public static function list(Request $request): LengthAwarePaginator
     {
         $query = RawMaterialReception::query();
-        $query->with('supplier', 'products.product', 'pallets.reception', 'pallets.boxes.box.productionInputs');
+        $query->with('supplier', 'products.product.species', 'pallets.reception', 'pallets.boxes.box.productionInputs', 'pallets.boxes.box.product');
 
         if ($request->filled('id')) {
             $query->where('id', $request->input('id'));
@@ -33,10 +32,10 @@ class RawMaterialReceptionListService
 
         if ($request->has('dates')) {
             $dates = $request->input('dates');
-            if (!empty($dates['start'])) {
+            if (! empty($dates['start'])) {
                 $query->where('date', '>=', date('Y-m-d 00:00:00', strtotime($dates['start'])));
             }
-            if (!empty($dates['end'])) {
+            if (! empty($dates['end'])) {
                 $query->where('date', '<=', date('Y-m-d 23:59:59', strtotime($dates['end'])));
             }
         }
@@ -54,7 +53,7 @@ class RawMaterialReceptionListService
         }
 
         if ($request->filled('notes')) {
-            $query->where('notes', 'like', '%' . $request->input('notes') . '%');
+            $query->where('notes', 'like', '%'.$request->input('notes').'%');
         }
 
         $query->orderBy('date', 'desc');

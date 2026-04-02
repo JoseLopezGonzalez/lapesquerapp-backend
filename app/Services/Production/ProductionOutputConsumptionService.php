@@ -2,9 +2,9 @@
 
 namespace App\Services\Production;
 
+use App\Models\ProductionOutput;
 use App\Models\ProductionOutputConsumption;
 use App\Models\ProductionRecord;
-use App\Models\ProductionOutput;
 use Illuminate\Support\Facades\DB;
 
 class ProductionOutputConsumptionService
@@ -18,7 +18,7 @@ class ProductionOutputConsumptionService
         $output = ProductionOutput::findOrFail($data['production_output_id']);
 
         // Validate parent exists
-        if (!$record->parent_record_id) {
+        if (! $record->parent_record_id) {
             throw new \Exception('El proceso no tiene un proceso padre. Solo los procesos hijos pueden consumir outputs de procesos padre.');
         }
 
@@ -57,7 +57,7 @@ class ProductionOutputConsumptionService
             }
         }
 
-        if (!isset($data['consumed_boxes'])) {
+        if (! isset($data['consumed_boxes'])) {
             $data['consumed_boxes'] = 0;
         }
 
@@ -121,21 +121,21 @@ class ProductionOutputConsumptionService
     {
         $record = ProductionRecord::findOrFail($productionRecordId);
 
-        if (!$record->parent_record_id) {
+        if (! $record->parent_record_id) {
             throw new \Exception('El proceso no tiene un proceso padre. Solo los procesos hijos pueden consumir outputs de procesos padre.');
         }
 
         $parent = $record->parent;
-        if (!$parent) {
+        if (! $parent) {
             throw new \Exception('El proceso padre no existe.');
         }
 
-        return DB::transaction(function () use ($record, $parent, $productionRecordId, $consumptionsData) {
+        return DB::transaction(function () use ($parent, $productionRecordId, $consumptionsData) {
             // Validate availability first
             $outputsToValidate = [];
             foreach ($consumptionsData as $consumptionData) {
                 $outputId = $consumptionData['production_output_id'];
-                if (!isset($outputsToValidate[$outputId])) {
+                if (! isset($outputsToValidate[$outputId])) {
                     $outputsToValidate[$outputId] = [
                         'output' => ProductionOutput::findOrFail($outputId),
                         'total_requested_weight' => 0,
@@ -184,6 +184,7 @@ class ProductionOutputConsumptionService
 
                     if ($existing) {
                         $errors[] = "Consumo #{$index}: Ya existe un consumo para el output #{$consumptionData['production_output_id']}.";
+
                         continue;
                     }
 
@@ -198,12 +199,12 @@ class ProductionOutputConsumptionService
                     $consumption->load(['productionRecord.process', 'productionOutput.product']);
                     $created[] = $consumption;
                 } catch (\Exception $e) {
-                    $errors[] = "Error en el consumo #{$index}: " . $e->getMessage();
+                    $errors[] = "Error en el consumo #{$index}: ".$e->getMessage();
                 }
             }
 
-            if (empty($created) && !empty($errors)) {
-                throw new \Exception('No se pudo crear ningún consumo. ' . implode(' ', $errors));
+            if (empty($created) && ! empty($errors)) {
+                throw new \Exception('No se pudo crear ningún consumo. '.implode(' ', $errors));
             }
 
             return [
@@ -220,16 +221,16 @@ class ProductionOutputConsumptionService
     {
         $record = ProductionRecord::findOrFail($productionRecordId);
 
-        if (!$record->parent_record_id) {
+        if (! $record->parent_record_id) {
             return [];
         }
 
         $parent = $record->parent;
-        if (!$parent) {
+        if (! $parent) {
             return [];
         }
 
-        $outputs = $parent->outputs()->with('product')->get();
+        $outputs = $parent->outputs()->with(['product', 'productionRecord.production'])->get();
 
         return $outputs->map(function ($output) use ($productionRecordId) {
             $consumedWeight = ProductionOutputConsumption::where('production_output_id', $output->id)
@@ -270,4 +271,3 @@ class ProductionOutputConsumptionService
         })->values()->toArray();
     }
 }
-

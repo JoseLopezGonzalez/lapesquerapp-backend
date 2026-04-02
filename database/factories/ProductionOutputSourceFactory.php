@@ -2,10 +2,10 @@
 
 namespace Database\Factories;
 
-use App\Models\ProductionInput;
 use App\Models\ProductionOutput;
 use App\Models\ProductionOutputConsumption;
 use App\Models\ProductionOutputSource;
+use App\Models\Product;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ProductionOutputSourceFactory extends Factory
@@ -16,8 +16,8 @@ class ProductionOutputSourceFactory extends Factory
     {
         return [
             'production_output_id' => ProductionOutput::query()->value('id') ?? ProductionOutput::factory(),
-            'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_BOX,
-            'production_input_id' => ProductionInput::query()->value('id') ?? ProductionInput::factory(),
+            'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_PRODUCT,
+            'product_id' => Product::query()->value('id') ?? Product::factory(),
             'production_output_consumption_id' => null,
             'contributed_weight_kg' => $this->faker->randomFloat(2, 1, 20),
             'contributed_boxes' => $this->faker->numberBetween(0, 3),
@@ -25,13 +25,13 @@ class ProductionOutputSourceFactory extends Factory
         ];
     }
 
-    public function stockBox(ProductionInput|int $input): static
+    public function stockProduct(Product|int $product): static
     {
-        $inputId = $input instanceof ProductionInput ? $input->id : $input;
+        $productId = $product instanceof Product ? $product->id : $product;
 
         return $this->state(fn () => [
-            'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_BOX,
-            'production_input_id' => $inputId,
+            'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_PRODUCT,
+            'product_id' => $productId,
             'production_output_consumption_id' => null,
         ]);
     }
@@ -42,7 +42,7 @@ class ProductionOutputSourceFactory extends Factory
 
         return $this->state(fn () => [
             'source_type' => ProductionOutputSource::SOURCE_TYPE_PARENT_OUTPUT,
-            'production_input_id' => null,
+            'product_id' => null,
             'production_output_consumption_id' => $consumptionId,
         ]);
     }

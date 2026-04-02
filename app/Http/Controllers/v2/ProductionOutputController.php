@@ -10,20 +10,36 @@ use App\Http\Requests\v2\UpdateProductionOutputRequest;
 use App\Http\Resources\v2\ProductionOutputResource;
 use App\Models\ProductionOutput;
 use App\Services\Production\ProductionOutputService;
-use Illuminate\Http\Request;
 
 class ProductionOutputController extends Controller
 {
     public function __construct(
         private ProductionOutputService $productionOutputService
     ) {}
+
+    /**
+     * Relations needed for ProductionOutputResource (cost fields + nested parent outputs in sources).
+     *
+     * @return array<int, string>
+     */
+    private function outputResourceWith(): array
+    {
+        return [
+            'productionRecord.production',
+            'product',
+            'sources.product',
+            'sources.productionOutputConsumption.productionOutput.product',
+            'sources.productionOutputConsumption.productionOutput.productionRecord.production',
+        ];
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index(IndexProductionOutputRequest $request)
     {
         $query = ProductionOutput::query();
-        $query->with(['productionRecord', 'product', 'sources']);
+        $query->with($this->outputResourceWith());
 
         if ($request->filled('production_record_id')) {
             $query->where('production_record_id', $request->production_record_id);
@@ -39,6 +55,7 @@ class ProductionOutputController extends Controller
         }
 
         $perPage = $request->input('perPage', 15);
+
         return ProductionOutputResource::collection($query->paginate($perPage));
     }
 
@@ -60,7 +77,7 @@ class ProductionOutputController extends Controller
      */
     public function show(string $id)
     {
-        $output = ProductionOutput::with(['productionRecord', 'product', 'sources'])
+        $output = ProductionOutput::with($this->outputResourceWith())
             ->findOrFail($id);
         $this->authorize('view', $output);
 
@@ -75,7 +92,7 @@ class ProductionOutputController extends Controller
      */
     public function getCostBreakdown(string $id)
     {
-        $output = ProductionOutput::with(['productionRecord', 'product', 'sources'])
+        $output = ProductionOutput::with($this->outputResourceWith())
             ->findOrFail($id);
         $this->authorize('view', $output);
 
@@ -129,7 +146,7 @@ class ProductionOutputController extends Controller
             );
 
             return response()->json([
-                'message' => count($result['created']) . ' salida(s) creada(s) correctamente.',
+                'message' => count($result['created']).' salida(s) creada(s) correctamente.',
                 'data' => ProductionOutputResource::collection($result['created']),
                 'errors' => $result['errors'],
             ], 201);

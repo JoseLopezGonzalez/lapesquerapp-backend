@@ -29,13 +29,61 @@ class StoreMultipleProductionOutputsRequest extends FormRequest
             'outputs.*.boxes' => 'required|integer|min:0',
             'outputs.*.weight_kg' => 'required|numeric|gt:0',
             'outputs.*.sources' => 'nullable|array',
-            'outputs.*.sources.*.source_type' => 'required|in:stock_box,parent_output',
-            'outputs.*.sources.*.production_input_id' => 'required_if:outputs.*.sources.*.source_type,stock_box|nullable|exists:tenant.production_inputs,id',
+            'outputs.*.sources.*.source_type' => 'required|in:stock_product,parent_output',
+            'outputs.*.sources.*.product_id' => 'required_if:outputs.*.sources.*.source_type,stock_product|nullable|exists:tenant.products,id|prohibited_if:outputs.*.sources.*.source_type,parent_output',
+            'outputs.*.sources.*.production_input_id' => 'prohibited',
             'outputs.*.sources.*.production_output_consumption_id' => 'required_if:outputs.*.sources.*.source_type,parent_output|nullable|exists:tenant.production_output_consumptions,id',
             'outputs.*.sources.*.contributed_weight_kg' => 'nullable|numeric|min:0',
             'outputs.*.sources.*.contribution_percentage' => 'nullable|numeric|min:0|max:100',
             'outputs.*.sources.*.contributed_boxes' => 'nullable|integer|min:0',
         ];
     }
-}
 
+    /**
+     * Configure the validator instance.
+     */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $outputs = $this->input('outputs', []);
+            $recordId = $this->input('production_record_id');
+            foreach ($outputs as $outputIndex => $output) {
+                if (! array_key_exists('sources', $output) || ! is_array($output['sources']) || count($output['sources']) === 0) {
+                    continue;
+                }
+
+                $sources = $output['sources'];
+
+                foreach ($sources as $sourceIndex => $source) {
+                    $hasWeight = array_key_exists('contributed_weight_kg', $source)
+                        && $source['contributed_weight_kg'] !== null
+                        && $source['contributed_weight_kg'] !== '';
+                    $hasPercentage = array_key_exists('contribution_percentage', $source)
+                        && $source['contribution_percentage'] !== null
+                        && $source['contribution_percentage'] !== '';
+
+                    if (! $hasWeight && ! $hasPercentage) {
+                        $validator->errors()->add(
+                            "outputs.{$outputIndex}.sources.{$sourceIndex}",
+                            'Se debe especificar O bien contributed_weight_kg O bien contribution_percentage.'
+                        );
+                    }
+
+                    if (($source['source_type'] ?? null) === 'stock_product' && !empty($source['product_id']) && $recordId) {
+                        $productExistsInInputs = \App\Models\ProductionInput::query()
+                            ->where('production_record_id', $recordId)
+                            ->whereHas('box', fn ($query) => $query->where('article_id', $source['product_id']))
+                            ->exists();
+
+                        if (! $productExistsInInputs) {
+                            $validator->errors()->add(
+                                "outputs.{$outputIndex}.sources.{$sourceIndex}.product_id",
+                                'El product_id de una source stock_product debe existir entre los inputs del proceso.'
+                            );
+                        }
+                    }
+                }
+            }
+        });
+    }
+}

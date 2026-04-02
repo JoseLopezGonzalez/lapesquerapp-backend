@@ -4,7 +4,6 @@ namespace App\Services\Production;
 
 use App\Models\ProductionOutput;
 use App\Models\ProductionOutputSource;
-use App\Models\ProductionRecord;
 use Illuminate\Support\Facades\DB;
 
 class ProductionOutputService
@@ -28,7 +27,13 @@ class ProductionOutputService
                 $this->createSourcesAutomatically($output);
             }
 
-            $output->load(['productionRecord', 'product', 'sources']);
+            $output->load([
+                'productionRecord.production',
+                'product',
+                'sources.product',
+                'sources.productionOutputConsumption.productionOutput.product',
+                'sources.productionOutputConsumption.productionOutput.productionRecord.production',
+            ]);
 
             return $output;
         });
@@ -43,7 +48,7 @@ class ProductionOutputService
             ProductionOutputSource::create([
                 'production_output_id' => $output->id,
                 'source_type' => $sourceData['source_type'],
-                'production_input_id' => $sourceData['production_input_id'] ?? null,
+                'product_id' => $sourceData['product_id'] ?? null,
                 'production_output_consumption_id' => $sourceData['production_output_consumption_id'] ?? null,
                 'contributed_weight_kg' => $sourceData['contributed_weight_kg'] ?? null,
                 'contribution_percentage' => $sourceData['contribution_percentage'] ?? null,
@@ -54,19 +59,19 @@ class ProductionOutputService
 
     /**
      * Crear sources automáticamente de forma proporcional
-     * 
+     *
      * IMPORTANTE: Los sources reflejan el CONSUMO REAL (peso de inputs), no el output final.
      * Esto permite calcular correctamente la merma como diferencia entre consumo y output.
      */
     protected function createSourcesAutomatically(ProductionOutput $output): void
     {
         $record = $output->productionRecord;
-        if (!$record) {
+        if (! $record) {
             return;
         }
 
         // Obtener todos los inputs del proceso con relaciones cargadas
-        $inputs = $record->inputs()->with('box')->get();
+        $inputs = $record->inputs()->with('box.product')->get();
         $consumptions = $record->parentOutputConsumptions;
 
         // Obtener el consumo real total (peso de inputs + consumos del padre)
@@ -79,24 +84,27 @@ class ProductionOutputService
 
         // Distribuir proporcionalmente según el CONSUMO REAL
         // Los sources deben sumar el consumo real, no el output final
-        foreach ($inputs as $input) {
-            $inputWeight = $input->box->net_weight ?? 0;
-            if ($inputWeight > 0) {
-                // Porcentaje del consumo real que representa este input
-                $percentage = ($inputWeight / $totalInputWeight) * 100;
-                // El peso contribuido es el peso REAL consumido de este input
-                $contributedWeight = $inputWeight;
+        $inputsByProduct = $inputs
+            ->filter(fn ($input) => $input->box && $input->box->article_id)
+            ->groupBy(fn ($input) => (int) $input->box->article_id);
 
-                ProductionOutputSource::create([
-                    'production_output_id' => $output->id,
-                    'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_BOX,
-                    'production_input_id' => $input->id,
-                    'production_output_consumption_id' => null,
-                    'contributed_weight_kg' => $contributedWeight,
-                    'contribution_percentage' => $percentage,
-                    'contributed_boxes' => 0,
-                ]);
+        foreach ($inputsByProduct as $productId => $productInputs) {
+            $contributedWeight = $productInputs->sum(fn ($input) => (float) ($input->box->net_weight ?? 0));
+            if ($contributedWeight <= 0) {
+                continue;
             }
+
+            $percentage = ($contributedWeight / $totalInputWeight) * 100;
+
+            ProductionOutputSource::create([
+                'production_output_id' => $output->id,
+                'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_PRODUCT,
+                'product_id' => (int) $productId,
+                'production_output_consumption_id' => null,
+                'contributed_weight_kg' => $contributedWeight,
+                'contribution_percentage' => $percentage,
+                'contributed_boxes' => 0,
+            ]);
         }
 
         foreach ($consumptions as $consumption) {
@@ -110,7 +118,7 @@ class ProductionOutputService
                 ProductionOutputSource::create([
                     'production_output_id' => $output->id,
                     'source_type' => ProductionOutputSource::SOURCE_TYPE_PARENT_OUTPUT,
-                    'production_input_id' => null,
+                    'product_id' => null,
                     'production_output_consumption_id' => $consumption->id,
                     'contributed_weight_kg' => $contributedWeight,
                     'contribution_percentage' => $percentage,
@@ -139,7 +147,13 @@ class ProductionOutputService
                 $this->createSources($output, $sources);
             }
 
-            $output->load(['productionRecord', 'product', 'sources']);
+            $output->load([
+                'productionRecord.production',
+                'product',
+                'sources.product',
+                'sources.productionOutputConsumption.productionOutput.product',
+                'sources.productionOutputConsumption.productionOutput.productionRecord.production',
+            ]);
 
             return $output;
         });
@@ -175,7 +189,7 @@ class ProductionOutputService
 
                     $created[] = $output;
                 } catch (\Exception $e) {
-                    $errors[] = "Error en la salida #{$index}: " . $e->getMessage();
+                    $errors[] = "Error en la salida #{$index}: ".$e->getMessage();
                 }
             }
 
@@ -186,4 +200,3 @@ class ProductionOutputService
         });
     }
 }
-

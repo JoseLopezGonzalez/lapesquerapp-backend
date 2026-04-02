@@ -3,13 +3,16 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Models\Box;
 use App\Models\CaptureZone;
 use App\Models\FishingGear;
 use App\Models\Process;
 use App\Models\Product;
 use App\Models\Production;
+use App\Models\ProductionInput;
 use App\Models\ProductionOutput;
 use App\Models\ProductionOutputConsumption;
+use App\Models\ProductionOutputSource;
 use App\Models\ProductionRecord;
 use App\Models\Species;
 use App\Models\User;
@@ -358,6 +361,109 @@ class ProductionBlockApiTest extends TestCase
             ->assertJsonPath('message', 'Error al sincronizar las salidas.');
     }
 
+    public function test_sync_outputs_accepts_stock_product_sources_and_show_returns_product_data(): void
+    {
+        [, $parentRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $sourceProduct = $this->createValidProduct($species, $captureZone, '70');
+        $outputProduct = $this->createValidProduct($species, $captureZone, '71');
+
+        $boxA = Box::factory()->create([
+            'article_id' => $sourceProduct->id,
+            'net_weight' => 40,
+            'gross_weight' => 41,
+        ]);
+        $boxB = Box::factory()->create([
+            'article_id' => $sourceProduct->id,
+            'net_weight' => 60,
+            'gross_weight' => 61,
+        ]);
+
+        ProductionInput::create([
+            'production_record_id' => $parentRecord->id,
+            'box_id' => $boxA->id,
+        ]);
+        ProductionInput::create([
+            'production_record_id' => $parentRecord->id,
+            'box_id' => $boxB->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->putJson('/api/v2/production-records/' . $parentRecord->id . '/outputs', [
+                'outputs' => [[
+                    'product_id' => $outputProduct->id,
+                    'lot_id' => 'L-STOCK-PRODUCT',
+                    'boxes' => 5,
+                    'weight_kg' => 80,
+                    'sources' => [[
+                        'source_type' => 'stock_product',
+                        'product_id' => $sourceProduct->id,
+                        'contributed_weight_kg' => 100,
+                    ]],
+                ]],
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('summary.created', 1)
+            ->assertJsonPath('data.outputs.0.sources.0.sourceType', 'stock_product')
+            ->assertJsonPath('data.outputs.0.sources.0.productId', $sourceProduct->id)
+            ->assertJsonPath('data.outputs.0.sources.0.contributedWeightKg', 100.0);
+
+        $output = ProductionOutput::query()->where('production_record_id', $parentRecord->id)->firstOrFail();
+        $this->assertDatabaseHas('production_output_sources', [
+            'production_output_id' => $output->id,
+            'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_PRODUCT,
+            'product_id' => $sourceProduct->id,
+        ]);
+
+        $showResponse = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/production-records/' . $parentRecord->id);
+
+        $showResponse->assertOk()
+            ->assertJsonPath('data.outputs.0.sources.0.sourceType', 'stock_product')
+            ->assertJsonPath('data.outputs.0.sources.0.productId', $sourceProduct->id)
+            ->assertJsonPath('data.outputs.0.sources.0.product.id', $sourceProduct->id);
+    }
+
+    public function test_sync_outputs_rejects_legacy_production_input_id_for_stock_product_sources(): void
+    {
+        [, $parentRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $sourceProduct = $this->createValidProduct($species, $captureZone, '72');
+        $outputProduct = $this->createValidProduct($species, $captureZone, '73');
+
+        $box = Box::factory()->create([
+            'article_id' => $sourceProduct->id,
+            'net_weight' => 25,
+            'gross_weight' => 26,
+        ]);
+        $input = ProductionInput::create([
+            'production_record_id' => $parentRecord->id,
+            'box_id' => $box->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->putJson('/api/v2/production-records/' . $parentRecord->id . '/outputs', [
+                'outputs' => [[
+                    'product_id' => $outputProduct->id,
+                    'lot_id' => 'L-LEGACY-SOURCE',
+                    'boxes' => 1,
+                    'weight_kg' => 20,
+                    'sources' => [[
+                        'source_type' => 'stock_product',
+                        'product_id' => $sourceProduct->id,
+                        'production_input_id' => $input->id,
+                        'contributed_weight_kg' => 25,
+                    ]],
+                ]],
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('outputs.0.sources.0.production_input_id');
+    }
+
     public function test_sync_consumptions_allows_empty_array_and_deletes_existing_consumptions(): void
     {
         [, $parentRecord, $childRecord] = $this->createProductionWithRecords();
@@ -388,6 +494,37 @@ class ProductionBlockApiTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('summary.created', 0)
             ->assertJsonPath('summary.updated', 0)
+            ->assertJsonPath('summary.deleted', 1);
+
+        $this->assertNull(ProductionOutputConsumption::query()->find($consumption->id));
+    }
+
+    public function test_sync_consumptions_accepts_root_json_empty_array_to_delete_all(): void
+    {
+        [, $parentRecord, $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $product = $this->createValidProduct($species, $captureZone, '64');
+
+        $output = ProductionOutput::create([
+            'production_record_id' => $parentRecord->id,
+            'product_id' => $product->id,
+            'lot_id' => 'L-ROOT-EMPTY',
+            'boxes' => 2,
+            'weight_kg' => 20,
+        ]);
+
+        $consumption = ProductionOutputConsumption::create([
+            'production_record_id' => $childRecord->id,
+            'production_output_id' => $output->id,
+            'consumed_weight_kg' => 5,
+            'consumed_boxes' => 0,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->putJson('/api/v2/production-records/' . $childRecord->id . '/parent-output-consumptions', []);
+
+        $response->assertOk()
             ->assertJsonPath('summary.deleted', 1);
 
         $this->assertNull(ProductionOutputConsumption::query()->find($consumption->id));

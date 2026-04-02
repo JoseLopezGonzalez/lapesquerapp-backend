@@ -180,28 +180,11 @@ class TenantProductionAdvancedSeeder extends Seeder
 
     private function syncSourcesForOpenOutput(ProductionOutput $output, ProductionInput $inputA, ProductionInput $inputB, ProductionOutputConsumption $consumption): void
     {
-        ProductionOutputSource::query()->updateOrCreate(
-            ['production_output_id' => $output->id, 'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_BOX, 'production_input_id' => $inputA->id],
-            [
-                'production_output_consumption_id' => null,
-                'contributed_weight_kg' => (float) $inputA->box->net_weight,
-                'contributed_boxes' => 0,
-                'contribution_percentage' => null,
-            ]
-        );
-        ProductionOutputSource::query()->updateOrCreate(
-            ['production_output_id' => $output->id, 'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_BOX, 'production_input_id' => $inputB->id],
-            [
-                'production_output_consumption_id' => null,
-                'contributed_weight_kg' => (float) $inputB->box->net_weight,
-                'contributed_boxes' => 0,
-                'contribution_percentage' => null,
-            ]
-        );
+        $this->syncStockProductSources($output, collect([$inputA, $inputB]));
         ProductionOutputSource::query()->updateOrCreate(
             ['production_output_id' => $output->id, 'source_type' => ProductionOutputSource::SOURCE_TYPE_PARENT_OUTPUT, 'production_output_consumption_id' => $consumption->id],
             [
-                'production_input_id' => null,
+                'product_id' => null,
                 'contributed_weight_kg' => (float) $consumption->consumed_weight_kg,
                 'contributed_boxes' => (int) $consumption->consumed_boxes,
                 'contribution_percentage' => null,
@@ -211,33 +194,40 @@ class TenantProductionAdvancedSeeder extends Seeder
 
     private function syncSourcesForClosedOutput(ProductionOutput $output, ProductionInput $inputA, ProductionInput $inputB, ProductionOutputConsumption $consumption): void
     {
-        ProductionOutputSource::query()->updateOrCreate(
-            ['production_output_id' => $output->id, 'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_BOX, 'production_input_id' => $inputA->id],
-            [
-                'production_output_consumption_id' => null,
-                'contributed_weight_kg' => (float) $inputA->box->net_weight,
-                'contributed_boxes' => 0,
-                'contribution_percentage' => null,
-            ]
-        );
-        ProductionOutputSource::query()->updateOrCreate(
-            ['production_output_id' => $output->id, 'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_BOX, 'production_input_id' => $inputB->id],
-            [
-                'production_output_consumption_id' => null,
-                'contributed_weight_kg' => (float) $inputB->box->net_weight,
-                'contributed_boxes' => 0,
-                'contribution_percentage' => null,
-            ]
-        );
+        $this->syncStockProductSources($output, collect([$inputA, $inputB]));
         ProductionOutputSource::query()->updateOrCreate(
             ['production_output_id' => $output->id, 'source_type' => ProductionOutputSource::SOURCE_TYPE_PARENT_OUTPUT, 'production_output_consumption_id' => $consumption->id],
             [
-                'production_input_id' => null,
+                'product_id' => null,
                 'contributed_weight_kg' => (float) $consumption->consumed_weight_kg,
                 'contributed_boxes' => (int) $consumption->consumed_boxes,
                 'contribution_percentage' => null,
             ]
         );
+    }
+
+    private function syncStockProductSources(ProductionOutput $output, \Illuminate\Support\Collection $inputs): void
+    {
+        $inputs
+            ->filter(fn (ProductionInput $input) => $input->box && $input->box->article_id)
+            ->groupBy(fn (ProductionInput $input) => (int) $input->box->article_id)
+            ->each(function ($productInputs, $productId) use ($output) {
+                $totalWeight = $productInputs->sum(fn (ProductionInput $input) => (float) ($input->box->net_weight ?? 0));
+
+                ProductionOutputSource::query()->updateOrCreate(
+                    [
+                        'production_output_id' => $output->id,
+                        'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_PRODUCT,
+                        'product_id' => (int) $productId,
+                    ],
+                    [
+                        'production_output_consumption_id' => null,
+                        'contributed_weight_kg' => $totalWeight,
+                        'contributed_boxes' => 0,
+                        'contribution_percentage' => null,
+                    ]
+                );
+            });
     }
 
     private function seedProductionCosts(

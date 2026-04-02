@@ -2,9 +2,10 @@
 
 namespace App\Services\Production;
 
-use App\Models\ProductionRecord;
 use App\Models\ProductionOutput;
 use App\Models\ProductionOutputConsumption;
+use App\Models\ProductionOutputSource;
+use App\Models\ProductionRecord;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,20 @@ class ProductionRecordService
     public function list(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         $query = ProductionRecord::query();
-        $query->with(['production', 'parent.process', 'process', 'inputs.box.product', 'inputs.box.palletBox', 'inputs.box.product.species', 'inputs.box.product.captureZone', 'outputs.product']);
+        $query->with([
+            'production',
+            'parent.process',
+            'process',
+            'inputs.box.product',
+            'inputs.box.palletBox',
+            'inputs.box.product.species',
+            'inputs.box.product.captureZone',
+            'outputs.product',
+            'outputs.sources.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
+            'outputs.productionRecord.production',
+        ]);
 
         if (isset($filters['production_id'])) {
             $query->where('production_id', $filters['production_id']);
@@ -55,7 +69,20 @@ class ProductionRecordService
     public function create(array $data): ProductionRecord
     {
         $record = ProductionRecord::create($data);
-        $record->load(['production', 'parent.process', 'process', 'inputs', 'outputs']);
+        $record->load([
+            'production',
+            'parent.process',
+            'process',
+            'inputs.box.product',
+            'inputs.box.palletBox',
+            'inputs.box.product.species',
+            'inputs.box.product.captureZone',
+            'outputs.product',
+            'outputs.sources.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
+            'outputs.productionRecord.production',
+        ]);
 
         return $record;
     }
@@ -66,7 +93,20 @@ class ProductionRecordService
     public function update(ProductionRecord $record, array $data): ProductionRecord
     {
         $record->update($data);
-        $record->load(['production', 'parent.process', 'process', 'inputs', 'outputs']);
+        $record->load([
+            'production',
+            'parent.process',
+            'process',
+            'inputs.box.product',
+            'inputs.box.palletBox',
+            'inputs.box.product.species',
+            'inputs.box.product.captureZone',
+            'outputs.product',
+            'outputs.sources.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
+            'outputs.productionRecord.production',
+        ]);
 
         return $record;
     }
@@ -103,7 +143,20 @@ class ProductionRecordService
         }
 
         $record->update(['finished_at' => now('UTC')]);
-        $record->load(['production', 'parent.process', 'process', 'inputs', 'outputs']);
+        $record->load([
+            'production',
+            'parent.process',
+            'process',
+            'inputs.box.product',
+            'inputs.box.palletBox',
+            'inputs.box.product.species',
+            'inputs.box.product.captureZone',
+            'outputs.product',
+            'outputs.sources.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
+            'outputs.productionRecord.production',
+        ]);
 
         return $record;
     }
@@ -118,7 +171,7 @@ class ProductionRecordService
             $providedOutputIds = collect($outputsData)
                 ->pluck('id')
                 ->filter()
-                ->map(fn($id) => (int)$id)
+                ->map(fn ($id) => (int) $id)
                 ->toArray();
 
             // Validate ownership
@@ -152,7 +205,17 @@ class ProductionRecordService
                         'boxes' => $outputData['boxes'],
                         'weight_kg' => $outputData['weight_kg'],
                     ]);
-                    $output->load(['productionRecord', 'product']);
+
+                    if (array_key_exists('sources', $outputData)) {
+                        $this->syncOutputSources($output, $outputData['sources']);
+                    }
+
+                    $output->load([
+                        'productionRecord',
+                        'product',
+                        'sources.product',
+                        'sources.productionOutputConsumption.productionOutput.product',
+                    ]);
                     $updated[] = $output;
                 } else {
                     $output = ProductionOutput::create([
@@ -162,7 +225,19 @@ class ProductionRecordService
                         'boxes' => $outputData['boxes'],
                         'weight_kg' => $outputData['weight_kg'],
                     ]);
-                    $output->load(['productionRecord', 'product']);
+
+                    if (array_key_exists('sources', $outputData)) {
+                        $this->syncOutputSources($output, $outputData['sources']);
+                    } else {
+                        $this->createAutomaticOutputSources($output);
+                    }
+
+                    $output->load([
+                        'productionRecord',
+                        'product',
+                        'sources.product',
+                        'sources.productionOutputConsumption.productionOutput.product',
+                    ]);
                     $created[] = $output;
                 }
             }
@@ -177,7 +252,20 @@ class ProductionRecordService
             }
 
             $record->refresh();
-            $record->load(['production', 'parent.process', 'process', 'inputs', 'outputs.product']);
+            $record->load([
+                'production',
+                'parent.process',
+                'process',
+                'inputs.box.product',
+                'inputs.box.palletBox',
+                'inputs.box.product.species',
+                'inputs.box.product.captureZone',
+                'outputs.product',
+                'outputs.sources.product',
+                'outputs.sources.productionOutputConsumption.productionOutput.product',
+                'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
+                'outputs.productionRecord.production',
+            ]);
 
             return [
                 'record' => $record,
@@ -195,12 +283,12 @@ class ProductionRecordService
      */
     public function syncConsumptions(ProductionRecord $record, array $consumptionsData): array
     {
-        if (!$record->parent_record_id) {
+        if (! $record->parent_record_id) {
             throw new \Exception('El proceso no tiene un proceso padre. Solo los procesos hijos pueden consumir outputs de procesos padre.');
         }
 
         $parent = $record->parent;
-        if (!$parent) {
+        if (! $parent) {
             throw new \Exception('El proceso padre no existe.');
         }
 
@@ -209,7 +297,7 @@ class ProductionRecordService
             $providedConsumptionIds = collect($consumptionsData)
                 ->pluck('id')
                 ->filter()
-                ->map(fn($id) => (int)$id)
+                ->map(fn ($id) => (int) $id)
                 ->toArray();
 
             // Validate ownership
@@ -224,7 +312,7 @@ class ProductionRecordService
             $outputsToValidate = [];
             foreach ($consumptionsData as $consumptionData) {
                 $outputId = $consumptionData['production_output_id'];
-                if (!isset($outputsToValidate[$outputId])) {
+                if (! isset($outputsToValidate[$outputId])) {
                     $outputsToValidate[$outputId] = [
                         'output' => ProductionOutput::findOrFail($outputId),
                         'total_requested_weight' => 0,
@@ -318,7 +406,13 @@ class ProductionRecordService
                 'inputs.box.product',
                 'inputs.box.palletBox',
                 'outputs.product',
-                'parentOutputConsumptions.productionOutput.product'
+                'outputs.sources.product',
+                'outputs.sources.productionOutputConsumption.productionOutput.product',
+                'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
+                'outputs.productionRecord.production',
+                'parentOutputConsumptions.productionOutput.product',
+                'parentOutputConsumptions.productionOutput.productionRecord.process',
+                'parentOutputConsumptions.productionOutput.productionRecord.production',
             ]);
 
             return [
@@ -333,10 +427,10 @@ class ProductionRecordService
     }
 
     /**
-     * Get sources data for a production record (stock boxes, parent outputs, totals).
+     * Get sources data for a production record (stock products, parent outputs, totals).
      * Used by getSourcesData endpoint.
      *
-     * @return array{productionRecord: array, stockBoxes: \Illuminate\Support\Collection, parentOutputs: \Illuminate\Support\Collection, totals: array}
+     * @return array{productionRecord: array, stockProducts: \Illuminate\Support\Collection, parentOutputs: \Illuminate\Support\Collection, totals: array}
      */
     public function getSourcesData(ProductionRecord $record): array
     {
@@ -349,37 +443,38 @@ class ProductionRecordService
             'parentOutputConsumptions.productionOutput.productionRecord.process',
         ]);
 
-        $stockBoxes = $record->inputs->map(function ($input) {
-            $box = $input->box;
-            if (!$box) {
-                return null;
-            }
-            return [
-                'productionInputId' => $input->id,
-                'boxId' => $box->id,
-                'product' => [
-                    'id' => $box->product->id ?? null,
-                    'name' => $box->product->name ?? null,
-                ],
-                'lot' => $box->lot,
-                'netWeight' => (float) ($box->net_weight ?? 0),
-                'grossWeight' => (float) ($box->gross_weight ?? 0),
-                'costPerKg' => $box->cost_per_kg !== null ? (float) $box->cost_per_kg : null,
-                'totalCost' => $box->total_cost !== null ? (float) $box->total_cost : null,
-                'gs1128' => $box->gs1_128,
-                'palletId' => $box->palletBox?->pallet_id,
-            ];
-        })->filter()->values();
+        $stockProducts = $record->inputs
+            ->filter(fn ($input) => $input->box && $input->box->article_id)
+            ->groupBy(fn ($input) => (int) $input->box->article_id)
+            ->map(function ($inputs) {
+                $firstBox = $inputs->first()?->box;
+                $totalWeight = $inputs->sum(fn ($input) => (float) ($input->box->net_weight ?? 0));
+                $totalCost = $inputs->sum(fn ($input) => (float) ($input->box->total_cost ?? 0));
+
+                return [
+                    'productId' => $firstBox?->product?->id,
+                    'product' => [
+                        'id' => $firstBox?->product?->id,
+                        'name' => $firstBox?->product?->name,
+                    ],
+                    'inputCount' => $inputs->count(),
+                    'totalWeight' => $totalWeight,
+                    'totalCost' => $totalCost,
+                    'costPerKg' => $totalWeight > 0 ? $totalCost / $totalWeight : null,
+                ];
+            })
+            ->values();
 
         $parentOutputs = $record->parentOutputConsumptions->map(function ($consumption) {
             $output = $consumption->productionOutput;
-            if (!$output) {
+            if (! $output) {
                 return null;
             }
             $parentRecord = $output->productionRecord;
             $processName = $parentRecord && $parentRecord->process
                 ? $parentRecord->process->name
                 : 'Proceso padre';
+
             return [
                 'productionOutputConsumptionId' => $consumption->id,
                 'productionOutputId' => $output->id,
@@ -404,8 +499,8 @@ class ProductionRecordService
             ];
         })->filter()->values();
 
-        $totalStockWeight = $stockBoxes->sum('netWeight');
-        $totalStockCost = $stockBoxes->sum(fn ($box) => $box['totalCost'] ?? 0);
+        $totalStockWeight = $stockProducts->sum('totalWeight');
+        $totalStockCost = $stockProducts->sum(fn ($product) => $product['totalCost'] ?? 0);
         $totalParentWeight = $parentOutputs->sum('consumedWeightKg');
         $totalParentCost = $parentOutputs->sum(fn ($output) => ($output['costPerKg'] ?? 0) * ($output['consumedWeightKg'] ?? 0));
         $totalInputWeight = $totalStockWeight + $totalParentWeight;
@@ -421,11 +516,11 @@ class ProductionRecordService
                 'totalInputWeight' => $totalInputWeight,
                 'totalInputCost' => $totalInputCost,
             ],
-            'stockBoxes' => $stockBoxes,
+            'stockProducts' => $stockProducts,
             'parentOutputs' => $parentOutputs,
             'totals' => [
                 'stock' => [
-                    'count' => $stockBoxes->count(),
+                    'count' => $stockProducts->count(),
                     'totalWeight' => $totalStockWeight,
                     'totalCost' => $totalStockCost,
                     'averageCostPerKg' => $totalStockWeight > 0 ? $totalStockCost / $totalStockWeight : null,
@@ -443,6 +538,87 @@ class ProductionRecordService
                 ],
             ],
         ];
+    }
+
+    /**
+     * Sync the sources of an output from payload data.
+     */
+    protected function syncOutputSources(ProductionOutput $output, ?array $sources): void
+    {
+        $output->sources()->delete();
+
+        if (! is_array($sources) || count($sources) === 0) {
+            return;
+        }
+
+        foreach ($sources as $sourceData) {
+            ProductionOutputSource::create([
+                'production_output_id' => $output->id,
+                'source_type' => $sourceData['source_type'],
+                'product_id' => $sourceData['product_id'] ?? null,
+                'production_output_consumption_id' => $sourceData['production_output_consumption_id'] ?? null,
+                'contributed_weight_kg' => $sourceData['contributed_weight_kg'] ?? null,
+                'contribution_percentage' => $sourceData['contribution_percentage'] ?? null,
+                'contributed_boxes' => $sourceData['contributed_boxes'] ?? 0,
+            ]);
+        }
+    }
+
+    /**
+     * Create automatic sources using the record's real consumption.
+     */
+    protected function createAutomaticOutputSources(ProductionOutput $output): void
+    {
+        $record = $output->productionRecord;
+        if (! $record) {
+            return;
+        }
+
+        $inputs = $record->inputs()->with('box.product')->get();
+        $consumptions = $record->parentOutputConsumptions;
+        $totalInputWeight = $record->total_input_weight;
+
+        if ($totalInputWeight <= 0) {
+            return;
+        }
+
+        $inputsByProduct = $inputs
+            ->filter(fn ($input) => $input->box && $input->box->article_id)
+            ->groupBy(fn ($input) => (int) $input->box->article_id);
+
+        foreach ($inputsByProduct as $productId => $productInputs) {
+            $inputWeight = $productInputs->sum(fn ($input) => (float) ($input->box->net_weight ?? 0));
+            if ($inputWeight <= 0) {
+                continue;
+            }
+
+            ProductionOutputSource::create([
+                'production_output_id' => $output->id,
+                'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_PRODUCT,
+                'product_id' => (int) $productId,
+                'production_output_consumption_id' => null,
+                'contributed_weight_kg' => $inputWeight,
+                'contribution_percentage' => ($inputWeight / $totalInputWeight) * 100,
+                'contributed_boxes' => 0,
+            ]);
+        }
+
+        foreach ($consumptions as $consumption) {
+            $consumptionWeight = $consumption->consumed_weight_kg ?? 0;
+            if ($consumptionWeight <= 0) {
+                continue;
+            }
+
+            ProductionOutputSource::create([
+                'production_output_id' => $output->id,
+                'source_type' => ProductionOutputSource::SOURCE_TYPE_PARENT_OUTPUT,
+                'product_id' => null,
+                'production_output_consumption_id' => $consumption->id,
+                'contributed_weight_kg' => $consumptionWeight,
+                'contribution_percentage' => ($consumptionWeight / $totalInputWeight) * 100,
+                'contributed_boxes' => $consumption->consumed_boxes ?? 0,
+            ]);
+        }
     }
 
     /**
@@ -465,7 +641,7 @@ class ProductionRecordService
         }
 
         $query->orderBy('started_at', 'desc')
-              ->orderBy('id', 'desc');
+            ->orderBy('id', 'desc');
 
         return $query->get();
     }
@@ -486,4 +662,3 @@ class ProductionRecordService
         return $descendantIds;
     }
 }
-

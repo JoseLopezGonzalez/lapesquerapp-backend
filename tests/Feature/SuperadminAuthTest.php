@@ -58,14 +58,14 @@ class SuperadminAuthTest extends TestCase
         $response->assertJsonStructure(['message']);
     }
 
-    public function test_request_access_returns_200_for_unknown_email(): void
+    public function test_request_access_returns_422_for_unknown_email(): void
     {
         $response = $this->postJson('/api/v2/superadmin/auth/request-access', [
             'email' => 'nobody@example.com',
         ]);
 
-        $response->assertOk();
-        $response->assertJsonStructure(['message']);
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['email']);
     }
 
     public function test_request_access_returns_422_without_email(): void

@@ -23,7 +23,12 @@ class AuthController extends Controller
         $user = SuperadminUser::where('email', $request->email)->first();
 
         if (! $user) {
-            return response()->json(['message' => self::REQUEST_ACCESS_MESSAGE]);
+            $msg = 'No existe un usuario superadmin con este correo electrónico.';
+
+            return response()->json([
+                'message' => $msg,
+                'errors' => ['email' => [$msg]],
+            ], 422);
         }
 
         try {

@@ -15,6 +15,23 @@ class SyncProductionConsumptionsRequest extends FormRequest
     }
 
     /**
+     * Accept a root-level JSON array (including []) as the consumptions list, so clients can send
+     * [] or [{...}] in addition to {"consumptions": []} / {"consumptions": [...]}.
+     */
+    protected function prepareForValidation(): void
+    {
+        if (! $this->isJson()) {
+            return;
+        }
+
+        $all = $this->all();
+
+        if (array_is_list($all) && ! array_key_exists('consumptions', $all)) {
+            $this->merge(['consumptions' => $all]);
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
@@ -32,4 +49,3 @@ class SyncProductionConsumptionsRequest extends FormRequest
         ];
     }
 }
-

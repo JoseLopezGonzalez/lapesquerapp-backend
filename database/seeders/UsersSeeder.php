@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use App\Enums\Role;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 /**
@@ -18,12 +18,13 @@ class UsersSeeder extends Seeder
             [
                 'name' => 'José Admin',
                 'email' => 'admin@pesquerapp.com',
-                'role' => Role::Administrador->value,
+                // técnico = máximo privilegio en ERP; misma cuenta dev para probar todo el API
+                'role' => Role::Tecnico->value,
             ],
             [
                 'name' => 'Carlos Manager',
                 'email' => 'manager@pesquerapp.com',
-                'role' => Role::Tecnico->value,
+                'role' => Role::Administrador->value,
             ],
             [
                 'name' => 'Ana Operadora',
@@ -38,7 +39,7 @@ class UsersSeeder extends Seeder
         ];
 
         foreach ($users as $data) {
-            User::firstOrCreate(
+            User::updateOrCreate(
                 ['email' => $data['email']],
                 [
                     'name' => $data['name'],

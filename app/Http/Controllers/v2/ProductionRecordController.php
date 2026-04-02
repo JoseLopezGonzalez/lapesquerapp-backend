@@ -10,10 +10,8 @@ use App\Http\Requests\v2\SyncProductionConsumptionsRequest;
 use App\Http\Requests\v2\SyncProductionOutputsRequest;
 use App\Http\Requests\v2\UpdateProductionRecordRequest;
 use App\Http\Resources\v2\ProductionRecordResource;
-use App\Http\Resources\v2\ProductionOutputResource;
 use App\Models\ProductionRecord;
 use App\Services\Production\ProductionRecordService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class ProductionRecordController extends Controller
@@ -63,8 +61,13 @@ class ProductionRecordController extends Controller
             'inputs.box.product.species',
             'inputs.box.product.captureZone',
             'outputs.product',
+            'outputs.sources.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
+            'outputs.productionRecord.production',
             'parentOutputConsumptions.productionOutput.product',
             'parentOutputConsumptions.productionOutput.productionRecord.process',
+            'parentOutputConsumptions.productionOutput.productionRecord.production',
         ])->findOrFail($id);
         $this->authorize('view', $record);
 
@@ -114,7 +117,11 @@ class ProductionRecordController extends Controller
             'process',
             'inputs.box.product',
             'inputs.box.palletBox',
-            'outputs.product'
+            'outputs.product',
+            'outputs.sources.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
+            'outputs.productionRecord.production',
         ])->findOrFail($id);
         $this->authorize('view', $record);
 
@@ -208,10 +215,10 @@ class ProductionRecordController extends Controller
             'data' => $records->map(function ($record) {
                 $processName = $record->process ? $record->process->name : 'Sin proceso';
                 $productionLot = $record->production ? $record->production->lot : 'Sin lote';
-                
+
                 $label = $processName;
                 if ($record->started_at) {
-                    $label .= ' - ' . $record->started_at->format('d/m/Y H:i');
+                    $label .= ' - '.$record->started_at->format('d/m/Y H:i');
                 }
                 if ($record->isFinal()) {
                     $label .= ' (Final)';

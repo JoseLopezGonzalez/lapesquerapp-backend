@@ -10,10 +10,10 @@ use App\Http\Requests\v2\StoreRawMaterialReceptionRequest;
 use App\Http\Requests\v2\UpdateRawMaterialReceptionRequest;
 use App\Http\Requests\v2\ValidateBulkUpdateDeclaredDataRequest;
 use App\Http\Resources\v2\RawMaterialReceptionResource;
+use App\Models\RawMaterialReception;
 use App\Services\v2\RawMaterialReceptionBulkService;
 use App\Services\v2\RawMaterialReceptionListService;
 use App\Services\v2\RawMaterialReceptionWriteService;
-use App\Models\RawMaterialReception;
 use Illuminate\Support\Facades\DB;
 
 use function normalizeDateToBusiness;
@@ -31,7 +31,7 @@ class RawMaterialReceptionController extends Controller
     {
         return DB::transaction(function () use ($request) {
             $reception = RawMaterialReceptionWriteService::store($request->validated());
-            $reception->load('supplier', 'products.product', 'pallets.reception', 'pallets.boxes.box.productionInputs');
+            $reception->load('supplier', 'products.product.species', 'pallets.reception', 'pallets.boxes.box.productionInputs', 'pallets.boxes.box.product');
 
             return response()->json([
                 'message' => 'Recepción de materia prima creada correctamente.',
@@ -42,8 +42,9 @@ class RawMaterialReceptionController extends Controller
 
     public function show($id)
     {
-        $reception = RawMaterialReception::with('supplier', 'products.product', 'pallets.reception', 'pallets.boxes.box.productionInputs')->findOrFail($id);
+        $reception = RawMaterialReception::with('supplier', 'products.product.species', 'pallets.reception', 'pallets.boxes.box.productionInputs', 'pallets.boxes.box.product')->findOrFail($id);
         $this->authorize('view', $reception);
+
         return response()->json([
             'data' => new RawMaterialReceptionResource($reception),
         ]);
@@ -51,12 +52,12 @@ class RawMaterialReceptionController extends Controller
 
     public function update(UpdateRawMaterialReceptionRequest $request, $id)
     {
-        $reception = RawMaterialReception::with('pallets.reception', 'pallets.boxes.box.productionInputs')->findOrFail($id);
+        $reception = RawMaterialReception::with('pallets.reception', 'pallets.boxes.box.productionInputs', 'pallets.boxes.box.product')->findOrFail($id);
         $this->authorize('update', $reception);
 
         return DB::transaction(function () use ($reception, $request) {
             RawMaterialReceptionWriteService::update($reception, $request->validated());
-            $reception->load('supplier', 'products.product', 'pallets.reception', 'pallets.boxes.box.productionInputs');
+            $reception->load('supplier', 'products.product.species', 'pallets.reception', 'pallets.boxes.box.productionInputs', 'pallets.boxes.box.product');
 
             return response()->json([
                 'message' => 'Recepción de materia prima actualizada correctamente.',
@@ -70,6 +71,7 @@ class RawMaterialReceptionController extends Controller
         $reception = RawMaterialReception::findOrFail($id);
         $this->authorize('delete', $reception);
         $reception->delete();
+
         return response()->json(['message' => 'Recepción eliminada correctamente'], 200);
     }
 
@@ -82,7 +84,7 @@ class RawMaterialReceptionController extends Controller
 
         foreach ($ids as $id) {
             $reception = RawMaterialReception::find($id);
-            if (!$reception) {
+            if (! $reception) {
                 continue;
             }
             try {
@@ -92,15 +94,15 @@ class RawMaterialReceptionController extends Controller
                 $errors[] = [
                     'id' => $id,
                     'message' => $e->getMessage(),
-                    'userMessage' => 'No se pudo eliminar la recepción #' . $id . ': ' . ($e->getMessage()),
+                    'userMessage' => 'No se pudo eliminar la recepción #'.$id.': '.($e->getMessage()),
                 ];
             }
         }
 
-        if (!empty($errors)) {
+        if (! empty($errors)) {
             return response()->json([
                 'message' => 'Algunas recepciones no pudieron eliminarse.',
-                'userMessage' => count($errors) . ' recepción(es) no pudieron eliminarse (palets vinculados a pedidos, cajas en producción o almacenados).',
+                'userMessage' => count($errors).' recepción(es) no pudieron eliminarse (palets vinculados a pedidos, cajas en producción o almacenados).',
                 'deleted' => $deleted,
                 'errors' => $errors,
             ], 422);

@@ -4,23 +4,24 @@ namespace App\Models;
 
 use App\Services\v2\PalletTimelineService;
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-
 class Pallet extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     /**
      * Estados fijos de los palets
      * Ya no dependen de la tabla pallet_states
      */
     const STATE_REGISTERED = 1;  // Registrado
+
     const STATE_STORED = 2;      // Almacenado
+
     const STATE_SHIPPED = 3;     // Enviado (para pedidos terminados)
+
     const STATE_PROCESSED = 4;   // Procesado (consumido completamente en producción)
 
     /**
@@ -82,13 +83,13 @@ class Pallet extends Model
         // Validar antes de actualizar
         static::updating(function ($pallet) {
             $pallet->validateUpdateRules();
-            
+
             // No permitir cambiar la recepción de un palet
             if ($pallet->reception_id !== null && $pallet->isDirty('reception_id')) {
                 throw new \Exception('No se puede cambiar la recepción de un palet.');
             }
         });
-        
+
         // Validar antes de eliminar
         static::deleting(function ($pallet) {
             // No permitir eliminar un palet que proviene de una recepción directamente
@@ -104,9 +105,9 @@ class Pallet extends Model
     protected function validatePalletRules(): void
     {
         // Validar que status sea válido
-        if (!in_array($this->status, self::getValidStates())) {
+        if (! in_array($this->status, self::getValidStates())) {
             throw new \InvalidArgumentException(
-                "El estado (status) debe ser uno de: " . implode(', ', self::getValidStates()) . ". Valor recibido: {$this->status}."
+                'El estado (status) debe ser uno de: '.implode(', ', self::getValidStates()).". Valor recibido: {$this->status}."
             );
         }
     }
@@ -118,7 +119,7 @@ class Pallet extends Model
     {
         $originalState = $this->getOriginal('status');
         $newState = $this->status;
-        
+
         // Permitir cambiar de PROCESSED a REGISTERED cuando se liberan cajas de producción
         // Esto se hace automáticamente cuando se eliminan ProductionInputs
         if ($originalState === self::STATE_PROCESSED && $this->isDirty('status')) {
@@ -135,14 +136,13 @@ class Pallet extends Model
         // Esto permite que cuando se desvincula un palet, pueda volver a estado registrado
         if ($originalState === self::STATE_SHIPPED && $this->isDirty('status')) {
             $isUnlinking = $this->isDirty('order_id') && $this->order_id === null;
-            if (in_array($newState, [self::STATE_REGISTERED, self::STATE_STORED]) && !$isUnlinking) {
+            if (in_array($newState, [self::STATE_REGISTERED, self::STATE_STORED]) && ! $isUnlinking) {
                 throw new \InvalidArgumentException(
                     'No se puede cambiar un palet enviado de vuelta a registrado o almacenado. Un palet enviado no puede volver a almacén.'
                 );
             }
         }
     }
-
 
     public function palletBoxes()
     {
@@ -156,8 +156,10 @@ class Pallet extends Model
     public function palletState()
     {
         // Retornar un objeto compatible con la API para mantener retrocompatibilidad temporal
-        return new class($this->status) {
+        return new class($this->status)
+        {
             public $id;
+
             public $name;
 
             public function __construct($stateId)
@@ -179,15 +181,17 @@ class Pallet extends Model
     /**
      * @deprecated Ya no se usa la relación con PalletState
      * Usar $pallet->status directamente o $pallet->stateArray
-     * 
+     *
      * NOTA: Este método NO es una relación Eloquent, es un método helper
      * que retorna un objeto fake para mantener compatibilidad con la API
      */
     public function state()
     {
         // Retornar un objeto compatible con la API para mantener retrocompatibilidad temporal
-        return new class($this->status) {
+        return new class($this->status)
+        {
             public $id;
+
             public $name;
 
             public function __construct($stateId)
@@ -212,14 +216,15 @@ class Pallet extends Model
         $products = [];
         if ($this->boxes) {
             $this->boxes->map(function ($box) use (&$products) {
-                if ($box && $box->box && $box->box->product) {
+                if ($box && $box->box && $box->box->relationLoaded('product') && $box->box->product) {
                     $product = $box->box->product;
-                    if (!isset($products[$product->id])) {
+                    if (! isset($products[$product->id])) {
                         $products[$product->id] = $product;
                     }
                 }
             });
         }
+
         return $products;
     }
 
@@ -231,8 +236,6 @@ class Pallet extends Model
         }, $this->articles);
     }
 
-
-
     /* public function store()
     {
         return $this->belongsTo(Store::class, 'store_id');
@@ -243,12 +246,10 @@ class Pallet extends Model
         return $this->hasMany(PalletBox::class, 'pallet_id');
     }
 
-
     public function boxesV2()
     {
         return $this->belongsToMany(Box::class, 'pallet_boxes', 'pallet_id', 'box_id');
     }
-
 
     public function order()
     {
@@ -277,12 +278,12 @@ class Pallet extends Model
         $summary = [];
         if ($this->boxes) {
             $this->boxes->map(function ($box) use (&$summary) {
-                if ($box && $box->box && $box->box->product) {
+                if ($box && $box->box && $box->box->relationLoaded('product') && $box->box->product) {
                     $product = $box->box->product;
-                    if (!isset($summary[$product->id])) {
+                    if (! isset($summary[$product->id])) {
                         $summary[$product->id] = [
                             'product' => $product,
-                            'species' => $product->species ?? null,
+                            'species' => $product->relationLoaded('species') ? ($product->species ?? null) : null,
                             'boxes' => 0,
                             'netWeight' => 0,
                         ];
@@ -292,15 +293,17 @@ class Pallet extends Model
                 }
             });
         }
+
         return $summary;
     }
 
     //Accessor
     public function getNetWeightAttribute()
     {
-        if (!$this->boxes) {
+        if (! $this->boxes) {
             return 0;
         }
+
         return $this->boxes->reduce(function ($carry, $box) {
             return $carry + ($box->net_weight ?? 0);
         }, 0);
@@ -317,9 +320,10 @@ class Pallet extends Model
      */
     public function getAvailableBoxesCountAttribute()
     {
-        if (!$this->boxes) {
+        if (! $this->boxes) {
             return 0;
         }
+
         return $this->boxes->filter(function ($palletBox) {
             return $palletBox && $palletBox->box && $palletBox->box->isAvailable;
         })->count();
@@ -330,11 +334,12 @@ class Pallet extends Model
      */
     public function getUsedBoxesCountAttribute()
     {
-        if (!$this->boxes) {
+        if (! $this->boxes) {
             return 0;
         }
+
         return $this->boxes->filter(function ($palletBox) {
-            return $palletBox && $palletBox->box && !$palletBox->box->isAvailable;
+            return $palletBox && $palletBox->box && ! $palletBox->box->isAvailable;
         })->count();
     }
 
@@ -343,9 +348,10 @@ class Pallet extends Model
      */
     public function getTotalAvailableWeightAttribute()
     {
-        if (!$this->boxes) {
+        if (! $this->boxes) {
             return 0;
         }
+
         return $this->boxes->filter(function ($palletBox) {
             return $palletBox && $palletBox->box && $palletBox->box->isAvailable;
         })->sum(function ($palletBox) {
@@ -358,11 +364,12 @@ class Pallet extends Model
      */
     public function getTotalUsedWeightAttribute()
     {
-        if (!$this->boxes) {
+        if (! $this->boxes) {
             return 0;
         }
+
         return $this->boxes->filter(function ($palletBox) {
-            return $palletBox && $palletBox->box && !$palletBox->box->isAvailable;
+            return $palletBox && $palletBox->box && ! $palletBox->box->isAvailable;
         })->sum(function ($palletBox) {
             return $palletBox->box->net_weight ?? 0;
         });
@@ -373,28 +380,28 @@ class Pallet extends Model
      */
     public function getCostPerKgAttribute(): ?float
     {
-        if (!$this->boxes || $this->boxes->isEmpty()) {
+        if (! $this->boxes || $this->boxes->isEmpty()) {
             return null;
         }
-  
+
         $totalCost = 0;
         $totalWeight = 0;
-  
+
         foreach ($this->boxes as $palletBox) {
             $box = $palletBox->box;
             $boxCost = $box->total_cost;
             $boxWeight = $box->net_weight;
-      
+
             if ($boxCost !== null && $boxWeight > 0) {
                 $totalCost += $boxCost;
                 $totalWeight += $boxWeight;
             }
         }
-  
+
         if ($totalWeight == 0) {
             return null;
         }
-  
+
         return $totalCost / $totalWeight;
     }
 
@@ -403,13 +410,13 @@ class Pallet extends Model
      */
     public function getTotalCostAttribute(): ?float
     {
-        if (!$this->boxes || $this->boxes->isEmpty()) {
+        if (! $this->boxes || $this->boxes->isEmpty()) {
             return null;
         }
-  
+
         $totalCost = 0;
         $hasCost = false;
-  
+
         foreach ($this->boxes as $palletBox) {
             $boxCost = $palletBox->box->total_cost;
             if ($boxCost !== null) {
@@ -417,7 +424,7 @@ class Pallet extends Model
                 $hasCost = true;
             }
         }
-  
+
         return $hasCost ? $totalCost : null;
     }
 
@@ -438,8 +445,6 @@ class Pallet extends Model
         // Si viene por otra vía, consulta manual
         return $this->storedPallet?->position;
     }
-
-
 
     public function getStoreIdAttribute()
     {
@@ -481,9 +486,9 @@ class Pallet extends Model
                 $totals['netWeight'] += $box->net_weight ?? 0;
             });
         }
+
         return $totals;
     }
-
 
     public function unStore()
     {
@@ -501,7 +506,7 @@ class Pallet extends Model
     {
         // Recargar el modelo desde la base de datos para obtener datos frescos
         $this->refresh();
-        
+
         // Siempre recargar las relaciones necesarias después del refresh
         // para asegurar que tenemos los datos más recientes de productionInputs
         $this->load(['boxes.box.productionInputs']);
@@ -510,28 +515,28 @@ class Pallet extends Model
         // para evitar problemas con accessors que pueden hacer consultas adicionales
         $totalBoxes = 0;
         $usedBoxesCount = 0;
-        
+
         if ($this->boxes) {
             foreach ($this->boxes as $palletBox) {
-                if (!$palletBox || !$palletBox->box) {
+                if (! $palletBox || ! $palletBox->box) {
                     continue;
                 }
-                
+
                 $totalBoxes++;
-                
+
                 // Verificar directamente si la caja tiene productionInputs
                 // usando los datos cargados en lugar del accessor isAvailable
                 $box = $palletBox->box;
                 $hasProductionInputs = false;
-                
+
                 if ($box->relationLoaded('productionInputs')) {
                     // Si la relación está cargada, usar isEmpty()
-                    $hasProductionInputs = !$box->productionInputs->isEmpty();
+                    $hasProductionInputs = ! $box->productionInputs->isEmpty();
                 } else {
                     // Si no está cargada (no debería pasar, pero por seguridad)
                     $hasProductionInputs = $box->productionInputs()->exists();
                 }
-                
+
                 if ($hasProductionInputs) {
                     $usedBoxesCount++;
                 }
@@ -645,7 +650,6 @@ class Pallet extends Model
         parent::delete();
     }
 
-
     public function getLotsAttribute()
     {
         $lots = [];
@@ -654,12 +658,13 @@ class Pallet extends Model
                 if ($box && $box->box) {
                     $lot = $box->box->lot;
                     /* push lot si no hay igual, almacenar un array de lots sin clave*/
-                    if (!in_array($lot, $lots)) {
+                    if (! in_array($lot, $lots)) {
                         $lots[] = $lot;
                     }
                 }
             });
         }
+
         return $lots;
     }
 
@@ -668,23 +673,23 @@ class Pallet extends Model
     /* Products names list array*/
     public function getProductsNamesAttribute()
     {
-        return array_values(array_map(fn($product) => $product->name ?? null, $this->products));
+        return array_values(array_map(fn ($product) => $product->name ?? null, $this->products));
     }
-
 
     public function getProductsAttribute()
     {
         $products = [];
         if ($this->boxes) {
             $this->boxes->map(function ($box) use (&$products) {
-                if ($box && $box->box && $box->box->product) {
+                if ($box && $box->box && $box->box->relationLoaded('product') && $box->box->product) {
                     $product = $box->box->product;
-                    if (!isset($products[$product->id])) {
+                    if (! isset($products[$product->id])) {
                         $products[$product->id] = $product;
                     }
                 }
             });
         }
+
         return $products;
     }
 
@@ -759,7 +764,6 @@ class Pallet extends Model
         ];
     }
 
-
     /* NUEVO LA PESQUERAPP */
 
     public function scopeStored($query)
@@ -790,7 +794,4 @@ class Pallet extends Model
             ->join('boxes', 'boxes.id', '=', 'pallet_boxes.box_id')
             ->join('products', 'products.id', '=', 'boxes.article_id'); // ahora join correcto
     }
-
-
-
 }
