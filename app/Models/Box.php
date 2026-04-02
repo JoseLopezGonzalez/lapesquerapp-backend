@@ -162,22 +162,74 @@ class Box extends Model
 
     /**
      * Obtiene el coste por kg de la caja desde la recepción
-     * Busca por producto y lote para obtener el precio correcto
+     * Si no proviene de recepción, intenta valorarla desde producción
+     * usando el producto y el lote de la caja.
      */
     public function getCostPerKgAttribute(): ?float
     {
         $pallet = $this->pallet;
-        if (!$pallet || !$pallet->reception_id) {
+
+        if ($pallet && $pallet->reception_id) {
+            $reception = $pallet->reception;
+            $receptionProduct = $reception->products()
+                ->where('product_id', $this->article_id)
+                ->where('lot', $this->lot)
+                ->first();
+
+            return $receptionProduct?->price;
+        }
+
+        return $this->getProductionCostPerKg();
+    }
+
+    /**
+     * Obtiene el coste por kg desde outputs de producción.
+     *
+     * La caja se enlaza con el lote de la producción (productions.lot),
+     * y dentro de esa producción se valoran solo las salidas de nodos finales
+     * del mismo producto. Si hay varias, se usa media ponderada por peso.
+     */
+    protected function getProductionCostPerKg(): ?float
+    {
+        if ($this->article_id === null || $this->lot === null || trim($this->lot) === '') {
             return null;
         }
-  
-        $reception = $pallet->reception;
-        $receptionProduct = $reception->products()
+
+        $outputs = ProductionOutput::query()
             ->where('product_id', $this->article_id)
-            ->where('lot', $this->lot)
-            ->first();
-  
-        return $receptionProduct?->price;
+            ->whereHas('productionRecord', function ($query) {
+                $query->whereHas('production', function ($productionQuery) {
+                    $productionQuery->where('lot', $this->lot);
+                })
+                ->whereDoesntHave('inputs')
+                ->whereDoesntHave('children');
+            })
+            ->get();
+
+        if ($outputs->isEmpty()) {
+            return null;
+        }
+
+        $totalWeight = 0.0;
+        $totalCost = 0.0;
+
+        foreach ($outputs as $output) {
+            $weight = (float) ($output->weight_kg ?? 0);
+            $costPerKg = $output->cost_per_kg;
+
+            if ($weight <= 0 || $costPerKg === null) {
+                continue;
+            }
+
+            $totalWeight += $weight;
+            $totalCost += $weight * (float) $costPerKg;
+        }
+
+        if ($totalWeight <= 0) {
+            return null;
+        }
+
+        return $totalCost / $totalWeight;
     }
 
     /**

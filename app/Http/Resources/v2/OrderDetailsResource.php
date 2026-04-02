@@ -34,7 +34,7 @@ class OrderDetailsResource extends JsonResource
             'status' => $this->status,
             'pallets' => $this->relationLoaded('pallets')
                 ? $this->pallets->map(function ($pallet) {
-                    return $pallet->toArrayAssoc();
+                    return $pallet->toArrayAssocV2();
                 })
                 : [],
             'incoterm' => $this->relationLoaded('incoterm') ? $this->incoterm?->toArrayAssoc() : null,

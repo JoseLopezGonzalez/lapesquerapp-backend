@@ -55,7 +55,8 @@ class OrderDetailService
             'incident' => fn ($q) => $q->select([
                 'id', 'order_id', 'description', 'status', 'resolution_type', 'resolution_notes', 'resolved_at', 'created_at', 'updated_at',
             ]),
-            'pallets' => fn ($q) => $q->select(['id', 'observations', 'status', 'order_id']),
+            'pallets' => fn ($q) => $q->select(['id', 'observations', 'status', 'order_id', 'reception_id']),
+            'pallets.reception',
             'pallets.boxes' => fn ($q) => $q->select(['id', 'pallet_id', 'box_id', 'created_at', 'updated_at']),
             'pallets.boxes.box' => fn ($q) => $q->select(['id', 'article_id', 'lot', 'gs1_128', 'gross_weight', 'net_weight', 'created_at']),
             'pallets.boxes.box.productionInputs' => fn ($q) => $q->select(['id', 'box_id']),

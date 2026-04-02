@@ -29,11 +29,10 @@ class FieldOrderDetailsResource extends JsonResource
                 ? $this->plannedProductDetails->map(fn ($detail) => $detail->toArrayAssoc())->values()
                 : [],
 
-            // execution (match full order detail expectations: pallets -> boxes include box.id)
-            // Use toArrayAssoc() because OrderDetailService eagerly loads `pallets.boxes.box`,
-            // while V2 representation depends on `boxesV2` relation.
+            // execution: same V2 pallet shape as OrderDetailsResource (costs, availability, position).
+            // OrderDetailService eager-loads `pallets.boxes.box`; toArrayAssocV2 falls back from boxesV2.
             'pallets' => $this->relationLoaded('pallets')
-                ? $this->pallets->map(fn ($pallet) => $pallet->toArrayAssoc())->values()
+                ? $this->pallets->map(fn ($pallet) => $pallet->toArrayAssocV2())->values()
                 : [],
 
             'totalBoxes' => $this->totalBoxes,
@@ -43,4 +42,3 @@ class FieldOrderDetailsResource extends JsonResource
         ];
     }
 }
-
