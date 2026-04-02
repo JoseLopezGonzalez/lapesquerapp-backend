@@ -166,10 +166,6 @@ class PDFController extends Controller
 
     public function generateOrderSheetsWithFilters(OrderFilteredExportRequest $request): StreamedResponse|\Illuminate\Http\JsonResponse
     {
-        if ($request->user()->hasRole(Role::Comercial->value)) {
-            abort(403);
-        }
-
         ini_set('memory_limit', '512M');
         ini_set('max_execution_time', '300');
 
