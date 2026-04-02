@@ -27,7 +27,14 @@ class CommercialInteractionService
         }
 
         if ($request->filled('customerId')) {
-            $query->where('customer_id', $request->integer('customerId'));
+            $customerId = $request->integer('customerId');
+            $convertedProspectId = Prospect::where('customer_id', $customerId)->value('id');
+            $query->where(function (Builder $q) use ($customerId, $convertedProspectId) {
+                $q->where('customer_id', $customerId);
+                if ($convertedProspectId) {
+                    $q->orWhere('prospect_id', $convertedProspectId);
+                }
+            });
         }
 
         if ($request->filled('result')) {

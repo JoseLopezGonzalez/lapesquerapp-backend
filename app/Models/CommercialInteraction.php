@@ -91,6 +91,7 @@ class CommercialInteraction extends Model
             'id' => $this->id,
             'prospectId' => $this->prospect_id,
             'customerId' => $this->customer_id,
+            'isFromProspect' => $this->prospect_id !== null,
             'salesperson' => $this->relationLoaded('salesperson') ? $this->salesperson?->toArrayAssoc() : null,
             'type' => $this->type,
             'occurredAt' => $this->occurred_at?->toISOString(),
