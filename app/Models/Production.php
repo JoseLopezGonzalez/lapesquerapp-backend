@@ -1746,6 +1746,7 @@ class Production extends Model
         $allProducts = [];  // Para obtener lista de productos únicos
         $totalBoxes = 0;
         $totalNetWeight = 0;
+        $totalCost = 0.0;
 
         foreach ($reprocessedDataByProduct as $productId => $productProcesses) {
             foreach ($productProcesses as $productionRecordId => $processData) {
@@ -1769,6 +1770,9 @@ class Production extends Model
                 $boxes = collect($processData['boxes']);
                 $productBoxes = $boxes->count();
                 $productNetWeight = $boxes->sum('net_weight');
+                $productCostTotal = (float) $boxes->sum(function ($box) {
+                    return (float) ($box->total_cost ?? 0);
+                });
 
                 // Añadir producto al proceso
                 $processesMap[$productionRecordId]['products'][$productId] = [
@@ -1785,12 +1789,15 @@ class Production extends Model
                     })->values()->toArray(),
                     'totalBoxes' => $productBoxes,
                     'totalNetWeight' => round($productNetWeight, 2),
+                    'costPerKg' => $productNetWeight > 0 ? round($productCostTotal / $productNetWeight, 4) : 0.0,
+                    'costTotal' => round($productCostTotal, 2),
                 ];
 
                 $allProducts[$productId] = $processData['product'];
 
                 $totalBoxes += $productBoxes;
                 $totalNetWeight += $productNetWeight;
+                $totalCost += $productCostTotal;
             }
         }
 
@@ -1802,6 +1809,7 @@ class Production extends Model
             // Calcular totales del proceso
             $processTotalBoxes = array_sum(array_column($processProducts, 'totalBoxes'));
             $processTotalNetWeight = array_sum(array_column($processProducts, 'totalNetWeight'));
+            $processCostTotal = array_sum(array_column($processProducts, 'costTotal'));
 
             $processesData[] = [
                 'process' => [
@@ -1826,6 +1834,8 @@ class Production extends Model
                 'products' => $processProducts,  // 👈 Array de productos en este proceso
                 'totalBoxes' => $processTotalBoxes,
                 'totalNetWeight' => round($processTotalNetWeight, 2),
+                'costPerKg' => $processTotalNetWeight > 0 ? round($processCostTotal / $processTotalNetWeight, 4) : 0.0,
+                'costTotal' => round($processCostTotal, 2),
             ];
         }
 
@@ -1843,6 +1853,8 @@ class Production extends Model
                 'productsCount' => count($allProducts),  // 👈 Número de productos diferentes
                 'boxesCount' => $totalBoxes,
                 'netWeight' => round($totalNetWeight, 2),
+                'costPerKg' => $totalNetWeight > 0 ? round($totalCost / $totalNetWeight, 4) : 0.0,
+                'costTotal' => round($totalCost, 2),
             ],
             'children' => [],
         ];

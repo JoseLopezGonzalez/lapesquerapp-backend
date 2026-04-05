@@ -8,6 +8,7 @@ use App\Models\FishingGear;
 use App\Models\OrderPlannedProductDetail;
 use App\Models\Pallet;
 use App\Models\PalletBox;
+use App\Models\Process;
 use App\Models\Product;
 use App\Models\Production;
 use App\Models\ProductionCost;
@@ -15,6 +16,7 @@ use App\Models\ProductionInput;
 use App\Models\ProductionOutput;
 use App\Models\ProductionOutputConsumption;
 use App\Models\ProductionOutputSource;
+use App\Models\ProductionRecord;
 use App\Models\Species;
 use App\Models\Tax;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -415,6 +417,91 @@ class ProductionBlockApiTest extends TestCase
             ->assertJsonPath('data.processNodes.0.children.0.children.0.stores.0.costTotal', 10)
             ->assertJsonPath('data.processNodes.0.children.0.children.0.summary.costPerKg', 0.5)
             ->assertJsonPath('data.processNodes.0.children.0.children.0.summary.costTotal', 10);
+    }
+
+    public function test_production_process_tree_reprocessed_node_includes_cost_metrics(): void
+    {
+        [$production, , $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $product = $this->createValidProduct($species, $captureZone, '10RP');
+
+        $output = ProductionOutput::create([
+            'production_record_id' => $childRecord->id,
+            'product_id' => $product->id,
+            'lot_id' => 'L-REPROCESSED-TREE',
+            'boxes' => 2,
+            'weight_kg' => 40,
+        ]);
+
+        ProductionCost::create([
+            'production_record_id' => $childRecord->id,
+            'production_id' => null,
+            'cost_type' => ProductionCost::COST_TYPE_PRODUCTION,
+            'name' => 'Proceso final reprocesado',
+            'total_cost' => 20,
+            'cost_per_kg' => null,
+            'distribution_unit' => 'total',
+            'cost_date' => now()->toDateString(),
+        ]);
+
+        $boxA = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => $production->lot,
+            'net_weight' => 10,
+            'gross_weight' => 10.4,
+        ]);
+        $boxB = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => $production->lot,
+            'net_weight' => 12,
+            'gross_weight' => 12.5,
+        ]);
+
+        $reprocessedProduction = Production::create([
+            'lot' => 'LOT-REPROCESSED-'.uniqid(),
+            'date' => now()->toDateString(),
+            'species_id' => $species->id,
+            'capture_zone_id' => $captureZone->id,
+            'opened_at' => now(),
+        ]);
+        $reprocessedProcess = Process::create([
+            'name' => 'Reprocesado test '.uniqid(),
+            'type' => 'process',
+        ]);
+        $reprocessedRecord = ProductionRecord::create([
+            'production_id' => $reprocessedProduction->id,
+            'process_id' => $reprocessedProcess->id,
+            'started_at' => now(),
+        ]);
+
+        ProductionInput::create([
+            'production_record_id' => $reprocessedRecord->id,
+            'box_id' => $boxA->id,
+        ]);
+        ProductionInput::create([
+            'production_record_id' => $reprocessedRecord->id,
+            'box_id' => $boxB->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/'.$production->id.'/process-tree');
+
+        $response->assertOk();
+
+        $reprocessedNode = collect($response->json('data.processNodes.0.children.0.children'))
+            ->firstWhere('type', 'reprocessed');
+
+        $this->assertNotNull($reprocessedNode);
+        $this->assertSame(1, $reprocessedNode['summary']['processesCount']);
+        $this->assertSame(1, $reprocessedNode['summary']['productsCount']);
+        $this->assertEquals(22.0, $reprocessedNode['summary']['netWeight']);
+        $this->assertEquals(0.5, $reprocessedNode['summary']['costPerKg']);
+        $this->assertEquals(11.0, $reprocessedNode['summary']['costTotal']);
+        $this->assertEquals(0.5, $reprocessedNode['processes'][0]['products'][0]['costPerKg']);
+        $this->assertEquals(11.0, $reprocessedNode['processes'][0]['products'][0]['costTotal']);
+        $this->assertEquals(0.5, $reprocessedNode['processes'][0]['costPerKg']);
+        $this->assertEquals(11.0, $reprocessedNode['processes'][0]['costTotal']);
     }
 
     public function test_available_outputs_keeps_current_record_consumption_when_fully_consumed(): void
