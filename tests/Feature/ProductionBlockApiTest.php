@@ -172,6 +172,64 @@ class ProductionBlockApiTest extends TestCase
             ->assertJsonPath('data.processNodes.0.inputs.0.totalCost', 10);
     }
 
+    public function test_production_process_tree_reuses_cost_for_multiple_stock_inputs_from_same_lot_and_product(): void
+    {
+        [$production, $parentRecord, $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $sourceProduct = $this->createValidProduct($species, $captureZone, '10R');
+
+        ProductionOutput::create([
+            'production_record_id' => $childRecord->id,
+            'product_id' => $sourceProduct->id,
+            'lot_id' => 'L-REUSED-COST',
+            'boxes' => 10,
+            'weight_kg' => 100,
+        ]);
+
+        ProductionCost::create([
+            'production_record_id' => $childRecord->id,
+            'production_id' => null,
+            'cost_type' => ProductionCost::COST_TYPE_PRODUCTION,
+            'name' => 'Proceso final reused',
+            'total_cost' => 50,
+            'cost_per_kg' => null,
+            'distribution_unit' => 'total',
+            'cost_date' => now()->toDateString(),
+        ]);
+
+        $boxA = Box::factory()->create([
+            'article_id' => $sourceProduct->id,
+            'lot' => $production->lot,
+            'net_weight' => 20,
+            'gross_weight' => 21,
+        ]);
+        $boxB = Box::factory()->create([
+            'article_id' => $sourceProduct->id,
+            'lot' => $production->lot,
+            'net_weight' => 30,
+            'gross_weight' => 31,
+        ]);
+
+        ProductionInput::create([
+            'production_record_id' => $parentRecord->id,
+            'box_id' => $boxA->id,
+        ]);
+        ProductionInput::create([
+            'production_record_id' => $parentRecord->id,
+            'box_id' => $boxB->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/'.$production->id.'/process-tree');
+
+        $response->assertOk()
+            ->assertJsonPath('data.processNodes.0.inputs.0.costPerKg', 0.5)
+            ->assertJsonPath('data.processNodes.0.inputs.1.costPerKg', 0.5)
+            ->assertJsonPath('data.processNodes.0.inputs.0.totalCost', 10)
+            ->assertJsonPath('data.processNodes.0.inputs.1.totalCost', 15);
+    }
+
     public function test_production_record_tree_includes_output_and_node_accounting_costs(): void
     {
         [, $parentRecord] = $this->createProductionWithRecords();

@@ -2,15 +2,15 @@
 
 namespace App\Models;
 
+use App\Services\Production\ProductionCostResolver;
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Box extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
     //protected $table = 'boxes';
 
     protected $fillable = ['article_id', 'lot', 'gs1_128', 'gross_weight', 'net_weight'];
@@ -55,7 +55,7 @@ class Box extends Model
         // Validar que article_id exista
         if ($this->article_id !== null) {
             $product = Product::find($this->article_id);
-            if (!$product) {
+            if (! $product) {
                 throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
                     "El producto con ID {$this->article_id} no existe."
                 );
@@ -125,9 +125,9 @@ class Box extends Model
         if ($this->relationLoaded('productionInputs')) {
             return $this->productionInputs->isEmpty();
         }
-        
+
         // Si no está cargada, hacer una consulta directa más eficiente
-        return !$this->productionInputs()->exists();
+        return ! $this->productionInputs()->exists();
     }
 
     /**
@@ -141,7 +141,7 @@ class Box extends Model
             $latestInput = $this->productionInputs
                 ->sortByDesc('created_at')
                 ->first();
-            
+
             if ($latestInput) {
                 // Intentar obtener la producción desde el productionRecord cargado
                 $productionRecord = $latestInput->productionRecord;
@@ -150,13 +150,13 @@ class Box extends Model
                 }
             }
         }
-        
+
         // Si no está cargada o las relaciones anidadas no están cargadas, hacer una consulta optimizada
         $latestInput = $this->productionInputs()
             ->with('productionRecord.production')
             ->orderBy('created_at', 'desc')
             ->first();
-        
+
         return $latestInput?->productionRecord?->production;
     }
 
@@ -167,69 +167,7 @@ class Box extends Model
      */
     public function getCostPerKgAttribute(): ?float
     {
-        $pallet = $this->pallet;
-
-        if ($pallet && $pallet->reception_id) {
-            $reception = $pallet->reception;
-            $receptionProduct = $reception->products()
-                ->where('product_id', $this->article_id)
-                ->where('lot', $this->lot)
-                ->first();
-
-            return $receptionProduct?->price;
-        }
-
-        return $this->getProductionCostPerKg();
-    }
-
-    /**
-     * Obtiene el coste por kg desde outputs de producción.
-     *
-     * La caja se enlaza con el lote de la producción (productions.lot),
-     * y dentro de esa producción se valoran solo las salidas de nodos finales
-     * del mismo producto. Si hay varias, se usa media ponderada por peso.
-     */
-    protected function getProductionCostPerKg(): ?float
-    {
-        if ($this->article_id === null || $this->lot === null || trim($this->lot) === '') {
-            return null;
-        }
-
-        $outputs = ProductionOutput::query()
-            ->where('product_id', $this->article_id)
-            ->whereHas('productionRecord', function ($query) {
-                $query->whereHas('production', function ($productionQuery) {
-                    $productionQuery->where('lot', $this->lot);
-                })
-                ->whereDoesntHave('inputs')
-                ->whereDoesntHave('children');
-            })
-            ->get();
-
-        if ($outputs->isEmpty()) {
-            return null;
-        }
-
-        $totalWeight = 0.0;
-        $totalCost = 0.0;
-
-        foreach ($outputs as $output) {
-            $weight = (float) ($output->weight_kg ?? 0);
-            $costPerKg = $output->cost_per_kg;
-
-            if ($weight <= 0 || $costPerKg === null) {
-                continue;
-            }
-
-            $totalWeight += $weight;
-            $totalCost += $weight * (float) $costPerKg;
-        }
-
-        if ($totalWeight <= 0) {
-            return null;
-        }
-
-        return $totalCost / $totalWeight;
+        return app(ProductionCostResolver::class)->getBoxCostPerKg($this);
     }
 
     /**
@@ -237,12 +175,7 @@ class Box extends Model
      */
     public function getTotalCostAttribute(): ?float
     {
-        $costPerKg = $this->cost_per_kg;
-        if ($costPerKg === null) {
-            return null;
-        }
-  
-        return $this->net_weight * $costPerKg;
+        return app(ProductionCostResolver::class)->getBoxTotalCost($this);
     }
 
     public function toArrayAssoc()
@@ -259,11 +192,10 @@ class Box extends Model
         ];
     }
 
-
     public function toArrayAssocV2()
     {
         $production = $this->production;
-        
+
         return [
             'id' => $this->id,
             'palletId' => $this->pallet_id,
@@ -282,5 +214,4 @@ class Box extends Model
             'totalCost' => $this->total_cost, // Nuevo (accessor)
         ];
     }
-
 }
