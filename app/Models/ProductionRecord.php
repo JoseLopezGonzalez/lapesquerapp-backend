@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductionRecord extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = [
         'production_id',
@@ -142,7 +142,7 @@ class ProductionRecord extends Model
 
             // Obtener el padre
             $parent = static::find($parentId);
-            if (!$parent) {
+            if (! $parent) {
                 break; // El padre no existe, no hay ciclo
             }
 
@@ -216,12 +216,12 @@ class ProductionRecord extends Model
 
     /**
      * Verificar si es un proceso final (no tiene inputs de stock, no tiene procesos hijos, pero puede consumir del padre)
-     * 
+     *
      * Condiciones:
      * - No tiene inputs de stock (cajas directamente asignadas)
      * - No tiene procesos hijos (no hay más transformaciones)
      * - Tiene al menos un output (produce productos)
-     * 
+     *
      * Nota: Los nodos finales SÍ pueden consumir outputs del padre (excepto si son raíz).
      * Solo los nodos iniciales (raíz) no consumen del padre porque no tienen padre.
      */
@@ -307,7 +307,7 @@ class ProductionRecord extends Model
 
     /**
      * Obtener el estado del proceso como string
-     * 
+     *
      * @return string 'pending'|'in_progress'|'completed'
      */
     public function getStatus()
@@ -315,11 +315,11 @@ class ProductionRecord extends Model
         if ($this->isCompleted()) {
             return 'completed';
         }
-        
+
         if ($this->isInProgress()) {
             return 'in_progress';
         }
-        
+
         return 'pending';
     }
 
@@ -328,18 +328,29 @@ class ProductionRecord extends Model
      */
     public function buildTree()
     {
-        $this->load('children.process', 'parent.process', 'inputs.box.product', 'outputs.product', 'parentOutputConsumptions.productionOutput.product');
-        
+        $this->load(
+            'children.process',
+            'parent.process',
+            'inputs.box.product',
+            'outputs.product',
+            'outputs.productionRecord.production',
+            'outputs.sources.product',
+            'outputs.sources.productionOutput.productionRecord',
+            'outputs.sources.productionOutputConsumption.productionOutput.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
+            'parentOutputConsumptions.productionOutput.product'
+        );
+
         foreach ($this->children as $child) {
             $child->buildTree();
         }
-        
+
         return $this;
     }
 
     /**
      * Calcular los totales del nodo (merma, porcentajes, rendimiento, etc.)
-     * 
+     *
      * Lógica:
      * - Si hay pérdida (input > output): waste > 0, yield = 0
      * - Si hay ganancia (input < output): yield > 0, waste = 0
@@ -349,10 +360,10 @@ class ProductionRecord extends Model
     {
         $inputWeight = $this->total_input_weight;
         $outputWeight = $this->total_output_weight;
-        
+
         // Calcular diferencia
         $difference = $inputWeight - $outputWeight;
-        
+
         // Si hay pérdida (input > output)
         if ($difference > 0) {
             $waste = $difference;
@@ -400,8 +411,13 @@ class ProductionRecord extends Model
             'process',
             'inputs.box.product',
             'outputs.product',
+            'outputs.productionRecord.production',
+            'outputs.sources.product',
+            'outputs.sources.productionOutput.productionRecord',
+            'outputs.sources.productionOutputConsumption.productionOutput.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
             'children',
-            'parentOutputConsumptions.productionOutput.product'
+            'parentOutputConsumptions.productionOutput.product',
         ]);
 
         // Construir árbol de hijos recursivamente
@@ -414,17 +430,17 @@ class ProductionRecord extends Model
         $inputWeight = $this->total_input_weight;
         $outputWeight = $this->total_output_weight;
         $difference = $inputWeight - $outputWeight;
-        
+
         // Calcular waste (solo si hay pérdida)
         $waste = $difference > 0 ? round($difference, 2) : 0;
-        $wastePercentage = ($difference > 0 && $inputWeight > 0) 
-            ? round(($difference / $inputWeight) * 100, 2) 
+        $wastePercentage = ($difference > 0 && $inputWeight > 0)
+            ? round(($difference / $inputWeight) * 100, 2)
             : 0;
-        
+
         // Calcular yield (solo si hay ganancia)
         $yield = $difference < 0 ? round(abs($difference), 2) : 0;
-        $yieldPercentage = ($difference < 0 && $inputWeight > 0) 
-            ? round((abs($difference) / $inputWeight) * 100, 2) 
+        $yieldPercentage = ($difference < 0 && $inputWeight > 0)
+            ? round((abs($difference) / $inputWeight) * 100, 2)
             : 0;
 
         // Preparar inputs desde stock (cajas) - formato consistente con ProductionInputResource
@@ -486,6 +502,35 @@ class ProductionRecord extends Model
 
         // Preparar outputs - formato consistente con ProductionOutputResource
         $outputsData = $this->outputs->map(function ($output) {
+            $totalSourceKg = (float) $output->sources->sum(
+                fn ($s) => (float) ($s->contributed_weight_kg ?? 0)
+            );
+            $sourcesData = $output->sources->map(function ($source) use ($totalSourceKg) {
+                $pct = ProductionOutputSource::contributionPercentageOfSourceMix(
+                    $source->contributed_weight_kg !== null ? (float) $source->contributed_weight_kg : null,
+                    $totalSourceKg
+                );
+
+                return [
+                    'id' => $source->id,
+                    'productionOutputId' => $source->production_output_id,
+                    'sourceType' => $source->source_type,
+                    'productId' => $source->product_id,
+                    'product' => $source->product ? [
+                        'id' => $source->product->id,
+                        'name' => $source->product->name,
+                    ] : null,
+                    'productionOutputConsumptionId' => $source->production_output_consumption_id,
+                    'contributedWeightKg' => $source->contributed_weight_kg !== null ? (float) $source->contributed_weight_kg : null,
+                    'contributedBoxes' => $source->contributed_boxes,
+                    'contributionPercentage' => $pct !== null ? round($pct, 2) : null,
+                    'sourceCostPerKg' => $source->source_cost_per_kg,
+                    'sourceTotalCost' => $source->source_total_cost,
+                    'createdAt' => $source->created_at?->toIso8601String(),
+                    'updatedAt' => $source->updated_at?->toIso8601String(),
+                ];
+            })->toArray();
+
             return [
                 'id' => $output->id,
                 'productionRecordId' => $output->production_record_id,
@@ -498,6 +543,10 @@ class ProductionRecord extends Model
                 'boxes' => $output->boxes,
                 'weightKg' => (float) $output->weight_kg,
                 'averageWeightPerBox' => (float) $output->average_weight_per_box,
+                'costPerKg' => $output->cost_per_kg,
+                'totalCost' => $output->total_cost,
+                'costBreakdown' => $output->cost_breakdown,
+                'sources' => $sourcesData,
                 'createdAt' => $output->created_at?->toIso8601String(),
                 'updatedAt' => $output->updated_at?->toIso8601String(),
             ];
@@ -505,6 +554,7 @@ class ProductionRecord extends Model
 
         // Calcular totales del nodo
         $totals = $this->calculateNodeTotals();
+        $costs = $this->calculateNodeCosts();
 
         return [
             'id' => $this->id,
@@ -550,9 +600,67 @@ class ProductionRecord extends Model
             'children' => $childrenData,
             // Totales también en objeto totals (para compatibilidad)
             'totals' => $totals,
+            'costs' => $costs,
             'createdAt' => $this->created_at?->toIso8601String(),
             'updatedAt' => $this->updated_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Obtener resumen de costes del nodo sumando los outputs propios.
+     */
+    public function calculateNodeCosts(): array
+    {
+        $this->loadMissing([
+            'outputs.productionRecord.production',
+            'outputs.sources.product',
+            'outputs.sources.productionOutput.productionRecord',
+            'outputs.sources.productionOutputConsumption.productionOutput.product',
+            'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
+        ]);
+
+        $summary = [
+            'totalCost' => 0.0,
+            'averageCostPerKg' => 0.0,
+            'materialsCost' => 0.0,
+            'processCost' => 0.0,
+            'productionCost' => 0.0,
+            'processProductionCost' => 0.0,
+            'processLaborCost' => 0.0,
+            'processOperationalCost' => 0.0,
+            'processPackagingCost' => 0.0,
+            'productionLevelProductionCost' => 0.0,
+            'productionLevelLaborCost' => 0.0,
+            'productionLevelOperationalCost' => 0.0,
+            'productionLevelPackagingCost' => 0.0,
+        ];
+
+        foreach ($this->outputs as $output) {
+            $breakdown = $output->cost_breakdown;
+
+            $summary['totalCost'] += (float) ($breakdown['total']['total_cost'] ?? 0);
+            $summary['materialsCost'] += (float) ($breakdown['materials']['total_cost'] ?? 0);
+            $summary['processCost'] += (float) ($breakdown['process_costs']['total']['total_cost'] ?? 0);
+            $summary['productionCost'] += (float) ($breakdown['production_costs']['total']['total_cost'] ?? 0);
+            $summary['processProductionCost'] += (float) ($breakdown['process_costs']['production']['total_cost'] ?? 0);
+            $summary['processLaborCost'] += (float) ($breakdown['process_costs']['labor']['total_cost'] ?? 0);
+            $summary['processOperationalCost'] += (float) ($breakdown['process_costs']['operational']['total_cost'] ?? 0);
+            $summary['processPackagingCost'] += (float) ($breakdown['process_costs']['packaging']['total_cost'] ?? 0);
+            $summary['productionLevelProductionCost'] += (float) ($breakdown['production_costs']['production']['total_cost'] ?? 0);
+            $summary['productionLevelLaborCost'] += (float) ($breakdown['production_costs']['labor']['total_cost'] ?? 0);
+            $summary['productionLevelOperationalCost'] += (float) ($breakdown['production_costs']['operational']['total_cost'] ?? 0);
+            $summary['productionLevelPackagingCost'] += (float) ($breakdown['production_costs']['packaging']['total_cost'] ?? 0);
+        }
+
+        $totalOutputWeight = (float) $this->total_output_weight;
+        $summary['averageCostPerKg'] = $totalOutputWeight > 0
+            ? $summary['totalCost'] / $totalOutputWeight
+            : 0.0;
+
+        return array_map(
+            static fn ($value) => round((float) $value, 4),
+            $summary
+        );
     }
 
     /**
@@ -576,12 +684,12 @@ class ProductionRecord extends Model
      */
     public function getAvailableParentOutputs()
     {
-        if (!$this->parent_record_id) {
+        if (! $this->parent_record_id) {
             return collect([]); // No tiene padre
         }
 
         $parent = $this->parent;
-        if (!$parent) {
+        if (! $parent) {
             return collect([]);
         }
 

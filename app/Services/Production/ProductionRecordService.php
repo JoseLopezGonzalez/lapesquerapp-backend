@@ -28,6 +28,7 @@ class ProductionRecordService
             'inputs.box.product.captureZone',
             'outputs.product',
             'outputs.sources.product',
+            'outputs.sources.productionOutput.productionRecord',
             'outputs.sources.productionOutputConsumption.productionOutput.product',
             'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
             'outputs.productionRecord.production',
@@ -79,6 +80,7 @@ class ProductionRecordService
             'inputs.box.product.captureZone',
             'outputs.product',
             'outputs.sources.product',
+            'outputs.sources.productionOutput.productionRecord',
             'outputs.sources.productionOutputConsumption.productionOutput.product',
             'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
             'outputs.productionRecord.production',
@@ -103,6 +105,7 @@ class ProductionRecordService
             'inputs.box.product.captureZone',
             'outputs.product',
             'outputs.sources.product',
+            'outputs.sources.productionOutput.productionRecord',
             'outputs.sources.productionOutputConsumption.productionOutput.product',
             'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
             'outputs.productionRecord.production',
@@ -153,6 +156,7 @@ class ProductionRecordService
             'inputs.box.product.captureZone',
             'outputs.product',
             'outputs.sources.product',
+            'outputs.sources.productionOutput.productionRecord',
             'outputs.sources.productionOutputConsumption.productionOutput.product',
             'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
             'outputs.productionRecord.production',
@@ -167,6 +171,8 @@ class ProductionRecordService
     public function syncOutputs(ProductionRecord $record, array $outputsData): array
     {
         return DB::transaction(function () use ($record, $outputsData) {
+            $this->validateOutputSourceAvailability($record, $outputsData);
+
             $existingOutputIds = $record->outputs()->pluck('id')->toArray();
             $providedOutputIds = collect($outputsData)
                 ->pluck('id')
@@ -206,14 +212,13 @@ class ProductionRecordService
                         'weight_kg' => $outputData['weight_kg'],
                     ]);
 
-                    if (array_key_exists('sources', $outputData)) {
-                        $this->syncOutputSources($output, $outputData['sources']);
-                    }
+                    $this->syncOutputSources($output, $outputData['sources'] ?? []);
 
                     $output->load([
                         'productionRecord',
                         'product',
                         'sources.product',
+                        'sources.productionOutput.productionRecord',
                         'sources.productionOutputConsumption.productionOutput.product',
                     ]);
                     $updated[] = $output;
@@ -226,16 +231,13 @@ class ProductionRecordService
                         'weight_kg' => $outputData['weight_kg'],
                     ]);
 
-                    if (array_key_exists('sources', $outputData)) {
-                        $this->syncOutputSources($output, $outputData['sources']);
-                    } else {
-                        $this->createAutomaticOutputSources($output);
-                    }
+                    $this->syncOutputSources($output, $outputData['sources'] ?? []);
 
                     $output->load([
                         'productionRecord',
                         'product',
                         'sources.product',
+                        'sources.productionOutput.productionRecord',
                         'sources.productionOutputConsumption.productionOutput.product',
                     ]);
                     $created[] = $output;
@@ -262,6 +264,7 @@ class ProductionRecordService
                 'inputs.box.product.captureZone',
                 'outputs.product',
                 'outputs.sources.product',
+                'outputs.sources.productionOutput.productionRecord',
                 'outputs.sources.productionOutputConsumption.productionOutput.product',
                 'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
                 'outputs.productionRecord.production',
@@ -407,6 +410,7 @@ class ProductionRecordService
                 'inputs.box.palletBox',
                 'outputs.product',
                 'outputs.sources.product',
+                'outputs.sources.productionOutput.productionRecord',
                 'outputs.sources.productionOutputConsumption.productionOutput.product',
                 'outputs.sources.productionOutputConsumption.productionOutput.productionRecord.production',
                 'outputs.productionRecord.production',
@@ -552,72 +556,103 @@ class ProductionRecordService
         }
 
         foreach ($sources as $sourceData) {
-            ProductionOutputSource::create([
+            $source = new ProductionOutputSource([
                 'production_output_id' => $output->id,
                 'source_type' => $sourceData['source_type'],
                 'product_id' => $sourceData['product_id'] ?? null,
                 'production_output_consumption_id' => $sourceData['production_output_consumption_id'] ?? null,
                 'contributed_weight_kg' => $sourceData['contributed_weight_kg'] ?? null,
-                'contribution_percentage' => $sourceData['contribution_percentage'] ?? null,
                 'contributed_boxes' => $sourceData['contributed_boxes'] ?? 0,
             ]);
+            if (array_key_exists('contribution_percentage', $sourceData)
+                && $sourceData['contribution_percentage'] !== null
+                && $sourceData['contribution_percentage'] !== '') {
+                $source->contributionPercentageInput = (float) $sourceData['contribution_percentage'];
+            }
+            $source->save();
         }
     }
 
     /**
-     * Create automatic sources using the record's real consumption.
+     * Validate the aggregated requested consumption for each source before persisting.
      */
-    protected function createAutomaticOutputSources(ProductionOutput $output): void
+    protected function validateOutputSourceAvailability(ProductionRecord $record, array $outputsData): void
     {
-        $record = $output->productionRecord;
-        if (! $record) {
-            return;
-        }
+        $requestedBySource = [];
 
-        $inputs = $record->inputs()->with('box.product')->get();
-        $consumptions = $record->parentOutputConsumptions;
-        $totalInputWeight = $record->total_input_weight;
+        foreach ($outputsData as $outputIndex => $outputData) {
+            $sources = $outputData['sources'] ?? [];
 
-        if ($totalInputWeight <= 0) {
-            return;
-        }
-
-        $inputsByProduct = $inputs
-            ->filter(fn ($input) => $input->box && $input->box->article_id)
-            ->groupBy(fn ($input) => (int) $input->box->article_id);
-
-        foreach ($inputsByProduct as $productId => $productInputs) {
-            $inputWeight = $productInputs->sum(fn ($input) => (float) ($input->box->net_weight ?? 0));
-            if ($inputWeight <= 0) {
+            if (! is_array($sources) || count($sources) === 0) {
                 continue;
             }
 
-            ProductionOutputSource::create([
-                'production_output_id' => $output->id,
-                'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_PRODUCT,
-                'product_id' => (int) $productId,
-                'production_output_consumption_id' => null,
-                'contributed_weight_kg' => $inputWeight,
-                'contribution_percentage' => ($inputWeight / $totalInputWeight) * 100,
-                'contributed_boxes' => 0,
-            ]);
+            $outputWeightKg = (float) ($outputData['weight_kg'] ?? 0);
+
+            foreach ($sources as $sourceIndex => $sourceData) {
+                $requestedWeight = ProductionOutputSource::resolveContributedWeightKgFromSourcePayload(
+                    $sourceData,
+                    $outputWeightKg
+                );
+                if ($requestedWeight <= 0) {
+                    continue;
+                }
+
+                $sourceType = $sourceData['source_type'] ?? null;
+                if ($sourceType === ProductionOutputSource::SOURCE_TYPE_STOCK_PRODUCT) {
+                    $key = 'stock_product:'.(int) ($sourceData['product_id'] ?? 0);
+                } elseif ($sourceType === ProductionOutputSource::SOURCE_TYPE_PARENT_OUTPUT) {
+                    $key = 'parent_output:'.(int) ($sourceData['production_output_consumption_id'] ?? 0);
+                } else {
+                    continue;
+                }
+
+                if (! isset($requestedBySource[$key])) {
+                    $requestedBySource[$key] = [
+                        'source_type' => $sourceType,
+                        'product_id' => $sourceData['product_id'] ?? null,
+                        'production_output_consumption_id' => $sourceData['production_output_consumption_id'] ?? null,
+                        'requested_weight_kg' => 0.0,
+                        'locations' => [],
+                    ];
+                }
+
+                $requestedBySource[$key]['requested_weight_kg'] += $requestedWeight;
+                $requestedBySource[$key]['locations'][] = "outputs.{$outputIndex}.sources.{$sourceIndex}";
+            }
         }
 
-        foreach ($consumptions as $consumption) {
-            $consumptionWeight = $consumption->consumed_weight_kg ?? 0;
-            if ($consumptionWeight <= 0) {
-                continue;
+        if ($requestedBySource === []) {
+            return;
+        }
+
+        $availableStockWeights = $record->inputs()
+            ->join('boxes', 'production_inputs.box_id', '=', 'boxes.id')
+            ->selectRaw('boxes.article_id as product_id, COALESCE(SUM(boxes.net_weight), 0) as total_weight')
+            ->groupBy('boxes.article_id')
+            ->pluck('total_weight', 'product_id');
+
+        $availableParentWeights = $record->parentOutputConsumptions()
+            ->selectRaw('id, COALESCE(consumed_weight_kg, 0) as total_weight')
+            ->pluck('total_weight', 'id');
+
+        foreach ($requestedBySource as $source) {
+            if ($source['source_type'] === ProductionOutputSource::SOURCE_TYPE_STOCK_PRODUCT) {
+                $productId = (int) $source['product_id'];
+                $availableWeight = (float) ($availableStockWeights[$productId] ?? 0);
+                $label = "stock_product:{$productId}";
+            } else {
+                $consumptionId = (int) $source['production_output_consumption_id'];
+                $availableWeight = (float) ($availableParentWeights[$consumptionId] ?? 0);
+                $label = "parent_output:{$consumptionId}";
             }
 
-            ProductionOutputSource::create([
-                'production_output_id' => $output->id,
-                'source_type' => ProductionOutputSource::SOURCE_TYPE_PARENT_OUTPUT,
-                'product_id' => null,
-                'production_output_consumption_id' => $consumption->id,
-                'contributed_weight_kg' => $consumptionWeight,
-                'contribution_percentage' => ($consumptionWeight / $totalInputWeight) * 100,
-                'contributed_boxes' => $consumption->consumed_boxes ?? 0,
-            ]);
+            if ($source['requested_weight_kg'] > $availableWeight + 0.00001) {
+                throw new \Exception(
+                    "La suma global consumida para la fuente {$label} supera la disponibilidad. ".
+                    "Disponible: {$availableWeight}kg, solicitado: {$source['requested_weight_kg']}kg."
+                );
+            }
         }
     }
 

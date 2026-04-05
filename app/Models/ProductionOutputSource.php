@@ -11,6 +11,12 @@ class ProductionOutputSource extends Model
     use HasFactory;
     use UsesTenantConnection;
 
+    /**
+     * Solo para entrada en save: si viene `contribution_percentage` en el payload de API,
+     * el servicio asigna aquí el valor; no se persiste en BD.
+     */
+    public ?float $contributionPercentageInput = null;
+
     protected $fillable = [
         'production_output_id',
         'source_type',
@@ -18,13 +24,11 @@ class ProductionOutputSource extends Model
         'production_output_consumption_id',
         'contributed_weight_kg',
         'contributed_boxes',
-        'contribution_percentage',
     ];
 
     protected $casts = [
         'contributed_weight_kg' => 'decimal:2',
         'contributed_boxes' => 'integer',
-        'contribution_percentage' => 'decimal:2',
     ];
 
     /**
@@ -33,6 +37,37 @@ class ProductionOutputSource extends Model
     const SOURCE_TYPE_STOCK_PRODUCT = 'stock_product';
 
     const SOURCE_TYPE_PARENT_OUTPUT = 'parent_output';
+
+    /**
+     * Porcentaje de la fuente en la mezcla de fuentes del mismo output (suma de % = 100).
+     * Denominador: suma de contributed_weight_kg de todas las fuentes de ese production_output.
+     */
+    public static function contributionPercentageOfSourceMix(?float $contributedKg, float $totalContributedKgOnOutput): ?float
+    {
+        if ($contributedKg === null || $totalContributedKgOnOutput <= 0) {
+            return null;
+        }
+
+        return ($contributedKg / $totalContributedKgOnOutput) * 100;
+    }
+
+    /**
+     * Resolver kg efectivos desde payload de source + peso del output (sync / validación).
+     */
+    public static function resolveContributedWeightKgFromSourcePayload(array $sourceData, float $outputWeightKg): float
+    {
+        $kg = $sourceData['contributed_weight_kg'] ?? null;
+        if ($kg !== null && $kg !== '') {
+            return (float) $kg;
+        }
+
+        $pct = $sourceData['contribution_percentage'] ?? null;
+        if ($pct !== null && $pct !== '' && $outputWeightKg > 0) {
+            return ($outputWeightKg * (float) $pct) / 100;
+        }
+
+        return 0.0;
+    }
 
     /**
      * Boot del modelo - Validaciones
@@ -51,50 +86,30 @@ class ProductionOutputSource extends Model
      */
     protected function validateSourceRules(): void
     {
-        // Validar que se especifique O bien peso O bien porcentaje
-        if ($this->contributed_weight_kg === null && $this->contribution_percentage === null) {
+        $hasKg = $this->contributed_weight_kg !== null && $this->contributed_weight_kg !== '';
+        $hasPctInput = $this->contributionPercentageInput !== null;
+
+        if (! $hasKg && ! $hasPctInput) {
             throw new \InvalidArgumentException(
                 'Se debe especificar O bien contributed_weight_kg O bien contribution_percentage.'
             );
         }
 
-        // IMPORTANTE: Los sources reflejan el CONSUMO REAL, no el output final
-        // El porcentaje se calcula sobre el consumo total (total_input_weight del proceso)
-        // El peso contribuido es el peso REAL consumido de esta fuente
-
-        // Si se especifica porcentaje, calcular el peso desde el consumo real
-        if ($this->contribution_percentage !== null && $this->contributed_weight_kg === null) {
-            // Cargar output y record si no están cargados
+        if ($hasPctInput && (! $hasKg || $this->contributed_weight_kg === null)) {
             if (! $this->relationLoaded('productionOutput') && $this->production_output_id) {
-                $this->load('productionOutput.productionRecord');
+                $this->load('productionOutput');
             }
             $output = $this->productionOutput;
-            if ($output && $output->productionRecord) {
-                $record = $output->productionRecord;
-                $totalInputWeight = $record->total_input_weight;
-                if ($totalInputWeight > 0) {
-                    // El peso contribuido es el porcentaje del consumo real
-                    $this->contributed_weight_kg = ($totalInputWeight * $this->contribution_percentage) / 100;
-                }
+            $outputWeight = (float) ($output?->weight_kg ?? 0);
+            if ($outputWeight <= 0) {
+                throw new \InvalidArgumentException(
+                    'Para usar contribution_percentage el output debe tener weight_kg mayor que cero.'
+                );
             }
+            $this->contributed_weight_kg = ($outputWeight * $this->contributionPercentageInput) / 100;
         }
 
-        // Si se especifica peso, calcular el porcentaje sobre el consumo real
-        if ($this->contributed_weight_kg !== null && $this->contribution_percentage === null) {
-            // Cargar output y record si no están cargados
-            if (! $this->relationLoaded('productionOutput') && $this->production_output_id) {
-                $this->load('productionOutput.productionRecord');
-            }
-            $output = $this->productionOutput;
-            if ($output && $output->productionRecord) {
-                $record = $output->productionRecord;
-                $totalInputWeight = $record->total_input_weight;
-                if ($totalInputWeight > 0) {
-                    // El porcentaje es sobre el consumo real, no sobre el output
-                    $this->contribution_percentage = ($this->contributed_weight_kg / $totalInputWeight) * 100;
-                }
-            }
-        }
+        $this->contributionPercentageInput = null;
 
         // Validar consistencia de source_type
         if ($this->source_type === self::SOURCE_TYPE_STOCK_PRODUCT) {
@@ -109,8 +124,8 @@ class ProductionOutputSource extends Model
                 );
             }
 
-            if (! $this->relationLoaded('productionOutput') && $this->production_output_id) {
-                $this->load('productionOutput.productionRecord');
+            if ($this->production_output_id) {
+                $this->loadMissing('productionOutput.productionRecord');
             }
 
             $record = $this->productionOutput?->productionRecord;
@@ -169,8 +184,8 @@ class ProductionOutputSource extends Model
     public function getSourceCostPerKgAttribute(): ?float
     {
         if ($this->source_type === self::SOURCE_TYPE_STOCK_PRODUCT) {
-            if (! $this->relationLoaded('productionOutput') && $this->production_output_id) {
-                $this->load('productionOutput.productionRecord');
+            if ($this->production_output_id) {
+                $this->loadMissing('productionOutput.productionRecord');
             }
 
             $output = $this->productionOutput;
@@ -232,8 +247,6 @@ class ProductionOutputSource extends Model
 
     /**
      * Obtener el coste total que aporta esta fuente
-     *
-     * IMPORTANTE: El peso contribuido refleja el CONSUMO REAL, no el output final
      */
     public function getSourceTotalCostAttribute(): ?float
     {
@@ -242,27 +255,8 @@ class ProductionOutputSource extends Model
             return null;
         }
 
-        // Si no tenemos el peso contribuido, intentar calcularlo desde el porcentaje
-        // IMPORTANTE: El peso se calcula sobre el consumo real, no sobre el output
-        $weight = $this->contributed_weight_kg;
-        if ($weight === null || $weight <= 0) {
-            if ($this->contribution_percentage !== null) {
-                if (! $this->relationLoaded('productionOutput') && $this->production_output_id) {
-                    $this->load('productionOutput.productionRecord');
-                }
-                $output = $this->productionOutput;
-                if ($output && $output->productionRecord) {
-                    $record = $output->productionRecord;
-                    $totalInputWeight = $record->total_input_weight;
-                    if ($totalInputWeight > 0) {
-                        // El peso se calcula sobre el consumo real
-                        $weight = ($totalInputWeight * $this->contribution_percentage) / 100;
-                    }
-                }
-            }
-        }
-
-        if ($weight === null || $weight <= 0) {
+        $weight = (float) ($this->contributed_weight_kg ?? 0);
+        if ($weight <= 0) {
             return null;
         }
 

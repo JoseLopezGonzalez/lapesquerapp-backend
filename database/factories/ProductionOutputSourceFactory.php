@@ -2,10 +2,10 @@
 
 namespace Database\Factories;
 
+use App\Models\Product;
 use App\Models\ProductionOutput;
 use App\Models\ProductionOutputConsumption;
 use App\Models\ProductionOutputSource;
-use App\Models\Product;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ProductionOutputSourceFactory extends Factory
@@ -21,7 +21,6 @@ class ProductionOutputSourceFactory extends Factory
             'production_output_consumption_id' => null,
             'contributed_weight_kg' => $this->faker->randomFloat(2, 1, 20),
             'contributed_boxes' => $this->faker->numberBetween(0, 3),
-            'contribution_percentage' => null,
         ];
     }
 

@@ -17,6 +17,8 @@ class ProductionInputResource extends JsonResource
         $box = $this->relationLoaded('box') ? $this->box : null;
         $boxProduct = $box && $box->relationLoaded('product') ? $box->product : null;
         $pallet = $this->relationLoaded('pallet') ? $this->pallet : null;
+        $costPerKg = $box && $box->cost_per_kg !== null ? (float) $box->cost_per_kg : null;
+        $totalCost = $box && $box->total_cost !== null ? (float) $box->total_cost : null;
 
         return [
             'id' => $this->id,
@@ -33,7 +35,9 @@ class ProductionInputResource extends JsonResource
                 ];
             }),
             'lot' => $this->lot,
-            'weight' => $this->weight,
+            'weight' => (float) $this->weight,
+            'costPerKg' => $costPerKg,
+            'totalCost' => $totalCost,
             'pallet' => $this->when($pallet, function () use ($pallet) {
                 return [
                     'id' => $pallet->id,

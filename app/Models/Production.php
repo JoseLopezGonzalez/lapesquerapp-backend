@@ -4,14 +4,13 @@ namespace App\Models;
 
 use App\Casts\DateTimeUtcCast;
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Production extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = [
         'lot',
@@ -74,10 +73,10 @@ class Production extends Model
         if ($this->date !== null) {
             $minDate = \Carbon\Carbon::create(1900, 1, 1);
             $maxDate = \Carbon\Carbon::now()->addYears(10);
-            
+
             if ($this->date->lt($minDate) || $this->date->gt($maxDate)) {
                 throw new \InvalidArgumentException(
-                    'La fecha debe estar entre 1900 y ' . $maxDate->year . '.'
+                    'La fecha debe estar entre 1900 y '.$maxDate->year.'.'
                 );
             }
         }
@@ -92,9 +91,9 @@ class Production extends Model
         if ($this->isDirty() && $this->getOriginal('closed_at') !== null) {
             $allowedFields = ['notes', 'updated_at'];
             $changedFields = array_keys($this->getDirty());
-            
+
             foreach ($changedFields as $field) {
-                if (!in_array($field, $allowedFields)) {
+                if (! in_array($field, $allowedFields)) {
                     throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
                         'No se pueden modificar campos de un lote cerrado. Solo se permite modificar el campo "notes".'
                     );
@@ -118,7 +117,6 @@ class Production extends Model
             : null;
     }
 
-
     public function getTotalProfitPerInputKgAttribute()
     {
         // Decodificar `diagram_data` en caso de que sea una cadena JSON
@@ -133,14 +131,12 @@ class Production extends Model
             : null;
     }
 
-
-
     public function getProcessNodes()
     {
         // Decodificar diagram_data
         $diagramData = is_string($this->diagram_data) ? json_decode($this->diagram_data, true) : $this->diagram_data;
         $processNodes = $diagramData['processNodes'] ?? [];
-    
+
         // Extraer los datos clave de cada nodo
         return collect($processNodes)->map(function ($node) {
             return [
@@ -156,11 +152,11 @@ class Production extends Model
     {
         $diagramData = is_string($this->diagram_data) ? json_decode($this->diagram_data, true) : $this->diagram_data;
         $finalNodes = $diagramData['finalNodes'] ?? [];
-    
+
         return collect($finalNodes)->map(function ($node) {
             $totals = $node['production']['totals'] ?? [];
             $profits = $node['profits']['totals'] ?? [];
-    
+
             // Detalle de productos
             $productDetails = collect($node['production']['details'] ?? [])->map(function ($detail) use ($node) {
                 $salesDetails = collect($node['sales']['details'] ?? [])
@@ -176,7 +172,7 @@ class Production extends Model
 
                 $profitPerInputKg = $profitsSummary['profitPerInputKg'] ?? 0;
                 $profitPerOutputKg = $profitsSummary['profitPerOutputKg'] ?? 0;
-    
+
                 return [
                     'product_name' => $detail['product']['name'] ?? 'Producto desconocido',
 
@@ -202,7 +198,6 @@ class Production extends Model
                 'total_output_quantity' => is_numeric($totals['quantity'] ?? null) ? $totals['quantity'] : 0,
                 /* total_input_quantity nuevo */
                 'total_input_quantity' => is_numeric($node['totalInitialQuantity'] ?? null) ? $node['totalInitialQuantity'] : 0,
-                
 
                 'total_profit' => is_numeric($profits['totalProfit'] ?? null) ? $profits['totalProfit'] : 0, /* Añadido Nuevo */
                 'profit_per_output_kg' => is_numeric($profits['averageProfitPerKg'] ?? null) ? $profits['averageProfitPerKg'] : 0,
@@ -212,18 +207,6 @@ class Production extends Model
             ];
         });
     }
-    
-    
-
-    
-
-
-    
-
-
-
-
-
 
     // Relación con el modelo Species
     public function species()
@@ -310,6 +293,7 @@ class Production extends Model
         if ($this->opened_at === null) {
             $this->update(['opened_at' => now('UTC')]);
         }
+
         return $this;
     }
 
@@ -321,6 +305,7 @@ class Production extends Model
         if ($this->closed_at === null) {
             $this->update(['closed_at' => now('UTC')]);
         }
+
         return $this;
     }
 
@@ -385,7 +370,7 @@ class Production extends Model
     /**
      * Obtener solo los inputs de materia prima desde stock
      * ✨ Solo cuenta las entradas de stock (no incluye consumos de outputs del padre)
-     * 
+     *
      * @return array ['weight' => float, 'boxes' => int]
      */
     private function getStockInputsTotals()
@@ -396,13 +381,13 @@ class Production extends Model
         $stockInputs = $this->allInputs()
             ->with('box')
             ->get();
-        
+
         $totalWeight = $stockInputs->sum(function ($input) {
             return $input->box->net_weight ?? 0;
         });
-        
+
         $totalBoxes = $stockInputs->count();
-        
+
         return [
             'weight' => $totalWeight,
             'boxes' => $totalBoxes,
@@ -412,16 +397,16 @@ class Production extends Model
     /**
      * Obtener solo los outputs de nodos finales (totales)
      * ✨ Solo cuenta las salidas de nodos finales (no incluye outputs intermedios)
-     * 
+     *
      * @return array ['weight' => float, 'boxes' => int]
      */
     private function getFinalNodesOutputsTotals()
     {
         $finalOutputs = $this->getFinalNodesOutputs();
-        
+
         $totalWeight = $finalOutputs->sum('weight_kg');
         $totalBoxes = $finalOutputs->sum('boxes');
-        
+
         return [
             'weight' => $totalWeight,
             'boxes' => $totalBoxes,
@@ -431,11 +416,11 @@ class Production extends Model
     /**
      * Calcular totales globales del lote completo
      * Incluye merma (waste) y rendimiento (yield) como en ProductionRecord
-     * 
-     * ⚠️ IMPORTANTE: 
+     *
+     * ⚠️ IMPORTANTE:
      * - Entradas: Solo materia prima desde stock (no incluye consumos de outputs del padre)
      * - Salidas: Solo outputs de nodos finales (no incluye outputs intermedios)
-     * 
+     *
      * Lógica:
      * - Si hay pérdida (input > output): waste > 0, yield = 0
      * - Si hay ganancia (input < output): yield > 0, waste = 0
@@ -447,12 +432,12 @@ class Production extends Model
         $stockInputsTotals = $this->getStockInputsTotals();
         $totalInputWeight = $stockInputsTotals['weight'];
         $totalInputBoxes = $stockInputsTotals['boxes'];
-        
+
         // ✨ CORRECCIÓN: Solo contar outputs de nodos finales
         $finalOutputsTotals = $this->getFinalNodesOutputsTotals();
         $totalOutputWeight = $finalOutputsTotals['weight'];
         $totalOutputBoxes = $finalOutputsTotals['boxes'];
-        
+
         $difference = $totalInputWeight - $totalOutputWeight;
 
         // Si hay pérdida (input > output)
@@ -487,17 +472,17 @@ class Production extends Model
             'totalInputBoxes' => $totalInputBoxes,
             'totalOutputBoxes' => $totalOutputBoxes,
         ];
-        
+
         // Calcular totales de venta y stock
         $lot = $this->lot;
         $salesData = $this->getSalesDataByProduct($lot);
         $stockData = $this->getStockDataByProduct($lot);
-        
+
         // Calcular totales de venta
         $totalSalesWeight = 0;
         $totalSalesBoxes = 0;
         $totalSalesPallets = 0;
-        
+
         foreach ($salesData as $productId => $orders) {
             foreach ($orders as $orderData) {
                 foreach ($orderData['pallets'] as $palletData) {
@@ -508,12 +493,12 @@ class Production extends Model
                 }
             }
         }
-        
+
         // Calcular totales de stock
         $totalStockWeight = 0;
         $totalStockBoxes = 0;
         $totalStockPallets = 0;
-        
+
         foreach ($stockData as $productId => $stores) {
             foreach ($stores as $storeData) {
                 foreach ($storeData['pallets'] as $palletData) {
@@ -524,21 +509,21 @@ class Production extends Model
                 }
             }
         }
-        
+
         $totals['totalSalesWeight'] = round($totalSalesWeight, 2);
         $totals['totalSalesBoxes'] = $totalSalesBoxes;
         $totals['totalSalesPallets'] = $totalSalesPallets;
         $totals['totalStockWeight'] = round($totalStockWeight, 2);
         $totals['totalStockBoxes'] = $totalStockBoxes;
         $totals['totalStockPallets'] = $totalStockPallets;
-        
+
         return $totals;
     }
 
     /**
      * Obtener solo los outputs de nodos finales
      * ✨ Solo cuenta las salidas de nodos finales (no incluye outputs intermedios)
-     * 
+     *
      * @return \Illuminate\Database\Eloquent\Collection Collection de ProductionOutput
      */
     private function getFinalNodesOutputs()
@@ -547,7 +532,7 @@ class Production extends Model
         $allRecords = $this->records()
             ->with(['inputs', 'children', 'outputs.product'])
             ->get();
-        
+
         // Filtrar solo los que son nodos finales
         // Usar las relaciones cargadas directamente para evitar queries adicionales
         $finalRecords = $allRecords->filter(function ($record) {
@@ -555,16 +540,16 @@ class Production extends Model
             $hasNoInputs = $record->inputs->isEmpty();
             $hasNoChildren = $record->children->isEmpty();
             $hasOutputs = $record->outputs->isNotEmpty();
-            
+
             return $hasNoInputs && $hasNoChildren && $hasOutputs;
         });
-        
+
         // Obtener todos los outputs de los nodos finales
         $finalOutputs = collect();
         foreach ($finalRecords as $record) {
             $finalOutputs = $finalOutputs->merge($record->outputs);
         }
-        
+
         return $finalOutputs;
     }
 
@@ -572,64 +557,64 @@ class Production extends Model
      * Obtener conciliación detallada por producto
      * ✨ Muestra para cada producto producido: producido, en venta, en stock, re-procesado, balance
      * ⚠️ IMPORTANTE: Solo cuenta las salidas de nodos finales (no outputs intermedios)
-     * 
+     *
      * @return array Conciliación detallada con productos y resumen
      */
     public function getDetailedReconciliationByProduct(): array
     {
         $lot = $this->lot;
-        
+
         // 1. Obtener todos los productos producidos (SOLO de nodos finales)
         // ✨ CORRECCIÓN: Solo contar outputs de nodos finales, no todos los outputs
         $finalOutputs = $this->getFinalNodesOutputs();
-        
+
         $producedByProduct = [];
         foreach ($finalOutputs as $output) {
             $productId = $output->product_id;
-            if (!$productId) {
+            if (! $productId) {
                 continue;
             }
-            
+
             // Asegurar que el producto esté cargado
-            if (!$output->relationLoaded('product')) {
+            if (! $output->relationLoaded('product')) {
                 $output->load('product');
             }
-            
-            if (!isset($producedByProduct[$productId])) {
+
+            if (! isset($producedByProduct[$productId])) {
                 $producedByProduct[$productId] = [
                     'product' => $output->product,
                     'weight' => 0,
                     'boxes' => 0,
                 ];
             }
-            
+
             $producedByProduct[$productId]['weight'] += (float) $output->weight_kg;
             $producedByProduct[$productId]['boxes'] += (int) $output->boxes;
         }
-        
+
         // 2. Obtener datos de venta, stock y re-procesados
         $salesData = $this->getSalesDataByProduct($lot);
         $stockData = $this->getStockDataByProduct($lot);
         $reprocessedData = $this->getReprocessedDataByProduct($lot);
-        
+
         // 3. ✨ NUEVO: Obtener TODOS los productos únicos que tienen ese lote (incluyendo los no producidos)
         $allProductIds = collect();
-        
+
         // Agregar productos producidos
         $allProductIds = $allProductIds->merge(array_keys($producedByProduct));
-        
+
         // Agregar productos en venta
         $allProductIds = $allProductIds->merge(array_keys($salesData));
-        
+
         // Agregar productos en stock
         $allProductIds = $allProductIds->merge(array_keys($stockData));
-        
+
         // Agregar productos re-procesados
         $allProductIds = $allProductIds->merge(array_keys($reprocessedData));
-        
+
         // Obtener productos únicos
         $allProductIds = $allProductIds->unique()->values();
-        
+
         // 4. Calcular conciliación por producto (incluyendo productos no producidos)
         $productsData = [];
         $summary = [
@@ -642,7 +627,7 @@ class Production extends Model
             'totalBalanceWeight' => 0,
             'overallStatus' => 'ok',
         ];
-        
+
         foreach ($allProductIds as $productId) {
             // Obtener información del producto
             $product = null;
@@ -658,20 +643,20 @@ class Production extends Model
                 $firstProcess = reset($reprocessedData[$productId]);
                 $product = $firstProcess['product'] ?? null;
             }
-            
+
             // Si no encontramos el producto, buscarlo en la BD
-            if (!$product) {
+            if (! $product) {
                 $product = \App\Models\Product::find($productId);
             }
-            
-            if (!$product) {
+
+            if (! $product) {
                 continue; // Saltar si no encontramos el producto
             }
-            
+
             // Obtener producido (puede ser 0 si no está registrado)
             $producedWeight = $producedByProduct[$productId]['weight'] ?? 0;
             $producedBoxes = $producedByProduct[$productId]['boxes'] ?? 0;
-            
+
             // Calcular en venta
             $inSalesWeight = 0;
             $inSalesBoxes = 0;
@@ -684,7 +669,7 @@ class Production extends Model
                     }
                 }
             }
-            
+
             // Calcular en stock
             $inStockWeight = 0;
             $inStockBoxes = 0;
@@ -697,7 +682,7 @@ class Production extends Model
                     }
                 }
             }
-            
+
             // Calcular re-procesado
             $reprocessedWeight = 0;
             $reprocessedBoxes = 0;
@@ -708,11 +693,11 @@ class Production extends Model
                     $reprocessedWeight += $boxes->sum('net_weight');
                 }
             }
-            
+
             // Calcular balance
             $contabilizedWeight = $inSalesWeight + $inStockWeight + $reprocessedWeight;
             $balanceWeight = $producedWeight - $contabilizedWeight;
-            
+
             // Calcular porcentaje de balance
             // Si hay producido, usar ese como base
             // Si no hay producido pero hay contabilizado, el porcentaje es 100% (todo es exceso)
@@ -723,34 +708,34 @@ class Production extends Model
                 // Producto no producido pero contabilizado = 100% exceso
                 $balancePercentage = -100;
             }
-            
+
             // Determinar estado
             $status = 'ok';
             $message = 'Todo contabilizado correctamente';
-            
+
             // Si no hay producido pero hay contabilizado, es un error
             if ($producedWeight == 0 && $contabilizedWeight > 0) {
                 $status = 'error';
-                $message = "Producto no registrado como producido pero existe en venta/stock/reprocesado (" . round($contabilizedWeight, 2) . "kg)";
+                $message = 'Producto no registrado como producido pero existe en venta/stock/reprocesado ('.round($contabilizedWeight, 2).'kg)';
             } elseif (abs($balanceWeight) > 0.01) {
                 $absPercentage = abs($balancePercentage);
                 if ($absPercentage > 5) {
                     $status = 'error';
                     if ($balanceWeight > 0) {
-                        $message = "Faltan " . round($balanceWeight, 2) . "kg (" . round($absPercentage, 2) . "%)";
+                        $message = 'Faltan '.round($balanceWeight, 2).'kg ('.round($absPercentage, 2).'%)';
                     } else {
-                        $message = "Hay " . round(abs($balanceWeight), 2) . "kg más contabilizado (" . round($absPercentage, 2) . "%)";
+                        $message = 'Hay '.round(abs($balanceWeight), 2).'kg más contabilizado ('.round($absPercentage, 2).'%)';
                     }
                 } else {
                     $status = 'warning';
                     if ($balanceWeight > 0) {
-                        $message = "Faltan " . round($balanceWeight, 2) . "kg (" . round($absPercentage, 2) . "%)";
+                        $message = 'Faltan '.round($balanceWeight, 2).'kg ('.round($absPercentage, 2).'%)';
                     } else {
-                        $message = "Hay " . round(abs($balanceWeight), 2) . "kg más contabilizado (" . round($absPercentage, 2) . "%)";
+                        $message = 'Hay '.round(abs($balanceWeight), 2).'kg más contabilizado ('.round($absPercentage, 2).'%)';
                     }
                 }
             }
-            
+
             $productsData[] = [
                 'product' => [
                     'id' => $product->id,
@@ -779,7 +764,7 @@ class Production extends Model
                 'status' => $status,
                 'message' => $message,
             ];
-            
+
             // Actualizar resumen
             $summary['totalProducts']++;
             if ($status === 'ok') {
@@ -789,21 +774,21 @@ class Production extends Model
             } else {
                 $summary['productsError']++;
             }
-            
+
             $summary['totalProducedWeight'] += $producedWeight;
             $summary['totalContabilizedWeight'] += $contabilizedWeight;
             $summary['totalBalanceWeight'] += $balanceWeight;
         }
-        
+
         // Determinar estado general
         $totalBalanceAbs = abs($summary['totalBalanceWeight']);
-        
+
         // Calcular porcentaje: usar el mayor entre producido y contabilizado como base
         $baseWeight = max($summary['totalProducedWeight'], $summary['totalContabilizedWeight']);
         $totalBalancePercentage = $baseWeight > 0
             ? ($totalBalanceAbs / $baseWeight) * 100
             : 0;
-        
+
         if ($totalBalanceAbs > 0.01) {
             if ($totalBalancePercentage > 5) {
                 $summary['overallStatus'] = 'error';
@@ -811,16 +796,16 @@ class Production extends Model
                 $summary['overallStatus'] = 'warning';
             }
         }
-        
+
         // Si hay productos contabilizados pero no producidos, marcar como error
         if ($summary['totalProducedWeight'] == 0 && $summary['totalContabilizedWeight'] > 0) {
             $summary['overallStatus'] = 'error';
         }
-        
+
         $summary['totalProducedWeight'] = round($summary['totalProducedWeight'], 2);
         $summary['totalContabilizedWeight'] = round($summary['totalContabilizedWeight'], 2);
         $summary['totalBalanceWeight'] = round($summary['totalBalanceWeight'], 2);
-        
+
         return [
             'products' => $productsData,
             'summary' => $summary,
@@ -881,6 +866,7 @@ class Production extends Model
         if ($this->total_input_weight > 0) {
             return ($this->total_waste / $this->total_input_weight) * 100;
         }
+
         return 0;
     }
 
@@ -968,8 +954,8 @@ class Production extends Model
 
     /**
      * Añadir nodos de venta y stock como hijos de nodos finales o como nodos independientes
-     * 
-     * @param array $processNodes Array de nodos del árbol de procesos
+     *
+     * @param  array  $processNodes  Array de nodos del árbol de procesos
      * @return array Array de nodos con nodos de venta/stock añadidos
      */
     /**
@@ -983,32 +969,32 @@ class Production extends Model
     public function attachSalesAndStockNodes(array $processNodes)
     {
         $lot = $this->lot;
-        
+
         // 1. Obtener datos agrupados por producto (para luego reagrupar por nodo final)
         $salesDataByProduct = $this->getSalesDataByProduct($lot);
         $stockDataByProduct = $this->getStockDataByProduct($lot);
         $reprocessedDataByProduct = $this->getReprocessedDataByProduct($lot);
         $missingDataByProduct = $this->getMissingDataByProduct($lot);
-        
+
         // 2. Añadir nodos como hijos de nodos finales
         //    UN SOLO nodo de cada tipo por cada nodo final
         $this->attachAllNodesToFinalNodes(
-            $processNodes, 
-            $salesDataByProduct, 
+            $processNodes,
+            $salesDataByProduct,
             $stockDataByProduct,
             $reprocessedDataByProduct,
             $missingDataByProduct
         );
-        
+
         // 3. Añadir nodos huérfanos (productos sin nodo final o con ambigüedad)
         $orphanNodes = $this->createOrphanNodes(
-            $salesDataByProduct, 
-            $stockDataByProduct, 
+            $salesDataByProduct,
+            $stockDataByProduct,
             $reprocessedDataByProduct,
             $missingDataByProduct,
             $processNodes
         );
-        
+
         // Añadir nodos huérfanos al final de processNodes
         return array_merge($processNodes, $orphanNodes);
     }
@@ -1016,35 +1002,34 @@ class Production extends Model
     /**
      * Recursivamente añadir nodos de venta, stock, re-procesados y faltantes a nodos finales
      * ✨ Crea UN SOLO nodo de cada tipo por nodo final
-     * 
-     * @param array &$nodes Array de nodos del árbol (por referencia)
-     * @param array $salesDataByProduct Datos de venta agrupados por producto
-     * @param array $stockDataByProduct Datos de stock agrupados por producto
-     * @param array $reprocessedDataByProduct Datos de re-procesados agrupados por producto
-     * @param array $missingDataByProduct Datos de faltantes físicos agrupados por producto (solo cajas físicas, no el balance completo)
+     *
+     * @param  array  &$nodes  Array de nodos del árbol (por referencia)
+     * @param  array  $salesDataByProduct  Datos de venta agrupados por producto
+     * @param  array  $stockDataByProduct  Datos de stock agrupados por producto
+     * @param  array  $reprocessedDataByProduct  Datos de re-procesados agrupados por producto
+     * @param  array  $missingDataByProduct  Datos de faltantes físicos agrupados por producto (solo cajas físicas, no el balance completo)
      */
     private function attachAllNodesToFinalNodes(
-        array &$nodes, 
-        array $salesDataByProduct, 
+        array &$nodes,
+        array $salesDataByProduct,
         array $stockDataByProduct,
         array $reprocessedDataByProduct,
         array $missingDataByProduct
-    )
-    {
+    ) {
         foreach ($nodes as &$node) {
-            if (!empty($node['children'])) {
+            if (! empty($node['children'])) {
                 $this->attachAllNodesToFinalNodes(
-                    $node['children'], 
-                    $salesDataByProduct, 
+                    $node['children'],
+                    $salesDataByProduct,
                     $stockDataByProduct,
                     $reprocessedDataByProduct,
                     $missingDataByProduct
                 );
             }
-            
+
             if (isset($node['isFinal']) && $node['isFinal'] === true) {
                 $finalNodeId = $node['id'];
-                
+
                 // Obtener todos los productos que produce este nodo final
                 $productIds = [];
                 $finalNodeOutputs = $node['outputs'] ?? [];
@@ -1054,8 +1039,8 @@ class Production extends Model
                         $productIds[] = $productId;
                     }
                 }
-                
-                if (!empty($productIds)) {
+
+                if (! empty($productIds)) {
                     // Recopilar datos de venta para TODOS los productos de este nodo final
                     $finalNodeSalesData = [];
                     foreach ($productIds as $productId) {
@@ -1063,7 +1048,7 @@ class Production extends Model
                             $finalNodeSalesData[$productId] = $salesDataByProduct[$productId];
                         }
                     }
-                    
+
                     // Recopilar datos de stock para TODOS los productos de este nodo final
                     $finalNodeStockData = [];
                     foreach ($productIds as $productId) {
@@ -1071,7 +1056,7 @@ class Production extends Model
                             $finalNodeStockData[$productId] = $stockDataByProduct[$productId];
                         }
                     }
-                    
+
                     // Recopilar datos de re-procesados para TODOS los productos de este nodo final
                     $finalNodeReprocessedData = [];
                     foreach ($productIds as $productId) {
@@ -1079,7 +1064,7 @@ class Production extends Model
                             $finalNodeReprocessedData[$productId] = $reprocessedDataByProduct[$productId];
                         }
                     }
-                    
+
                     // Recopilar datos de balance (faltantes y sobras) para TODOS los productos de este nodo final
                     $finalNodeMissingData = [];
                     foreach ($productIds as $productId) {
@@ -1087,40 +1072,40 @@ class Production extends Model
                             $finalNodeMissingData[$productId] = $missingDataByProduct[$productId];
                         }
                     }
-                    
+
                     // Crear UN SOLO nodo de venta con todos los productos
-                    if (!empty($finalNodeSalesData)) {
+                    if (! empty($finalNodeSalesData)) {
                         $salesNode = $this->createSalesNodeForFinalNode($finalNodeId, $finalNodeSalesData);
                         if ($salesNode) {
-                            if (!isset($node['children'])) {
+                            if (! isset($node['children'])) {
                                 $node['children'] = [];
                             }
                             $node['children'][] = $salesNode;
                         }
                     }
-                    
+
                     // Crear UN SOLO nodo de stock con todos los productos
-                    if (!empty($finalNodeStockData)) {
+                    if (! empty($finalNodeStockData)) {
                         $stockNode = $this->createStockNodeForFinalNode($finalNodeId, $finalNodeStockData);
                         if ($stockNode) {
-                            if (!isset($node['children'])) {
+                            if (! isset($node['children'])) {
                                 $node['children'] = [];
                             }
                             $node['children'][] = $stockNode;
                         }
                     }
-                    
+
                     // Crear UN SOLO nodo de re-procesados con todos los productos
-                    if (!empty($finalNodeReprocessedData)) {
+                    if (! empty($finalNodeReprocessedData)) {
                         $reprocessedNode = $this->createReprocessedNodeForFinalNode($finalNodeId, $finalNodeReprocessedData);
                         if ($reprocessedNode) {
-                            if (!isset($node['children'])) {
+                            if (! isset($node['children'])) {
                                 $node['children'] = [];
                             }
                             $node['children'][] = $reprocessedNode;
                         }
                     }
-                    
+
                     // Crear UN SOLO nodo de balance (faltantes y sobras) con todos los productos
                     // ✨ Siempre crear el nodo si hay productos, para mostrar el balance completo
                     $balanceNode = $this->createMissingNodeForFinalNode(
@@ -1132,7 +1117,7 @@ class Production extends Model
                         $finalNodeOutputs
                     );
                     if ($balanceNode) {
-                        if (!isset($node['children'])) {
+                        if (! isset($node['children'])) {
                             $node['children'] = [];
                         }
                         $node['children'][] = $balanceNode;
@@ -1144,8 +1129,8 @@ class Production extends Model
 
     /**
      * Obtener datos de venta agrupados por producto
-     * 
-     * @param string $lot Lote de la producción
+     *
+     * @param  string  $lot  Lote de la producción
      * @return array Datos agrupados por producto y pedido
      */
     private function getSalesDataByProduct(string $lot)
@@ -1155,70 +1140,71 @@ class Production extends Model
             ->whereNotNull('order_id')
             ->whereHas('boxes.box', function ($query) use ($lot) {
                 $query->where('lot', $lot)
-                      ->whereDoesntHave('productionInputs');
+                    ->whereDoesntHave('productionInputs');
             })
             ->with([
                 'order.customer',
+                'order.plannedProductDetails.tax',
                 'boxes.box' => function ($query) use ($lot) {
                     $query->where('lot', $lot)
-                          ->whereDoesntHave('productionInputs')
-                          ->with('product');
-                }
+                        ->whereDoesntHave('productionInputs')
+                        ->with('product');
+                },
             ])
             ->get();
-        
+
         // Agrupar por producto y pedido
         $grouped = [];
-        
+
         foreach ($salesPallets as $pallet) {
             foreach ($pallet->boxes as $palletBox) {
                 $box = $palletBox->box;
-                if (!$box || !$box->isAvailable || !$box->product || !$pallet->order) {
+                if (! $box || ! $box->isAvailable || ! $box->product || ! $pallet->order) {
                     continue;
                 }
-                
+
                 $productId = $box->product->id;
                 $orderId = $pallet->order->id;
-                
+
                 $key = "{$productId}-{$orderId}";
-                
-                if (!isset($grouped[$key])) {
+
+                if (! isset($grouped[$key])) {
                     $grouped[$key] = [
                         'product' => $box->product,
                         'order' => $pallet->order,
                         'pallets' => [],
                     ];
                 }
-                
+
                 $palletKey = $pallet->id;
-                if (!isset($grouped[$key]['pallets'][$palletKey])) {
+                if (! isset($grouped[$key]['pallets'][$palletKey])) {
                     $grouped[$key]['pallets'][$palletKey] = [
                         'pallet' => $pallet,
                         'boxes' => [],
                     ];
                 }
-                
+
                 $grouped[$key]['pallets'][$palletKey]['boxes'][] = $box;
             }
         }
-        
+
         // Reorganizar por producto
         $byProduct = [];
         foreach ($grouped as $key => $data) {
             $productId = $data['product']->id;
-            if (!isset($byProduct[$productId])) {
+            if (! isset($byProduct[$productId])) {
                 $byProduct[$productId] = [];
             }
             $byProduct[$productId][$data['order']->id] = $data;
         }
-        
+
         return $byProduct;
     }
 
     /**
      * Obtener datos de stock agrupados por producto
-     * 
-     * @param string $lot Lote de la producción
+     *
+     * @param  string  $lot  Lote de la producción
      * @return array Datos agrupados por producto y almacén
      */
     private function getStockDataByProduct(string $lot)
@@ -1230,83 +1216,83 @@ class Production extends Model
             ->whereNull('order_id')  // Solo sin pedido
             ->whereHas('boxes.box', function ($query) use ($lot) {
                 $query->where('lot', $lot)
-                      ->whereDoesntHave('productionInputs');
+                    ->whereDoesntHave('productionInputs');
             })
             ->with([
                 'storedPallet.store',  // Puede ser null para palets registrados
                 'boxes.box' => function ($query) use ($lot) {
                     $query->where('lot', $lot)
-                          ->whereDoesntHave('productionInputs')
-                          ->with('product');
-                }
+                        ->whereDoesntHave('productionInputs')
+                        ->with('product');
+                },
             ])
             ->get();
-        
+
         // Crear un objeto store virtual para palets registrados (sin almacén)
         $virtualStore = (object) [
             'id' => null,
             'name' => 'Palets Registrados',
         ];
-        
+
         // Agrupar por producto y almacén
         $grouped = [];
-        
+
         foreach ($stockPallets as $pallet) {
             // Determinar el almacén: si tiene storedPallet usa ese, si no es registrado (almacén virtual)
             $store = $pallet->storedPallet?->store ?? $virtualStore;
             $storeId = $store->id ?? 'registered';  // Usar 'registered' como clave para palets sin almacén
-            
+
             foreach ($pallet->boxes as $palletBox) {
                 $box = $palletBox->box;
-                if (!$box || !$box->isAvailable || !$box->product) {
+                if (! $box || ! $box->isAvailable || ! $box->product) {
                     continue;
                 }
-                
+
                 $productId = $box->product->id;
-                
+
                 $key = "{$productId}-{$storeId}";
-                
-                if (!isset($grouped[$key])) {
+
+                if (! isset($grouped[$key])) {
                     $grouped[$key] = [
                         'product' => $box->product,
                         'store' => $store,
                         'pallets' => [],
                     ];
                 }
-                
+
                 $palletKey = $pallet->id;
-                if (!isset($grouped[$key]['pallets'][$palletKey])) {
+                if (! isset($grouped[$key]['pallets'][$palletKey])) {
                     $grouped[$key]['pallets'][$palletKey] = [
                         'pallet' => $pallet,
                         'storedPallet' => $pallet->storedPallet,  // Puede ser null para registrados
                         'boxes' => [],
                     ];
                 }
-                
+
                 $grouped[$key]['pallets'][$palletKey]['boxes'][] = $box;
             }
         }
-        
+
         // Reorganizar por producto
         $byProduct = [];
         foreach ($grouped as $key => $data) {
             $productId = $data['product']->id;
-            if (!isset($byProduct[$productId])) {
+            if (! isset($byProduct[$productId])) {
                 $byProduct[$productId] = [];
             }
             // Usar store_id o 'registered' como clave
             $storeKey = $data['store']->id ?? 'registered';
             $byProduct[$productId][$storeKey] = $data;
         }
-        
+
         return $byProduct;
     }
 
     /**
      * Obtener datos de re-procesados agrupados por producto
      * Cajas del lote que fueron usadas como materia prima en otro proceso
-     * 
-     * @param string $lot Lote de la producción
+     *
+     * @param  string  $lot  Lote de la producción
      * @return array Datos agrupados por producto y proceso de destino
      */
     private function getReprocessedDataByProduct(string $lot)
@@ -1318,33 +1304,33 @@ class Production extends Model
             ->with([
                 'product',
                 'productionInputs.productionRecord.process',
-                'productionInputs.productionRecord.production'
+                'productionInputs.productionRecord.production',
             ])
             ->get();
-        
+
         // Agrupar por producto y proceso de destino
         $grouped = [];
-        
+
         foreach ($reprocessedBoxes as $box) {
-            if (!$box->product) {
+            if (! $box->product) {
                 continue;
             }
-            
+
             $productId = $box->product->id;
-            
+
             // Una caja puede haberse usado en múltiples procesos, pero normalmente es uno
             foreach ($box->productionInputs as $productionInput) {
                 $productionRecord = $productionInput->productionRecord;
-                if (!$productionRecord) {
+                if (! $productionRecord) {
                     continue;
                 }
-                
+
                 $processId = $productionRecord->process_id;
                 $productionRecordId = $productionRecord->id;
-                
+
                 $key = "{$productId}-{$productionRecordId}";
-                
-                if (!isset($grouped[$key])) {
+
+                if (! isset($grouped[$key])) {
                     $grouped[$key] = [
                         'product' => $box->product,
                         'process' => $productionRecord->process,
@@ -1352,32 +1338,32 @@ class Production extends Model
                         'boxes' => [],
                     ];
                 }
-                
+
                 $grouped[$key]['boxes'][] = $box;
             }
         }
-        
+
         // Reorganizar por producto
         $byProduct = [];
         foreach ($grouped as $key => $data) {
             $productId = $data['product']->id;
-            if (!isset($byProduct[$productId])) {
+            if (! isset($byProduct[$productId])) {
                 $byProduct[$productId] = [];
             }
             // Usar productionRecordId como key para agrupar por proceso
             $byProduct[$productId][$data['productionRecord']->id] = $data;
         }
-        
+
         return $byProduct;
     }
 
     /**
      * Obtener datos de faltantes físicos agrupados por producto
      * Cajas del lote que están disponibles pero no están en venta, stock ni fueron consumidas
-     * Nota: Estos son solo las cajas físicas faltantes. El balance completo (incluyendo sobras) 
+     * Nota: Estos son solo las cajas físicas faltantes. El balance completo (incluyendo sobras)
      * se calcula en createMissingNodeForFinalNode()
-     * 
-     * @param string $lot Lote de la producción
+     *
+     * @param  string  $lot  Lote de la producción
      * @return array Datos agrupados por producto
      */
     private function getMissingDataByProduct(string $lot)
@@ -1386,7 +1372,7 @@ class Production extends Model
         // - Están disponibles (isAvailable = true, sin productionInputs)
         // - NO están en venta (sin palet con order_id)
         // - NO están en stock (sin palet almacenado)
-        
+
         // Cajas del lote que están disponibles pero no están contabilizadas
         // Opción 1: No tienen palet (no están en ningún palet)
         $boxesWithoutPallet = \App\Models\Box::query()
@@ -1395,7 +1381,7 @@ class Production extends Model
             ->whereDoesntHave('palletBox')  // No están en ningún palet
             ->with('product')
             ->get();
-        
+
         // Opción 2: Están en un palet pero el palet NO tiene pedido Y NO está almacenado
         $boxesInUnassignedPallet = \App\Models\Box::query()
             ->where('lot', $lot)
@@ -1404,43 +1390,43 @@ class Production extends Model
                 // El palet NO tiene pedido
                 $query->whereNull('order_id')
                       // Y NO está almacenado
-                      ->whereDoesntHave('storedPallet');
+                    ->whereDoesntHave('storedPallet');
             })
             ->with('product')
             ->get();
-        
+
         // Combinar ambas
         $missingBoxes = $boxesWithoutPallet->merge($boxesInUnassignedPallet)->unique('id');
-        
+
         // Agrupar por producto
         $byProduct = [];
-        
+
         foreach ($missingBoxes as $box) {
-            if (!$box->product) {
+            if (! $box->product) {
                 continue;
             }
-            
+
             $productId = $box->product->id;
-            
-            if (!isset($byProduct[$productId])) {
+
+            if (! isset($byProduct[$productId])) {
                 $byProduct[$productId] = [
                     'product' => $box->product,
                     'boxes' => [],
                 ];
             }
-            
+
             $byProduct[$productId]['boxes'][] = $box;
         }
-        
+
         return $byProduct;
     }
 
     /**
      * Crear UN SOLO nodo de venta para un nodo final con TODOS sus productos
      * ✨ Agrupa todos los productos del nodo final en un solo nodo
-     * 
-     * @param int $finalNodeId ID del nodo final
-     * @param array $salesDataByProduct Datos de venta agrupados por producto {productId => {orderId => data}}
+     *
+     * @param  int  $finalNodeId  ID del nodo final
+     * @param  array  $salesDataByProduct  Datos de venta agrupados por producto {productId => {orderId => data}}
      * @return array|null Nodo de venta o null si no hay datos
      */
     private function createSalesNodeForFinalNode(int $finalNodeId, array $salesDataByProduct)
@@ -1448,7 +1434,7 @@ class Production extends Model
         if (empty($salesDataByProduct)) {
             return null;
         }
-        
+
         // Paso 1: Agrupar por pedido (no por producto)
         // Recopilar todos los pedidos y sus productos
         $ordersMap = [];  // orderId => {order, products: {productId => {...}}}
@@ -1456,41 +1442,63 @@ class Production extends Model
         $totalBoxes = 0;
         $totalNetWeight = 0;
         $totalPallets = 0;
-        
+        $nodeSalesSubtotal = 0.0;
+        $nodeSalesTotal = 0.0;
+        $nodeCostTotal = 0.0;
+
         foreach ($salesDataByProduct as $productId => $productOrders) {
             foreach ($productOrders as $orderId => $orderData) {
                 $order = $orderData['order'];
-                
-                if (!isset($ordersMap[$orderId])) {
+
+                if (! isset($ordersMap[$orderId])) {
                     $ordersMap[$orderId] = [
                         'order' => $order,
                         'products' => [],
                     ];
                 }
-                
+
                 // Calcular palets y totales para este producto en este pedido
                 $palletsData = [];
                 $productBoxes = 0;
                 $productNetWeight = 0;
-                
+                $productCostTotal = 0.0;
+
                 foreach ($orderData['pallets'] as $palletData) {
                     $pallet = $palletData['pallet'];
                     $boxes = collect($palletData['boxes']);
-                    
+
                     $availableBoxesCount = $boxes->count();
                     $totalAvailableWeight = $boxes->sum('net_weight');
-                    
+
                     $palletsData[] = [
                         'id' => $pallet->id,
                         'availableBoxesCount' => $availableBoxesCount,
                         'totalAvailableWeight' => round($totalAvailableWeight, 2),
                     ];
-                    
+
                     $productBoxes += $availableBoxesCount;
                     $productNetWeight += $totalAvailableWeight;
+                    $productCostTotal += $boxes->sum(function ($box) {
+                        return (float) ($box->total_cost ?? 0);
+                    });
                     $totalPallets++;
                 }
-                
+
+                $plannedProductDetail = $order->plannedProductDetails
+                    ->firstWhere('product_id', $orderData['product']->id);
+                $salePricePerKg = $plannedProductDetail?->unit_price !== null
+                    ? (float) $plannedProductDetail->unit_price
+                    : null;
+                $taxRate = $plannedProductDetail?->tax?->rate !== null
+                    ? (float) $plannedProductDetail->tax->rate
+                    : 0.0;
+                $saleSubtotal = $salePricePerKg !== null ? $salePricePerKg * $productNetWeight : 0.0;
+                $saleTotal = $saleSubtotal + ($saleSubtotal * $taxRate / 100);
+                $productCostPerKg = $productNetWeight > 0 ? $productCostTotal / $productNetWeight : 0.0;
+                $marginTotalExTax = $saleSubtotal - $productCostTotal;
+                $marginPerKgExTax = $productNetWeight > 0 ? $marginTotalExTax / $productNetWeight : 0.0;
+                $marginPercentageExTax = $saleSubtotal > 0 ? ($marginTotalExTax / $saleSubtotal) * 100 : 0.0;
+
                 // Añadir producto al pedido
                 $ordersMap[$orderId]['products'][$productId] = [
                     'product' => [
@@ -1500,24 +1508,39 @@ class Production extends Model
                     'pallets' => $palletsData,
                     'totalBoxes' => $productBoxes,
                     'totalNetWeight' => round($productNetWeight, 2),
+                    'salePricePerKg' => $salePricePerKg,
+                    'saleSubtotal' => round($saleSubtotal, 2),
+                    'saleTotal' => round($saleTotal, 2),
+                    'costPerKg' => round($productCostPerKg, 4),
+                    'costTotal' => round($productCostTotal, 2),
+                    'marginTotalExTax' => round($marginTotalExTax, 2),
+                    'marginPerKgExTax' => round($marginPerKgExTax, 4),
+                    'marginPercentageExTax' => round($marginPercentageExTax, 2),
                 ];
-                
+
                 $allProducts[$productId] = $orderData['product'];
-                
+
                 $totalBoxes += $productBoxes;
                 $totalNetWeight += $productNetWeight;
+                $nodeSalesSubtotal += $saleSubtotal;
+                $nodeSalesTotal += $saleTotal;
+                $nodeCostTotal += $productCostTotal;
             }
         }
-        
+
         // Paso 2: Convertir ordersMap a array de orders con products como array
         $ordersData = [];
         foreach ($ordersMap as $orderId => $orderInfo) {
             $orderProducts = array_values($orderInfo['products']);
-            
+
             // Calcular totales del pedido
             $orderTotalBoxes = array_sum(array_column($orderProducts, 'totalBoxes'));
             $orderTotalNetWeight = array_sum(array_column($orderProducts, 'totalNetWeight'));
-            
+            $orderSalesSubtotal = array_sum(array_column($orderProducts, 'saleSubtotal'));
+            $orderSalesTotal = array_sum(array_column($orderProducts, 'saleTotal'));
+            $orderCostTotal = array_sum(array_column($orderProducts, 'costTotal'));
+            $orderMarginTotalExTax = array_sum(array_column($orderProducts, 'marginTotalExTax'));
+
             $ordersData[] = [
                 'order' => [
                     'id' => $orderInfo['order']->id,
@@ -1526,7 +1549,7 @@ class Production extends Model
                         'id' => $orderInfo['order']->customer->id,
                         'name' => $orderInfo['order']->customer->name,
                     ] : null,
-                    'loadDate' => $orderInfo['order']->load_date 
+                    'loadDate' => $orderInfo['order']->load_date
                         ? (\Carbon\Carbon::parse($orderInfo['order']->load_date)->toIso8601String())
                         : null,
                     'status' => $orderInfo['order']->status,
@@ -1534,9 +1557,17 @@ class Production extends Model
                 'products' => $orderProducts,  // 👈 Array de productos
                 'totalBoxes' => $orderTotalBoxes,
                 'totalNetWeight' => round($orderTotalNetWeight, 2),
+                'salePricePerKg' => $orderTotalNetWeight > 0 ? round($orderSalesSubtotal / $orderTotalNetWeight, 4) : 0.0,
+                'saleSubtotal' => round($orderSalesSubtotal, 2),
+                'saleTotal' => round($orderSalesTotal, 2),
+                'costPerKg' => $orderTotalNetWeight > 0 ? round($orderCostTotal / $orderTotalNetWeight, 4) : 0.0,
+                'costTotal' => round($orderCostTotal, 2),
+                'marginTotalExTax' => round($orderMarginTotalExTax, 2),
+                'marginPerKgExTax' => $orderTotalNetWeight > 0 ? round($orderMarginTotalExTax / $orderTotalNetWeight, 4) : 0.0,
+                'marginPercentageExTax' => $orderSalesSubtotal > 0 ? round(($orderMarginTotalExTax / $orderSalesSubtotal) * 100, 2) : 0.0,
             ];
         }
-        
+
         // Paso 3: Crear el nodo de venta
         return [
             'type' => 'sales',
@@ -1552,6 +1583,14 @@ class Production extends Model
                 'palletsCount' => $totalPallets,
                 'boxesCount' => $totalBoxes,
                 'netWeight' => round($totalNetWeight, 2),
+                'salePricePerKg' => $totalNetWeight > 0 ? round($nodeSalesSubtotal / $totalNetWeight, 4) : 0.0,
+                'saleSubtotal' => round($nodeSalesSubtotal, 2),
+                'saleTotal' => round($nodeSalesTotal, 2),
+                'costPerKg' => $totalNetWeight > 0 ? round($nodeCostTotal / $totalNetWeight, 4) : 0.0,
+                'costTotal' => round($nodeCostTotal, 2),
+                'marginTotalExTax' => round($nodeSalesSubtotal - $nodeCostTotal, 2),
+                'marginPerKgExTax' => $totalNetWeight > 0 ? round(($nodeSalesSubtotal - $nodeCostTotal) / $totalNetWeight, 4) : 0.0,
+                'marginPercentageExTax' => $nodeSalesSubtotal > 0 ? round((($nodeSalesSubtotal - $nodeCostTotal) / $nodeSalesSubtotal) * 100, 2) : 0.0,
             ],
             'children' => [],
         ];
@@ -1560,9 +1599,9 @@ class Production extends Model
     /**
      * Crear UN SOLO nodo de stock para un nodo final con TODOS sus productos
      * ✨ Agrupa todos los productos del nodo final en un solo nodo
-     * 
-     * @param int $finalNodeId ID del nodo final
-     * @param array $stockDataByProduct Datos de stock agrupados por producto {productId => {storeId => data}}
+     *
+     * @param  int  $finalNodeId  ID del nodo final
+     * @param  array  $stockDataByProduct  Datos de stock agrupados por producto {productId => {storeId => data}}
      * @return array|null Nodo de stock o null si no hay datos
      */
     private function createStockNodeForFinalNode(int $finalNodeId, array $stockDataByProduct)
@@ -1570,7 +1609,7 @@ class Production extends Model
         if (empty($stockDataByProduct)) {
             return null;
         }
-        
+
         // Paso 1: Agrupar por almacén (no por producto)
         // Recopilar todos los almacenes y sus productos
         $storesMap = [];  // storeId => {store, products: {productId => {...}}}
@@ -1578,43 +1617,43 @@ class Production extends Model
         $totalBoxes = 0;
         $totalNetWeight = 0;
         $totalPallets = 0;
-        
+
         foreach ($stockDataByProduct as $productId => $productStores) {
             foreach ($productStores as $storeId => $storeData) {
                 $store = $storeData['store'];
-                
-                if (!isset($storesMap[$storeId])) {
+
+                if (! isset($storesMap[$storeId])) {
                     $storesMap[$storeId] = [
                         'store' => $store,
                         'products' => [],
                     ];
                 }
-                
+
                 // Calcular palets y totales para este producto en este almacén
                 $palletsData = [];
                 $productBoxes = 0;
                 $productNetWeight = 0;
-                
+
                 foreach ($storeData['pallets'] as $palletData) {
                     $pallet = $palletData['pallet'];
                     $storedPallet = $palletData['storedPallet'];
                     $boxes = collect($palletData['boxes']);
-                    
+
                     $availableBoxesCount = $boxes->count();
                     $totalAvailableWeight = $boxes->sum('net_weight');
-                    
+
                     $palletsData[] = [
                         'id' => $pallet->id,
                         'availableBoxesCount' => $availableBoxesCount,
                         'totalAvailableWeight' => round($totalAvailableWeight, 2),
                         'position' => $storedPallet?->position,
                     ];
-                    
+
                     $productBoxes += $availableBoxesCount;
                     $productNetWeight += $totalAvailableWeight;
                     $totalPallets++;
                 }
-                
+
                 // Añadir producto al almacén
                 $storesMap[$storeId]['products'][$productId] = [
                     'product' => [
@@ -1625,23 +1664,23 @@ class Production extends Model
                     'totalBoxes' => $productBoxes,
                     'totalNetWeight' => round($productNetWeight, 2),
                 ];
-                
+
                 $allProducts[$productId] = $storeData['product'];
-                
+
                 $totalBoxes += $productBoxes;
                 $totalNetWeight += $productNetWeight;
             }
         }
-        
+
         // Paso 2: Convertir storesMap a array de stores con products como array
         $storesData = [];
         foreach ($storesMap as $storeId => $storeInfo) {
             $storeProducts = array_values($storeInfo['products']);
-            
+
             // Calcular totales del almacén
             $storeTotalBoxes = array_sum(array_column($storeProducts, 'totalBoxes'));
             $storeTotalNetWeight = array_sum(array_column($storeProducts, 'totalNetWeight'));
-            
+
             $storesData[] = [
                 'store' => [
                     'id' => $storeInfo['store']->id,
@@ -1653,7 +1692,7 @@ class Production extends Model
                 'totalNetWeight' => round($storeTotalNetWeight, 2),
             ];
         }
-        
+
         // Paso 3: Crear el nodo de stock
         return [
             'type' => 'stock',
@@ -1677,9 +1716,9 @@ class Production extends Model
     /**
      * Crear UN SOLO nodo de re-procesados para un nodo final con TODOS sus productos
      * ✨ Agrupa todos los productos del nodo final que fueron re-procesados
-     * 
-     * @param int $finalNodeId ID del nodo final
-     * @param array $reprocessedDataByProduct Datos de re-procesados agrupados por producto {productId => {productionRecordId => data}}
+     *
+     * @param  int  $finalNodeId  ID del nodo final
+     * @param  array  $reprocessedDataByProduct  Datos de re-procesados agrupados por producto {productId => {productionRecordId => data}}
      * @return array|null Nodo de re-procesados o null si no hay datos
      */
     private function createReprocessedNodeForFinalNode(int $finalNodeId, array $reprocessedDataByProduct)
@@ -1687,37 +1726,37 @@ class Production extends Model
         if (empty($reprocessedDataByProduct)) {
             return null;
         }
-        
+
         // Paso 1: Agrupar por proceso destino (no por producto)
         // Recopilar todos los procesos y sus productos
         $processesMap = [];  // productionRecordId => {process, productionRecord, products: {productId => {...}}}
         $allProducts = [];  // Para obtener lista de productos únicos
         $totalBoxes = 0;
         $totalNetWeight = 0;
-        
+
         foreach ($reprocessedDataByProduct as $productId => $productProcesses) {
             foreach ($productProcesses as $productionRecordId => $processData) {
                 $process = $processData['process'];
                 $productionRecord = $processData['productionRecord'];
-                
+
                 // Asegurar que el production esté cargado
-                if (!$productionRecord->relationLoaded('production')) {
+                if (! $productionRecord->relationLoaded('production')) {
                     $productionRecord->load('production');
                 }
-                
-                if (!isset($processesMap[$productionRecordId])) {
+
+                if (! isset($processesMap[$productionRecordId])) {
                     $processesMap[$productionRecordId] = [
                         'process' => $process,
                         'productionRecord' => $productionRecord,
                         'products' => [],
                     ];
                 }
-                
+
                 // Calcular totales para este producto en este proceso
                 $boxes = collect($processData['boxes']);
                 $productBoxes = $boxes->count();
                 $productNetWeight = $boxes->sum('net_weight');
-                
+
                 // Añadir producto al proceso
                 $processesMap[$productionRecordId]['products'][$productId] = [
                     'product' => [
@@ -1734,23 +1773,23 @@ class Production extends Model
                     'totalBoxes' => $productBoxes,
                     'totalNetWeight' => round($productNetWeight, 2),
                 ];
-                
+
                 $allProducts[$productId] = $processData['product'];
-                
+
                 $totalBoxes += $productBoxes;
                 $totalNetWeight += $productNetWeight;
             }
         }
-        
+
         // Paso 2: Convertir processesMap a array de processes con products como array
         $processesData = [];
         foreach ($processesMap as $productionRecordId => $processInfo) {
             $processProducts = array_values($processInfo['products']);
-            
+
             // Calcular totales del proceso
             $processTotalBoxes = array_sum(array_column($processProducts, 'totalBoxes'));
             $processTotalNetWeight = array_sum(array_column($processProducts, 'totalNetWeight'));
-            
+
             $processesData[] = [
                 'process' => [
                     'id' => $processInfo['process']->id,
@@ -1760,10 +1799,10 @@ class Production extends Model
                 'productionRecord' => [
                     'id' => $processInfo['productionRecord']->id,
                     'productionId' => $processInfo['productionRecord']->production_id,
-                    'startedAt' => $processInfo['productionRecord']->started_at 
+                    'startedAt' => $processInfo['productionRecord']->started_at
                         ? (\Carbon\Carbon::parse($processInfo['productionRecord']->started_at)->toIso8601String())
                         : null,
-                    'finishedAt' => $processInfo['productionRecord']->finished_at 
+                    'finishedAt' => $processInfo['productionRecord']->finished_at
                         ? (\Carbon\Carbon::parse($processInfo['productionRecord']->finished_at)->toIso8601String())
                         : null,
                 ],
@@ -1776,7 +1815,7 @@ class Production extends Model
                 'totalNetWeight' => round($processTotalNetWeight, 2),
             ];
         }
-        
+
         // Paso 3: Crear el nodo de re-procesados
         return [
             'type' => 'reprocessed',
@@ -1799,17 +1838,17 @@ class Production extends Model
     /**
      * Crear UN SOLO nodo de balance (faltantes y sobras) para un nodo final con TODOS sus productos
      * ✨ Agrupa todos los productos del nodo final que tienen desbalance (faltantes positivos o sobras negativas)
-     * 
-     * @param int $finalNodeId ID del nodo final
-     * @param array $missingDataByProduct Datos de faltantes físicos agrupados por producto (solo cajas físicas, no el balance completo)
-     * @param array $salesDataByProduct Datos de venta (para calcular totales)
-     * @param array $stockDataByProduct Datos de stock (para calcular totales)
-     * @param array $reprocessedDataByProduct Datos de re-procesados (para calcular totales)
-     * @param array $finalNodeOutputs Outputs del nodo final (para obtener producción)
+     *
+     * @param  int  $finalNodeId  ID del nodo final
+     * @param  array  $missingDataByProduct  Datos de faltantes físicos agrupados por producto (solo cajas físicas, no el balance completo)
+     * @param  array  $salesDataByProduct  Datos de venta (para calcular totales)
+     * @param  array  $stockDataByProduct  Datos de stock (para calcular totales)
+     * @param  array  $reprocessedDataByProduct  Datos de re-procesados (para calcular totales)
+     * @param  array  $finalNodeOutputs  Outputs del nodo final (para obtener producción)
      * @return array|null Nodo de balance o null si no hay datos
      */
     private function createMissingNodeForFinalNode(
-        int $finalNodeId, 
+        int $finalNodeId,
         array $missingDataByProduct,
         array $salesDataByProduct,
         array $stockDataByProduct,
@@ -1818,19 +1857,19 @@ class Production extends Model
     ) {
         // ✨ Calcular balance completo (faltantes y sobras) para TODOS los productos del nodo final
         // No solo los que tienen cajas físicas faltantes. Incluye también productos con sobras (más contabilizado que producido)
-        
+
         // Paso 1: Obtener todos los productos del nodo final desde los outputs
         $allProductsInFinalNode = [];
         foreach ($finalNodeOutputs as $output) {
             $productId = $output['productId'] ?? null;
-            if ($productId && !isset($allProductsInFinalNode[$productId])) {
+            if ($productId && ! isset($allProductsInFinalNode[$productId])) {
                 // El producto puede venir en el output directamente
                 $product = null;
                 if (isset($output['product']) && isset($output['product']['id'])) {
                     // Crear un objeto producto simple desde los datos del output
                     $product = (object) [
                         'id' => $output['product']['id'],
-                        'name' => $output['product']['name'] ?? 'Producto ' . $productId,
+                        'name' => $output['product']['name'] ?? 'Producto '.$productId,
                     ];
                 } else {
                     // Si no está en el output, buscarlo en los datos disponibles
@@ -1846,31 +1885,31 @@ class Production extends Model
                     } elseif (isset($missingDataByProduct[$productId])) {
                         $product = $missingDataByProduct[$productId]['product'] ?? null;
                     }
-                    
+
                     // Si aún no lo encontramos, buscarlo en la BD
-                    if (!$product) {
+                    if (! $product) {
                         $productModel = \App\Models\Product::find($productId);
                         if ($productModel) {
                             $product = $productModel;
                         }
                     }
                 }
-                
+
                 if ($product) {
                     $allProductsInFinalNode[$productId] = $product;
                 }
             }
         }
-        
+
         if (empty($allProductsInFinalNode)) {
             return null;
         }
-        
+
         // Paso 2: Calcular balance completo por producto
         $productsData = [];
         $totalMissingBoxes = 0;
         $totalMissingWeight = 0;
-        
+
         foreach ($allProductsInFinalNode as $productId => $product) {
             // Obtener producción del nodo final para este producto
             $produced = 0;
@@ -1881,7 +1920,7 @@ class Production extends Model
                     $producedBoxes += (int) ($output['boxes'] ?? 0);
                 }
             }
-            
+
             // Calcular en venta
             $inSales = 0;
             $inSalesBoxes = 0;
@@ -1894,7 +1933,7 @@ class Production extends Model
                     }
                 }
             }
-            
+
             // Calcular en stock
             $inStock = 0;
             $inStockBoxes = 0;
@@ -1907,7 +1946,7 @@ class Production extends Model
                     }
                 }
             }
-            
+
             // Calcular re-procesados
             $reprocessed = 0;
             $reprocessedBoxes = 0;
@@ -1918,11 +1957,11 @@ class Production extends Model
                     $reprocessed += $boxes->sum('net_weight');
                 }
             }
-            
+
             // Calcular balance teórico: Producido - Venta - Stock - Re-procesado
             // Positivo = faltante, Negativo = sobrante (más contabilizado que producido)
             $calculatedMissing = $produced - $inSales - $inStock - $reprocessed;
-            
+
             // Obtener cajas físicas faltantes (si existen)
             $missingBoxes = collect([]);
             $missingBoxesCount = 0;
@@ -1932,12 +1971,12 @@ class Production extends Model
                 $missingBoxesCount = $missingBoxes->count();
                 $missingWeight = $missingBoxes->sum('net_weight');
             }
-            
+
             // Usar el balance calculado o el de cajas físicas
             // Si hay cajas físicas, verificar que coincidan con el balance calculado
             // Si el balance calculado es 0 (o muy cercano), no hay desbalance real
             $tolerance = 0.01; // Tolerancia para errores de redondeo
-            
+
             if ($missingBoxesCount > 0) {
                 // Hay cajas físicas faltantes
                 // Verificar si el balance calculado coincide con las cajas físicas
@@ -1949,7 +1988,7 @@ class Production extends Model
                     // (Las cajas físicas pueden estar mal clasificadas pero no afectan el balance)
                     continue; // Saltar este producto, no hay desbalance real
                 }
-                
+
                 // El balance calculado no es 0, usar las cajas físicas
                 $finalMissingWeight = $missingWeight;
                 $finalMissingBoxes = $missingBoxesCount;
@@ -1960,18 +1999,18 @@ class Production extends Model
                 $finalMissingWeight = $calculatedMissing; // Permitir valores negativos para detectar sobras/errores
                 $finalMissingBoxes = 0; // No sabemos cuántas cajas son
             }
-            
+
             // Calcular porcentaje de faltantes (solo si es positivo, no aplica a sobras)
-            $missingPercentage = ($produced > 0 && $finalMissingWeight > 0) 
-                ? ($finalMissingWeight / $produced) * 100 
+            $missingPercentage = ($produced > 0 && $finalMissingWeight > 0)
+                ? ($finalMissingWeight / $produced) * 100
                 : 0;
-            
+
             // Incluir productos con faltantes (positivos) o sobras (negativos)
             // Mostrar si hay faltantes positivos o si hay más contabilizado que producido (sobrante/error)
             // Solo si el balance es significativo (mayor que la tolerancia)
             $hasPositiveMissing = $finalMissingWeight > $tolerance;
             $hasOverCount = $calculatedMissing < -$tolerance; // Más en venta/stock que producido = sobrante
-            
+
             if ($hasPositiveMissing || $hasOverCount) {
                 $productsData[] = [
                     'product' => [
@@ -2008,18 +2047,18 @@ class Production extends Model
                         ];
                     })->values()->toArray(),
                 ];
-                
+
                 $totalMissingBoxes += $finalMissingBoxes;
                 // Sumar el balance (puede ser negativo = sobrante, positivo = faltante)
                 $totalMissingWeight += $finalMissingWeight;
             }
         }
-        
+
         // Solo crear el nodo si hay productos con faltantes (positivos) o sobras (negativos)
         if (empty($productsData)) {
             return null;
         }
-        
+
         // Paso 3: Crear el nodo de balance (faltantes y sobras)
         return [
             'type' => 'balance',
@@ -2039,38 +2078,38 @@ class Production extends Model
     /**
      * Identificar nodos finales y sus productos
      * Retorna un mapa: productId => [nodeId1, nodeId2, ...]
-     * 
-     * @param array $nodes Array de nodos del árbol
+     *
+     * @param  array  $nodes  Array de nodos del árbol
      * @return array Mapa de productos a sus nodos finales
      */
     private function collectFinalNodesByProduct(array $nodes)
     {
         $finalNodesByProduct = [];
-        
+
         foreach ($nodes as $node) {
             if (isset($node['isFinal']) && $node['isFinal'] === true) {
                 foreach ($node['outputs'] ?? [] as $output) {
                     $productId = $output['productId'] ?? null;
                     if ($productId) {
-                        if (!isset($finalNodesByProduct[$productId])) {
+                        if (! isset($finalNodesByProduct[$productId])) {
                             $finalNodesByProduct[$productId] = [];
                         }
                         $finalNodesByProduct[$productId][] = $node['id'];
                     }
                 }
             }
-            
-            if (!empty($node['children'])) {
+
+            if (! empty($node['children'])) {
                 $childMap = $this->collectFinalNodesByProduct($node['children']);
                 foreach ($childMap as $productId => $nodeIds) {
-                    if (!isset($finalNodesByProduct[$productId])) {
+                    if (! isset($finalNodesByProduct[$productId])) {
                         $finalNodesByProduct[$productId] = [];
                     }
                     $finalNodesByProduct[$productId] = array_merge($finalNodesByProduct[$productId], $nodeIds);
                 }
             }
         }
-        
+
         return $finalNodesByProduct;
     }
 
@@ -2081,61 +2120,60 @@ class Production extends Model
      * - UN SOLO nodo de stock con TODOS los productos huérfanos
      * - UN SOLO nodo de re-procesados con TODOS los productos huérfanos
      * - UN SOLO nodo de balance con TODOS los productos huérfanos
-     * 
-     * @param array $salesDataByProduct Datos de venta agrupados por producto
-     * @param array $stockDataByProduct Datos de stock agrupados por producto
-     * @param array $reprocessedDataByProduct Datos de re-procesados agrupados por producto
-     * @param array $missingDataByProduct Datos de faltantes físicos agrupados por producto (solo cajas físicas, no el balance completo)
-     * @param array $processNodes Nodos del árbol de procesos (para identificar nodos finales)
+     *
+     * @param  array  $salesDataByProduct  Datos de venta agrupados por producto
+     * @param  array  $stockDataByProduct  Datos de stock agrupados por producto
+     * @param  array  $reprocessedDataByProduct  Datos de re-procesados agrupados por producto
+     * @param  array  $missingDataByProduct  Datos de faltantes físicos agrupados por producto (solo cajas físicas, no el balance completo)
+     * @param  array  $processNodes  Nodos del árbol de procesos (para identificar nodos finales)
      * @return array Array de nodos huérfanos
      */
     private function createOrphanNodes(
-        array $salesDataByProduct, 
+        array $salesDataByProduct,
         array $stockDataByProduct,
         array $reprocessedDataByProduct,
         array $missingDataByProduct,
         array $processNodes
-    )
-    {
+    ) {
         $orphanNodes = [];
-        
+
         // Identificar qué productos tienen nodos finales únicos
         $finalNodesByProduct = $this->collectFinalNodesByProduct($processNodes);
-        
+
         // Para cada producto, verificar si es huérfano (sin nodo final o con múltiples)
         $orphanProductIds = [];
-        
+
         // Identificar productos huérfanos de venta
         foreach ($salesDataByProduct as $productId => $data) {
-            if (!isset($finalNodesByProduct[$productId]) || count($finalNodesByProduct[$productId]) !== 1) {
+            if (! isset($finalNodesByProduct[$productId]) || count($finalNodesByProduct[$productId]) !== 1) {
                 $orphanProductIds[$productId] = true;
             }
         }
-        
+
         // Identificar productos huérfanos de stock
         foreach ($stockDataByProduct as $productId => $data) {
-            if (!isset($finalNodesByProduct[$productId]) || count($finalNodesByProduct[$productId]) !== 1) {
+            if (! isset($finalNodesByProduct[$productId]) || count($finalNodesByProduct[$productId]) !== 1) {
                 $orphanProductIds[$productId] = true;
             }
         }
-        
+
         // Identificar productos huérfanos de re-procesados
         foreach ($reprocessedDataByProduct as $productId => $data) {
-            if (!isset($finalNodesByProduct[$productId]) || count($finalNodesByProduct[$productId]) !== 1) {
+            if (! isset($finalNodesByProduct[$productId]) || count($finalNodesByProduct[$productId]) !== 1) {
                 $orphanProductIds[$productId] = true;
             }
         }
-        
+
         // Identificar productos huérfanos de faltantes
         foreach ($missingDataByProduct as $productId => $data) {
-            if (!isset($finalNodesByProduct[$productId]) || count($finalNodesByProduct[$productId]) !== 1) {
+            if (! isset($finalNodesByProduct[$productId]) || count($finalNodesByProduct[$productId]) !== 1) {
                 $orphanProductIds[$productId] = true;
             }
         }
-        
+
         // ✨ Agrupar todos los productos huérfanos en un solo nodo de cada tipo
         // En lugar de crear un nodo por producto, unificamos todos los productos en uno
-        
+
         // Agrupar todos los productos huérfanos de venta
         $orphanSalesData = [];
         foreach ($orphanProductIds as $productId => $_) {
@@ -2143,17 +2181,17 @@ class Production extends Model
                 $orphanSalesData[$productId] = $salesDataByProduct[$productId];
             }
         }
-        
+
         // Crear UN SOLO nodo de venta con todos los productos huérfanos
-        if (!empty($orphanSalesData)) {
+        if (! empty($orphanSalesData)) {
             $orphanNode = $this->createSalesNodeForFinalNode(-1, $orphanSalesData);
             if ($orphanNode) {
                 $orphanNode['parentRecordId'] = null;  // Sin padre
-                $orphanNode['id'] = "sales-orphan";  // ID único para todos los productos huérfanos
+                $orphanNode['id'] = 'sales-orphan';  // ID único para todos los productos huérfanos
                 $orphanNodes[] = $orphanNode;
             }
         }
-        
+
         // Agrupar todos los productos huérfanos de stock
         $orphanStockData = [];
         foreach ($orphanProductIds as $productId => $_) {
@@ -2161,17 +2199,17 @@ class Production extends Model
                 $orphanStockData[$productId] = $stockDataByProduct[$productId];
             }
         }
-        
+
         // Crear UN SOLO nodo de stock con todos los productos huérfanos
-        if (!empty($orphanStockData)) {
+        if (! empty($orphanStockData)) {
             $orphanNode = $this->createStockNodeForFinalNode(-1, $orphanStockData);
             if ($orphanNode) {
                 $orphanNode['parentRecordId'] = null;  // Sin padre
-                $orphanNode['id'] = "stock-orphan";  // ID único para todos los productos huérfanos
+                $orphanNode['id'] = 'stock-orphan';  // ID único para todos los productos huérfanos
                 $orphanNodes[] = $orphanNode;
             }
         }
-        
+
         // Agrupar todos los productos huérfanos de re-procesados
         $orphanReprocessedData = [];
         foreach ($orphanProductIds as $productId => $_) {
@@ -2179,17 +2217,17 @@ class Production extends Model
                 $orphanReprocessedData[$productId] = $reprocessedDataByProduct[$productId];
             }
         }
-        
+
         // Crear UN SOLO nodo de re-procesados con todos los productos huérfanos
-        if (!empty($orphanReprocessedData)) {
+        if (! empty($orphanReprocessedData)) {
             $orphanNode = $this->createReprocessedNodeForFinalNode(-1, $orphanReprocessedData);
             if ($orphanNode) {
                 $orphanNode['parentRecordId'] = null;  // Sin padre
-                $orphanNode['id'] = "reprocessed-orphan";  // ID único para todos los productos huérfanos
+                $orphanNode['id'] = 'reprocessed-orphan';  // ID único para todos los productos huérfanos
                 $orphanNodes[] = $orphanNode;
             }
         }
-        
+
         // Agrupar todos los productos huérfanos de balance
         $orphanMissingData = [];
         $orphanSalesForBalance = [];
@@ -2209,10 +2247,10 @@ class Production extends Model
                 $orphanReprocessedForBalance[$productId] = $reprocessedDataByProduct[$productId];
             }
         }
-        
+
         // Crear UN SOLO nodo de balance con todos los productos huérfanos
         // Nota: Para nodos huérfanos, no tenemos outputs del nodo final, así que pasamos array vacío
-        if (!empty($orphanMissingData) || !empty($orphanSalesForBalance) || !empty($orphanStockForBalance) || !empty($orphanReprocessedForBalance)) {
+        if (! empty($orphanMissingData) || ! empty($orphanSalesForBalance) || ! empty($orphanStockForBalance) || ! empty($orphanReprocessedForBalance)) {
             $orphanNode = $this->createMissingNodeForFinalNode(
                 -1,
                 $orphanMissingData,
@@ -2223,41 +2261,41 @@ class Production extends Model
             );
             if ($orphanNode) {
                 $orphanNode['parentRecordId'] = null;  // Sin padre
-                $orphanNode['id'] = "balance-orphan";  // ID único para todos los productos huérfanos
+                $orphanNode['id'] = 'balance-orphan';  // ID único para todos los productos huérfanos
                 $orphanNodes[] = $orphanNode;
             }
         }
-        
+
         return $orphanNodes;
     }
 
     /**
      * Obtener productos disponibles con ese lote para facilitar creación de outputs
      * ✨ Agrupa por producto mostrando totales de cajas y peso desde stock, ventas y reprocesados
-     * 
+     *
      * Este método es útil para el frontend cuando el usuario necesita crear outputs
      * basándose en los productos que realmente existen en el sistema con ese lote.
-     * 
+     *
      * @return array Array de productos con sus totales
      */
     public function getAvailableProductsForOutputs(): array
     {
         $lot = $this->lot;
-        
+
         // Obtener datos de venta, stock y re-procesados
         $salesData = $this->getSalesDataByProduct($lot);
         $stockData = $this->getStockDataByProduct($lot);
         $reprocessedData = $this->getReprocessedDataByProduct($lot);
-        
+
         // Agrupar todos los productos únicos
         $allProductIds = collect();
         $allProductIds = $allProductIds->merge(array_keys($salesData));
         $allProductIds = $allProductIds->merge(array_keys($stockData));
         $allProductIds = $allProductIds->merge(array_keys($reprocessedData));
         $allProductIds = $allProductIds->unique()->values();
-        
+
         $productsData = [];
-        
+
         foreach ($allProductIds as $productId) {
             // Obtener información del producto
             $product = null;
@@ -2271,16 +2309,16 @@ class Production extends Model
                 $firstProcess = reset($reprocessedData[$productId]);
                 $product = $firstProcess['product'] ?? null;
             }
-            
+
             // Si no encontramos el producto, buscarlo en la BD
-            if (!$product) {
+            if (! $product) {
                 $product = \App\Models\Product::find($productId);
             }
-            
-            if (!$product) {
+
+            if (! $product) {
                 continue;
             }
-            
+
             // Calcular totales desde venta
             $salesBoxes = 0;
             $salesWeight = 0;
@@ -2293,7 +2331,7 @@ class Production extends Model
                     }
                 }
             }
-            
+
             // Calcular totales desde stock
             $stockBoxes = 0;
             $stockWeight = 0;
@@ -2306,7 +2344,7 @@ class Production extends Model
                     }
                 }
             }
-            
+
             // Calcular totales desde reprocesados
             $reprocessedBoxes = 0;
             $reprocessedWeight = 0;
@@ -2317,11 +2355,11 @@ class Production extends Model
                     $reprocessedWeight += $boxes->sum('net_weight');
                 }
             }
-            
+
             // Totales generales
             $totalBoxes = $salesBoxes + $stockBoxes + $reprocessedBoxes;
             $totalWeight = $salesWeight + $stockWeight + $reprocessedWeight;
-            
+
             $productsData[] = [
                 'product' => [
                     'id' => $product->id,
@@ -2345,12 +2383,12 @@ class Production extends Model
                 ],
             ];
         }
-        
+
         // Ordenar por nombre de producto
         usort($productsData, function ($a, $b) {
             return strcmp($a['product']['name'], $b['product']['name']);
         });
-        
+
         return $productsData;
     }
 }

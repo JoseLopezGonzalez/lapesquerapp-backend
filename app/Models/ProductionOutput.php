@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductionOutput extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = [
         'production_record_id',
@@ -76,7 +76,7 @@ class ProductionOutput extends Model
     {
         // Validar que el proceso pertenezca a un lote abierto
         $productionRecord = ProductionRecord::with('production')->find($this->production_record_id);
-        if (!$productionRecord) {
+        if (! $productionRecord) {
             throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
                 "El proceso de producción con ID {$this->production_record_id} no existe."
             );
@@ -130,6 +130,7 @@ class ProductionOutput extends Model
         if ($this->boxes > 0) {
             return $this->weight_kg / $this->boxes;
         }
+
         return 0;
     }
 
@@ -139,6 +140,7 @@ class ProductionOutput extends Model
     public function getAvailableWeightKgAttribute()
     {
         $consumed = $this->consumptions()->sum('consumed_weight_kg');
+
         return max(0, $this->weight_kg - $consumed);
     }
 
@@ -148,6 +150,7 @@ class ProductionOutput extends Model
     public function getAvailableBoxesAttribute()
     {
         $consumed = $this->consumptions()->sum('consumed_boxes');
+
         return max(0, $this->boxes - $consumed);
     }
 
@@ -165,7 +168,8 @@ class ProductionOutput extends Model
     public function isPartiallyConsumed()
     {
         $hasConsumption = $this->consumptions()->exists();
-        return $hasConsumption && !$this->isFullyConsumed();
+
+        return $hasConsumption && ! $this->isFullyConsumed();
     }
 
     /**
@@ -177,22 +181,23 @@ class ProductionOutput extends Model
             return 0;
         }
         $consumed = $this->consumptions()->sum('consumed_weight_kg');
+
         return ($consumed / $this->weight_kg) * 100;
     }
 
     /**
      * Calcular el coste por kg de este output
-     * 
+     *
      * Fórmula:
      * cost_per_kg = (
-     *     coste_materias_primas + 
-     *     coste_produccion_proceso + 
-     *     coste_personal_proceso + 
-     *     coste_operativos_proceso + 
-     *     coste_envases_proceso + 
-     *     coste_produccion_lote + 
-     *     coste_personal_lote + 
-     *     coste_operativos_lote + 
+     *     coste_materias_primas +
+     *     coste_produccion_proceso +
+     *     coste_personal_proceso +
+     *     coste_operativos_proceso +
+     *     coste_envases_proceso +
+     *     coste_produccion_lote +
+     *     coste_personal_lote +
+     *     coste_operativos_lote +
      *     coste_envases_lote
      * ) / weight_kg
      */
@@ -219,7 +224,7 @@ class ProductionOutput extends Model
         if (in_array($this->id, self::$costCalculationStack)) {
             return null; // Ya visitado, retornar null para evitar ciclo
         }
-        
+
         // Agregar a la pila
         self::$costCalculationStack[] = $this->id;
         $isRootCall = count(self::$costCalculationStack) === 1;
@@ -240,7 +245,7 @@ class ProductionOutput extends Model
         } finally {
             // Remover de la pila
             array_pop(self::$costCalculationStack);
-            
+
             // Si era la llamada raíz, limpiar completamente la pila (por si acaso)
             if ($isRootCall) {
                 self::$costCalculationStack = [];
@@ -256,7 +261,7 @@ class ProductionOutput extends Model
         $total = 0;
 
         // Cargar sources si no están cargados
-        if (!$this->relationLoaded('sources')) {
+        if (! $this->relationLoaded('sources')) {
             $this->load('sources');
         }
 
@@ -266,22 +271,22 @@ class ProductionOutput extends Model
                 $total += $sourceCost;
             } elseif ($source->source_type === ProductionOutputSource::SOURCE_TYPE_PARENT_OUTPUT) {
                 // Si el coste no está disponible, intentar calcularlo recursivamente
-                if (!$source->relationLoaded('productionOutputConsumption') && $source->production_output_consumption_id) {
+                if (! $source->relationLoaded('productionOutputConsumption') && $source->production_output_consumption_id) {
                     $source->load('productionOutputConsumption.productionOutput');
                 }
                 $consumption = $source->productionOutputConsumption;
                 if ($consumption && $consumption->productionOutput) {
                     $parentOutput = $consumption->productionOutput;
-                    
+
                     // Prevenir recursión infinita: si el output padre es el mismo que el actual, saltar
                     if ($parentOutput->id == $this->id) {
                         continue; // Ciclo detectado, saltar este source
                     }
-                    
+
                     // Calcular coste del output padre recursivamente usando getTotalCostAttribute
                     // La protección contra recursión se maneja en getTotalCostAttribute
                     $parentTotalCost = $parentOutput->total_cost;
-                    
+
                     if ($parentTotalCost !== null && $parentTotalCost > 0 && $parentOutput->weight_kg > 0) {
                         $parentCostPerKg = $parentTotalCost / $parentOutput->weight_kg;
                         $sourceWeight = $source->contributed_weight_kg ?? 0;
@@ -302,7 +307,7 @@ class ProductionOutput extends Model
     protected function calculateProcessCost(): float
     {
         $record = $this->productionRecord;
-        if (!$record) {
+        if (! $record) {
             return 0;
         }
 
@@ -329,6 +334,7 @@ class ProductionOutput extends Model
 
         // Distribuir proporcionalmente según el peso de este output
         $outputPercentage = ($this->weight_kg / $totalOutputWeight) * 100;
+
         return ($totalProcessCost * $outputPercentage) / 100;
     }
 
@@ -338,17 +344,17 @@ class ProductionOutput extends Model
     protected function calculateProductionCost(): float
     {
         $record = $this->productionRecord;
-        if (!$record) {
+        if (! $record) {
             return 0;
         }
 
         $production = $record->production;
-        if (!$production) {
+        if (! $production) {
             return 0;
         }
 
         // Verificar si este output es de un nodo final
-        if (!$this->isFinalOutput()) {
+        if (! $this->isFinalOutput()) {
             return 0;
         }
 
@@ -377,6 +383,7 @@ class ProductionOutput extends Model
 
         // Distribuir proporcionalmente según el peso de este output final
         $outputPercentage = ($this->weight_kg / $totalFinalOutputWeight) * 100;
+
         return ($totalProductionCost * $outputPercentage) / 100;
     }
 
@@ -386,7 +393,7 @@ class ProductionOutput extends Model
     protected function isFinalOutput(): bool
     {
         $record = $this->productionRecord;
-        if (!$record) {
+        if (! $record) {
             return false;
         }
 
@@ -403,18 +410,18 @@ class ProductionOutput extends Model
         $allRecords = $production->records()
             ->with(['inputs', 'children', 'outputs'])
             ->get();
-        
+
         // Filtrar solo los que son nodos finales
         $finalRecords = $allRecords->filter(function ($record) {
             return $record->isFinal();
         });
-        
+
         // Obtener todos los outputs de los nodos finales
         $finalOutputs = collect();
         foreach ($finalRecords as $record) {
             $finalOutputs = $finalOutputs->merge($record->outputs);
         }
-        
+
         return $finalOutputs;
     }
 
@@ -451,7 +458,7 @@ class ProductionOutput extends Model
 
         // 1. Costes de materias primas
         // Cargar sources si no están cargados
-        if (!$this->relationLoaded('sources')) {
+        if (! $this->relationLoaded('sources')) {
             $this->load('sources');
         }
 
@@ -459,11 +466,19 @@ class ProductionOutput extends Model
         $breakdown['materials']['total_cost'] = $materialsCost;
         $breakdown['materials']['cost_per_kg'] = $this->weight_kg > 0 ? $materialsCost / $this->weight_kg : 0;
 
+        $totalSourceKg = (float) $this->sources->sum(
+            fn ($s) => (float) ($s->contributed_weight_kg ?? 0)
+        );
+
         foreach ($this->sources as $source) {
+            $pct = ProductionOutputSource::contributionPercentageOfSourceMix(
+                $source->contributed_weight_kg !== null ? (float) $source->contributed_weight_kg : null,
+                $totalSourceKg
+            );
             $breakdown['materials']['sources'][] = [
                 'source_type' => $source->source_type,
                 'contributed_weight_kg' => $source->contributed_weight_kg,
-                'contribution_percentage' => $source->contribution_percentage,
+                'contribution_percentage' => $pct !== null ? round($pct, 2) : null,
                 'source_cost_per_kg' => $source->source_cost_per_kg,
                 'source_total_cost' => $source->source_total_cost,
             ];
@@ -495,9 +510,9 @@ class ProductionOutput extends Model
 
                 // Calcular totales por tipo
                 foreach (['production', 'labor', 'operational', 'packaging'] as $type) {
-                    $breakdown['process_costs'][$type]['cost_per_kg'] = 
-                        $this->weight_kg > 0 
-                            ? $breakdown['process_costs'][$type]['total_cost'] / $this->weight_kg 
+                    $breakdown['process_costs'][$type]['cost_per_kg'] =
+                        $this->weight_kg > 0
+                            ? $breakdown['process_costs'][$type]['total_cost'] / $this->weight_kg
                             : 0;
                 }
 
@@ -507,7 +522,7 @@ class ProductionOutput extends Model
                                    $breakdown['process_costs']['operational']['total_cost'] +
                                    $breakdown['process_costs']['packaging']['total_cost'];
                 $breakdown['process_costs']['total']['total_cost'] = $totalProcessCost;
-                $breakdown['process_costs']['total']['cost_per_kg'] = 
+                $breakdown['process_costs']['total']['cost_per_kg'] =
                     $this->weight_kg > 0 ? $totalProcessCost / $this->weight_kg : 0;
             }
         }
@@ -541,9 +556,9 @@ class ProductionOutput extends Model
 
                     // Calcular totales por tipo
                     foreach (['production', 'labor', 'operational', 'packaging'] as $type) {
-                        $breakdown['production_costs'][$type]['cost_per_kg'] = 
-                            $this->weight_kg > 0 
-                                ? $breakdown['production_costs'][$type]['total_cost'] / $this->weight_kg 
+                        $breakdown['production_costs'][$type]['cost_per_kg'] =
+                            $this->weight_kg > 0
+                                ? $breakdown['production_costs'][$type]['total_cost'] / $this->weight_kg
                                 : 0;
                     }
 
@@ -553,17 +568,17 @@ class ProductionOutput extends Model
                                           $breakdown['production_costs']['operational']['total_cost'] +
                                           $breakdown['production_costs']['packaging']['total_cost'];
                     $breakdown['production_costs']['total']['total_cost'] = $totalProductionCost;
-                    $breakdown['production_costs']['total']['cost_per_kg'] = 
+                    $breakdown['production_costs']['total']['cost_per_kg'] =
                         $this->weight_kg > 0 ? $totalProductionCost / $this->weight_kg : 0;
                 }
             }
         }
 
         // 4. Total general
-        $totalCost = $materialsCost + 
-                    $breakdown['process_costs']['total']['total_cost'] + 
+        $totalCost = $materialsCost +
+                    $breakdown['process_costs']['total']['total_cost'] +
                     $breakdown['production_costs']['total']['total_cost'];
-        
+
         $breakdown['total']['total_cost'] = $totalCost;
         $breakdown['total']['cost_per_kg'] = $this->weight_kg > 0 ? $totalCost / $this->weight_kg : 0;
 

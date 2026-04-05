@@ -31,6 +31,7 @@ class ProductionOutputService
                 'productionRecord.production',
                 'product',
                 'sources.product',
+                'sources.productionOutput.productionRecord',
                 'sources.productionOutputConsumption.productionOutput.product',
                 'sources.productionOutputConsumption.productionOutput.productionRecord.production',
             ]);
@@ -45,15 +46,20 @@ class ProductionOutputService
     protected function createSources(ProductionOutput $output, array $sources): void
     {
         foreach ($sources as $sourceData) {
-            ProductionOutputSource::create([
+            $source = new ProductionOutputSource([
                 'production_output_id' => $output->id,
                 'source_type' => $sourceData['source_type'],
                 'product_id' => $sourceData['product_id'] ?? null,
                 'production_output_consumption_id' => $sourceData['production_output_consumption_id'] ?? null,
                 'contributed_weight_kg' => $sourceData['contributed_weight_kg'] ?? null,
-                'contribution_percentage' => $sourceData['contribution_percentage'] ?? null,
                 'contributed_boxes' => $sourceData['contributed_boxes'] ?? 0,
             ]);
+            if (array_key_exists('contribution_percentage', $sourceData)
+                && $sourceData['contribution_percentage'] !== null
+                && $sourceData['contribution_percentage'] !== '') {
+                $source->contributionPercentageInput = (float) $sourceData['contribution_percentage'];
+            }
+            $source->save();
         }
     }
 
@@ -94,15 +100,12 @@ class ProductionOutputService
                 continue;
             }
 
-            $percentage = ($contributedWeight / $totalInputWeight) * 100;
-
             ProductionOutputSource::create([
                 'production_output_id' => $output->id,
                 'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_PRODUCT,
                 'product_id' => (int) $productId,
                 'production_output_consumption_id' => null,
                 'contributed_weight_kg' => $contributedWeight,
-                'contribution_percentage' => $percentage,
                 'contributed_boxes' => 0,
             ]);
         }
@@ -110,18 +113,12 @@ class ProductionOutputService
         foreach ($consumptions as $consumption) {
             $consumptionWeight = $consumption->consumed_weight_kg ?? 0;
             if ($consumptionWeight > 0) {
-                // Porcentaje del consumo real que representa este consumo
-                $percentage = ($consumptionWeight / $totalInputWeight) * 100;
-                // El peso contribuido es el peso REAL consumido
-                $contributedWeight = $consumptionWeight;
-
                 ProductionOutputSource::create([
                     'production_output_id' => $output->id,
                     'source_type' => ProductionOutputSource::SOURCE_TYPE_PARENT_OUTPUT,
                     'product_id' => null,
                     'production_output_consumption_id' => $consumption->id,
-                    'contributed_weight_kg' => $contributedWeight,
-                    'contribution_percentage' => $percentage,
+                    'contributed_weight_kg' => $consumptionWeight,
                     'contributed_boxes' => $consumption->consumed_boxes ?? 0,
                 ]);
             }
@@ -151,6 +148,7 @@ class ProductionOutputService
                 'productionRecord.production',
                 'product',
                 'sources.product',
+                'sources.productionOutput.productionRecord',
                 'sources.productionOutputConsumption.productionOutput.product',
                 'sources.productionOutputConsumption.productionOutput.productionRecord.production',
             ]);

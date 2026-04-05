@@ -26,6 +26,7 @@ class TenantProductionAdvancedSeeder extends Seeder
 
         if ($products->count() < 4 || $boxes->count() < 4) {
             $this->command?->warn('TenantProductionAdvancedSeeder: faltan productos o cajas disponibles para cerrar el dataset de producción.');
+
             return;
         }
 
@@ -187,7 +188,6 @@ class TenantProductionAdvancedSeeder extends Seeder
                 'product_id' => null,
                 'contributed_weight_kg' => (float) $consumption->consumed_weight_kg,
                 'contributed_boxes' => (int) $consumption->consumed_boxes,
-                'contribution_percentage' => null,
             ]
         );
     }
@@ -201,7 +201,6 @@ class TenantProductionAdvancedSeeder extends Seeder
                 'product_id' => null,
                 'contributed_weight_kg' => (float) $consumption->consumed_weight_kg,
                 'contributed_boxes' => (int) $consumption->consumed_boxes,
-                'contribution_percentage' => null,
             ]
         );
     }
@@ -224,7 +223,6 @@ class TenantProductionAdvancedSeeder extends Seeder
                         'production_output_consumption_id' => null,
                         'contributed_weight_kg' => $totalWeight,
                         'contributed_boxes' => 0,
-                        'contribution_percentage' => null,
                     ]
                 );
             });

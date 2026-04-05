@@ -33,7 +33,7 @@ class UpdateProductionOutputRequest extends FormRequest
             'sources.*.production_input_id' => 'prohibited',
             'sources.*.production_output_consumption_id' => 'required_if:sources.*.source_type,parent_output|nullable|exists:tenant.production_output_consumptions,id',
             'sources.*.contributed_weight_kg' => 'nullable|numeric|min:0',
-            'sources.*.contribution_percentage' => 'nullable|numeric|min:0|max:100',
+            'sources.*.contribution_percentage' => 'nullable|numeric|min:0',
             'sources.*.contributed_boxes' => 'nullable|integer|min:0',
         ];
     }
@@ -45,7 +45,7 @@ class UpdateProductionOutputRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $sources = $this->input('sources');
-            
+
             if ($sources && is_array($sources) && count($sources) > 0) {
                 // Verificar que cada source tenga O bien peso O bien porcentaje
                 foreach ($sources as $index => $source) {
@@ -55,15 +55,15 @@ class UpdateProductionOutputRequest extends FormRequest
                     $hasPercentage = array_key_exists('contribution_percentage', $source)
                         && $source['contribution_percentage'] !== null
                         && $source['contribution_percentage'] !== '';
-                    
-                    if (!$hasWeight && !$hasPercentage) {
+
+                    if (! $hasWeight && ! $hasPercentage) {
                         $validator->errors()->add(
                             "sources.{$index}",
                             'Se debe especificar O bien contributed_weight_kg O bien contribution_percentage.'
                         );
                     }
 
-                    if (($source['source_type'] ?? null) === 'stock_product' && !empty($source['product_id'])) {
+                    if (($source['source_type'] ?? null) === 'stock_product' && ! empty($source['product_id'])) {
                         $outputId = $this->route('id') ?? $this->route('production_output');
                         $recordId = \App\Models\ProductionOutput::query()->whereKey($outputId)->value('production_record_id');
 

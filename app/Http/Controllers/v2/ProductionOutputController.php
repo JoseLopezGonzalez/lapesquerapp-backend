@@ -28,6 +28,7 @@ class ProductionOutputController extends Controller
             'productionRecord.production',
             'product',
             'sources.product',
+            'sources.productionOutput.productionRecord',
             'sources.productionOutputConsumption.productionOutput.product',
             'sources.productionOutputConsumption.productionOutput.productionRecord.production',
         ];

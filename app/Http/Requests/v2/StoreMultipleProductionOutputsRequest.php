@@ -34,7 +34,7 @@ class StoreMultipleProductionOutputsRequest extends FormRequest
             'outputs.*.sources.*.production_input_id' => 'prohibited',
             'outputs.*.sources.*.production_output_consumption_id' => 'required_if:outputs.*.sources.*.source_type,parent_output|nullable|exists:tenant.production_output_consumptions,id',
             'outputs.*.sources.*.contributed_weight_kg' => 'nullable|numeric|min:0',
-            'outputs.*.sources.*.contribution_percentage' => 'nullable|numeric|min:0|max:100',
+            'outputs.*.sources.*.contribution_percentage' => 'nullable|numeric|min:0',
             'outputs.*.sources.*.contributed_boxes' => 'nullable|integer|min:0',
         ];
     }
@@ -69,7 +69,7 @@ class StoreMultipleProductionOutputsRequest extends FormRequest
                         );
                     }
 
-                    if (($source['source_type'] ?? null) === 'stock_product' && !empty($source['product_id']) && $recordId) {
+                    if (($source['source_type'] ?? null) === 'stock_product' && ! empty($source['product_id']) && $recordId) {
                         $productExistsInInputs = \App\Models\ProductionInput::query()
                             ->where('production_record_id', $recordId)
                             ->whereHas('box', fn ($query) => $query->where('article_id', $source['product_id']))

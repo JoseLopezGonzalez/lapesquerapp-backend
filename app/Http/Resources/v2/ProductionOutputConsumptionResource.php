@@ -24,14 +24,23 @@ class ProductionOutputConsumptionResource extends JsonResource
         $parentProcess = $parentRecord && $parentRecord->relationLoaded('process')
             ? $parentRecord->process
             : null;
+        $costPerKg = $productionOutput && $productionOutput->cost_per_kg !== null
+            ? (float) $productionOutput->cost_per_kg
+            : null;
+        $consumedWeightKg = (float) ($this->consumed_weight_kg ?? 0);
+        $consumedTotalCost = $costPerKg !== null
+            ? $consumedWeightKg * $costPerKg
+            : null;
 
         return [
             'id' => $this->id,
             'productionRecordId' => $this->production_record_id,
             'productionOutputId' => $this->production_output_id,
-            'consumedWeightKg' => $this->consumed_weight_kg,
+            'consumedWeightKg' => $consumedWeightKg,
             'consumedBoxes' => $this->consumed_boxes,
             'notes' => $this->notes,
+            'costPerKg' => $costPerKg,
+            'totalCost' => $consumedTotalCost,
             
             // Información del output consumido
             'productionOutput' => $this->whenLoaded('productionOutput', function () {
@@ -87,4 +96,3 @@ class ProductionOutputConsumptionResource extends JsonResource
         ];
     }
 }
-
