@@ -475,6 +475,10 @@ class ProductionRecord extends Model
 
         // Preparar consumos de outputs del padre
         $parentOutputConsumptionsData = $this->parentOutputConsumptions->map(function ($consumption) {
+            $costPerKg = $consumption->productionOutput?->cost_per_kg;
+            $consumedWeightKg = (float) $consumption->consumed_weight_kg;
+            $totalCost = $costPerKg !== null ? $consumedWeightKg * (float) $costPerKg : null;
+
             return [
                 'id' => $consumption->id,
                 'type' => 'parent_output',
@@ -490,9 +494,11 @@ class ProductionRecord extends Model
                     'weightKg' => (float) $consumption->productionOutput->weight_kg,
                     'boxes' => $consumption->productionOutput->boxes,
                 ] : null,
-                'consumedWeightKg' => (float) $consumption->consumed_weight_kg,
+                'consumedWeightKg' => $consumedWeightKg,
                 'consumedBoxes' => $consumption->consumed_boxes,
-                'weight' => (float) $consumption->consumed_weight_kg,
+                'weight' => $consumedWeightKg,
+                'costPerKg' => $costPerKg,
+                'totalCost' => $totalCost,
                 'notes' => $consumption->notes,
                 'createdAt' => $consumption->created_at?->toIso8601String(),
                 'updatedAt' => $consumption->updated_at?->toIso8601String(),
