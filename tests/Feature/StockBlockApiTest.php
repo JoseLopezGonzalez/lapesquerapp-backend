@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Models\Box;
 use App\Models\CeboDispatch;
 use App\Models\Country;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Pallet;
+use App\Models\PalletBox;
 use App\Models\PaymentTerm;
 use App\Models\Product;
 use App\Models\RawMaterialReception;
@@ -34,8 +36,8 @@ use Tests\TestCase;
  */
 class StockBlockApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?string $token = null;
 
@@ -111,6 +113,7 @@ class StockBlockApiTest extends TestCase
                 'transport_id' => $transport->id,
             ]
         );
+
         return Order::on('tenant')->create([
             'customer_id' => $customer->id,
             'payment_term_id' => $paymentTerm->id,
@@ -127,8 +130,8 @@ class StockBlockApiTest extends TestCase
 
     private function createTenantAndUser(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'stock-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'stock-'.uniqid();
         Tenant::create([
             'name' => 'Test Tenant Stock',
             'subdomain' => $slug,
@@ -138,7 +141,7 @@ class StockBlockApiTest extends TestCase
 
         $user = User::create([
             'name' => 'Test User Stock',
-            'email' => $slug . '@test.com',
+            'email' => $slug.'@test.com',
             'password' => bcrypt('password'),
             'role' => Role::Administrador->value,
         ]);
@@ -151,7 +154,7 @@ class StockBlockApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $this->token,
+            'Authorization' => 'Bearer '.$this->token,
             'Accept' => 'application/json',
         ];
     }
@@ -207,6 +210,70 @@ class StockBlockApiTest extends TestCase
         $this->assertIsArray($response->json());
     }
 
+    public function test_total_stock_by_products_includes_average_cost_per_kg_only_from_boxes_with_cost(): void
+    {
+        $this->seedTenantForReceptions();
+        $supplier = Supplier::on('tenant')->first();
+        $product = Product::on('tenant')->first();
+
+        $this->assertNotNull($supplier);
+        $this->assertNotNull($product);
+
+        $reception = RawMaterialReception::on('tenant')->create([
+            'supplier_id' => $supplier->id,
+            'date' => now()->format('Y-m-d'),
+            'notes' => null,
+            'creation_mode' => RawMaterialReception::CREATION_MODE_LINES,
+        ]);
+        $reception->products()->create([
+            'product_id' => $product->id,
+            'net_weight' => 15,
+            'price' => 2.0,
+            'lot' => 'LOT-COSTED',
+        ]);
+
+        $pallet = Pallet::factory()->create([
+            'status' => Pallet::STATE_REGISTERED,
+            'reception_id' => $reception->id,
+            'order_id' => null,
+        ]);
+
+        $costedBoxA = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-COSTED',
+            'net_weight' => 10,
+            'gross_weight' => 10.4,
+        ]);
+        $costedBoxB = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-COSTED',
+            'net_weight' => 5,
+            'gross_weight' => 5.2,
+        ]);
+        $uncostedBox = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-WITHOUT-COST',
+            'net_weight' => 3,
+            'gross_weight' => 3.2,
+        ]);
+
+        PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $costedBoxA->id]);
+        PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $costedBoxB->id]);
+        PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $uncostedBox->id]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/stores/total-stock-by-products');
+
+        $response->assertOk();
+
+        $row = collect($response->json())->firstWhere('id', $product->id);
+
+        $this->assertNotNull($row);
+        $this->assertEquals(18.0, $row['total_kg']);
+        $this->assertEquals(2.0, $row['average_cost_per_kg']);
+        $this->assertEquals(100.0, $row['percentage']);
+    }
+
     public function test_reception_chart_data_returns_422_without_required_params(): void
     {
         $response = $this->withHeaders($this->authHeaders())
@@ -219,7 +286,7 @@ class StockBlockApiTest extends TestCase
     public function test_reception_chart_data_returns_200_with_valid_params(): void
     {
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/raw-material-receptions/reception-chart-data?' . http_build_query([
+            ->getJson('/api/v2/raw-material-receptions/reception-chart-data?'.http_build_query([
                 'dateFrom' => '2025-01-01',
                 'dateTo' => '2025-01-31',
                 'valueType' => 'quantity',
@@ -242,7 +309,7 @@ class StockBlockApiTest extends TestCase
     public function test_dispatch_chart_data_returns_200_with_valid_params(): void
     {
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/cebo-dispatches/dispatch-chart-data?' . http_build_query([
+            ->getJson('/api/v2/cebo-dispatches/dispatch-chart-data?'.http_build_query([
                 'dateFrom' => '2025-01-01',
                 'dateTo' => '2025-01-31',
                 'valueType' => 'amount',
@@ -256,14 +323,14 @@ class StockBlockApiTest extends TestCase
     public function test_can_show_store(): void
     {
         $store = Store::create([
-            'name' => 'Almacén Test ' . uniqid(),
+            'name' => 'Almacén Test '.uniqid(),
             'temperature' => 2.5,
             'capacity' => 100,
             'map' => null,
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/stores/' . $store->id);
+            ->getJson('/api/v2/stores/'.$store->id);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.id', $store->id);
@@ -298,8 +365,8 @@ class StockBlockApiTest extends TestCase
             'boxes' => [
                 [
                     'product' => ['id' => $product->id],
-                    'lot' => 'LOT-' . uniqid(),
-                    'gs1128' => '01000000000000001' . str_pad(rand(1, 99), 2, '0'),
+                    'lot' => 'LOT-'.uniqid(),
+                    'gs1128' => '01000000000000001'.str_pad(rand(1, 99), 2, '0'),
                     'grossWeight' => 10.5,
                     'netWeight' => 9.0,
                 ],
@@ -365,7 +432,7 @@ class StockBlockApiTest extends TestCase
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/raw-material-receptions/' . $reception->id);
+            ->getJson('/api/v2/raw-material-receptions/'.$reception->id);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.id', $reception->id);
@@ -410,7 +477,7 @@ class StockBlockApiTest extends TestCase
         ];
 
         $response = $this->withHeaders($this->authHeaders())
-            ->putJson('/api/v2/raw-material-receptions/' . $reception->id, $payload);
+            ->putJson('/api/v2/raw-material-receptions/'.$reception->id, $payload);
 
         $response->assertStatus(200);
         $response->assertJsonPath('message', 'Recepción de materia prima actualizada correctamente.');
@@ -445,7 +512,7 @@ class StockBlockApiTest extends TestCase
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/raw-material-receptions/' . $reception->id);
+            ->deleteJson('/api/v2/raw-material-receptions/'.$reception->id);
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('raw_material_receptions', ['id' => $reception->id], 'tenant');
@@ -540,7 +607,7 @@ class StockBlockApiTest extends TestCase
 
         // Assert via API show so we read with same tenant context as the update
         $showResponse = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/raw-material-receptions/' . $reception->id);
+            ->getJson('/api/v2/raw-material-receptions/'.$reception->id);
         $showResponse->assertStatus(200);
         $showResponse->assertJsonPath('data.declaredTotalAmount', 999);
         $showResponse->assertJsonPath('data.declaredTotalNetWeight', 75);
@@ -562,7 +629,7 @@ class StockBlockApiTest extends TestCase
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/raw-material-receptions/' . $reception->id);
+            ->deleteJson('/api/v2/raw-material-receptions/'.$reception->id);
 
         $response->assertStatus(500);
         $this->assertDatabaseHas('raw_material_receptions', ['id' => $reception->id], 'tenant');
@@ -587,7 +654,7 @@ class StockBlockApiTest extends TestCase
         $pallet->save();
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/raw-material-receptions/' . $reception->id);
+            ->deleteJson('/api/v2/raw-material-receptions/'.$reception->id);
 
         $response->assertStatus(500);
         $this->assertDatabaseHas('raw_material_receptions', ['id' => $reception->id], 'tenant');
@@ -718,7 +785,7 @@ class StockBlockApiTest extends TestCase
         ];
 
         $response = $this->withHeaders($this->authHeaders())
-            ->putJson('/api/v2/raw-material-receptions/' . $reception->id, $payload);
+            ->putJson('/api/v2/raw-material-receptions/'.$reception->id, $payload);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.notes', 'Notas actualizadas con palet vinculado');
@@ -809,7 +876,7 @@ class StockBlockApiTest extends TestCase
         ];
 
         $response = $this->withHeaders($this->authHeaders())
-            ->putJson('/api/v2/raw-material-receptions/' . $reception->id, $payload);
+            ->putJson('/api/v2/raw-material-receptions/'.$reception->id, $payload);
 
         $response->assertStatus(500);
         $this->assertStringContainsString('vinculado a un pedido', $response->getContent());
@@ -888,7 +955,7 @@ class StockBlockApiTest extends TestCase
         $dispatch->products()->create(['product_id' => $product->id, 'net_weight' => 100]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/cebo-dispatches/' . $dispatch->id);
+            ->getJson('/api/v2/cebo-dispatches/'.$dispatch->id);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.id', $dispatch->id);
@@ -917,7 +984,7 @@ class StockBlockApiTest extends TestCase
         ];
 
         $response = $this->withHeaders($this->authHeaders())
-            ->putJson('/api/v2/cebo-dispatches/' . $dispatch->id, $payload);
+            ->putJson('/api/v2/cebo-dispatches/'.$dispatch->id, $payload);
 
         $response->assertStatus(200);
         $response->assertJsonPath('message', 'Despacho de cebo actualizado correctamente.');
@@ -939,7 +1006,7 @@ class StockBlockApiTest extends TestCase
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/cebo-dispatches/' . $dispatch->id);
+            ->deleteJson('/api/v2/cebo-dispatches/'.$dispatch->id);
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('cebo_dispatches', ['id' => $dispatch->id], 'tenant');

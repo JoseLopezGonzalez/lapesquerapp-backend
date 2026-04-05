@@ -203,6 +203,7 @@ class StoreController extends Controller
         $storedPallets = \App\Models\StoredPallet::with([
             'pallet.boxes.box.productionInputs', // Cargar productionInputs para determinar disponibilidad
             'pallet.boxes.box.product',
+            'pallet.boxes.box.palletBox.pallet.reception.products',
         ])->get();
 
         // Obtener palets registrados (status = 1) que no tienen StoredPallet
@@ -210,46 +211,54 @@ class StoreController extends Controller
             ->with([
                 'boxes.box.productionInputs',
                 'boxes.box.product',
+                'boxes.box.palletBox.pallet.reception.products',
             ])
             ->get();
 
-        $products = \App\Models\Product::all();
+        $availableBoxes = collect();
 
-        $productsInventory = [];
-
-        foreach ($products as $product) {
-            $totalNetWeight = 0;
-
-            // Procesar palets almacenados
-            foreach ($storedPallets as $storedPallet) {
-                foreach ($storedPallet->pallet->boxes as $palletBox) {
-                    // Solo incluir cajas disponibles (no usadas en producción)
-                    if ($palletBox->box->product->id == $product->id && $palletBox->box->isAvailable) {
-                        $totalNetWeight += $palletBox->box->net_weight;
-                    }
+        foreach ($storedPallets as $storedPallet) {
+            foreach ($storedPallet->pallet->boxes as $palletBox) {
+                $box = $palletBox->box;
+                if ($box && $box->product && $box->isAvailable) {
+                    $availableBoxes->push($box);
                 }
             }
-
-            // Procesar palets registrados
-            foreach ($registeredPallets as $pallet) {
-                foreach ($pallet->boxes as $palletBox) {
-                    // Solo incluir cajas disponibles (no usadas en producción)
-                    if ($palletBox->box->product->id == $product->id && $palletBox->box->isAvailable) {
-                        $totalNetWeight += $palletBox->box->net_weight;
-                    }
-                }
-            }
-
-            if ($totalNetWeight == 0) {
-                continue;
-            }
-
-            $productsInventory[] = [
-                'id' => $product->id,
-                'name' => $product->name,
-                'total_kg' => round($totalNetWeight, 2),
-            ];
         }
+
+        foreach ($registeredPallets as $pallet) {
+            foreach ($pallet->boxes as $palletBox) {
+                $box = $palletBox->box;
+                if ($box && $box->product && $box->isAvailable) {
+                    $availableBoxes->push($box);
+                }
+            }
+        }
+
+        $productsInventory = $availableBoxes
+            ->groupBy(fn ($box) => (int) $box->product->id)
+            ->map(function ($boxes) {
+                $product = $boxes->first()->product;
+                $totalNetWeight = (float) $boxes->sum(fn ($box) => (float) ($box->net_weight ?? 0));
+
+                $boxesWithCost = $boxes->filter(function ($box) {
+                    return $box->cost_per_kg !== null && (float) ($box->net_weight ?? 0) > 0;
+                });
+
+                $costedWeight = (float) $boxesWithCost->sum(fn ($box) => (float) ($box->net_weight ?? 0));
+                $costedTotal = (float) $boxesWithCost->sum(fn ($box) => (float) ($box->total_cost ?? 0));
+
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'total_kg' => round($totalNetWeight, 2),
+                    'average_cost_per_kg' => $costedWeight > 0
+                        ? round($costedTotal / $costedWeight, 4)
+                        : null,
+                ];
+            })
+            ->values()
+            ->all();
 
         // Calcular total global
         $totalNetWeight = array_sum(array_column($productsInventory, 'total_kg'));
