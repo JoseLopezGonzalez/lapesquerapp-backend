@@ -124,6 +124,54 @@ class ProductionBlockApiTest extends TestCase
             ->assertJsonPath('data.parent.process.name', 'Corte');
     }
 
+    public function test_production_process_tree_stock_inputs_include_cost_metrics(): void
+    {
+        [$production, $parentRecord, $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $sourceProduct = $this->createValidProduct($species, $captureZone, '10I');
+
+        ProductionOutput::create([
+            'production_record_id' => $childRecord->id,
+            'product_id' => $sourceProduct->id,
+            'lot_id' => 'L-INPUT-COST',
+            'boxes' => 10,
+            'weight_kg' => 100,
+        ]);
+
+        ProductionCost::create([
+            'production_record_id' => $childRecord->id,
+            'production_id' => null,
+            'cost_type' => ProductionCost::COST_TYPE_PRODUCTION,
+            'name' => 'Proceso final input',
+            'total_cost' => 50,
+            'cost_per_kg' => null,
+            'distribution_unit' => 'total',
+            'cost_date' => now()->toDateString(),
+        ]);
+
+        $box = Box::factory()->create([
+            'article_id' => $sourceProduct->id,
+            'lot' => $production->lot,
+            'net_weight' => 20,
+            'gross_weight' => 21,
+        ]);
+
+        ProductionInput::create([
+            'production_record_id' => $parentRecord->id,
+            'box_id' => $box->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/'.$production->id.'/process-tree');
+
+        $response->assertOk()
+            ->assertJsonPath('data.processNodes.0.inputs.0.type', 'stock_box')
+            ->assertJsonPath('data.processNodes.0.inputs.0.weight', '20.000')
+            ->assertJsonPath('data.processNodes.0.inputs.0.costPerKg', 0.5)
+            ->assertJsonPath('data.processNodes.0.inputs.0.totalCost', 10);
+    }
+
     public function test_production_record_tree_includes_output_and_node_accounting_costs(): void
     {
         [, $parentRecord] = $this->createProductionWithRecords();
@@ -254,6 +302,61 @@ class ProductionBlockApiTest extends TestCase
             ->assertJsonPath('data.processNodes.0.children.0.children.0.summary.marginTotalExTax', 70)
             ->assertJsonPath('data.processNodes.0.children.0.children.0.summary.marginPerKgExTax', 3.5)
             ->assertJsonPath('data.processNodes.0.children.0.children.0.summary.marginPercentageExTax', 87.5);
+    }
+
+    public function test_production_process_tree_stock_node_includes_cost_metrics(): void
+    {
+        [$production, , $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $product = $this->createValidProduct($species, $captureZone, '10T');
+
+        ProductionOutput::create([
+            'production_record_id' => $childRecord->id,
+            'product_id' => $product->id,
+            'lot_id' => 'L-STOCK-TREE',
+            'boxes' => 10,
+            'weight_kg' => 100,
+        ]);
+
+        ProductionCost::create([
+            'production_record_id' => $childRecord->id,
+            'production_id' => null,
+            'cost_type' => ProductionCost::COST_TYPE_PRODUCTION,
+            'name' => 'Proceso final stock',
+            'total_cost' => 50,
+            'cost_per_kg' => null,
+            'distribution_unit' => 'total',
+            'cost_date' => now()->toDateString(),
+        ]);
+
+        $box = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => $production->lot,
+            'net_weight' => 20,
+            'gross_weight' => 21,
+        ]);
+
+        $pallet = Pallet::factory()->stored()->create([
+            'order_id' => null,
+        ]);
+
+        PalletBox::create([
+            'box_id' => $box->id,
+            'pallet_id' => $pallet->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/'.$production->id.'/process-tree');
+
+        $response->assertOk()
+            ->assertJsonPath('data.processNodes.0.children.0.children.0.type', 'stock')
+            ->assertJsonPath('data.processNodes.0.children.0.children.0.stores.0.products.0.costPerKg', 0.5)
+            ->assertJsonPath('data.processNodes.0.children.0.children.0.stores.0.products.0.costTotal', 10)
+            ->assertJsonPath('data.processNodes.0.children.0.children.0.stores.0.costPerKg', 0.5)
+            ->assertJsonPath('data.processNodes.0.children.0.children.0.stores.0.costTotal', 10)
+            ->assertJsonPath('data.processNodes.0.children.0.children.0.summary.costPerKg', 0.5)
+            ->assertJsonPath('data.processNodes.0.children.0.children.0.summary.costTotal', 10);
     }
 
     public function test_available_outputs_keeps_current_record_consumption_when_fully_consumed(): void

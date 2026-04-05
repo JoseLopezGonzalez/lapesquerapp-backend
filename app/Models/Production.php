@@ -1617,6 +1617,7 @@ class Production extends Model
         $totalBoxes = 0;
         $totalNetWeight = 0;
         $totalPallets = 0;
+        $nodeCostTotal = 0.0;
 
         foreach ($stockDataByProduct as $productId => $productStores) {
             foreach ($productStores as $storeId => $storeData) {
@@ -1633,6 +1634,7 @@ class Production extends Model
                 $palletsData = [];
                 $productBoxes = 0;
                 $productNetWeight = 0;
+                $productCostTotal = 0.0;
 
                 foreach ($storeData['pallets'] as $palletData) {
                     $pallet = $palletData['pallet'];
@@ -1651,6 +1653,9 @@ class Production extends Model
 
                     $productBoxes += $availableBoxesCount;
                     $productNetWeight += $totalAvailableWeight;
+                    $productCostTotal += $boxes->sum(function ($box) {
+                        return (float) ($box->total_cost ?? 0);
+                    });
                     $totalPallets++;
                 }
 
@@ -1663,12 +1668,15 @@ class Production extends Model
                     'pallets' => $palletsData,
                     'totalBoxes' => $productBoxes,
                     'totalNetWeight' => round($productNetWeight, 2),
+                    'costPerKg' => $productNetWeight > 0 ? round($productCostTotal / $productNetWeight, 4) : 0.0,
+                    'costTotal' => round($productCostTotal, 2),
                 ];
 
                 $allProducts[$productId] = $storeData['product'];
 
                 $totalBoxes += $productBoxes;
                 $totalNetWeight += $productNetWeight;
+                $nodeCostTotal += $productCostTotal;
             }
         }
 
@@ -1680,6 +1688,7 @@ class Production extends Model
             // Calcular totales del almacén
             $storeTotalBoxes = array_sum(array_column($storeProducts, 'totalBoxes'));
             $storeTotalNetWeight = array_sum(array_column($storeProducts, 'totalNetWeight'));
+            $storeCostTotal = array_sum(array_column($storeProducts, 'costTotal'));
 
             $storesData[] = [
                 'store' => [
@@ -1690,6 +1699,8 @@ class Production extends Model
                 'products' => $storeProducts,  // 👈 Array de productos
                 'totalBoxes' => $storeTotalBoxes,
                 'totalNetWeight' => round($storeTotalNetWeight, 2),
+                'costPerKg' => $storeTotalNetWeight > 0 ? round($storeCostTotal / $storeTotalNetWeight, 4) : 0.0,
+                'costTotal' => round($storeCostTotal, 2),
             ];
         }
 
@@ -1708,6 +1719,8 @@ class Production extends Model
                 'palletsCount' => $totalPallets,
                 'boxesCount' => $totalBoxes,
                 'netWeight' => round($totalNetWeight, 2),
+                'costPerKg' => $totalNetWeight > 0 ? round($nodeCostTotal / $totalNetWeight, 4) : 0.0,
+                'costTotal' => round($nodeCostTotal, 2),
             ],
             'children' => [],
         ];

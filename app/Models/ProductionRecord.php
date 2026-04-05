@@ -466,6 +466,8 @@ class ProductionRecord extends Model
                 ] : null,
                 'lot' => $input->lot,
                 'weight' => $input->box->net_weight ?? 0,
+                'costPerKg' => $input->box?->cost_per_kg,
+                'totalCost' => $input->box?->total_cost,
                 'createdAt' => $input->created_at?->toIso8601String(),
                 'updatedAt' => $input->updated_at?->toIso8601String(),
             ];
