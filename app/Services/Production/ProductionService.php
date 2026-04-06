@@ -3,7 +3,6 @@
 namespace App\Services\Production;
 
 use App\Models\Production;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -35,7 +34,16 @@ class ProductionService
             }
         }
 
-        $query->orderBy('opened_at', 'desc');
+        // Orden: fecha del proceso raíz más temprano (primer nodo); si no hay raíz con started_at, opened_at del lote.
+        $query->orderByRaw(
+            'COALESCE((
+                SELECT MIN(pr.started_at)
+                FROM production_records AS pr
+                WHERE pr.production_id = productions.id
+                  AND pr.parent_record_id IS NULL
+            ), productions.opened_at) DESC'
+        );
+        $query->orderByDesc('productions.id');
 
         return $query->paginate($perPage);
     }
@@ -84,6 +92,7 @@ class ProductionService
     {
         return DB::transaction(function () use ($ids) {
             $deletedCount = Production::whereIn('id', $ids)->delete();
+
             return $deletedCount;
         });
     }
@@ -102,4 +111,3 @@ class ProductionService
         ];
     }
 }
-

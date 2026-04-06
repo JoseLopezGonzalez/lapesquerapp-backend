@@ -84,6 +84,47 @@ class ProductionBlockApiTest extends TestCase
         $response->assertOk()->assertJsonStructure(['data', 'links', 'meta']);
     }
 
+    public function test_productions_list_ordered_by_earliest_root_record_started_at(): void
+    {
+        $scenario = $this->createProductionScenario('prod-order-'.uniqid());
+        $headers = [
+            'X-Tenant' => $scenario['slug'],
+            'Authorization' => 'Bearer '.$scenario['user']->createToken('test')->plainTextToken,
+            'Accept' => 'application/json',
+        ];
+
+        $prodA = $scenario['production'];
+        $parentA = $scenario['parentRecord'];
+
+        $prodA->update(['opened_at' => '2026-06-01 10:00:00']);
+        $parentA->update(['started_at' => '2026-06-01 08:00:00']);
+
+        $process = Process::create(['name' => 'Otro proceso '.uniqid(), 'type' => 'process']);
+        $prodB = Production::create([
+            'lot' => 'LOT-B-'.uniqid(),
+            'date' => '2026-06-01',
+            'species_id' => $scenario['species']->id,
+            'capture_zone_id' => $scenario['captureZone']->id,
+            'opened_at' => '2026-05-01 10:00:00',
+        ]);
+        ProductionRecord::create([
+            'production_id' => $prodB->id,
+            'process_id' => $process->id,
+            'parent_record_id' => null,
+            'started_at' => '2026-06-15 12:00:00',
+        ]);
+
+        $response = $this->withHeaders($headers)->getJson('/api/v2/productions');
+
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('id')->all();
+        $posA = array_search($prodA->id, $ids, true);
+        $posB = array_search($prodB->id, $ids, true);
+        $this->assertIsInt($posA);
+        $this->assertIsInt($posB);
+        $this->assertLessThan($posA, $posB, 'La producción con started_at de raíz más reciente debe ir antes (orden DESC).');
+    }
+
     public function test_productions_require_authentication(): void
     {
         $response = $this->withHeaders(['X-Tenant' => $this->tenantSubdomain, 'Accept' => 'application/json'])
