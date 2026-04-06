@@ -15,7 +15,14 @@ class PalletResource extends JsonResource
     public function toArray(Request $request): array
     {
         $boxes = $this->relationLoaded('boxes') ? $this->boxes : collect();
-        $store = $this->relationLoaded('store') ? $this->store : null;
+
+        if ($this->relationLoaded('storedPallet')) {
+            $position = $this->storedPallet?->position;
+            $storeModel = $this->storedPallet?->store;
+        } else {
+            $position = $this->position;
+            $storeModel = $this->store;
+        }
 
         return [
             'id' => $this->id,
@@ -27,12 +34,11 @@ class PalletResource extends JsonResource
             }),
             'lots' => $this->relationLoaded('boxes') ? $this->lots : [],
             'netWeight' => $this->relationLoaded('boxes') && $this->netWeight !== null ? round($this->netWeight, 3) : null,
-            'position' => $this->position,
-            'store' => /* si es null o no */
-                $store ? [
-                    'id' => $store->id,
-                    'name' => $store->name,
-                ] : null,
+            'position' => $position,
+            'store' => $storeModel ? [
+                'id' => $storeModel->id,
+                'name' => $storeModel->name,
+            ] : null,
             'orderId' => $this->order_id,
             'numberOfBoxes' => $this->relationLoaded('boxes') ? $this->numberOfBoxes : 0,
             // Campos calculados para cajas disponibles y usadas

@@ -35,7 +35,7 @@ class PalletListService
     public static function loadRelations(Builder $query): Builder
     {
         return $query->with([
-            'storedPallet',
+            'storedPallet.store',
             'reception',
             'boxes.box.productionInputs.productionRecord.production',
             'boxes.box.product',
@@ -211,7 +211,7 @@ class PalletListService
                     'product.family.category',
                     'productionInputs.productionRecord.production',
                 ]),
-                'storedPallet',
+                'storedPallet.store',
                 'reception',
             ])
             ->orderBy('id', 'desc')
