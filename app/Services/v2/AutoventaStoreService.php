@@ -31,9 +31,9 @@ class AutoventaStoreService
      */
     public static function store(array $validated, User $user): Order
     {
-        [$salespersonId, $fieldOperatorId] = self::resolveActorIds($user);
+        $fieldOperatorId = self::resolveFieldOperatorId($user);
         self::validateRouteContext($validated, $fieldOperatorId);
-        $customerId = self::resolveCustomerId($validated, $user, $fieldOperatorId);
+        [$customerId, $salespersonId] = self::resolveCustomerContext($validated, $user, $fieldOperatorId);
 
         $defaultTaxId = Tax::query()->value('id');
         if (! $defaultTaxId) {
@@ -145,23 +145,22 @@ class AutoventaStoreService
         return implode("\n", $parts);
     }
 
-    private static function resolveActorIds(User $user): array
+    private static function resolveFieldOperatorId(User $user): int
     {
-        $salespersonId = $user->salesperson?->id;
         $fieldOperatorId = $user->fieldOperator?->id;
 
-        if (! $salespersonId && ! $fieldOperatorId) {
+        if (! $fieldOperatorId) {
             throw ValidationException::withMessages([
-                'orderType' => ['El usuario actual no tiene una identidad comercial u operativa válida para crear autoventas.'],
+                'orderType' => ['El usuario actual no tiene una identidad operativa válida para crear autoventas.'],
             ]);
         }
 
-        return [$salespersonId, $fieldOperatorId];
+        return $fieldOperatorId;
     }
 
-    private static function resolveCustomerId(array $validated, User $user, ?int $fieldOperatorId): int
+    private static function resolveCustomerContext(array $validated, User $user, int $fieldOperatorId): array
     {
-        if ($fieldOperatorId && ! empty($validated['newCustomerName'])) {
+        if (! empty($validated['newCustomerName'])) {
             $customer = Customer::create([
                 'name' => trim((string) $validated['newCustomerName']),
                 'alias' => null,
@@ -186,7 +185,7 @@ class AutoventaStoreService
             $customer->alias = 'Cliente Nº ' . $customer->id;
             $customer->save();
 
-            return $customer->id;
+            return [$customer->id, null];
         }
 
         $customerId = $validated['customer'] ?? null;
@@ -203,13 +202,13 @@ class AutoventaStoreService
             ]);
         }
 
-        if ($fieldOperatorId && $customer->field_operator_id !== $fieldOperatorId) {
+        if ($customer->field_operator_id !== $fieldOperatorId) {
             throw ValidationException::withMessages([
                 'customer' => ['Solo puede crear autoventas sobre clientes operativos asignados a usted.'],
             ]);
         }
 
-        return $customer->id;
+        return [$customer->id, $customer->salesperson_id];
     }
 
     private static function validateRouteContext(array $validated, ?int $fieldOperatorId): void

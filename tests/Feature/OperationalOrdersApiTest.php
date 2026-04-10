@@ -39,6 +39,7 @@ class OperationalOrdersApiTest extends TestCase
     private Product $product;
     private Product $extraProduct;
     private Tax $tax;
+    private int $salespersonId;
     private string $customerName;
 
     protected function setUp(): void
@@ -75,6 +76,7 @@ class OperationalOrdersApiTest extends TestCase
         ]);
 
         $salesCtx = $this->createSalesContext('OO');
+        $this->salespersonId = $salesCtx['salesperson']->id;
 
         $this->customerName = 'Cliente OO ' . Str::lower(Str::random(8));
 
@@ -340,6 +342,8 @@ class OperationalOrdersApiTest extends TestCase
 
     public function test_field_user_can_create_autoventa_for_existing_assigned_customer(): void
     {
+        $this->customer->update(['salesperson_id' => $this->salespersonId]);
+
         $response = $this->withHeaders($this->headersFor($this->fieldUser))
             ->postJson('/api/v2/field/autoventas', [
                 'customer' => $this->customer->id,
@@ -364,6 +368,12 @@ class OperationalOrdersApiTest extends TestCase
 
         $response->assertStatus(201);
         $response->assertJsonPath('data.customer.id', $this->customer->id);
+        $this->assertDatabaseHas('orders', [
+            'customer_id' => $this->customer->id,
+            'order_type' => 'autoventa',
+            'salesperson_id' => $this->salespersonId,
+            'field_operator_id' => $this->fieldOperator->id,
+        ], 'tenant');
     }
 
     public function test_field_user_execution_is_idempotent_by_box_id_sync(): void
