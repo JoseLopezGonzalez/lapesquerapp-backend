@@ -4,6 +4,7 @@ namespace App\Http\Requests\v2;
 
 use App\Models\Production;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreProductionRequest extends FormRequest
 {
@@ -20,7 +21,12 @@ class StoreProductionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'lot' => 'nullable|string|max:255',
+            'lot' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('tenant.productions', 'lot'),
+            ],
             'species_id' => 'nullable|exists:tenant.species,id',
             'capture_zone_id' => 'nullable|exists:tenant.capture_zones,id',
             'notes' => 'nullable|string',

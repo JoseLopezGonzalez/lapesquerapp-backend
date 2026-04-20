@@ -133,6 +133,70 @@ class ProductionBlockApiTest extends TestCase
         $response->assertUnauthorized();
     }
 
+    public function test_production_store_rejects_duplicate_lot(): void
+    {
+        $gear = FishingGear::create(['name' => 'Arrastre '.uniqid()]);
+        $species = Species::create([
+            'name' => 'Merluza '.uniqid(),
+            'scientific_name' => 'Merluccius',
+            'fao' => 'HKE',
+            'image' => 'https://example.com/species.png',
+            'fishing_gear_id' => $gear->id,
+        ]);
+        $captureZone = CaptureZone::factory()->create();
+        $lot = 'LOT-UNIQUE-'.uniqid();
+
+        $payload = [
+            'lot' => $lot,
+            'species_id' => $species->id,
+            'capture_zone_id' => $captureZone->id,
+            'notes' => 'Lote inicial',
+        ];
+
+        $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/productions', $payload)
+            ->assertCreated();
+
+        $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/productions', $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['lot']);
+    }
+
+    public function test_production_update_rejects_duplicate_lot(): void
+    {
+        $gear = FishingGear::create(['name' => 'Cerco '.uniqid()]);
+        $species = Species::create([
+            'name' => 'Atun '.uniqid(),
+            'scientific_name' => 'Thunnus',
+            'fao' => 'TUN',
+            'image' => 'https://example.com/species.png',
+            'fishing_gear_id' => $gear->id,
+        ]);
+        $captureZone = CaptureZone::factory()->create();
+
+        $productionA = Production::create([
+            'lot' => 'LOT-A-'.uniqid(),
+            'date' => '2026-06-01',
+            'species_id' => $species->id,
+            'capture_zone_id' => $captureZone->id,
+        ]);
+
+        $productionB = Production::create([
+            'lot' => 'LOT-B-'.uniqid(),
+            'date' => '2026-06-01',
+            'species_id' => $species->id,
+            'capture_zone_id' => $captureZone->id,
+        ]);
+
+        $this->withHeaders($this->authHeaders())
+            ->putJson('/api/v2/productions/'.$productionB->id, [
+                'lot' => $productionA->lot,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['lot']);
+    }
+
     private function createProductionWithRecords(): array
     {
         $scenario = $this->createProductionScenario('production-graph-'.uniqid());

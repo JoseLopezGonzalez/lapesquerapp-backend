@@ -3,6 +3,7 @@
 namespace App\Http\Requests\v2;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateProductionRequest extends FormRequest
 {
@@ -18,8 +19,16 @@ class UpdateProductionRequest extends FormRequest
      */
     public function rules(): array
     {
+        $productionId = $this->route('id');
+
         return [
-            'lot' => 'sometimes|nullable|string|max:255',
+            'lot' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('tenant.productions', 'lot')->ignore($productionId),
+            ],
             'species_id' => 'sometimes|nullable|exists:tenant.species,id',
             'capture_zone_id' => 'sometimes|nullable|exists:tenant.capture_zones,id',
             'notes' => 'sometimes|nullable|string',
