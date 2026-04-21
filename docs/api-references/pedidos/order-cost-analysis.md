@@ -19,10 +19,13 @@ Los endpoints `GET /api/v2/orders/{id}`, `POST /api/v2/orders` y `PUT /api/v2/or
 | Campo | Tipo | Descripción |
 |---|---|---|
 | `totalCost` | `number \| null` | Suma del coste total de todas las cajas de todos los palets del pedido. `null` si ninguna caja tiene coste calculable. |
-| `grossMargin` | `number \| null` | `totalAmount - totalCost`. `null` si `totalCost` es `null`. |
-| `marginPercentage` | `number \| null` | `(grossMargin / totalAmount) × 100`, redondeado a 2 decimales. `null` si `totalCost` es `null` o `totalAmount` es 0. |
+| `grossMargin` | `number \| null` | `subTotalAmount - totalCost`. `null` si `totalCost` es `null`. |
+| `marginPercentage` | `number \| null` | `(grossMargin / subTotalAmount) × 100`, redondeado a 2 decimales. `null` si `totalCost` es `null` o `subTotalAmount` es 0. |
+| `revenuePerKg` | `number \| null` | `subTotalAmount / totalNetWeight`, 4 decimales. `null` si no hay kg. |
+| `costPerKg` | `number \| null` | `totalCost / totalNetWeight`, 4 decimales. `null` si no hay coste o kg. |
+| `marginPerKg` | `number \| null` | `grossMargin / totalNetWeight`, 4 decimales. `null` si no hay margen o kg. |
 
-> `totalAmount` ya existía en la respuesta y representa el importe total de venta con IVA incluido.
+> La base del margen es `subTotalAmount` (precio × kg, **sin IVA**), no `totalAmount`. El IVA es un impuesto que se traslada al estado y no forma parte del revenue real sobre el que se mide la rentabilidad.
 
 ---
 
@@ -46,7 +49,11 @@ Requiere el mismo permiso que `GET /api/v2/orders/{id}` (`view` sobre el pedido)
     "totalRevenue": 1620.50,
     "totalCost": 1240.50,
     "grossMargin": 380.00,
-    "marginPercentage": 23.45
+    "marginPercentage": 23.45,
+    "totalNetWeightKg": 312.500,
+    "revenuePerKg": 5.1856,
+    "costPerKg": 3.9696,
+    "marginPerKg": 1.2160
   },
   "byProductLine": [
     {
@@ -86,10 +93,14 @@ Resumen económico global del pedido.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `totalRevenue` | `number` | Importe total de venta sin IVA (base imponible). |
+| `totalRevenue` | `number` | `subTotalAmount` del pedido: `precio_unitario × kg_netos`, **sin IVA**. |
 | `totalCost` | `number \| null` | Coste total de las cajas disponibles del pedido. `null` si ninguna tiene coste calculable. |
-| `grossMargin` | `number \| null` | `totalRevenue - totalCost`. |
-| `marginPercentage` | `number \| null` | Porcentaje de margen sobre revenue, 2 decimales. |
+| `grossMargin` | `number \| null` | `totalRevenue − totalCost`. |
+| `marginPercentage` | `number \| null` | `(grossMargin / totalRevenue) × 100`, 2 decimales. Base siempre ex-IVA. |
+| `totalNetWeightKg` | `number` | Peso neto total de las cajas disponibles del pedido, en kg (3 decimales). |
+| `revenuePerKg` | `number \| null` | `totalRevenue / totalNetWeightKg`, 4 decimales. |
+| `costPerKg` | `number \| null` | `totalCost / totalNetWeightKg`, 4 decimales. |
+| `marginPerKg` | `number \| null` | `grossMargin / totalNetWeightKg`, 4 decimales. |
 
 ---
 

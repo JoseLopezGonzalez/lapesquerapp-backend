@@ -8,19 +8,28 @@ class OrderCostAnalysisService
 {
     public static function analyze(Order $order): array
     {
-        $totalRevenue = (float) $order->total_amount;
-        $totalCost = $order->total_cost;
-        $grossMargin = $totalCost !== null ? round($totalRevenue - $totalCost, 2) : null;
-        $marginPct = ($grossMargin !== null && $totalRevenue > 0)
+        $totalRevenue  = (float) $order->subtotal_amount;
+        $totalCost     = $order->total_cost;
+        $totalKg       = (float) $order->total_net_weight;
+        $grossMargin   = $totalCost !== null ? round($totalRevenue - $totalCost, 2) : null;
+        $marginPct     = ($grossMargin !== null && $totalRevenue > 0)
             ? round($grossMargin / $totalRevenue * 100, 2)
             : null;
 
+        $revenuePerKg = ($totalKg > 0) ? round($totalRevenue / $totalKg, 4) : null;
+        $costPerKg    = ($totalCost !== null && $totalKg > 0) ? round($totalCost / $totalKg, 4) : null;
+        $marginPerKg  = ($grossMargin !== null && $totalKg > 0) ? round($grossMargin / $totalKg, 4) : null;
+
         return [
             'summary' => [
-                'totalRevenue'      => round($totalRevenue, 2),
-                'totalCost'         => $totalCost !== null ? round($totalCost, 2) : null,
-                'grossMargin'       => $grossMargin,
-                'marginPercentage'  => $marginPct,
+                'totalRevenue'     => round($totalRevenue, 2),
+                'totalCost'        => $totalCost !== null ? round($totalCost, 2) : null,
+                'grossMargin'      => $grossMargin,
+                'marginPercentage' => $marginPct,
+                'totalNetWeightKg' => round($totalKg, 3),
+                'revenuePerKg'     => $revenuePerKg,
+                'costPerKg'        => $costPerKg,
+                'marginPerKg'      => $marginPerKg,
             ],
             'byProductLine' => self::buildByProductLine($order),
             'byPallet'      => self::buildByPallet($order),

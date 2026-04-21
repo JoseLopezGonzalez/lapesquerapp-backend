@@ -581,19 +581,53 @@ class Order extends Model
             return null;
         }
 
-        return $this->total_amount - $cost;
+        return $this->subtotal_amount - $cost;
     }
 
     public function getMarginPercentageAttribute(): ?float
     {
         $margin = $this->gross_margin;
-        $revenue = $this->total_amount;
+        $revenue = $this->subtotal_amount;
 
         if ($margin === null || $revenue <= 0) {
             return null;
         }
 
         return round($margin / $revenue * 100, 2);
+    }
+
+    public function getRevenuePerKgAttribute(): ?float
+    {
+        $kg = $this->total_net_weight;
+        if (! $kg || $kg <= 0) {
+            return null;
+        }
+
+        return round($this->subtotal_amount / $kg, 4);
+    }
+
+    public function getCostPerKgAttribute(): ?float
+    {
+        $cost = $this->total_cost;
+        $kg   = $this->total_net_weight;
+
+        if ($cost === null || ! $kg || $kg <= 0) {
+            return null;
+        }
+
+        return round($cost / $kg, 4);
+    }
+
+    public function getMarginPerKgAttribute(): ?float
+    {
+        $margin = $this->gross_margin;
+        $kg     = $this->total_net_weight;
+
+        if ($margin === null || ! $kg || $kg <= 0) {
+            return null;
+        }
+
+        return round($margin / $kg, 4);
     }
 
     /* incident only one */
