@@ -75,8 +75,13 @@ Requiere el mismo permiso que `GET /api/v2/orders/{id}` (`view` sobre el pedido)
     {
       "palletId": 7,
       "totalWeightKg": 200.000,
+      "totalRevenue": 1160.00,
       "totalCost": 640.00,
+      "grossMargin": 520.00,
+      "marginPercentage": 44.83,
+      "revenuePerKg": 5.8000,
       "costPerKg": 3.2000,
+      "marginPerKg": 2.6000,
       "products": ["Merluza 400-600 IQF", "Merluza 600-800 IQF"]
     }
   ]
@@ -120,6 +125,9 @@ Array con una entrada por cada línea de `plannedProductDetails` del pedido. El 
 | `lineCost` | `number \| null` | Suma de costes de todas las cajas disponibles de este producto. `null` si ninguna tiene coste. |
 | `lineMargin` | `number \| null` | `lineRevenue - lineCost`. |
 | `lineMarginPct` | `number \| null` | `(lineMargin / lineRevenue) × 100`, 2 decimales. |
+| `revenuePerKg` | `number \| null` | `lineRevenue / lineWeightKg`, 4 decimales. |
+| `costPerKg` | `number \| null` | `lineCost / lineWeightKg`, 4 decimales. |
+| `marginPerKg` | `number \| null` | `lineMargin / lineWeightKg`, 4 decimales. |
 
 > Las líneas planificadas sin cajas reales asignadas tendrán `lineWeightKg: 0`, `lineRevenue: 0` y `lineCost: null`.
 
@@ -133,8 +141,13 @@ Array con una entrada por cada palet vinculado al pedido. Solo se consideran las
 |---|---|---|
 | `palletId` | `number` | ID del palet. |
 | `totalWeightKg` | `number` | Peso neto de las cajas disponibles del palet, en kg (3 decimales). |
+| `totalRevenue` | `number` | `precio_unitario × kg` de las cajas disponibles del palet, sin IVA. |
 | `totalCost` | `number \| null` | Suma de costes de las cajas disponibles del palet. `null` si ninguna tiene coste. |
-| `costPerKg` | `number \| null` | `totalCost / totalWeightKg`, 4 decimales. `null` si no hay coste o peso es 0. |
+| `grossMargin` | `number \| null` | `totalRevenue − totalCost`. |
+| `marginPercentage` | `number \| null` | `(grossMargin / totalRevenue) × 100`, 2 decimales. |
+| `revenuePerKg` | `number \| null` | `totalRevenue / totalWeightKg`, 4 decimales. |
+| `costPerKg` | `number \| null` | `totalCost / totalWeightKg`, 4 decimales. |
+| `marginPerKg` | `number \| null` | `grossMargin / totalWeightKg`, 4 decimales. |
 | `products` | `string[]` | Nombres únicos de los productos presentes en las cajas disponibles del palet. |
 
 ---

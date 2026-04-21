@@ -73,6 +73,9 @@ class OrderCostAnalysisService
             $lineMarginPct      = ($lineMargin !== null && $lineRevenue > 0)
                 ? round($lineMargin / $lineRevenue * 100, 2)
                 : null;
+            $revenuePerKg       = $lineWeightKg > 0 ? round($lineRevenue / $lineWeightKg, 4) : null;
+            $costPerKg          = ($lineCost !== null && $lineWeightKg > 0) ? round($lineCost / $lineWeightKg, 4) : null;
+            $marginPerKg        = ($lineMargin !== null && $lineWeightKg > 0) ? round($lineMargin / $lineWeightKg, 4) : null;
 
             $lines[] = [
                 'product' => [
@@ -87,6 +90,9 @@ class OrderCostAnalysisService
                 'lineCost'           => $lineCost !== null ? round($lineCost, 2) : null,
                 'lineMargin'         => $lineMargin,
                 'lineMarginPct'      => $lineMarginPct,
+                'revenuePerKg'       => $revenuePerKg,
+                'costPerKg'          => $costPerKg,
+                'marginPerKg'        => $marginPerKg,
             ];
         }
 
@@ -95,9 +101,15 @@ class OrderCostAnalysisService
 
     private static function buildByPallet(Order $order): array
     {
+        $priceMap = [];
+        foreach ($order->plannedProductDetails as $detail) {
+            $priceMap[$detail->product_id] = (float) ($detail->unit_price ?? 0);
+        }
+
         $result = [];
         foreach ($order->pallets as $pallet) {
             $totalWeightKg = 0.0;
+            $totalRevenue  = 0.0;
             $totalCost     = null;
             $productNames  = [];
 
@@ -107,7 +119,9 @@ class OrderCostAnalysisService
                     continue;
                 }
 
-                $totalWeightKg += (float) $box->net_weight;
+                $weight         = (float) $box->net_weight;
+                $totalWeightKg += $weight;
+                $totalRevenue  += ($priceMap[$box->article_id] ?? 0) * $weight;
 
                 $boxCost = $box->total_cost;
                 if ($boxCost !== null) {
@@ -120,16 +134,30 @@ class OrderCostAnalysisService
                 }
             }
 
-            $costPerKg = ($totalCost !== null && $totalWeightKg > 0)
+            $totalRevenue  = round($totalRevenue, 2);
+            $grossMargin   = $totalCost !== null ? round($totalRevenue - $totalCost, 2) : null;
+            $marginPct     = ($grossMargin !== null && $totalRevenue > 0)
+                ? round($grossMargin / $totalRevenue * 100, 2)
+                : null;
+            $revenuePerKg  = $totalWeightKg > 0 ? round($totalRevenue / $totalWeightKg, 4) : null;
+            $costPerKg     = ($totalCost !== null && $totalWeightKg > 0)
                 ? round($totalCost / $totalWeightKg, 4)
+                : null;
+            $marginPerKg   = ($grossMargin !== null && $totalWeightKg > 0)
+                ? round($grossMargin / $totalWeightKg, 4)
                 : null;
 
             $result[] = [
-                'palletId'      => $pallet->id,
-                'totalWeightKg' => round($totalWeightKg, 3),
-                'totalCost'     => $totalCost !== null ? round($totalCost, 2) : null,
-                'costPerKg'     => $costPerKg,
-                'products'      => $productNames,
+                'palletId'         => $pallet->id,
+                'totalWeightKg'    => round($totalWeightKg, 3),
+                'totalRevenue'     => $totalRevenue,
+                'totalCost'        => $totalCost !== null ? round($totalCost, 2) : null,
+                'grossMargin'      => $grossMargin,
+                'marginPercentage' => $marginPct,
+                'revenuePerKg'     => $revenuePerKg,
+                'costPerKg'        => $costPerKg,
+                'marginPerKg'      => $marginPerKg,
+                'products'         => $productNames,
             ];
         }
 
