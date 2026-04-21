@@ -557,19 +557,23 @@ class Pallet extends Model
                 'totalBoxesCount' => $totalBoxes,
             ]);
         }
-        // Si todas las cajas están disponibles → registrado
+        // Si todas las cajas están disponibles:
+        // solo volver a registrado cuando venía de PROCESSED.
+        // Esto evita degradar palets STORED que no han cambiado.
         elseif ($usedBoxesCount === 0 && $totalBoxes > 0) {
-            $fromId = $this->status;
-            $this->changeToRegistered();
-            PalletTimelineService::record($this, 'state_changed_auto', 'Estado actualizado (automático)', [
-                'fromId' => $fromId,
-                'from' => self::getStateName($fromId),
-                'toId' => self::STATE_REGISTERED,
-                'to' => 'registered',
-                'reason' => 'boxes_released_from_production',
-                'usedBoxesCount' => 0,
-                'totalBoxesCount' => $totalBoxes,
-            ]);
+            if ($this->status === self::STATE_PROCESSED) {
+                $fromId = $this->status;
+                $this->changeToRegistered();
+                PalletTimelineService::record($this, 'state_changed_auto', 'Estado actualizado (automático)', [
+                    'fromId' => $fromId,
+                    'from' => self::getStateName($fromId),
+                    'toId' => self::STATE_REGISTERED,
+                    'to' => 'registered',
+                    'reason' => 'boxes_released_from_production',
+                    'usedBoxesCount' => 0,
+                    'totalBoxesCount' => $totalBoxes,
+                ]);
+            }
         }
         // Si está parcialmente consumido
         else {

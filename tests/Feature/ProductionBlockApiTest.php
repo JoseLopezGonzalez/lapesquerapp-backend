@@ -17,8 +17,13 @@ use App\Models\ProductionOutput;
 use App\Models\ProductionOutputConsumption;
 use App\Models\ProductionOutputSource;
 use App\Models\ProductionRecord;
+use App\Models\RawMaterialReception;
 use App\Models\Species;
+use App\Models\Store;
+use App\Models\StoredPallet;
+use App\Models\Supplier;
 use App\Models\Tax;
+use App\Services\Production\ProductionInputService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsOperationsScenario;
 use Tests\Concerns\BuildsProductionScenario;
@@ -1177,5 +1182,118 @@ class ProductionBlockApiTest extends TestCase
             ->assertJsonPath('summary.deleted', 1);
 
         $this->assertNull(ProductionOutputConsumption::query()->find($consumption->id));
+    }
+
+    public function test_releasing_all_boxes_moves_processed_pallet_back_to_registered(): void
+    {
+        [, $parentRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $product = $this->createValidProduct($species, $captureZone, 'RELEASE-ALL');
+
+        $pallet = Pallet::create([
+            'status' => Pallet::STATE_REGISTERED,
+            'observations' => 'Pallet para test de liberacion',
+        ]);
+
+        $box = Box::factory()->create([
+            'article_id' => $product->id,
+            'net_weight' => 20,
+            'gross_weight' => 21,
+        ]);
+        PalletBox::create([
+            'pallet_id' => $pallet->id,
+            'box_id' => $box->id,
+        ]);
+
+        $service = new ProductionInputService();
+        $input = $service->create([
+            'production_record_id' => $parentRecord->id,
+            'box_id' => $box->id,
+        ]);
+
+        $pallet->refresh();
+        $this->assertSame(Pallet::STATE_PROCESSED, $pallet->status);
+
+        $service->delete($input);
+
+        $pallet->refresh();
+        $this->assertSame(Pallet::STATE_REGISTERED, $pallet->status);
+    }
+
+    public function test_stored_sibling_pallet_keeps_state_when_other_pallet_is_released(): void
+    {
+        [, $parentRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $product = $this->createValidProduct($species, $captureZone, 'STORED-SIBLING');
+
+        $supplier = Supplier::query()->first() ?? Supplier::create([
+            'name' => 'Proveedor test recepción',
+            'type' => 'supplier',
+            'emails' => 'proveedor@test.com',
+        ]);
+        $store = Store::query()->first() ?? Store::create([
+            'name' => 'Almacen test',
+            'temperature' => 0,
+            'capacity' => 1000,
+            'map' => json_encode([]),
+            'store_type' => 'interno',
+        ]);
+
+        $reception = RawMaterialReception::create([
+            'supplier_id' => $supplier->id,
+            'date' => now()->toDateString(),
+            'creation_mode' => RawMaterialReception::CREATION_MODE_PALLETS,
+        ]);
+
+        $storedPallet = Pallet::create([
+            'status' => Pallet::STATE_STORED,
+            'reception_id' => $reception->id,
+            'observations' => 'Pallet almacenado no tocado',
+        ]);
+        StoredPallet::create([
+            'pallet_id' => $storedPallet->id,
+            'store_id' => $store->id,
+        ]);
+
+        $storedBox = Box::factory()->create([
+            'article_id' => $product->id,
+            'net_weight' => 12,
+            'gross_weight' => 13,
+        ]);
+        PalletBox::create([
+            'pallet_id' => $storedPallet->id,
+            'box_id' => $storedBox->id,
+        ]);
+
+        $processedPallet = Pallet::create([
+            'status' => Pallet::STATE_REGISTERED,
+            'reception_id' => $reception->id,
+            'observations' => 'Pallet que se consume completo',
+        ]);
+        $processedBox = Box::factory()->create([
+            'article_id' => $product->id,
+            'net_weight' => 30,
+            'gross_weight' => 31,
+        ]);
+        PalletBox::create([
+            'pallet_id' => $processedPallet->id,
+            'box_id' => $processedBox->id,
+        ]);
+
+        $service = new ProductionInputService();
+        $input = $service->create([
+            'production_record_id' => $parentRecord->id,
+            'box_id' => $processedBox->id,
+        ]);
+        $service->delete($input);
+
+        // Simula un recálculo accidental sobre palet hermano de la misma recepción.
+        $storedPallet->updateStateBasedOnBoxes();
+        $storedPallet->refresh();
+
+        $this->assertSame(Pallet::STATE_STORED, $storedPallet->status);
+        $this->assertNotNull($storedPallet->storedPallet()->first());
     }
 }
