@@ -56,8 +56,12 @@ class OrderCostAnalysisService
             $unitPrice  = (float) ($detail->unit_price ?? 0);
             $taxRate    = $detail->tax ? (float) $detail->tax->rate : 0;
 
-            $boxes         = $boxesByProduct[$productId] ?? [];
-            $lineWeightKg  = round(array_sum(array_map(fn ($b) => (float) $b->net_weight, $boxes)), 3);
+            $boxes = $boxesByProduct[$productId] ?? [];
+            if (empty($boxes)) {
+                continue;
+            }
+
+            $lineWeightKg = round(array_sum(array_map(fn ($b) => (float) $b->net_weight, $boxes)), 3);
 
             $lineCost = null;
             foreach ($boxes as $box) {
