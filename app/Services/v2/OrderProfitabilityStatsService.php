@@ -17,7 +17,7 @@ class OrderProfitabilityStatsService
         $orders = self::loadOrders($from, $to, $productIds);
 
         $totalRevenue = 0.0;
-        $totalCost    = null;
+        $totalCost = null;
 
         foreach ($orders as $order) {
             $f = self::computeOrderFinancials($order, $productIds);
@@ -27,24 +27,24 @@ class OrderProfitabilityStatsService
             }
         }
 
-        $grossMargin  = $totalCost !== null ? round($totalRevenue - $totalCost, 2) : null;
-        $marginPct    = ($grossMargin !== null && $totalRevenue > 0)
+        $grossMargin = $totalCost !== null ? round($totalRevenue - $totalCost, 2) : null;
+        $marginPct = ($grossMargin !== null && $totalRevenue > 0)
             ? round($grossMargin / $totalRevenue * 100, 2)
             : null;
 
         return [
-            'period'           => ['from' => $from, 'to' => $to],
-            'ordersCount'      => $orders->count(),
-            'totalRevenue'     => round($totalRevenue, 2),
-            'totalCost'        => $totalCost !== null ? round($totalCost, 2) : null,
-            'grossMargin'      => $grossMargin,
+            'period' => ['from' => $from, 'to' => $to],
+            'ordersCount' => $orders->count(),
+            'totalRevenue' => round($totalRevenue, 2),
+            'totalCost' => $totalCost !== null ? round($totalCost, 2) : null,
+            'grossMargin' => $grossMargin,
             'marginPercentage' => $marginPct,
         ];
     }
 
     public static function getTimeline(string $from, string $to, string $granularity, array $productIds = []): array
     {
-        $orders  = self::loadOrders($from, $to, $productIds);
+        $orders = self::loadOrders($from, $to, $productIds);
         $grouped = [];
 
         foreach ($orders as $order) {
@@ -53,14 +53,14 @@ class OrderProfitabilityStatsService
             }
 
             $key = self::periodKey($order->load_date, $granularity);
-            $f   = self::computeOrderFinancials($order, $productIds);
+            $f = self::computeOrderFinancials($order, $productIds);
 
             if (! isset($grouped[$key])) {
                 $grouped[$key] = [
                     'periodLabel' => self::periodLabel($order->load_date, $granularity),
                     'ordersCount' => 0,
-                    'revenue'     => 0.0,
-                    'cost'        => null,
+                    'revenue' => 0.0,
+                    'cost' => null,
                 ];
             }
 
@@ -73,17 +73,17 @@ class OrderProfitabilityStatsService
 
         return [
             'granularity' => $granularity,
-            'series'      => self::buildCompleteSeries($from, $to, $granularity, $grouped),
+            'series' => self::buildCompleteSeries($from, $to, $granularity, $grouped),
         ];
     }
 
     public static function getByProduct(string $from, string $to): array
     {
-        $orders     = self::loadOrdersForProducts($from, $to);
-        $byProduct  = [];
+        $orders = self::loadOrdersForProducts($from, $to);
+        $byProduct = [];
 
         foreach ($orders as $order) {
-            $priceMap   = self::buildPriceMap($order);
+            $priceMap = self::buildPriceMap($order);
             $productRef = [];
             foreach ($order->plannedProductDetails as $d) {
                 $productRef[$d->product_id] = $d->product;
@@ -96,18 +96,18 @@ class OrderProfitabilityStatsService
                         continue;
                     }
 
-                    $pid    = $box->article_id;
+                    $pid = $box->article_id;
                     $weight = (float) $box->net_weight;
-                    $entry  = $priceMap[$pid] ?? null;
-                    $cost   = $box->total_cost;
+                    $entry = $priceMap[$pid] ?? null;
+                    $cost = $box->total_cost;
 
                     if (! isset($byProduct[$pid])) {
                         $byProduct[$pid] = [
-                            'product'      => $productRef[$pid] ?? $box->product,
-                            'totalWeightKg'=> 0.0,
+                            'product' => $productRef[$pid] ?? $box->product,
+                            'totalWeightKg' => 0.0,
                             'totalRevenue' => 0.0,
-                            'totalCost'    => null,
-                            'orderIds'     => [],
+                            'totalCost' => null,
+                            'orderIds' => [],
                         ];
                     }
 
@@ -125,30 +125,37 @@ class OrderProfitabilityStatsService
 
         $rows = [];
         foreach ($byProduct as $data) {
-            $revenue  = round($data['totalRevenue'], 2);
-            $cost     = $data['totalCost'] !== null ? round($data['totalCost'], 2) : null;
-            $margin   = $cost !== null ? round($revenue - $cost, 2) : null;
+            $weightKg = round($data['totalWeightKg'], 3);
+            $revenue = round($data['totalRevenue'], 2);
+            $cost = $data['totalCost'] !== null ? round($data['totalCost'], 2) : null;
+            $margin = $cost !== null ? round($revenue - $cost, 2) : null;
             $marginPct = ($margin !== null && $revenue > 0)
                 ? round($margin / $revenue * 100, 2)
                 : null;
+            $revenuePerKg = $weightKg > 0 ? round($revenue / $weightKg, 4) : null;
+            $costPerKg = ($cost !== null && $weightKg > 0) ? round($cost / $weightKg, 4) : null;
+            $marginPerKg = ($margin !== null && $weightKg > 0) ? round($margin / $weightKg, 4) : null;
 
             $p = $data['product'];
 
             $rows[] = [
-                'product'          => ['id' => $p?->id, 'name' => $p?->name ?? '—'],
-                'totalWeightKg'    => round($data['totalWeightKg'], 3),
-                'totalRevenue'     => $revenue,
-                'totalCost'        => $cost,
-                'grossMargin'      => $margin,
+                'product' => ['id' => $p?->id, 'name' => $p?->name ?? '—'],
+                'totalWeightKg' => $weightKg,
+                'totalRevenue' => $revenue,
+                'totalCost' => $cost,
+                'grossMargin' => $margin,
                 'marginPercentage' => $marginPct,
-                'ordersCount'      => count($data['orderIds']),
+                'revenuePerKg' => $revenuePerKg,
+                'costPerKg' => $costPerKg,
+                'marginPerKg' => $marginPerKg,
+                'ordersCount' => count($data['orderIds']),
             ];
         }
 
         usort($rows, fn ($a, $b) => $b['totalRevenue'] <=> $a['totalRevenue']);
 
         return [
-            'period'   => ['from' => $from, 'to' => $to],
+            'period' => ['from' => $from, 'to' => $to],
             'products' => $rows,
         ];
     }
@@ -160,8 +167,8 @@ class OrderProfitabilityStatsService
     private static function loadOrders(string $from, string $to, array $productIds = []): Collection
     {
         $query = Order::whereBetween('load_date', [
-            $from . ' 00:00:00',
-            $to . ' 23:59:59',
+            $from.' 00:00:00',
+            $to.' 23:59:59',
         ])->with([
             'plannedProductDetails.tax',
             'pallets.boxes.box.productionInputs',
@@ -178,8 +185,8 @@ class OrderProfitabilityStatsService
     private static function loadOrdersForProducts(string $from, string $to): Collection
     {
         return Order::whereBetween('load_date', [
-            $from . ' 00:00:00',
-            $to . ' 23:59:59',
+            $from.' 00:00:00',
+            $to.' 23:59:59',
         ])->with([
             'plannedProductDetails.tax',
             'plannedProductDetails.product',
@@ -194,7 +201,7 @@ class OrderProfitabilityStatsService
         $map = [];
         foreach ($order->plannedProductDetails as $detail) {
             $map[$detail->product_id] = [
-                'price'   => (float) ($detail->unit_price ?? 0),
+                'price' => (float) ($detail->unit_price ?? 0),
                 'taxRate' => $detail->tax ? (float) $detail->tax->rate : 0,
             ];
         }
@@ -205,8 +212,8 @@ class OrderProfitabilityStatsService
     private static function computeOrderFinancials(Order $order, array $productIds = []): array
     {
         $priceMap = self::buildPriceMap($order);
-        $revenue  = 0.0;
-        $cost     = null;
+        $revenue = 0.0;
+        $cost = null;
 
         foreach ($order->pallets as $pallet) {
             foreach ($pallet->boxes as $palletBox) {
@@ -238,8 +245,8 @@ class OrderProfitabilityStatsService
         $c = Carbon::parse($date);
 
         return match ($granularity) {
-            'day'   => $c->format('Y-m-d'),
-            'week'  => $c->format('Y-W'),
+            'day' => $c->format('Y-m-d'),
+            'week' => $c->format('Y-W'),
             default => $c->format('Y-m'),   // month
         };
     }
@@ -249,8 +256,8 @@ class OrderProfitabilityStatsService
         $c = Carbon::parse($date);
 
         return match ($granularity) {
-            'day'   => $c->format('d/m/Y'),
-            'week'  => 'Sem. ' . $c->format('W') . ' ' . $c->format('Y'),
+            'day' => $c->format('d/m/Y'),
+            'week' => 'Sem. '.$c->format('W').' '.$c->format('Y'),
             default => ucfirst($c->locale('es')->isoFormat('MMMM YYYY')),
         };
     }
@@ -261,33 +268,33 @@ class OrderProfitabilityStatsService
         string $granularity,
         array $grouped
     ): array {
-        $series  = [];
+        $series = [];
         $current = Carbon::parse($from)->startOfDay();
-        $end     = Carbon::parse($to)->endOfDay();
+        $end = Carbon::parse($to)->endOfDay();
 
         while ($current->lte($end)) {
-            $key  = self::periodKey($current->toDateString(), $granularity);
+            $key = self::periodKey($current->toDateString(), $granularity);
             $data = $grouped[$key] ?? null;
 
-            $revenue  = $data ? round($data['revenue'], 2) : 0.0;
-            $cost     = ($data && $data['cost'] !== null) ? round($data['cost'], 2) : null;
-            $margin   = $cost !== null ? round($revenue - $cost, 2) : null;
+            $revenue = $data ? round($data['revenue'], 2) : 0.0;
+            $cost = ($data && $data['cost'] !== null) ? round($data['cost'], 2) : null;
+            $margin = $cost !== null ? round($revenue - $cost, 2) : null;
             $marginPct = ($margin !== null && $revenue > 0)
                 ? round($margin / $revenue * 100, 2)
                 : null;
 
             $series[$key] = [
-                'period'           => $key,
-                'periodLabel'      => $data ? $data['periodLabel'] : self::periodLabel($current->toDateString(), $granularity),
-                'ordersCount'      => $data['ordersCount'] ?? 0,
-                'totalRevenue'     => $revenue,
-                'totalCost'        => $cost,
-                'grossMargin'      => $margin,
+                'period' => $key,
+                'periodLabel' => $data ? $data['periodLabel'] : self::periodLabel($current->toDateString(), $granularity),
+                'ordersCount' => $data['ordersCount'] ?? 0,
+                'totalRevenue' => $revenue,
+                'totalCost' => $cost,
+                'grossMargin' => $margin,
                 'marginPercentage' => $marginPct,
             ];
 
             match ($granularity) {
-                'day'  => $current->addDay(),
+                'day' => $current->addDay(),
                 'week' => $current->addWeek(),
                 default => $current->addMonth(),
             };

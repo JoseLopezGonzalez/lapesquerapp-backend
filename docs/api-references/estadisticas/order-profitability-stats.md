@@ -149,6 +149,9 @@ GET /api/v2/statistics/orders/profitability-products
       "totalCost": 19584.50,
       "grossMargin": 6633.24,
       "marginPercentage": 25.30,
+      "revenuePerKg": 5.8000,
+      "costPerKg": 4.3326,
+      "marginPerKg": 1.4674,
       "ordersCount": 18
     },
     {
@@ -161,6 +164,9 @@ GET /api/v2/statistics/orders/profitability-products
       "totalCost": null,
       "grossMargin": null,
       "marginPercentage": null,
+      "revenuePerKg": 5.5000,
+      "costPerKg": null,
+      "marginPerKg": null,
       "ordersCount": 9
     }
   ]
@@ -178,6 +184,9 @@ GET /api/v2/statistics/orders/profitability-products
 | `products[].totalCost` | `number \| null` | Coste total del producto en el período. `null` si ninguna caja tiene coste calculable. |
 | `products[].grossMargin` | `number \| null` | `totalRevenue − totalCost`. |
 | `products[].marginPercentage` | `number \| null` | `(grossMargin / totalRevenue) × 100`, 2 decimales. |
+| `products[].revenuePerKg` | `number \| null` | `totalRevenue / totalWeightKg`, 4 decimales. |
+| `products[].costPerKg` | `number \| null` | `totalCost / totalWeightKg`, 4 decimales. `null` si no hay coste o kg. |
+| `products[].marginPerKg` | `number \| null` | `grossMargin / totalWeightKg`, 4 decimales. `null` si no hay margen o kg. |
 | `products[].ordersCount` | `integer` | Número de pedidos distintos en los que aparece el producto. |
 
 ---
