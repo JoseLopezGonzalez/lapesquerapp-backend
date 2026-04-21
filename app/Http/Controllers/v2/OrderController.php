@@ -21,6 +21,7 @@ use App\Services\v2\OrderListService;
 use App\Services\v2\OrderProductionViewService;
 use App\Services\v2\OrderStatisticsService;
 use App\Services\v2\OrderStoreService;
+use App\Services\v2\OrderCostAnalysisService;
 use App\Services\v2\OrderUpdateService;
 use Illuminate\Validation\ValidationException;
 
@@ -231,6 +232,14 @@ class OrderController extends Controller
             'message' => 'Estado del pedido actualizado correctamente.',
             'data' => new OrderDetailsResource($order),
         ]);
+    }
+
+    public function costAnalysis(Order $order)
+    {
+        $this->authorize('view', $order);
+        $order = OrderDetailService::getOrderForDetail((string) $order->id);
+
+        return response()->json(OrderCostAnalysisService::analyze($order));
     }
 
     public function salesBySalesperson(SalesBySalespersonRequest $request)

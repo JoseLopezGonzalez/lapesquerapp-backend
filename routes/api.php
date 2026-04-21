@@ -27,6 +27,7 @@ use App\Http\Controllers\v2\OrderPlannedProductDetailController;
 use App\Http\Controllers\v2\FieldOrderController;
 /* API V2 */
 use App\Http\Controllers\v2\OrdersReportController;
+use App\Http\Controllers\v2\OrderProfitabilityStatsController;
 use App\Http\Controllers\v2\OrderStatisticsController;
 use App\Http\Controllers\v2\PalletController as V2PalletController;
 use App\Http\Controllers\v2\PaymentTermController as V2PaymentTermController;
@@ -320,6 +321,11 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         /* orderRankingStats */
         Route::get('statistics/orders/ranking', [OrderStatisticsController::class, 'orderRankingStats'])->name('v2.statistics.orders.ranking');
 
+        /* Rentabilidad: KPIs, serie temporal y desglose por producto */
+        Route::get('statistics/orders/profitability-summary', [OrderProfitabilityStatsController::class, 'summary'])->name('v2.statistics.orders.profitability_summary');
+        Route::get('statistics/orders/profitability-timeline', [OrderProfitabilityStatsController::class, 'timeline'])->name('v2.statistics.orders.profitability_timeline');
+        Route::get('statistics/orders/profitability-products', [OrderProfitabilityStatsController::class, 'byProduct'])->name('v2.statistics.orders.profitability_products');
+
         /* orders/sales-by-salesperson */
         Route::get('orders/sales-by-salesperson', [V2OrderController::class, 'salesBySalesperson']);
         /* salesChartData */
@@ -483,6 +489,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
         /* Update Order status */
         Route::put('orders/{order}/status', [V2OrderController::class, 'updateStatus'])->name('orders.update_status');
+
+        /* Order cost & margin analysis */
+        Route::get('orders/{order}/cost-analysis', [V2OrderController::class, 'costAnalysis'])->name('orders.cost_analysis');
 
         /* Descargas */
         Route::get('orders/{orderId}/pdf/order-sheet', [\App\Http\Controllers\v2\PDFController::class, 'generateOrderSheet'])->name('generate_order_sheet');

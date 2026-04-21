@@ -557,6 +557,45 @@ class Order extends Model
         return collect($this->productDetails)->sum('total');
     }
 
+    public function getTotalCostAttribute(): ?float
+    {
+        if (! $this->relationLoaded('pallets')) {
+            return null;
+        }
+
+        $total = null;
+        foreach ($this->pallets as $pallet) {
+            $cost = $pallet->total_cost;
+            if ($cost !== null) {
+                $total = ($total ?? 0.0) + $cost;
+            }
+        }
+
+        return $total;
+    }
+
+    public function getGrossMarginAttribute(): ?float
+    {
+        $cost = $this->total_cost;
+        if ($cost === null) {
+            return null;
+        }
+
+        return $this->total_amount - $cost;
+    }
+
+    public function getMarginPercentageAttribute(): ?float
+    {
+        $margin = $this->gross_margin;
+        $revenue = $this->total_amount;
+
+        if ($margin === null || $revenue <= 0) {
+            return null;
+        }
+
+        return round($margin / $revenue * 100, 2);
+    }
+
     /* incident only one */
     public function incident()
     {
