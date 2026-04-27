@@ -1997,32 +1997,30 @@ class Production extends Model
                 $missingWeight = $missingBoxes->sum('net_weight');
             }
 
-            // Usar el balance calculado o el de cajas físicas
-            // Si hay cajas físicas, verificar que coincidan con el balance calculado
-            // Si el balance calculado es 0 (o muy cercano), no hay desbalance real
+            // El balance de peso debe salir SIEMPRE del cálculo matemático:
+            // producido - venta - stock - reprocesado.
+            // Las cajas físicas se usan solo como detalle auxiliar cuando cuadran.
             $tolerance = 0.01; // Tolerancia para errores de redondeo
+            $boxesMatchTolerance = 0.5; // Tolerancia de peso para aceptar cajas físicas (kg)
 
-            if ($missingBoxesCount > 0) {
-                // Hay cajas físicas faltantes
-                // Verificar si el balance calculado coincide con las cajas físicas
-                // Si el balance calculado es 0, significa que todo está contabilizado correctamente
-                // y las cajas físicas "faltantes" probablemente están mal clasificadas
-                if (abs($calculatedMissing) < $tolerance) {
-                    // Balance calculado es 0: todo está contabilizado correctamente
-                    // No mostrar estas cajas como balance, ya que no hay desbalance real
-                    // (Las cajas físicas pueden estar mal clasificadas pero no afectan el balance)
-                    continue; // Saltar este producto, no hay desbalance real
-                }
+            if (abs($calculatedMissing) < $tolerance) {
+                // Balance real en 0: no hay desbalance aunque haya cajas "sueltas" detectadas.
+                continue;
+            }
 
-                // El balance calculado no es 0, usar las cajas físicas
-                $finalMissingWeight = $missingWeight;
+            // Peso final del balance: siempre el calculado.
+            // Permite detectar tanto faltante (+) como sobrante (-).
+            $finalMissingWeight = $calculatedMissing;
+
+            // Solo mostrar cajas físicas cuando su peso total cuadra con el balance calculado.
+            $physicalBoxesMatchCalculated = $missingBoxesCount > 0
+                && abs($missingWeight - $calculatedMissing) <= $boxesMatchTolerance;
+
+            if ($physicalBoxesMatchCalculated) {
                 $finalMissingBoxes = $missingBoxesCount;
             } else {
-                // No hay cajas físicas, usar el cálculo teórico
-                // Si es negativo = sobrante (más contabilizado que producido, posible error de datos)
-                // Si es positivo = faltante (no contabilizado)
-                $finalMissingWeight = $calculatedMissing; // Permitir valores negativos para detectar sobras/errores
-                $finalMissingBoxes = 0; // No sabemos cuántas cajas son
+                $finalMissingBoxes = 0;
+                $missingBoxes = collect([]);
             }
 
             // Calcular porcentaje de faltantes (solo si es positivo, no aplica a sobras)
