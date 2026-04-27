@@ -1,7 +1,7 @@
 # ADR-0002: Costes de pedido — resolución dinámica vs. tabla materializada
 
 **Estado**: Pendiente de implementar  
-**Contexto**: Endpoints de estadísticas de rentabilidad (`profitability-summary`, `profitability-timeline`, `profitability-products`)
+**Contexto**: Endpoints de estadísticas de rentabilidad (`profitability-summary`, `profitability-products`)
 
 ---
 
@@ -68,7 +68,7 @@ Todos estos eventos disparan la recalculación del `total_cost` del pedido afect
 
 ### Impacto en los endpoints de stats
 
-Con `total_cost` almacenado, los tres endpoints de estadísticas se convierten en consultas SQL puras:
+Con `total_cost` almacenado, los endpoints de estadísticas se convierten en consultas SQL puras:
 
 ```sql
 SELECT SUM(subtotal_amount) AS revenue, SUM(total_cost) AS cost
@@ -83,7 +83,7 @@ Sin iteración PHP ni resolución dinámica de costes.
 
 ## Estado actual de los endpoints
 
-Los tres endpoints de estadísticas de rentabilidad están implementados con resolución dinámica (sin snapshot). Son funcionales para rangos cortos (hasta ~30-60 días con volumen normal). Para rangos más amplios pueden ser lentos.
+Los endpoints de estadísticas de rentabilidad están implementados con resolución dinámica (sin snapshot). Son funcionales para rangos cortos (hasta ~30-60 días con volumen normal). Para rangos más amplios pueden ser lentos.
 
 Cuando se implemente la tabla materializada, `OrderProfitabilityStatsService` deberá refactorizarse para leer de `orders.total_cost` en lugar de calcular caja a caja.
 

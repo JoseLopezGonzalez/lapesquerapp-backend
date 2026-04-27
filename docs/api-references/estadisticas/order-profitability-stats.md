@@ -1,6 +1,6 @@
 # Estadísticas de Rentabilidad de Pedidos
 
-Tres endpoints independientes para alimentar el dashboard de rentabilidad: KPIs globales, evolución temporal y desglose por producto.
+Dos endpoints independientes para alimentar el dashboard de rentabilidad: KPIs globales y desglose por producto.
 
 > **Nota de rendimiento**: los costes se calculan en tiempo real caja a caja. Para rangos amplios (>60 días con alto volumen de pedidos) la respuesta puede tardar varios segundos. Se documentará e implementará una tabla materializada en una fase posterior ([ADR-0002](../../architecture-decisions/0002-materialized-order-costs.md)).
 
@@ -58,66 +58,7 @@ GET /api/v2/statistics/orders/profitability-summary
 
 ---
 
-## 2. Evolución temporal
-
-```http
-GET /api/v2/statistics/orders/profitability-timeline
-```
-
-### Parámetros
-
-| Parámetro | Tipo | Requerido | Descripción |
-|---|---|---|---|
-| `dateFrom` | `string` (YYYY-MM-DD) | Sí | Inicio del rango. |
-| `dateTo` | `string` (YYYY-MM-DD) | Sí | Fin del rango. |
-| `granularity` | `day \| week \| month` | No | Agrupación temporal. Default: `month`. |
-| `productIds[]` | `integer[]` | No | Igual que en summary: filtra por productos. |
-
-### Respuesta `200 OK`
-
-```json
-{
-  "granularity": "month",
-  "series": [
-    {
-      "period": "2026-01",
-      "periodLabel": "Enero 2026",
-      "ordersCount": 11,
-      "totalRevenue": 16200.00,
-      "totalCost": 12400.00,
-      "grossMargin": 3800.00,
-      "marginPercentage": 23.46
-    },
-    {
-      "period": "2026-02",
-      "periodLabel": "Febrero 2026",
-      "ordersCount": 0,
-      "totalRevenue": 0.00,
-      "totalCost": null,
-      "grossMargin": null,
-      "marginPercentage": null
-    }
-  ]
-}
-```
-
-| Campo | Tipo | Descripción |
-|---|---|---|
-| `granularity` | `string` | Granularidad aplicada. |
-| `series` | `array` | Un objeto por cada período del rango, **incluyendo períodos sin pedidos** (con valores en cero). |
-| `series[].period` | `string` | Clave del período: `YYYY-MM-DD` (día), `YYYY-WW` (semana ISO), `YYYY-MM` (mes). |
-| `series[].periodLabel` | `string` | Etiqueta legible en español: `"21/04/2026"`, `"Sem. 17 2026"`, `"Abril 2026"`. |
-| `series[].ordersCount` | `integer` | Pedidos en ese período. |
-| `series[].totalRevenue` | `number` | Revenue ex-IVA del período. `0.00` si no hay pedidos. |
-| `series[].totalCost` | `number \| null` | Coste del período. `null` si no hay pedidos o ninguna caja tiene coste. |
-| `series[].grossMargin` | `number \| null` | Margen bruto del período. |
-| `series[].marginPercentage` | `number \| null` | Porcentaje de margen del período. |
-
-> La serie **siempre cubre todos los períodos** entre `dateFrom` y `dateTo`. Los períodos vacíos tienen `totalRevenue: 0.00` y `totalCost: null`.
-
----
-
-## 3. Desglose por producto
+## 2. Desglose por producto
 
 ```http
 GET /api/v2/statistics/orders/profitability-products
@@ -195,7 +136,7 @@ GET /api/v2/statistics/orders/profitability-products
 
 ### Qué se entiende por "cajas expedidas"
 
-Los tres endpoints cuentan únicamente cajas marcadas como **disponibles** (`isAvailable = true`), es decir, cajas que no han sido consumidas como input de producción.
+Los dos endpoints cuentan únicamente cajas marcadas como **disponibles** (`isAvailable = true`), es decir, cajas que no han sido consumidas como input de producción.
 
 ### Cálculo de revenue
 
@@ -209,7 +150,7 @@ El precio proviene de `plannedProductDetails.unit_price`. Si una caja no tiene l
 
 Un coste `null` indica que no existe información de coste para esas cajas: ni precio en la recepción de materia prima ni costes de producción registrados. No es un error, es un dato ausente.
 
-### Filtro `productIds[]` (summary y timeline)
+### Filtro `productIds[]` (summary)
 
 Cuando se envía `productIds[]`, el endpoint **no filtra qué pedidos se incluyen**, sino qué cajas se cuentan dentro de cada pedido. Un pedido con 3 productos distintos, del que solo se pide 1 en el filtro, contribuirá al total únicamente con la parte proporcional de ese producto.
 

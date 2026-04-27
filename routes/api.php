@@ -321,9 +321,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         /* orderRankingStats */
         Route::get('statistics/orders/ranking', [OrderStatisticsController::class, 'orderRankingStats'])->name('v2.statistics.orders.ranking');
 
-        /* Rentabilidad: KPIs, serie temporal y desglose por producto */
+        /* Rentabilidad: KPIs y desglose por producto */
         Route::get('statistics/orders/profitability-summary', [OrderProfitabilityStatsController::class, 'summary'])->name('v2.statistics.orders.profitability_summary');
-        Route::get('statistics/orders/profitability-timeline', [OrderProfitabilityStatsController::class, 'timeline'])->name('v2.statistics.orders.profitability_timeline');
         Route::get('statistics/orders/profitability-products', [OrderProfitabilityStatsController::class, 'byProduct'])->name('v2.statistics.orders.profitability_products');
 
         /* orders/sales-by-salesperson */

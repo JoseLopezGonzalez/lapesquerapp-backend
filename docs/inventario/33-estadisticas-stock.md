@@ -25,31 +25,39 @@ El módulo de estadísticas de stock proporciona análisis del inventario almace
 
 #### `getTotalStockStats()`
 
-Calcula estadísticas generales del stock almacenado.
+Calcula estadísticas generales del stock disponible, incluyendo coste total y métricas de cobertura de valoración.
 
 **Retorna**:
 ```php
 [
-    'totalNetWeight' => float,  // Peso neto total en kg
-    'totalPallets' => int,      // Número total de palets almacenados
-    'totalBoxes' => int,        // Número total de cajas
-    'totalSpecies' => int,      // Especies distintas
-    'totalStores' => int,       // Almacenes distintos
+    'totalNetWeight'        => float,       // Peso neto total en kg
+    'totalPallets'          => int,         // Número total de palets en stock
+    'totalBoxes'            => int,         // Número total de cajas disponibles
+    'totalSpecies'          => int,         // Especies distintas
+    'totalStores'           => int,         // Almacenes distintos
+    'totalStockCost'        => float|null,  // Coste total (€) del stock valorado
+    'stockCostPerKg'        => float|null,  // Coste medio por kg (4 decimales)
+    'coveredNetWeightKg'    => float,       // Kg con coste calculable
+    'uncoveredNetWeightKg'  => float,       // Kg sin coste calculable
+    'costCoverageWeightPct' => float,       // % de kg valorado (0–100)
+    'coveredBoxes'          => int,         // Cajas con coste calculable
+    'uncoveredBoxes'        => int,         // Cajas sin coste calculable
+    'costCoverageBoxesPct'  => float,       // % de cajas valoradas (0–100)
 ]
 ```
 
-**Lógica**:
-1. **Total Peso Neto**: Suma de `boxes.net_weight` de palets almacenados
-2. **Total Palets**: Cuenta palets con `state_id = 2`
-3. **Total Cajas**: Cuenta `pallet_boxes` de palets almacenados
-4. **Total Especies**: Cuenta especies distintas en productos almacenados
-5. **Total Almacenes**: Cuenta almacenes distintos con palets almacenados
+**Lógica de stock**:
+1. **Total Peso Neto**: Suma de `boxes.net_weight` de cajas disponibles (sin `production_inputs`) en palets `inStock` (registered + stored).
+2. **Total Palets**: Cuenta palets `inStock`.
+3. **Total Cajas**: Cuenta cajas disponibles de palets `inStock`.
+4. **Total Especies**: Cuenta especies distintas en cajas disponibles.
+5. **Total Almacenes**: Cuenta almacenes con palets stored.
 
-**Queries utilizadas**:
-- `Pallet::stored()` - Filtra palets almacenados
-- `joinBoxes()` - JOIN con `pallet_boxes` y `boxes`
-- `joinProducts()` - JOIN con productos
-- `StoredPallet::stored()` - Filtra palets almacenados con scope
+**Lógica de coste** (método `computeCostStats`):
+- Para cajas de **recepción** (`pallet.reception_id IS NOT NULL`): el precio/kg se obtiene directamente de `raw_material_reception_products` mediante un JOIN SQL (una sola query).
+- Para cajas de **producción** (sin recepción): se resuelve el coste por par único `(lot, article_id)` con `ProductionCostResolver::getProductionLotProductCostPerKg()`, que internamente cachea por par para minimizar queries.
+- `totalStockCost` es `null` si ninguna caja tiene coste calculable.
+- Los porcentajes de cobertura se calculan sobre el total de kg/cajas disponibles.
 
 #### `getTotalStockBySpeciesStats()`
 
@@ -110,13 +118,42 @@ GET /v2/statistics/stock/total
 **Respuesta** (200):
 ```json
 {
-    "totalNetWeight": 125000.50,
-    "totalPallets": 250,
-    "totalBoxes": 3750,
-    "totalSpecies": 5,
-    "totalStores": 3
+    "totalNetWeight": 105586.31,
+    "totalPallets": 226,
+    "totalBoxes": 5764,
+    "totalSpecies": 12,
+    "totalStores": 9,
+
+    "totalStockCost": 348921.44,
+    "stockCostPerKg": 3.3049,
+
+    "coveredNetWeightKg": 82740.25,
+    "uncoveredNetWeightKg": 22846.06,
+    "costCoverageWeightPct": 78.36,
+
+    "coveredBoxes": 4412,
+    "uncoveredBoxes": 1352,
+    "costCoverageBoxesPct": 76.55
 }
 ```
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `totalNetWeight` | `number` | Kg netos disponibles en stock (cajas no usadas en producción). |
+| `totalPallets` | `int` | Palets en stock (status registered o stored). |
+| `totalBoxes` | `int` | Cajas disponibles en stock. |
+| `totalSpecies` | `int` | Especies distintas presentes. |
+| `totalStores` | `int` | Almacenes distintos con palets stored. |
+| `totalStockCost` | `number\|null` | Coste total (€) del stock valorado. `null` si ninguna caja tiene coste calculable. |
+| `stockCostPerKg` | `number\|null` | `totalStockCost / totalNetWeight`, 4 decimales. `null` si no hay coste o kg. |
+| `coveredNetWeightKg` | `number` | Kg disponibles con coste calculable. |
+| `uncoveredNetWeightKg` | `number` | Kg disponibles sin coste calculable. |
+| `costCoverageWeightPct` | `number` | `coveredNetWeightKg / totalNetWeight × 100`. Indica cuánto del stock está valorado. |
+| `coveredBoxes` | `int` | Cajas disponibles con coste calculable. |
+| `uncoveredBoxes` | `int` | Cajas disponibles sin coste calculable. |
+| `costCoverageBoxesPct` | `number` | `coveredBoxes / totalBoxes × 100`. |
+
+> **Lectura de cobertura recomendada**: ≥ 95% muy fiable · 80–95% útil con advertencia · < 80% orientativo.
 
 #### `totalStockBySpeciesStats()`
 ```php
