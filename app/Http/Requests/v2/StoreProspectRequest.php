@@ -17,6 +17,7 @@ class StoreProspectRequest extends FormRequest
     {
         return [
             'companyName' => 'required|string|max:255',
+            'categoryId' => 'nullable|integer|exists:tenant.prospect_categories,id',
             'address' => 'nullable|string',
             'website' => 'nullable|string|max:512',
             'countryId' => 'nullable|integer|exists:tenant.countries,id',

@@ -7,6 +7,7 @@ use App\Models\AgendaAction;
 use App\Models\Country;
 use App\Models\Customer;
 use App\Models\Prospect;
+use App\Models\ProspectCategory;
 use App\Models\Salesperson;
 use App\Models\Setting;
 use App\Models\Tenant;
@@ -130,6 +131,45 @@ class CrmApiTest extends TestCase
 
         $response->assertStatus(201);
         $this->assertNotEmpty($response->json('warnings'));
+    }
+
+    public function test_prospect_can_be_assigned_and_filtered_by_category(): void
+    {
+        $restaurant = ProspectCategory::create([
+            'name' => 'Restaurante',
+            'active' => true,
+        ]);
+        $distributor = ProspectCategory::create([
+            'name' => 'Distribuidor',
+            'active' => true,
+        ]);
+
+        $create = $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects', [
+                'companyName' => 'Categoria Prospect',
+                'categoryId' => $restaurant->id,
+                'origin' => Prospect::ORIGIN_DIRECT,
+            ]);
+
+        $create->assertStatus(201)
+            ->assertJsonPath('data.categoryId', $restaurant->id)
+            ->assertJsonPath('data.category.id', $restaurant->id)
+            ->assertJsonPath('data.category.name', 'Restaurante');
+
+        app('auth')->forgetGuards();
+        $this->withHeaders($this->commercialHeaders())
+            ->postJson('/api/v2/prospects', [
+                'companyName' => 'Distribuidor Prospect',
+                'categoryId' => $distributor->id,
+                'origin' => Prospect::ORIGIN_DIRECT,
+            ])->assertStatus(201);
+
+        app('auth')->forgetGuards();
+        $this->withHeaders($this->commercialHeaders())
+            ->getJson('/api/v2/prospects?categories[]='.$restaurant->id)
+            ->assertStatus(200)
+            ->assertJsonFragment(['companyName' => 'Categoria Prospect'])
+            ->assertJsonMissing(['companyName' => 'Distribuidor Prospect']);
     }
 
     public function test_interaction_updates_prospect_last_contact_and_next_action(): void
@@ -1154,22 +1194,22 @@ class CrmApiTest extends TestCase
 
         $this->withHeaders($this->commercialHeaders())
             ->postJson('/api/v2/prospects/'.$prospect->id.'/convert-to-customer', [
-                'vatNumber'        => 'ES12345678A',
-                'billingAddress'   => 'Facturación específica',
-                'shippingAddress'  => 'Envío específico',
-                'paymentTermId'    => $paymentTerm->id,
-                'a3erpCode'        => 'A3-CODE-001',
+                'vatNumber' => 'ES12345678A',
+                'billingAddress' => 'Facturación específica',
+                'shippingAddress' => 'Envío específico',
+                'paymentTermId' => $paymentTerm->id,
+                'a3erpCode' => 'A3-CODE-001',
             ])
             ->assertStatus(200);
 
         $prospect->refresh();
         $this->assertDatabaseHas('customers', [
-            'id'              => $prospect->customer_id,
-            'vat_number'      => 'ES12345678A',
+            'id' => $prospect->customer_id,
+            'vat_number' => 'ES12345678A',
             'billing_address' => 'Facturación específica',
             'shipping_address' => 'Envío específico',
             'payment_term_id' => $paymentTerm->id,
-            'a3erp_code'      => 'A3-CODE-001',
+            'a3erp_code' => 'A3-CODE-001',
         ], 'tenant');
     }
 

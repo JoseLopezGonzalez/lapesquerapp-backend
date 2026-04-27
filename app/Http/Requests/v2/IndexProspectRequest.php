@@ -23,6 +23,8 @@ class IndexProspectRequest extends FormRequest
             'origin.*' => ['string', Rule::in(Prospect::origins())],
             'countries' => 'sometimes|array',
             'countries.*' => 'integer',
+            'categories' => 'sometimes|array',
+            'categories.*' => 'integer',
             'salespeople' => 'sometimes|array',
             'salespeople.*' => 'integer',
             'perPage' => 'sometimes|integer|min:1|max:250',

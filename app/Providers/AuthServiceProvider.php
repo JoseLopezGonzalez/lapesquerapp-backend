@@ -29,6 +29,7 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\Store::class => \App\Policies\StorePolicy::class,
         \App\Models\Product::class => \App\Policies\ProductPolicy::class,
         \App\Models\ProductCategory::class => \App\Policies\ProductCategoryPolicy::class,
+        \App\Models\ProspectCategory::class => \App\Policies\ProspectCategoryPolicy::class,
         \App\Models\ProductFamily::class => \App\Policies\ProductFamilyPolicy::class,
         \App\Sanctum\PersonalAccessToken::class => \App\Policies\SessionPolicy::class,
         \App\Models\Setting::class => \App\Policies\SettingPolicy::class,

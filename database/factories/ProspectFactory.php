@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Country;
 use App\Models\Customer;
 use App\Models\Prospect;
+use App\Models\ProspectCategory;
 use App\Models\Salesperson;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -16,6 +17,7 @@ class ProspectFactory extends Factory
     {
         return [
             'salesperson_id' => Salesperson::query()->value('id') ?? Salesperson::factory(),
+            'category_id' => $this->faker->optional(0.75)->passthrough(ProspectCategory::query()->value('id') ?? ProspectCategory::factory()),
             'company_name' => $this->faker->company(),
             'address' => $this->faker->address(),
             'website' => $this->faker->optional(0.65)->url(),

@@ -57,6 +57,7 @@ class Prospect extends Model
 
     protected $fillable = [
         'salesperson_id',
+        'category_id',
         'company_name',
         'address',
         'website',
@@ -120,6 +121,11 @@ class Prospect extends Model
         return $this->belongsTo(Salesperson::class);
     }
 
+    public function category()
+    {
+        return $this->belongsTo(ProspectCategory::class, 'category_id');
+    }
+
     public function country()
     {
         return $this->belongsTo(Country::class);
@@ -162,6 +168,8 @@ class Prospect extends Model
         return [
             'id' => $this->id,
             'companyName' => $this->company_name,
+            'categoryId' => $this->category_id,
+            'category' => $this->relationLoaded('category') ? $this->category?->toArrayAssoc() : null,
             'address' => $this->address,
             'website' => $this->website,
             'country' => $this->relationLoaded('country') ? $this->country?->toArrayAssoc() : null,

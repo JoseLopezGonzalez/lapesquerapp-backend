@@ -10,6 +10,7 @@ class TenantBaseCatalogSeeder extends Seeder
     {
         $this->call([
             ProductCategorySeeder::class,
+            ProspectCategorySeeder::class,
             ProductFamilySeeder::class,
             CaptureZonesSeeder::class,
             FishingGearSeeder::class,

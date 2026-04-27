@@ -35,7 +35,7 @@ class ProspectController extends Controller
 
     public function show(string $id)
     {
-        $prospect = Prospect::with(['country', 'salesperson', 'customer', 'contacts', 'primaryContact', 'latestInteraction.salesperson', 'interactions.salesperson', 'offers.lines.product', 'offers.lines.tax'])
+        $prospect = Prospect::with(['category', 'country', 'salesperson', 'customer', 'contacts', 'primaryContact', 'latestInteraction.salesperson', 'interactions.salesperson', 'offers.lines.product', 'offers.lines.tax'])
             ->findOrFail($id);
         $this->authorize('view', $prospect);
 

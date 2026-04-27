@@ -20,7 +20,7 @@ class ProspectService
     public static function list(Request $request): LengthAwarePaginator
     {
         $query = Prospect::query()
-            ->with(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
+            ->with(['category', 'country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
 
         self::scopeForUser($query, $request->user());
 
@@ -45,6 +45,10 @@ class ProspectService
             $query->whereIn('country_id', $request->input('countries'));
         }
 
+        if ($request->filled('categories')) {
+            $query->whereIn('category_id', $request->input('categories'));
+        }
+
         if ($request->filled('salespeople')) {
             $query->whereIn('salesperson_id', $request->input('salespeople'));
         }
@@ -62,6 +66,7 @@ class ProspectService
 
         $prospect = Prospect::create([
             'salesperson_id' => $salespersonId,
+            'category_id' => $validated['categoryId'] ?? null,
             'company_name' => $validated['companyName'],
             'address' => $validated['address'] ?? null,
             'website' => $validated['website'] ?? null,
@@ -80,7 +85,7 @@ class ProspectService
             self::upsertPrimaryContact($prospect, $validated['primaryContact']);
         }
 
-        $prospect->load(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
+        $prospect->load(['category', 'country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
 
         return [
             'prospect' => $prospect,
@@ -92,6 +97,7 @@ class ProspectService
     {
         $prospect->update([
             'salesperson_id' => self::resolveSalespersonId($validated['salespersonId'] ?? $prospect->salesperson_id, $user),
+            'category_id' => $validated['categoryId'] ?? null,
             'company_name' => $validated['companyName'],
             'address' => array_key_exists('address', $validated) ? $validated['address'] : $prospect->address,
             'website' => array_key_exists('website', $validated) ? $validated['website'] : $prospect->website,
@@ -110,7 +116,7 @@ class ProspectService
             self::upsertPrimaryContact($prospect, $validated['primaryContact'] ?? []);
         }
 
-        $prospect->load(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
+        $prospect->load(['category', 'country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
 
         return [
             'prospect' => $prospect,
@@ -197,7 +203,7 @@ class ProspectService
         $prospect->next_action_note = $note;
         $prospect->save();
 
-        return $prospect->fresh(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
+        return $prospect->fresh(['category', 'country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
     }
 
     public static function clearNextAction(Prospect $prospect): Prospect
@@ -218,7 +224,7 @@ class ProspectService
         $prospect->next_action_note = null;
         $prospect->save();
 
-        return $prospect->fresh(['country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
+        return $prospect->fresh(['category', 'country', 'salesperson', 'customer', 'primaryContact', 'latestInteraction.salesperson', 'offers']);
     }
 
     public static function convertToCustomer(Prospect $prospect, array $extraData = []): Customer
@@ -272,27 +278,27 @@ class ProspectService
             $address = filled($prospect->address) ? $prospect->address : null;
 
             $customer = Customer::create([
-                'name'                => $prospect->company_name,
-                'country_id'          => $prospect->country_id,
-                'salesperson_id'      => $prospect->salesperson_id,
-                'billing_address'     => $extraData['billingAddress'] ?? $address,
-                'shipping_address'    => $extraData['shippingAddress'] ?? $address,
-                'emails'              => $emails,
-                'contact_info'        => $contactInfo,
-                'payment_term_id'     => $paymentTermId,
-                'vat_number'          => $extraData['vatNumber'] ?? null,
-                'transport_id'        => $extraData['transportId'] ?? null,
-                'a3erp_code'          => $extraData['a3erpCode'] ?? null,
-                'facilcom_code'       => $extraData['facilcomCode'] ?? null,
+                'name' => $prospect->company_name,
+                'country_id' => $prospect->country_id,
+                'salesperson_id' => $prospect->salesperson_id,
+                'billing_address' => $extraData['billingAddress'] ?? $address,
+                'shipping_address' => $extraData['shippingAddress'] ?? $address,
+                'emails' => $emails,
+                'contact_info' => $contactInfo,
+                'payment_term_id' => $paymentTermId,
+                'vat_number' => $extraData['vatNumber'] ?? null,
+                'transport_id' => $extraData['transportId'] ?? null,
+                'a3erp_code' => $extraData['a3erpCode'] ?? null,
+                'facilcom_code' => $extraData['facilcomCode'] ?? null,
                 'transportation_notes' => $extraData['transportationNotes'] ?? null,
-                'production_notes'    => $extraData['productionNotes'] ?? null,
-                'accounting_notes'    => $extraData['accountingNotes'] ?? null,
+                'production_notes' => $extraData['productionNotes'] ?? null,
+                'accounting_notes' => $extraData['accountingNotes'] ?? null,
             ]);
             $customer->alias = 'Cliente Nº '.$customer->id;
             $customer->save();
 
             $prospect->update([
-                'status'      => Prospect::STATUS_CUSTOMER,
+                'status' => Prospect::STATUS_CUSTOMER,
                 'customer_id' => $customer->id,
             ]);
 
@@ -316,7 +322,7 @@ class ProspectService
 
                 $pending->update([
                     'target_type' => CrmAgendaService::TARGET_CUSTOMER,
-                    'target_id'   => (int) $customer->id,
+                    'target_id' => (int) $customer->id,
                 ]);
             }
 
