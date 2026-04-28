@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use App\Services\Production\ProductionLotLockService;
 use App\Traits\UsesTenantConnection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ProductionInput extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = [
         'production_record_id',
@@ -27,6 +28,12 @@ class ProductionInput extends Model
         static::creating(function ($input) {
             $input->validateCreationRules();
         });
+
+        static::deleting(function ($input) {
+            if ($input->box) {
+                app(ProductionLotLockService::class)->assertBoxIsMutable($input->box, 'eliminar input de producción');
+            }
+        });
     }
 
     /**
@@ -36,14 +43,16 @@ class ProductionInput extends Model
     {
         // Validar que la caja exista y no esté eliminada
         $box = Box::find($this->box_id);
-        if (!$box) {
+        if (! $box) {
             throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
                 "La caja con ID {$this->box_id} no existe."
             );
         }
 
+        app(ProductionLotLockService::class)->assertBoxIsMutable($box, 'crear input de producción');
+
         // Validar que la caja esté disponible (no usada en otros procesos)
-        if (!$box->isAvailable) {
+        if (! $box->isAvailable) {
             throw new \InvalidArgumentException(
                 "La caja con ID {$this->box_id} ya está siendo usada en otro proceso de producción y no está disponible."
             );
@@ -51,7 +60,7 @@ class ProductionInput extends Model
 
         // Validar que el proceso pertenezca a un lote abierto
         $productionRecord = ProductionRecord::with('production')->find($this->production_record_id);
-        if (!$productionRecord) {
+        if (! $productionRecord) {
             throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
                 "El proceso de producción con ID {$this->production_record_id} no existe."
             );

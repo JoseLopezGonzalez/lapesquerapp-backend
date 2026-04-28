@@ -213,6 +213,99 @@ class ProductionBlockApiTest extends TestCase
         $this->assertNull($reasons->firstWhere('code', 'pallet_not_shipped'));
     }
 
+    public function test_box_creation_is_blocked_by_closed_lot_even_for_different_species(): void
+    {
+        $production = Production::query()->with('captureZone')->firstOrFail();
+        $production->forceFill(['closed_at' => now('UTC')])->saveQuietly();
+
+        $gear = FishingGear::create(['name' => 'Volanta '.uniqid()]);
+        $otherSpecies = Species::create([
+            'name' => 'Rape '.uniqid(),
+            'scientific_name' => 'Lophius '.uniqid(),
+            'fao' => 'MON',
+            'image' => 'https://example.com/species-monkfish.png',
+            'fishing_gear_id' => $gear->id,
+        ]);
+        $otherSpeciesProduct = $this->createValidProduct($otherSpecies, $production->captureZone, 'CLS');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("el lote '{$production->lot}' pertenece a una producción cerrada definitivamente");
+
+        Box::create([
+            'article_id' => $otherSpeciesProduct->id,
+            'lot' => $production->lot,
+            'gs1_128' => 'CLS-'.$production->id,
+            'gross_weight' => 11,
+            'net_weight' => 10,
+        ]);
+    }
+
+    public function test_existing_boxes_from_closed_lots_cannot_be_modified_or_deleted(): void
+    {
+        $production = Production::query()->with(['species', 'captureZone'])->firstOrFail();
+        $product = $this->createValidProduct($production->species, $production->captureZone, 'CLB');
+        $box = Box::create([
+            'article_id' => $product->id,
+            'lot' => $production->lot,
+            'gs1_128' => 'CLB-'.$production->id,
+            'gross_weight' => 11,
+            'net_weight' => 10,
+        ]);
+
+        $production->forceFill(['closed_at' => now('UTC')])->saveQuietly();
+
+        try {
+            $box->update(['net_weight' => 9]);
+            $this->fail('Se permitió editar una caja de un lote cerrado.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('pertenece a una producción cerrada definitivamente', $e->getMessage());
+        }
+
+        $box->refresh();
+
+        try {
+            $box->delete();
+            $this->fail('Se permitió eliminar una caja de un lote cerrado.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('pertenece a una producción cerrada definitivamente', $e->getMessage());
+        }
+    }
+
+    public function test_closed_lot_boxes_cannot_be_consumed_by_another_open_production(): void
+    {
+        $sourceProduction = Production::query()->with(['species', 'captureZone'])->firstOrFail();
+        $product = $this->createValidProduct($sourceProduction->species, $sourceProduction->captureZone, 'CLI');
+        $box = Box::create([
+            'article_id' => $product->id,
+            'lot' => $sourceProduction->lot,
+            'gs1_128' => 'CLI-'.$sourceProduction->id,
+            'gross_weight' => 11,
+            'net_weight' => 10,
+        ]);
+        $sourceProduction->forceFill(['closed_at' => now('UTC')])->saveQuietly();
+
+        $targetProduction = Production::create([
+            'lot' => 'OPEN-'.uniqid(),
+            'date' => now()->toDateString(),
+            'species_id' => $sourceProduction->species_id,
+            'capture_zone_id' => $sourceProduction->capture_zone_id,
+            'opened_at' => now('UTC'),
+        ]);
+        $targetRecord = ProductionRecord::create([
+            'production_id' => $targetProduction->id,
+            'process_id' => Process::query()->value('id'),
+            'started_at' => now('UTC'),
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('pertenece a una producción cerrada definitivamente');
+
+        ProductionInput::create([
+            'production_record_id' => $targetRecord->id,
+            'box_id' => $box->id,
+        ]);
+    }
+
     public function test_production_store_rejects_duplicate_lot(): void
     {
         $gear = FishingGear::create(['name' => 'Arrastre '.uniqid()]);

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\Production\ProductionCostResolver;
+use App\Services\Production\ProductionLotLockService;
 use App\Traits\UsesTenantConnection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -38,6 +39,8 @@ class Box extends Model
      */
     protected function validateBoxRules(): void
     {
+        $this->validateClosedLotRules();
+
         // Validar que net_weight > 0
         if ($this->net_weight !== null && $this->net_weight <= 0) {
             throw new \InvalidArgumentException(
@@ -64,10 +67,33 @@ class Box extends Model
     }
 
     /**
+     * Un lote cerrado bloquea cualquier caja con ese lote, independientemente del producto o especie.
+     */
+    protected function validateClosedLotRules(): void
+    {
+        if (! $this->exists) {
+            app(ProductionLotLockService::class)->assertLotIsMutable($this->lot, 'crear caja');
+
+            return;
+        }
+
+        if ($this->isDirty('lot')) {
+            app(ProductionLotLockService::class)->assertLotIsMutable($this->getOriginal('lot'), 'editar caja');
+            app(ProductionLotLockService::class)->assertLotIsMutable($this->lot, 'editar caja');
+
+            return;
+        }
+
+        app(ProductionLotLockService::class)->assertLotIsMutable($this->lot, 'editar caja');
+    }
+
+    /**
      * Validar reglas al eliminar Box
      */
     protected function validateDeletionRules(): void
     {
+        app(ProductionLotLockService::class)->assertLotIsMutable($this->lot, 'eliminar caja');
+
         // No permitir eliminar si tiene productionInputs (fue usada en producción)
         if ($this->productionInputs()->exists()) {
             throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
