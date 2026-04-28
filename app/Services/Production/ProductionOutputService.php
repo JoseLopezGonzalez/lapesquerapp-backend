@@ -4,15 +4,23 @@ namespace App\Services\Production;
 
 use App\Models\ProductionOutput;
 use App\Models\ProductionOutputSource;
+use App\Models\ProductionRecord;
 use Illuminate\Support\Facades\DB;
 
 class ProductionOutputService
 {
+    public function __construct(
+        private ProductionLotLockService $lotLock,
+    ) {}
+
     /**
      * Create a production output
      */
     public function create(array $data): ProductionOutput
     {
+        $record = ProductionRecord::with('production')->findOrFail($data['production_record_id']);
+        $this->lotLock->assertLotIsMutable($record->production->lot, 'crear output de producción');
+
         return DB::transaction(function () use ($data) {
             $sources = $data['sources'] ?? null;
             unset($data['sources']);
@@ -130,6 +138,9 @@ class ProductionOutputService
      */
     public function update(ProductionOutput $output, array $data): ProductionOutput
     {
+        $output->loadMissing('productionRecord.production');
+        $this->lotLock->assertLotIsMutable($output->productionRecord->production->lot, 'editar output de producción');
+
         return DB::transaction(function () use ($output, $data) {
             $sources = $data['sources'] ?? null;
             unset($data['sources']);
@@ -162,6 +173,9 @@ class ProductionOutputService
      */
     public function delete(ProductionOutput $output): bool
     {
+        $output->loadMissing('productionRecord.production');
+        $this->lotLock->assertLotIsMutable($output->productionRecord->production->lot, 'eliminar output de producción');
+
         return $output->delete();
     }
 
@@ -179,7 +193,6 @@ class ProductionOutputService
                     $output = $this->create([
                         'production_record_id' => $productionRecordId,
                         'product_id' => $outputData['product_id'],
-                        'lot_id' => $outputData['lot_id'] ?? null,
                         'boxes' => $outputData['boxes'],
                         'weight_kg' => $outputData['weight_kg'],
                         'sources' => $outputData['sources'] ?? null,

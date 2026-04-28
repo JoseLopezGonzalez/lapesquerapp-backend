@@ -15,7 +15,6 @@ class ProductionOutput extends Model
     protected $fillable = [
         'production_record_id',
         'product_id',
-        'lot_id',
         'boxes',
         'weight_kg',
     ];

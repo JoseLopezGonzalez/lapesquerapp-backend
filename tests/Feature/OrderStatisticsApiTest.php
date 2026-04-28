@@ -228,6 +228,73 @@ class OrderStatisticsApiTest extends TestCase
             ->assertJsonPath('products.0.ordersCount', 1);
     }
 
+    public function test_can_export_profitability_summary_audit_excel(): void
+    {
+        $species = Species::factory()->create([
+            'fishing_gear_id' => FishingGear::factory()->create()->id,
+        ]);
+
+        $product = Product::factory()->create([
+            'name' => 'Merluza export test',
+            'species_id' => $species->id,
+            'capture_zone_id' => CaptureZone::factory()->create()->id,
+            'family_id' => ProductFamily::factory()->create()->id,
+        ]);
+
+        $reception = RawMaterialReception::factory()->create();
+        $order = Order::factory()->create([
+            'entry_date' => '2026-03-10',
+            'load_date' => '2026-03-15',
+        ]);
+
+        OrderPlannedProductDetail::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'unit_price' => 5.0,
+        ]);
+
+        $pallet = Pallet::factory()->create([
+            'order_id' => $order->id,
+            'reception_id' => $reception->id,
+            'status' => Pallet::STATE_SHIPPED,
+        ]);
+
+        RawMaterialReceptionProduct::factory()->create([
+            'reception_id' => $reception->id,
+            'product_id' => $product->id,
+            'lot' => 'LOT-EXPORT-001',
+            'price' => 3.0,
+        ]);
+
+        $box = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-EXPORT-001',
+            'net_weight' => 10.0,
+            'gross_weight' => 10.5,
+        ]);
+
+        PalletBox::create([
+            'pallet_id' => $pallet->id,
+            'box_id' => $box->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->get('/api/v2/statistics/orders/profitability-summary/export?'.http_build_query([
+                'dateFrom' => '2026-03-01',
+                'dateTo' => '2026-03-31',
+            ]));
+
+        $response->assertStatus(200);
+        $this->assertStringContainsString(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            $response->headers->get('content-type')
+        );
+        $this->assertStringContainsString(
+            'order_profitability_summary_2026-03-01_2026-03-31.xlsx',
+            $response->headers->get('content-disposition')
+        );
+    }
+
     public function test_reception_chart_data_requires_authentication(): void
     {
         $response = $this->withHeaders([

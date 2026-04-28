@@ -82,6 +82,19 @@ class ProductionResource extends JsonResource
                     ];
                 });
             }),
+            'closedBy' => $this->closed_by,
+            'closureReason' => $this->closure_reason,
+            'closedByUser' => $this->whenLoaded('closedByUser', fn () => $this->closedByUser ? [
+                'id' => $this->closedByUser->id,
+                'name' => $this->closedByUser->name,
+            ] : null),
+            'reopenedAt' => $this->reopened_at?->toIso8601String(),
+            'reopenedBy' => $this->reopened_by,
+            'reopenReason' => $this->reopen_reason,
+            'reopenedByUser' => $this->whenLoaded('reopenedByUser', fn () => $this->reopenedByUser ? [
+                'id' => $this->reopenedByUser->id,
+                'name' => $this->reopenedByUser->name,
+            ] : null),
             'createdAt' => $this->created_at?->toIso8601String(),
             'updatedAt' => $this->updated_at?->toIso8601String(),
         ];

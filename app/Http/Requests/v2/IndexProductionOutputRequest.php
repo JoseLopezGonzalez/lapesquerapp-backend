@@ -17,7 +17,6 @@ class IndexProductionOutputRequest extends FormRequest
         return [
             'production_record_id' => 'nullable|exists:tenant.production_records,id',
             'product_id' => 'nullable|exists:tenant.products,id',
-            'lot_id' => 'nullable|string|max:255',
             'production_id' => 'nullable|exists:tenant.productions,id',
             'perPage' => 'nullable|integer|min:1|max:100',
         ];

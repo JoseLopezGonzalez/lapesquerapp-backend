@@ -132,6 +132,35 @@ GET /api/v2/statistics/orders/profitability-products
 
 ---
 
+## 3. Exportación de auditoría del margen
+
+```http
+GET /api/v2/statistics/orders/profitability-summary/export
+```
+
+Exporta un archivo `.xlsx` con el detalle de cajas usado para reconciliar el cálculo de `profitability-summary` y detectar cajas sin coste.
+
+### Parámetros
+
+Acepta los mismos parámetros que el endpoint de KPIs globales:
+
+| Parámetro | Tipo | Requerido | Descripción |
+|---|---|---|---|
+| `dateFrom` | `string` (YYYY-MM-DD) | Sí | Inicio del rango sobre `load_date`. |
+| `dateTo` | `string` (YYYY-MM-DD) | Sí | Fin del rango. |
+| `productIds[]` | `integer[]` | No | Filtra las cajas/productos incluidos en el cálculo. |
+
+### Hojas del Excel
+
+| Hoja | Descripción |
+|---|---|
+| `Resumen` | Totales del período y métricas de diagnóstico: cajas con coste, cajas sin coste, kg sin coste y venta afectada. |
+| `Detalle cajas` | Una fila por caja incluida en el cálculo, con pedido, cliente, palet, producto, lote, kg, venta, coste, margen, estado/origen del coste y columnas manuales editables. |
+| `Cajas sin coste` | Subconjunto operativo de cajas cuyo coste no se pudo resolver. Incluye columnas `Coste manual/kg`, `Coste manual total` y `Notas`. |
+| `Resumen pedidos` | Agregación por pedido para ver cajas, kg, venta, coste conocido, margen y si tiene costes faltantes. |
+
+---
+
 ## Notas generales
 
 ### Qué se entiende por "cajas expedidas"

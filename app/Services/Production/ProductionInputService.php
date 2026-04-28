@@ -2,16 +2,23 @@
 
 namespace App\Services\Production;
 
+use App\Models\Box;
 use App\Models\ProductionInput;
 use Illuminate\Support\Facades\DB;
 
 class ProductionInputService
 {
+    public function __construct(
+        private ProductionLotLockService $lotLock,
+    ) {}
+
     /**
      * Create a production input
      */
     public function create(array $data): ProductionInput
     {
+        $box = Box::findOrFail($data['box_id']);
+        $this->lotLock->assertBoxIsMutable($box, 'crear input de producción');
         // Check if box is already assigned
         $existing = ProductionInput::where('production_record_id', $data['production_record_id'])
             ->where('box_id', $data['box_id'])
@@ -94,8 +101,8 @@ class ProductionInputService
      */
     public function delete(ProductionInput $input): bool
     {
-        // Cargar relaciones necesarias antes de eliminar
         $input->load(['box.palletBox.pallet']);
+        $this->lotLock->assertBoxIsMutable($input->box, 'eliminar input de producción');
         
         // Obtener el palet antes de eliminar
         // Acceder al palet a través de palletBox para evitar problemas con accessors
@@ -117,10 +124,13 @@ class ProductionInputService
     public function deleteMultiple(array $ids): int
     {
         return DB::transaction(function () use ($ids) {
-            // Cargar todos los inputs con sus relaciones
             $inputs = ProductionInput::with(['box.palletBox.pallet'])
                 ->whereIn('id', $ids)
                 ->get();
+
+            foreach ($inputs as $input) {
+                $this->lotLock->assertBoxIsMutable($input->box, 'eliminar input de producción');
+            }
 
             // Rastrear palets que necesitan actualización (evitar duplicados)
             $palletsToUpdate = [];

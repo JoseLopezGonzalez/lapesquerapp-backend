@@ -25,7 +25,6 @@ class StoreProductionOutputRequest extends FormRequest
         return [
             'production_record_id' => 'required|exists:tenant.production_records,id',
             'product_id' => 'required|exists:tenant.products,id',
-            'lot_id' => 'nullable|string',
             'boxes' => 'required|integer|min:0',
             'weight_kg' => 'required|numeric|gt:0',
             'sources' => 'nullable|array',

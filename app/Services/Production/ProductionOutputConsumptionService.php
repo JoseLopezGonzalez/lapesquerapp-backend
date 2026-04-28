@@ -9,12 +9,17 @@ use Illuminate\Support\Facades\DB;
 
 class ProductionOutputConsumptionService
 {
+    public function __construct(
+        private ProductionLotLockService $lotLock,
+    ) {}
+
     /**
      * Create a production output consumption
      */
     public function create(array $data): ProductionOutputConsumption
     {
-        $record = ProductionRecord::findOrFail($data['production_record_id']);
+        $record = ProductionRecord::with('production')->findOrFail($data['production_record_id']);
+        $this->lotLock->assertLotIsMutable($record->production->lot, 'crear consumo de output');
         $output = ProductionOutput::findOrFail($data['production_output_id']);
 
         // Validate parent exists
@@ -72,6 +77,8 @@ class ProductionOutputConsumptionService
      */
     public function update(ProductionOutputConsumption $consumption, array $data): ProductionOutputConsumption
     {
+        $consumption->loadMissing('productionRecord.production');
+        $this->lotLock->assertLotIsMutable($consumption->productionRecord->production->lot, 'editar consumo de output');
         $output = $consumption->productionOutput;
 
         // Validate weight availability if updating
@@ -111,6 +118,9 @@ class ProductionOutputConsumptionService
      */
     public function delete(ProductionOutputConsumption $consumption): bool
     {
+        $consumption->loadMissing('productionRecord.production');
+        $this->lotLock->assertLotIsMutable($consumption->productionRecord->production->lot, 'eliminar consumo de output');
+
         return $consumption->delete();
     }
 

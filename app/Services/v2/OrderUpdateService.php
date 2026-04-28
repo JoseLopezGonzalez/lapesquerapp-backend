@@ -5,6 +5,7 @@ namespace App\Services\v2;
 use App\Models\DeliveryRoute;
 use App\Models\Order;
 use App\Models\RouteStop;
+use App\Services\Production\ProductionLotLockService;
 use Illuminate\Validation\ValidationException;
 
 use function normalizeDateToBusiness;
@@ -71,6 +72,9 @@ class OrderUpdateService
         }
         if (array_key_exists('status', $validated)) {
             $previousStatus = $order->status;
+            if ($previousStatus === 'finished' && in_array($validated['status'], ['pending', 'incident'], true)) {
+                app(ProductionLotLockService::class)->assertOrderIsMutableForProductionLots($order, 'revertir estado de pedido');
+            }
             $order->status = $validated['status'];
             if ($validated['status'] === 'finished' && $previousStatus !== 'finished') {
                 $order->load('pallets');

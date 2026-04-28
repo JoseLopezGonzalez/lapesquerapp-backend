@@ -547,7 +547,6 @@ class ProductionRecord extends Model
                     'id' => $output->product->id,
                     'name' => $output->product->name,
                 ] : null,
-                'lotId' => $output->lot_id,
                 'boxes' => $output->boxes,
                 'weightKg' => (float) $output->weight_kg,
                 'averageWeightPerBox' => (float) $output->average_weight_per_box,

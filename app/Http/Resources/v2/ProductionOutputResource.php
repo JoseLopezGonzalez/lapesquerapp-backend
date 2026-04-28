@@ -31,7 +31,6 @@ class ProductionOutputResource extends JsonResource
                     'name' => $this->product->name,
                 ] : null;
             }),
-            'lotId' => $this->lot_id,
             'boxes' => $this->boxes,
             'weightKg' => (float) $this->weight_kg,
             'averageWeightPerBox' => (float) $this->average_weight_per_box,

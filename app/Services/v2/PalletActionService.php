@@ -7,6 +7,7 @@ use App\Models\Pallet;
 use App\Models\Store;
 use App\Models\StoredPallet;
 use App\Services\ActorScopeService;
+use App\Services\Production\ProductionLotLockService;
 
 class PalletActionService
 {
@@ -247,7 +248,8 @@ class PalletActionService
 
     public static function unlinkOrder(int $palletId): array
     {
-        $pallet = Pallet::findOrFail($palletId);
+        $pallet = Pallet::with('boxes.box')->findOrFail($palletId);
+        app(ProductionLotLockService::class)->assertPalletIsMutable($pallet, 'desvincular palet de pedido');
 
         if (! $pallet->order_id) {
             $pallet = PalletListService::loadRelations(Pallet::query()->where('id', $palletId))->first();

@@ -24,7 +24,6 @@ class UpdateProductionOutputRequest extends FormRequest
         return [
             'production_record_id' => 'sometimes|exists:tenant.production_records,id',
             'product_id' => 'sometimes|exists:tenant.products,id',
-            'lot_id' => 'sometimes|nullable|string',
             'boxes' => 'sometimes|integer|min:0',
             'weight_kg' => 'sometimes|numeric|gt:0',
             'sources' => 'nullable|array',

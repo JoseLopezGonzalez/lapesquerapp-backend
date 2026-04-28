@@ -21,13 +21,19 @@ class Production extends Model
         'diagram_data',
         'opened_at',
         'closed_at',
+        'closed_by',
+        'closure_reason',
+        'reopened_at',
+        'reopened_by',
+        'reopen_reason',
     ];
 
     protected $casts = [
-        'diagram_data' => 'array', // Casteo para manipular JSON como array
+        'diagram_data' => 'array',
         'date' => 'date',
         'opened_at' => DateTimeUtcCast::class,
         'closed_at' => DateTimeUtcCast::class,
+        'reopened_at' => DateTimeUtcCast::class,
     ];
 
     /**
@@ -87,15 +93,15 @@ class Production extends Model
      */
     protected function validateUpdateRules(): void
     {
-        // Si el lote está cerrado, no permitir modificaciones (excepto notes)
+        // Si el lote está cerrado, solo el servicio de cierre puede modificarlo (closed_at, closed_by, etc.)
         if ($this->isDirty() && $this->getOriginal('closed_at') !== null) {
-            $allowedFields = ['notes', 'updated_at'];
+            $closureFields = ['closed_at', 'closed_by', 'closure_reason', 'reopened_at', 'reopened_by', 'reopen_reason', 'updated_at'];
             $changedFields = array_keys($this->getDirty());
 
             foreach ($changedFields as $field) {
-                if (! in_array($field, $allowedFields)) {
+                if (! in_array($field, $closureFields)) {
                     throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
-                        'No se pueden modificar campos de un lote cerrado. Solo se permite modificar el campo "notes".'
+                        'No se pueden modificar campos de un lote cerrado definitivamente. Para realizar cambios, primero debe reabrir la producción.'
                     );
                 }
             }
@@ -206,6 +212,16 @@ class Production extends Model
                 'products' => $productDetails->toArray(),
             ];
         });
+    }
+
+    public function closedByUser()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'closed_by');
+    }
+
+    public function reopenedByUser()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'reopened_by');
     }
 
     // Relación con el modelo Species

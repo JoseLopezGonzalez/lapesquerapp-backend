@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\DB;
 
 class ProductionRecordService
 {
+    public function __construct(
+        private ProductionLotLockService $lotLock,
+    ) {}
+
     /**
      * List production records with filters
      */
@@ -119,6 +123,9 @@ class ProductionRecordService
      */
     public function delete(ProductionRecord $record): bool
     {
+        $record->loadMissing('production');
+        $this->lotLock->assertLotIsMutable($record->production->lot, 'eliminar proceso de producción');
+
         // Validar si el proceso tiene inputs o outputs antes de eliminar
         if ($record->inputs()->exists()) {
             throw new \Exception('No se puede eliminar el proceso porque tiene entradas (inputs) asociadas. Debe eliminar las entradas primero.');
@@ -141,6 +148,9 @@ class ProductionRecordService
      */
     public function finish(ProductionRecord $record): ProductionRecord
     {
+        $record->loadMissing('production');
+        $this->lotLock->assertLotIsMutable($record->production->lot, 'finalizar proceso de producción');
+
         if ($record->finished_at) {
             throw new \Exception('El proceso ya está finalizado.');
         }
@@ -207,7 +217,6 @@ class ProductionRecordService
                     $output = ProductionOutput::find($outputData['id']);
                     $output->update([
                         'product_id' => $outputData['product_id'],
-                        'lot_id' => $outputData['lot_id'] ?? null,
                         'boxes' => $outputData['boxes'],
                         'weight_kg' => $outputData['weight_kg'],
                     ]);
@@ -226,7 +235,6 @@ class ProductionRecordService
                     $output = ProductionOutput::create([
                         'production_record_id' => $record->id,
                         'product_id' => $outputData['product_id'],
-                        'lot_id' => $outputData['lot_id'] ?? null,
                         'boxes' => $outputData['boxes'],
                         'weight_kg' => $outputData['weight_kg'],
                     ]);
@@ -486,7 +494,6 @@ class ProductionRecordService
                     'id' => $output->product->id ?? null,
                     'name' => $output->product->name ?? null,
                 ],
-                'lotId' => $output->lot_id,
                 'consumedWeightKg' => (float) ($consumption->consumed_weight_kg ?? 0),
                 'consumedBoxes' => (int) ($consumption->consumed_boxes ?? 0),
                 'outputTotalWeight' => (float) ($output->weight_kg ?? 0),

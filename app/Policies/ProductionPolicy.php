@@ -24,6 +24,14 @@ class ProductionPolicy
         ];
     }
 
+    protected function rolesCanClosureManage(): array
+    {
+        return [
+            Role::Administrador->value,
+            Role::Direccion->value,
+        ];
+    }
+
     public function viewAny(User $user): bool
     {
         return $user->hasAnyRole($this->allowedRoles());
@@ -47,5 +55,15 @@ class ProductionPolicy
     public function delete(User $user, Production $production): bool
     {
         return $user->hasAnyRole($this->rolesCanDelete());
+    }
+
+    public function close(User $user, Production $production): bool
+    {
+        return $user->hasAnyRole($this->rolesCanClosureManage());
+    }
+
+    public function reopen(User $user, Production $production): bool
+    {
+        return $user->hasAnyRole($this->rolesCanClosureManage());
     }
 }

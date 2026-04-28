@@ -26,7 +26,6 @@ class SyncProductionOutputsRequest extends FormRequest
             'outputs' => 'present|array',
             'outputs.*.id' => 'sometimes|nullable|integer|exists:tenant.production_outputs,id',
             'outputs.*.product_id' => 'required|exists:tenant.products,id',
-            'outputs.*.lot_id' => 'nullable|string',
             'outputs.*.boxes' => 'required|integer|min:0',
             'outputs.*.weight_kg' => 'required|numeric|gt:0',
             'outputs.*.sources' => 'sometimes|nullable|array',

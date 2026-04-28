@@ -48,9 +48,6 @@ class ProductionOutputController extends Controller
         if ($request->filled('product_id')) {
             $query->where('product_id', $request->product_id);
         }
-        if ($request->filled('lot_id')) {
-            $query->where('lot_id', $request->lot_id);
-        }
         if ($request->filled('production_id')) {
             $query->whereHas('productionRecord', fn ($q) => $q->where('production_id', $request->production_id));
         }

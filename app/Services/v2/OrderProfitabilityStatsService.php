@@ -42,6 +42,103 @@ class OrderProfitabilityStatsService
         ];
     }
 
+    public static function getSummaryExportData(string $from, string $to, array $productIds = []): array
+    {
+        $orders = self::loadOrders($from, $to, $productIds);
+        $detailRows = [];
+        $ordersSummary = [];
+        $totalRevenue = 0.0;
+        $knownTotalCost = null;
+
+        foreach ($orders as $order) {
+            $ordersSummary[$order->id] = [
+                'order_id' => $order->id,
+                'order_formatted_id' => $order->formatted_id,
+                'load_date' => self::formatDate($order->load_date),
+                'customer_name' => $order->customer?->name,
+                'boxes_count' => 0,
+                'missing_cost_boxes_count' => 0,
+                'total_weight_kg' => 0.0,
+                'total_revenue' => 0.0,
+                'known_total_cost' => null,
+                'gross_margin' => null,
+                'margin_percentage' => null,
+                'has_missing_costs' => 'no',
+            ];
+
+            $financials = self::computeOrderFinancials($order, $productIds);
+            $totalRevenue += $financials['revenue'];
+            if ($financials['cost'] !== null) {
+                $knownTotalCost = ($knownTotalCost ?? 0.0) + $financials['cost'];
+            }
+
+            foreach (self::buildOrderDetailRows($order, $productIds) as $row) {
+                $detailRows[] = $row;
+
+                $ordersSummary[$order->id]['boxes_count']++;
+                $ordersSummary[$order->id]['total_weight_kg'] += $row['net_weight_kg'];
+                $ordersSummary[$order->id]['total_revenue'] += $row['revenue'];
+
+                if ($row['total_cost'] !== null) {
+                    $ordersSummary[$order->id]['known_total_cost'] =
+                        ($ordersSummary[$order->id]['known_total_cost'] ?? 0.0) + $row['total_cost'];
+                } else {
+                    $ordersSummary[$order->id]['missing_cost_boxes_count']++;
+                    $ordersSummary[$order->id]['has_missing_costs'] = 'yes';
+                }
+            }
+        }
+
+        $ordersSummary = array_map(function (array $row): array {
+            $row['total_weight_kg'] = round($row['total_weight_kg'], 3);
+            $row['total_revenue'] = round($row['total_revenue'], 2);
+            $row['known_total_cost'] = $row['known_total_cost'] !== null
+                ? round($row['known_total_cost'], 2)
+                : null;
+            $row['gross_margin'] = $row['known_total_cost'] !== null
+                ? round($row['total_revenue'] - $row['known_total_cost'], 2)
+                : null;
+            $row['margin_percentage'] = ($row['gross_margin'] !== null && $row['total_revenue'] > 0)
+                ? round($row['gross_margin'] / $row['total_revenue'] * 100, 2)
+                : null;
+
+            return $row;
+        }, array_values($ordersSummary));
+
+        $grossMargin = $knownTotalCost !== null ? round($totalRevenue - $knownTotalCost, 2) : null;
+        $marginPct = ($grossMargin !== null && $totalRevenue > 0)
+            ? round($grossMargin / $totalRevenue * 100, 2)
+            : null;
+
+        $missingCostRows = array_values(array_filter(
+            $detailRows,
+            fn (array $row): bool => $row['total_cost'] === null
+        ));
+
+        $missingRevenue = array_sum(array_column($missingCostRows, 'revenue'));
+        $missingWeight = array_sum(array_column($missingCostRows, 'net_weight_kg'));
+
+        return [
+            'summary' => [
+                ['metric' => 'date_from', 'value' => $from],
+                ['metric' => 'date_to', 'value' => $to],
+                ['metric' => 'orders_count', 'value' => $orders->count()],
+                ['metric' => 'boxes_count', 'value' => count($detailRows)],
+                ['metric' => 'boxes_with_cost_count', 'value' => count($detailRows) - count($missingCostRows)],
+                ['metric' => 'boxes_missing_cost_count', 'value' => count($missingCostRows)],
+                ['metric' => 'missing_cost_weight_kg', 'value' => round($missingWeight, 3)],
+                ['metric' => 'missing_cost_revenue', 'value' => round($missingRevenue, 2)],
+                ['metric' => 'total_revenue', 'value' => round($totalRevenue, 2)],
+                ['metric' => 'known_total_cost', 'value' => $knownTotalCost !== null ? round($knownTotalCost, 2) : null],
+                ['metric' => 'gross_margin', 'value' => $grossMargin],
+                ['metric' => 'margin_percentage', 'value' => $marginPct],
+            ],
+            'detail' => $detailRows,
+            'missingCosts' => $missingCostRows,
+            'orders' => $ordersSummary,
+        ];
+    }
+
     public static function getTimeline(string $from, string $to, string $granularity, array $productIds = []): array
     {
         $orders = self::loadOrders($from, $to, $productIds);
@@ -170,8 +267,11 @@ class OrderProfitabilityStatsService
             $from.' 00:00:00',
             $to.' 23:59:59',
         ])->with([
+            'customer',
             'plannedProductDetails.tax',
+            'plannedProductDetails.product',
             'pallets.boxes.box.productionInputs',
+            'pallets.boxes.box.product',
             'pallets.boxes.box.palletBox.pallet.reception.products',
         ]);
 
@@ -180,6 +280,64 @@ class OrderProfitabilityStatsService
         }
 
         return $query->get();
+    }
+
+    private static function buildOrderDetailRows(Order $order, array $productIds = []): array
+    {
+        $rows = [];
+        $priceMap = self::buildPriceMap($order);
+
+        foreach ($order->pallets as $pallet) {
+            foreach ($pallet->boxes as $palletBox) {
+                $box = $palletBox->box;
+                if (! $box || ! $box->isAvailable) {
+                    continue;
+                }
+                if (! empty($productIds) && ! in_array($box->article_id, $productIds, true)) {
+                    continue;
+                }
+
+                $weight = (float) $box->net_weight;
+                $unitPrice = $priceMap[$box->article_id]['price'] ?? null;
+                $revenue = $unitPrice !== null ? $unitPrice * $weight : 0.0;
+                $totalCost = $box->total_cost;
+                $costPerKg = ($totalCost !== null && $weight > 0) ? $totalCost / $weight : null;
+                $grossMargin = $totalCost !== null ? $revenue - $totalCost : null;
+                $marginPercentage = ($grossMargin !== null && $revenue > 0)
+                    ? $grossMargin / $revenue * 100
+                    : null;
+
+                $rows[] = [
+                    'order_id' => $order->id,
+                    'order_formatted_id' => $order->formatted_id,
+                    'load_date' => self::formatDate($order->load_date),
+                    'customer_id' => $order->customer_id,
+                    'customer_name' => $order->customer?->name,
+                    'pallet_id' => $pallet->id,
+                    'box_id' => $box->id,
+                    'product_id' => $box->article_id,
+                    'product_name' => $box->product?->name ?? ($priceMap[$box->article_id]['productName'] ?? null),
+                    'lot' => $box->lot,
+                    'net_weight_kg' => round($weight, 3),
+                    'unit_price' => $unitPrice,
+                    'revenue' => round($revenue, 2),
+                    'cost_per_kg' => $costPerKg !== null ? round($costPerKg, 4) : null,
+                    'total_cost' => $totalCost !== null ? round($totalCost, 2) : null,
+                    'gross_margin' => $grossMargin !== null ? round($grossMargin, 2) : null,
+                    'margin_percentage' => $marginPercentage !== null ? round($marginPercentage, 2) : null,
+                    'cost_status' => $totalCost !== null ? 'with_cost' : 'missing_cost',
+                    'cost_source' => self::resolveCostSource($box, $totalCost),
+                    'is_available' => 'yes',
+                    'included_in_summary' => 'yes',
+                    'exclusion_reason' => null,
+                    'manual_cost_per_kg' => null,
+                    'manual_total_cost' => null,
+                    'notes' => null,
+                ];
+            }
+        }
+
+        return $rows;
     }
 
     private static function loadOrdersForProducts(string $from, string $to): Collection
@@ -203,10 +361,37 @@ class OrderProfitabilityStatsService
             $map[$detail->product_id] = [
                 'price' => (float) ($detail->unit_price ?? 0),
                 'taxRate' => $detail->tax ? (float) $detail->tax->rate : 0,
+                'productName' => $detail->product?->name,
             ];
         }
 
         return $map;
+    }
+
+    private static function resolveCostSource($box, ?float $totalCost): string
+    {
+        if ($totalCost === null) {
+            return 'missing';
+        }
+
+        $pallet = $box->pallet;
+        $reception = $pallet?->reception;
+        if ($reception) {
+            $hasReceptionPrice = $reception->products
+                ->first(fn ($product) => (int) $product->product_id === (int) $box->article_id && $product->lot === $box->lot)
+                ?->price !== null;
+
+            if ($hasReceptionPrice) {
+                return 'reception';
+            }
+        }
+
+        return 'production';
+    }
+
+    private static function formatDate($date): ?string
+    {
+        return $date ? Carbon::parse($date)->toDateString() : null;
     }
 
     private static function computeOrderFinancials(Order $order, array $productIds = []): array

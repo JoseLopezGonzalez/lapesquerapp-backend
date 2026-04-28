@@ -6,13 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\IndexProductionCostRequest;
 use App\Http\Requests\v2\StoreProductionCostRequest;
 use App\Http\Requests\v2\UpdateProductionCostRequest;
+use App\Models\Production;
 use App\Models\ProductionCost;
+use App\Services\Production\ProductionLotLockService;
 use Illuminate\Http\JsonResponse;
 
 use function normalizeDateToBusiness;
 
 class ProductionCostController extends Controller
 {
+    public function __construct(
+        private ProductionLotLockService $lotLock,
+    ) {}
     /**
      * Display a listing of the resource.
      */
@@ -46,6 +51,10 @@ class ProductionCostController extends Controller
     public function store(StoreProductionCostRequest $request): JsonResponse
     {
         $validated = $request->validated();
+
+        $production = Production::findOrFail($validated['production_id']);
+        $this->lotLock->assertLotIsMutable($production->lot, 'crear coste de producción');
+
         if (isset($validated['cost_date'])) {
             $validated['cost_date'] = normalizeDateToBusiness($validated['cost_date']);
         }
@@ -77,8 +86,9 @@ class ProductionCostController extends Controller
      */
     public function update(UpdateProductionCostRequest $request, string $id): JsonResponse
     {
-        $cost = ProductionCost::findOrFail($id);
+        $cost = ProductionCost::with('production')->findOrFail($id);
         $this->authorize('update', $cost);
+        $this->lotLock->assertLotIsMutable($cost->production->lot, 'editar coste de producción');
         $validated = $request->validated();
         if (isset($validated['cost_date'])) {
             $validated['cost_date'] = normalizeDateToBusiness($validated['cost_date']);
@@ -96,8 +106,9 @@ class ProductionCostController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $cost = ProductionCost::findOrFail($id);
+        $cost = ProductionCost::with('production')->findOrFail($id);
         $this->authorize('delete', $cost);
+        $this->lotLock->assertLotIsMutable($cost->production->lot, 'eliminar coste de producción');
         $cost->delete();
 
         return response()->json([

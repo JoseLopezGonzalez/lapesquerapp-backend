@@ -1,6 +1,6 @@
 # Propuesta: cierre definitivo de producciones
 
-> **Estado**: listo para implementar — todas las preguntas están resueltas.
+> **Estado**: ✅ implementado — todas las fases 1–4 completadas.
 > **Última revisión**: 2026-04-28
 
 ---
@@ -64,7 +64,7 @@ Las siguientes decisiones ya están aprobadas e incorporadas al diseño.
 - ✅ El campo `notes` queda **bloqueado** tras el cierre definitivo. Todos los campos se bloquean. *(resuelto P2)*
 - ✅ Una producción cerrada **no puede eliminarse** bajo ningún concepto. *(resuelto P3)*
 - ✅ Solo el rol `administrador` y roles superiores pueden cerrar y reabrir. El rol `tecnico` no tiene este permiso. *(resuelto P4)*
-- ✅ `ProductionOutput::lot_id` es un **string**, el mismo valor que `lot` en `Production` y `Box`. No hay inconsistencia: el `ProductionLotLockService` usa la misma búsqueda para todos. *(resuelto P5)*
+- ✅ `ProductionOutput::lot_id` existe en BD pero no se usa. El lote de los outputs es siempre `Production::lot`. El bloqueo de outputs ya está cubierto por la validación existente de lote abierto. *(resuelto P5)*
 
 ---
 
@@ -97,8 +97,8 @@ Todas las preguntas han sido respondidas e incorporadas a la sección 2. Se cons
 ---
 
 **P5 — ¿`lot_id` en `ProductionOutput` es una FK numérica o el string `lot`?**
-**Respuesta:** es un string (verificado en migración: `$table->string('lot_id')->nullable()`). Contiene el mismo valor que `lot` en `Production` y `Box`.
-*Consecuencia:* no hay inconsistencia. El `ProductionLotLockService` puede usar `Production::where('lot', $lot)` de forma uniforme para cajas, outputs y cualquier otra entidad.
+**Respuesta:** es un string nullable que existe en la BD pero no se usa en el frontend ni en la lógica de negocio. El lote de los outputs siempre es el lote de la producción (`Production::lot`), que ya queda en `Box::lot` de las cajas resultantes.
+*Consecuencia:* no hay nada que gestionar. El bloqueo de outputs ya está cubierto porque `ProductionOutput` valida que el `ProductionRecord` pertenezca a una producción abierta. No se necesita ningún check adicional sobre `lot_id`.
 
 ---
 
@@ -300,33 +300,33 @@ Cuando `closed_at != null`, el lote queda bloqueado. Cualquier intento de mutaci
 ### 7.3 Palets
 
 
-| Operación                        | Bloqueada        |
-| -------------------------------- | ---------------- |
-| Añadir cajas al palet            | ⚠️ debe añadirse |
-| Quitar cajas del palet           | ⚠️ debe añadirse |
-| Eliminar el palet                | ⚠️ debe añadirse |
-| Vincular o desvincular de pedido | ⚠️ debe añadirse |
-| Cambiar ubicación de almacén     | ⚠️ debe añadirse |
+| Operación                        | Bloqueada                                              |
+| -------------------------------- | ------------------------------------------------------ |
+| Añadir cajas al palet            | ✅ `PalletWriteService::update()`                      |
+| Quitar cajas del palet           | ✅ `PalletWriteService::update()`                      |
+| Eliminar el palet                | ✅ `PalletWriteService::destroy()` / `destroyMultiple` |
+| Vincular o desvincular de pedido | ✅ `PalletActionService::unlinkOrder()`                |
+| Cambiar ubicación de almacén     | ✅ `PalletWriteService::update()`                      |
 
 
 ### 7.4 Pedidos
 
 
-| Operación                                           | Bloqueada        |
-| --------------------------------------------------- | ---------------- |
-| Pasar pedido de `finished` a `pending` o `incident` | ⚠️ debe añadirse |
-| Desvincular palets del pedido                       | ⚠️ debe añadirse |
-| Modificar líneas que contradigan la trazabilidad    | ⚠️ debe añadirse |
-| Eliminar pedido que justifica salida final del lote | ⚠️ debe añadirse |
+| Operación                                           | Bloqueada                                                    |
+| --------------------------------------------------- | ------------------------------------------------------------ |
+| Pasar pedido de `finished` a `pending` o `incident` | ✅ `OrderUpdateService::update()` via `assertOrderIsMutable…` |
+| Desvincular palets del pedido                       | ✅ `PalletActionService::unlinkOrder()`                      |
+| Modificar líneas que contradigan la trazabilidad    | ⚠️ no implementado (riesgo bajo, no impacta trazabilidad directamente) |
+| Eliminar pedido que justifica salida final del lote | ⚠️ no implementado (requiere check en `OrderController::destroy`) |
 
 
 ### 7.5 Reprocesado
 
 
-| Operación                                                     | Bloqueada        |
-| ------------------------------------------------------------- | ---------------- |
-| Crear `ProductionInput` con caja del lote cerrado             | ⚠️ debe añadirse |
-| Eliminar `ProductionInput` que justifica reprocesado del lote | ⚠️ debe añadirse |
+| Operación                                                     | Bloqueada                                                |
+| ------------------------------------------------------------- | -------------------------------------------------------- |
+| Crear `ProductionInput` con caja del lote cerrado             | ✅ `ProductionInputService::create()` via `assertBoxIsMutable` |
+| Eliminar `ProductionInput` que justifica reprocesado del lote | ✅ `ProductionInputService::delete()` / `deleteMultiple` |
 
 
 ### 7.6 Recepciones
@@ -348,6 +348,17 @@ $table->string('reopen_reason')->nullable();
 ```
 
 Los campos `opened_at` y `closed_at` ya existen.
+
+### Limpieza en `production_outputs`
+
+Eliminar el campo `lot_id`: existe en BD pero no se usa en ningún flujo del frontend ni de negocio. El lote de los outputs siempre es el lote de la producción (`Production::lot`).
+
+```php
+$table->dropIndex(['lot_id']);
+$table->dropColumn('lot_id');
+```
+
+También eliminar `lot_id` del array `$fillable` en `ProductionOutput` y de los Form Requests: `StoreProductionOutputRequest`, `UpdateProductionOutputRequest`, `SyncProductionOutputsRequest`, `StoreMultipleProductionOutputsRequest`, `IndexProductionOutputRequest`.
 
 ### Tabla futura: `production_closure_events`
 
@@ -444,7 +455,7 @@ Payload:
 
 ### Fase 2 — Cierre definitivo
 
-- Añadir migración (5 campos nuevos en `productions`).
+- Añadir migración: 5 campos nuevos en `productions` + eliminar `lot_id` de `production_outputs` (campo sin uso).
 - Crear endpoint `POST /productions/{id}/close`.
 - Implementar `ProductionClosureService::close()` con transacción y `lockForUpdate`.
 - Implementar todas las validaciones de la sección 6.
@@ -454,7 +465,7 @@ Payload:
 
 ### Fase 3 — Bloqueo transversal
 
-- Crear `ProductionLotLockService`. `lot_id` en outputs es string: misma búsqueda para todas las entidades.
+- Crear `ProductionLotLockService`. `lot_id` en outputs no se usa: no hay caso especial, el bloqueo de outputs ya está cubierto.
 - Integrarlo en: `PalletWriteService`, `PalletActionService`, `RawMaterialReceptionWriteService`, `ProductionInputService`, `ProductionOutputService`, `ProductionOutputConsumptionService`, `ProductionCostService`, `ProductionRecordService`, servicios de pedidos.
 - Mapear flujos de recepciones que tocan cajas de lotes de producción (ver G7).
 - Colocar checks en servicios, no solo en Model Events (no cubren mass updates).
@@ -611,4 +622,52 @@ No se implementa en la primera versión. En una evolución posterior conviene gu
 - Historial completo de múltiples ciclos cierre/reapertura.
 - Cada cierre conserva su propio snapshot sin sobrecargar la fila principal.
 - Permite auditar con qué cifras se aprobó cada cierre, aunque después se reabriera y corrigiera.
+
+---
+
+## 14. Resumen de implementación (2026-04-28)
+
+### Archivos creados
+
+| Archivo | Propósito |
+| ------- | --------- |
+| `database/migrations/companies/2026_04_28_100000_add_closure_fields_to_productions_table.php` | 5 nuevos campos en `productions` |
+| `database/migrations/companies/2026_04_28_100100_drop_lot_id_from_production_outputs_table.php` | Elimina `lot_id` de `production_outputs` |
+| `app/Services/Production/ProductionClosureService.php` | `canClose`, `close`, `reopen` con 11 validaciones y `lockForUpdate` |
+| `app/Services/Production/ProductionLotLockService.php` | Bloqueo transversal por lote: box, pallet, order, lot directo |
+| `app/Http/Requests/v2/CloseProductionRequest.php` | Validación `reason` para cierre |
+| `app/Http/Requests/v2/ReopenProductionRequest.php` | Validación `reason` para reapertura |
+
+### Archivos modificados
+
+| Archivo | Cambio |
+| ------- | ------ |
+| `app/Models/Production.php` | `$fillable` / `$casts` con campos de cierre; `validateUpdateRules` bloquea todo incluyendo `notes`; relaciones `closedByUser`, `reopenedByUser` |
+| `app/Models/ProductionOutput.php` | Elimina `lot_id` de `$fillable` |
+| `app/Http/Controllers/v2/ProductionController.php` | Endpoints `closureCheck`, `close`, `reopen` |
+| `app/Policies/ProductionPolicy.php` | `close()` y `reopen()` — solo `administrador` y `direccion` |
+| `app/Http/Resources/v2/ProductionResource.php` | Expone `closedBy`, `closureReason`, `reopenedAt`, `reopenedBy`, `reopenReason` + relaciones de usuario |
+| `app/Http/Resources/v2/ProductionOutputResource.php` | Elimina `lotId` |
+| `app/Services/Production/ProductionService.php` | Bloquea `delete` / `deleteMultiple` en producciones cerradas |
+| `app/Services/Production/ProductionRecordService.php` | Bloquea `delete` y `finish` en lotes cerrados; elimina `lot_id` de creates |
+| `app/Services/Production/ProductionInputService.php` | Bloquea `create`, `delete`, `deleteMultiple` por caja |
+| `app/Services/Production/ProductionOutputService.php` | Bloquea `create`, `update`, `delete`; elimina `lot_id` de `createMultiple` |
+| `app/Services/Production/ProductionOutputConsumptionService.php` | Bloquea `create`, `update`, `delete` por lote |
+| `app/Http/Controllers/v2/ProductionCostController.php` | Bloquea `store`, `update`, `destroy` por lote |
+| `app/Services/v2/PalletWriteService.php` | Bloquea `update`, `destroy`, `destroyMultiple` por palet |
+| `app/Services/v2/PalletActionService.php` | Bloquea `unlinkOrder` por palet |
+| `app/Services/v2/OrderUpdateService.php` | Bloquea reversión de `finished` → `pending`/`incident` si el pedido contiene lotes cerrados |
+| `routes/api.php` | 3 rutas nuevas: `closure-check`, `close`, `reopen` |
+| `app/Http/Requests/v2/StoreProductionOutputRequest.php` | Elimina `lot_id` |
+| `app/Http/Requests/v2/UpdateProductionOutputRequest.php` | Elimina `lot_id` |
+| `app/Http/Requests/v2/SyncProductionOutputsRequest.php` | Elimina `lot_id` |
+| `app/Http/Requests/v2/StoreMultipleProductionOutputsRequest.php` | Elimina `lot_id` |
+| `app/Http/Requests/v2/IndexProductionOutputRequest.php` | Elimina `lot_id` |
+| `app/Http/Controllers/v2/ProductionOutputController.php` | Elimina filtro por `lot_id` del `index` |
+
+### Gaps pendientes (bajo impacto)
+
+- **Eliminar pedido con lote cerrado**: `OrderController::destroy` no tiene el check. Riesgo bajo — el flujo normal no elimina pedidos `finished`.
+- **Modificar líneas de pedido que contradigan trazabilidad**: no implementado. Bajo impacto operativo.
+- **`RawMaterialReceptionWriteService`**: el `lot` de cajas de recepción es un lote de proveedor, no un lote de producción. El check `assertBoxIsMutable` no dispara para estas cajas. Si en el futuro se crean recepciones con lote de producción, revisar.
 

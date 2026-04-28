@@ -326,6 +326,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
         /* Rentabilidad: KPIs y desglose por producto */
         Route::get('statistics/orders/profitability-summary', [OrderProfitabilityStatsController::class, 'summary'])->name('v2.statistics.orders.profitability_summary');
+        Route::get('statistics/orders/profitability-summary/export', [OrderProfitabilityStatsController::class, 'exportSummary'])->name('v2.statistics.orders.profitability_summary.export');
         Route::get('statistics/orders/profitability-products', [OrderProfitabilityStatsController::class, 'byProduct'])->name('v2.statistics.orders.profitability_products');
 
         /* orders/sales-by-salesperson */
@@ -448,6 +449,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('productions/{id}/totals', [V2ProductionController::class, 'getTotals'])->name('productions.getTotals');
         Route::get('productions/{id}/reconciliation', [V2ProductionController::class, 'getReconciliation'])->name('productions.getReconciliation');
         Route::get('productions/{id}/available-products-for-outputs', [V2ProductionController::class, 'getAvailableProductsForOutputs'])->name('productions.getAvailableProductsForOutputs');
+        Route::get('productions/{id}/closure-check', [V2ProductionController::class, 'closureCheck'])->name('productions.closureCheck');
+        Route::post('productions/{id}/close', [V2ProductionController::class, 'close'])->name('productions.close');
+        Route::post('productions/{id}/reopen', [V2ProductionController::class, 'reopen'])->name('productions.reopen');
 
         Route::get('production-records/options', [ProductionRecordController::class, 'options'])->name('production-records.options');
         Route::get('production-records/{id}/sources-data', [ProductionRecordController::class, 'getSourcesData'])->name('production-records.sources-data');

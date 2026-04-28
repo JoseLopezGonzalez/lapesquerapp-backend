@@ -3,19 +3,23 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\CloseProductionRequest;
 use App\Http\Requests\v2\DestroyMultipleProductionsRequest;
 use App\Http\Requests\v2\IndexProductionRequest;
+use App\Http\Requests\v2\ReopenProductionRequest;
 use App\Http\Requests\v2\StoreProductionRequest;
 use App\Http\Requests\v2\UpdateProductionRequest;
 use App\Http\Resources\v2\ProductionResource;
 use App\Models\Production;
+use App\Services\Production\ProductionClosureService;
 use App\Services\Production\ProductionService;
 use Illuminate\Http\Request;
 
 class ProductionController extends Controller
 {
     public function __construct(
-        private ProductionService $productionService
+        private ProductionService $productionService,
+        private ProductionClosureService $closureService,
     ) {}
 
     /**
@@ -182,6 +186,62 @@ class ProductionController extends Controller
         return response()->json([
             'message' => 'Conciliación obtenida correctamente.',
             'data' => $reconciliation,
+        ]);
+    }
+
+    /**
+     * Evalúa si una producción puede cerrarse definitivamente.
+     */
+    public function closureCheck(string $id)
+    {
+        $production = Production::findOrFail($id);
+        $this->authorize('view', $production);
+
+        $result = $this->closureService->canClose($production);
+
+        return response()->json([
+            'message' => 'Evaluación de cierre obtenida correctamente.',
+            'data' => $result,
+        ]);
+    }
+
+    /**
+     * Cierra definitivamente una producción.
+     */
+    public function close(CloseProductionRequest $request, string $id)
+    {
+        $production = Production::findOrFail($id);
+        $this->authorize('close', $production);
+
+        $production = $this->closureService->close(
+            $production,
+            $request->user(),
+            $request->validated('reason'),
+        );
+
+        return response()->json([
+            'message' => 'Producción cerrada definitivamente.',
+            'data' => new ProductionResource($production),
+        ]);
+    }
+
+    /**
+     * Reabre una producción cerrada (solo roles autorizados).
+     */
+    public function reopen(ReopenProductionRequest $request, string $id)
+    {
+        $production = Production::findOrFail($id);
+        $this->authorize('reopen', $production);
+
+        $production = $this->closureService->reopen(
+            $production,
+            $request->user(),
+            $request->validated('reason'),
+        );
+
+        return response()->json([
+            'message' => 'Producción reabierta correctamente.',
+            'data' => new ProductionResource($production),
         ]);
     }
 

@@ -10,6 +10,7 @@ use App\Models\RawMaterialReception;
 use App\Models\Store;
 use App\Models\StoredPallet;
 use App\Services\ActorScopeService;
+use App\Services\Production\ProductionLotLockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -110,6 +111,7 @@ class PalletWriteService
     public static function update(Request $request, Pallet $pallet, array $validated): Pallet
     {
         $pallet->load('boxes.box.product', 'storedPallet.store', 'order');
+        app(ProductionLotLockService::class)->assertPalletIsMutable($pallet, 'editar palet');
         $snapshot = self::snapshotPalletForTimeline($pallet);
         $actor = $request->user();
 
@@ -491,6 +493,9 @@ class PalletWriteService
      */
     public static function destroy(Pallet $pallet): void
     {
+        $pallet->loadMissing('boxes.box');
+        app(ProductionLotLockService::class)->assertPalletIsMutable($pallet, 'eliminar palet');
+
         DB::transaction(function () use ($pallet) {
             if ($pallet->storedPallet) {
                 $pallet->storedPallet->delete();
@@ -505,6 +510,12 @@ class PalletWriteService
      */
     public static function destroyMultiple(array $palletIds): void
     {
+        $lock = app(ProductionLotLockService::class);
+        $pallets = Pallet::with('boxes.box')->whereIn('id', $palletIds)->get();
+        foreach ($pallets as $pallet) {
+            $lock->assertPalletIsMutable($pallet, 'eliminar palets');
+        }
+
         DB::transaction(function () use ($palletIds) {
             StoredPallet::whereIn('pallet_id', $palletIds)->delete();
             PalletBox::whereIn('pallet_id', $palletIds)->delete();

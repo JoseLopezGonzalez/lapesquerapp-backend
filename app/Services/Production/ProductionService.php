@@ -82,6 +82,10 @@ class ProductionService
      */
     public function delete(Production $production): bool
     {
+        if ($production->isClosed()) {
+            throw new \RuntimeException('No se puede eliminar una producción cerrada definitivamente. Debe reabrirla antes de eliminarla.');
+        }
+
         return $production->delete();
     }
 
@@ -91,9 +95,13 @@ class ProductionService
     public function deleteMultiple(array $ids): int
     {
         return DB::transaction(function () use ($ids) {
-            $deletedCount = Production::whereIn('id', $ids)->delete();
+            $closed = Production::whereIn('id', $ids)->whereNotNull('closed_at')->pluck('lot');
+            if ($closed->isNotEmpty()) {
+                $lots = $closed->implode(', ');
+                throw new \RuntimeException("No se pueden eliminar producciones cerradas: {$lots}. Debe reabrirlas antes de eliminarlas.");
+            }
 
-            return $deletedCount;
+            return Production::whereIn('id', $ids)->delete();
         });
     }
 
