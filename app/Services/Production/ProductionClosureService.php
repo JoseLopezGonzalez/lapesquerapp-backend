@@ -3,6 +3,7 @@
 namespace App\Services\Production;
 
 use App\Models\Box;
+use App\Models\Incident;
 use App\Models\Order;
 use App\Models\Pallet;
 use App\Models\Production;
@@ -110,9 +111,21 @@ class ProductionClosureService
             }
         }
 
-        // 6. No debe haber pedidos pending o incident con palets de este lote
+        // 6. No debe haber pedidos pendientes o con incidencia abierta con palets de este lote
         $pendingOrders = Order::query()
-            ->whereIn('status', ['pending', 'incident'])
+            ->with('incident')
+            ->where(function ($q) {
+                $q->where('status', Order::STATUS_PENDING)
+                    ->orWhere(function ($q) {
+                        $q->where('status', Order::STATUS_INCIDENT)
+                            ->where(function ($q) {
+                                $q->whereDoesntHave('incident')
+                                    ->orWhereHas('incident', function ($q) {
+                                        $q->where('status', Incident::STATUS_OPEN);
+                                    });
+                            });
+                    });
+            })
             ->whereHas('pallets.boxes.box', function ($q) use ($lot) {
                 $q->where('lot', $lot)->whereDoesntHave('productionInputs');
             })
@@ -326,7 +339,7 @@ class ProductionClosureService
         return match ($status) {
             Order::STATUS_PENDING => 'pendiente',
             Order::STATUS_FINISHED => 'finalizado',
-            Order::STATUS_INCIDENT => 'con incidencia',
+            Order::STATUS_INCIDENT => 'con incidencia abierta',
             default => "en estado {$status}",
         };
     }

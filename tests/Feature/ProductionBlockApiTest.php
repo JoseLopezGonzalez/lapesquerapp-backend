@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Box;
 use App\Models\CaptureZone;
 use App\Models\FishingGear;
+use App\Models\Incident;
 use App\Models\Order;
 use App\Models\OrderPlannedProductDetail;
 use App\Models\Pallet;
@@ -144,6 +145,7 @@ class ProductionBlockApiTest extends TestCase
         $production = Production::query()->with(['species', 'captureZone'])->firstOrFail();
         $product = $this->createValidProduct($production->species, $production->captureZone, 'HRM');
         $order = Order::factory()->incident()->create();
+        Incident::factory()->open()->create(['order_id' => $order->id]);
         $pallet = Pallet::factory()->create([
             'status' => Pallet::STATE_REGISTERED,
             'order_id' => $order->id,
@@ -175,9 +177,40 @@ class ProductionBlockApiTest extends TestCase
 
         $this->assertNotNull($orderReason);
         $this->assertSame('Pedido no cerrado', $orderReason['label']);
-        $this->assertSame('con incidencia', $orderReason['orderStatusLabel']);
-        $this->assertStringContainsString('con incidencia', $orderReason['message']);
+        $this->assertSame('con incidencia abierta', $orderReason['orderStatusLabel']);
+        $this->assertStringContainsString('con incidencia abierta', $orderReason['message']);
         $this->assertStringNotContainsString("'incident'", $orderReason['message']);
+    }
+
+    public function test_closure_check_does_not_block_resolved_incident_orders(): void
+    {
+        $production = Production::query()->with(['species', 'captureZone'])->firstOrFail();
+        $product = $this->createValidProduct($production->species, $production->captureZone, 'RSI');
+        $order = Order::factory()->incident()->create();
+        Incident::factory()->resolved()->create(['order_id' => $order->id]);
+        $pallet = Pallet::factory()->create([
+            'status' => Pallet::STATE_SHIPPED,
+            'order_id' => $order->id,
+        ]);
+        $box = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => $production->lot,
+        ]);
+
+        PalletBox::create([
+            'pallet_id' => $pallet->id,
+            'box_id' => $box->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/'.$production->id.'/closure-check');
+
+        $response->assertOk();
+
+        $reasons = collect($response->json('data.blockingReasons'));
+
+        $this->assertNull($reasons->firstWhere('code', 'pending_order'));
+        $this->assertNull($reasons->firstWhere('code', 'pallet_not_shipped'));
     }
 
     public function test_production_store_rejects_duplicate_lot(): void
