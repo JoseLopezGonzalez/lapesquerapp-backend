@@ -9,7 +9,10 @@ class UpdateTransportRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $transport = Transport::findOrFail($this->route('transport'));
+        $transportRouteParam = $this->route('transport');
+        $transport = $transportRouteParam instanceof Transport
+            ? $transportRouteParam
+            : Transport::findOrFail($transportRouteParam);
 
         return $this->user()->can('update', $transport);
     }
@@ -19,7 +22,10 @@ class UpdateTransportRequest extends FormRequest
      */
     public function rules(): array
     {
-        $id = $this->route('transport');
+        $transportRouteParam = $this->route('transport');
+        $id = $transportRouteParam instanceof Transport
+            ? $transportRouteParam->getKey()
+            : $transportRouteParam;
 
         return [
             'name' => 'required|string|min:3|unique:tenant.transports,name,' . $id,
