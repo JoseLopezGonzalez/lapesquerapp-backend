@@ -295,6 +295,90 @@ class OrderStatisticsApiTest extends TestCase
         );
     }
 
+    public function test_can_create_and_download_profitability_summary_export_job(): void
+    {
+        $species = Species::factory()->create([
+            'fishing_gear_id' => FishingGear::factory()->create()->id,
+        ]);
+
+        $product = Product::factory()->create([
+            'name' => 'Merluza async export test',
+            'species_id' => $species->id,
+            'capture_zone_id' => CaptureZone::factory()->create()->id,
+            'family_id' => ProductFamily::factory()->create()->id,
+        ]);
+
+        $reception = RawMaterialReception::factory()->create();
+        $order = Order::factory()->create([
+            'entry_date' => '2026-03-10',
+            'load_date' => '2026-03-15',
+        ]);
+
+        OrderPlannedProductDetail::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'unit_price' => 5.0,
+        ]);
+
+        $pallet = Pallet::factory()->create([
+            'order_id' => $order->id,
+            'reception_id' => $reception->id,
+            'status' => Pallet::STATE_SHIPPED,
+        ]);
+
+        RawMaterialReceptionProduct::factory()->create([
+            'reception_id' => $reception->id,
+            'product_id' => $product->id,
+            'lot' => 'LOT-ASYNC-001',
+            'price' => 3.0,
+        ]);
+
+        $box = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-ASYNC-001',
+            'net_weight' => 10.0,
+            'gross_weight' => 10.5,
+        ]);
+
+        PalletBox::create([
+            'pallet_id' => $pallet->id,
+            'box_id' => $box->id,
+        ]);
+
+        $createResponse = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/statistics/orders/profitability-summary/export-jobs', [
+                'dateFrom' => '2026-03-01',
+                'dateTo' => '2026-03-31',
+                'onlyMissingCosts' => true,
+            ]);
+
+        $createResponse->assertStatus(202)
+            ->assertJsonStructure([
+                'id',
+                'status',
+                'filters',
+                'downloadUrl',
+            ]);
+
+        $exportId = $createResponse->json('id');
+
+        $statusResponse = $this->withHeaders($this->authHeaders())
+            ->getJson("/api/v2/statistics/orders/profitability-summary/export-jobs/{$exportId}");
+
+        $statusResponse->assertStatus(200)
+            ->assertJsonPath('id', $exportId)
+            ->assertJsonPath('status', 'finished');
+
+        $downloadResponse = $this->withHeaders($this->authHeaders())
+            ->get("/api/v2/statistics/orders/profitability-summary/export-jobs/{$exportId}/download");
+
+        $downloadResponse->assertStatus(200);
+        $this->assertStringContainsString(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            $downloadResponse->headers->get('content-type')
+        );
+    }
+
     public function test_reception_chart_data_requires_authentication(): void
     {
         $response = $this->withHeaders([

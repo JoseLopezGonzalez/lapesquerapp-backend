@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'excel_cache_driver' => env('EXCEL_CACHE_DRIVER', 'batch'),
+
     /*
     |--------------------------------------------------------------------------
     | Export Memory and Time Limits
@@ -73,6 +75,10 @@ return [
             'memory_limit' => '1024M',
             'max_execution_time' => 300, // seconds
         ],
+
+        'profitability_export' => [
+            'memory_limit' => '2048M',
+            'max_execution_time' => 1800, // seconds
+        ],
     ],
 ];
-

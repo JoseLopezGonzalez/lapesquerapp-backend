@@ -23,9 +23,19 @@ class ProductionClosureService
         // 1. Debe estar abierta
         if (! $production->isOpen()) {
             if ($production->isClosed()) {
-                $reasons[] = ['code' => 'already_closed', 'message' => 'La producción ya está cerrada.'];
+                $reasons[] = $this->blockingReason(
+                    'already_closed',
+                    'Producción ya cerrada',
+                    'Esta producción ya está cerrada definitivamente.',
+                    'No hace falta volver a cerrarla.'
+                );
             } else {
-                $reasons[] = ['code' => 'not_open', 'message' => 'La producción no está abierta.'];
+                $reasons[] = $this->blockingReason(
+                    'not_open',
+                    'Producción no abierta',
+                    'Esta producción todavía no está abierta.',
+                    'Abre la producción antes de intentar el cierre definitivo.'
+                );
             }
 
             return $this->buildResult(false, $reasons, $this->buildSummary($production));
@@ -34,25 +44,44 @@ class ProductionClosureService
         // 2. Debe tener al menos un proceso
         $records = $production->records()->with(['outputs', 'children'])->get();
         if ($records->isEmpty()) {
-            $reasons[] = ['code' => 'no_processes', 'message' => 'La producción no tiene ningún proceso registrado.'];
+            $reasons[] = $this->blockingReason(
+                'no_processes',
+                'Producción sin procesos',
+                'No hay procesos registrados en esta producción.',
+                'Añade al menos un proceso antes de cerrar el lote.'
+            );
         }
 
         // 3 y 4. Todos los procesos del árbol deben tener started_at y finished_at
-        $allRecords = $production->records()->get();
+        $allRecords = $production->records()->with('process')->get();
         foreach ($allRecords as $record) {
             if ($record->started_at === null) {
-                $reasons[] = [
-                    'code' => 'process_not_started',
-                    'message' => "El proceso ID {$record->id} no tiene fecha de inicio.",
-                    'recordId' => $record->id,
-                ];
+                $processLabel = $this->processLabel($record);
+                $reasons[] = $this->blockingReason(
+                    'process_not_started',
+                    'Proceso sin iniciar',
+                    "{$processLabel} no tiene fecha de inicio.",
+                    'Completa la fecha de inicio del proceso.',
+                    [
+                        'recordId' => $record->id,
+                        'processName' => $record->process?->name,
+                        'entityLabel' => $processLabel,
+                    ],
+                );
             }
             if ($record->finished_at === null) {
-                $reasons[] = [
-                    'code' => 'process_not_finished',
-                    'message' => "El proceso ID {$record->id} no tiene fecha de finalización.",
-                    'recordId' => $record->id,
-                ];
+                $processLabel = $this->processLabel($record);
+                $reasons[] = $this->blockingReason(
+                    'process_not_finished',
+                    'Proceso sin finalizar',
+                    "{$processLabel} no tiene fecha de finalización.",
+                    'Completa la fecha de fin del proceso.',
+                    [
+                        'recordId' => $record->id,
+                        'processName' => $record->process?->name,
+                        'entityLabel' => $processLabel,
+                    ],
+                );
             }
         }
 
@@ -61,15 +90,23 @@ class ProductionClosureService
             ->whereDoesntHave('children')
             ->whereDoesntHave('outputs')
             ->whereDoesntHave('parentOutputConsumptions')
+            ->with('process')
             ->get();
 
         foreach ($finalRecords as $record) {
             if ($record->outputs()->count() === 0) {
-                $reasons[] = [
-                    'code' => 'final_node_no_outputs',
-                    'message' => "El proceso final ID {$record->id} no tiene ningún output registrado.",
-                    'recordId' => $record->id,
-                ];
+                $processLabel = $this->processLabel($record);
+                $reasons[] = $this->blockingReason(
+                    'final_node_no_outputs',
+                    'Proceso final sin producción',
+                    "{$processLabel} es un proceso final y no tiene salidas registradas.",
+                    'Registra la producción obtenida en ese proceso final.',
+                    [
+                        'recordId' => $record->id,
+                        'processName' => $record->process?->name,
+                        'entityLabel' => $processLabel,
+                    ],
+                );
             }
         }
 
@@ -82,11 +119,19 @@ class ProductionClosureService
             ->get();
 
         foreach ($pendingOrders as $order) {
-            $reasons[] = [
-                'code' => 'pending_order',
-                'message' => "El pedido #{$order->id} está en estado '{$order->status}' y contiene palets de este lote.",
-                'orderId' => $order->id,
-            ];
+            $statusLabel = $this->orderStatusLabel($order->status);
+            $reasons[] = $this->blockingReason(
+                'pending_order',
+                'Pedido no cerrado',
+                "El pedido {$order->formattedId} está {$statusLabel} y contiene palets de este lote.",
+                'Finaliza o resuelve el pedido antes de cerrar la producción.',
+                [
+                    'orderId' => $order->id,
+                    'orderStatus' => $order->status,
+                    'orderStatusLabel' => $statusLabel,
+                    'entityLabel' => "Pedido {$order->formattedId}",
+                ],
+            );
         }
 
         // 7. Toda venta debe estar en pedido finished y palet shipped
@@ -99,11 +144,19 @@ class ProductionClosureService
             ->get();
 
         foreach ($unshippedSalesPallets as $pallet) {
-            $reasons[] = [
-                'code' => 'pallet_not_shipped',
-                'message' => "El palet #{$pallet->id} está asignado a pedido pero no está en estado 'shipped'.",
-                'palletId' => $pallet->id,
-            ];
+            $statusLabel = $this->palletStatusLabel($pallet->status);
+            $reasons[] = $this->blockingReason(
+                'pallet_not_shipped',
+                'Palet pendiente de envío',
+                "El palet #{$pallet->id} está asignado a un pedido, pero sigue {$statusLabel}.",
+                'Marca el palet como enviado o revisa su pedido.',
+                [
+                    'palletId' => $pallet->id,
+                    'palletStatus' => $pallet->status,
+                    'palletStatusLabel' => $statusLabel,
+                    'entityLabel' => "Palet #{$pallet->id}",
+                ],
+            );
         }
 
         // 8 y 9. No debe quedar stock del lote (palets registered/stored sin pedido)
@@ -116,11 +169,18 @@ class ProductionClosureService
             ->get();
 
         foreach ($stockPallets as $pallet) {
-            $reasons[] = [
-                'code' => 'stock_remaining',
-                'message' => "El palet #{$pallet->id} tiene cajas del lote en stock.",
-                'palletId' => $pallet->id,
-            ];
+            $reasons[] = $this->blockingReason(
+                'stock_remaining',
+                'Stock pendiente del lote',
+                "El palet #{$pallet->id} todavía tiene cajas de este lote en stock.",
+                'Vende, reprocesa o regulariza las cajas antes de cerrar el lote.',
+                [
+                    'palletId' => $pallet->id,
+                    'palletStatus' => $pallet->status,
+                    'palletStatusLabel' => $this->palletStatusLabel($pallet->status),
+                    'entityLabel' => "Palet #{$pallet->id}",
+                ],
+            );
         }
 
         // 10. No debe haber cajas del lote sin ningún destino (ni palet, ni reprocesadas)
@@ -131,11 +191,16 @@ class ProductionClosureService
             ->get();
 
         foreach ($orphanBoxes as $box) {
-            $reasons[] = [
-                'code' => 'orphan_box',
-                'message' => "La caja #{$box->id} del lote no tiene destino (no está en palet ni fue reprocesada).",
-                'boxId' => $box->id,
-            ];
+            $reasons[] = $this->blockingReason(
+                'orphan_box',
+                'Caja sin destino',
+                "La caja #{$box->id} del lote no tiene destino: no está en un palet ni fue reprocesada.",
+                'Ubica la caja en un palet o asígnala a un reproceso.',
+                [
+                    'boxId' => $box->id,
+                    'entityLabel' => "Caja #{$box->id}",
+                ],
+            );
         }
 
         // 11. La conciliación debe estar en 'ok' (warning y error bloquean)
@@ -144,11 +209,17 @@ class ProductionClosureService
             $overallStatus = $reconciliation['summary']['overallStatus'] ?? 'error';
 
             if ($overallStatus !== 'ok') {
-                $reasons[] = [
-                    'code' => 'reconciliation_not_ok',
-                    'message' => "La conciliación del lote está en estado '{$overallStatus}'. Solo se puede cerrar con estado 'ok'.",
-                    'reconciliationStatus' => $overallStatus,
-                ];
+                $statusLabel = $this->reconciliationStatusLabel($overallStatus);
+                $reasons[] = $this->blockingReason(
+                    'reconciliation_not_ok',
+                    'Conciliación pendiente',
+                    "La conciliación del lote está {$statusLabel}. Solo se puede cerrar cuando esté correcta.",
+                    'Revisa el balance del lote y corrige las diferencias antes de cerrar.',
+                    [
+                        'reconciliationStatus' => $overallStatus,
+                        'reconciliationStatusLabel' => $statusLabel,
+                    ],
+                );
             }
         }
 
@@ -225,6 +296,60 @@ class ProductionClosureService
             'blockingReasons' => $reasons,
             'summary' => $summary,
         ];
+    }
+
+    private function blockingReason(string $code, string $title, string $message, string $description, array $extra = []): array
+    {
+        return array_merge([
+            'code' => $code,
+            'label' => $title,
+            'title' => $title,
+            'message' => $message,
+            'description' => $description,
+            'action' => $description,
+        ], $extra);
+    }
+
+    private function processLabel($record): string
+    {
+        $name = $record->process?->name;
+
+        if ($name === null || trim($name) === '') {
+            return "Proceso #{$record->id}";
+        }
+
+        return "{$name} (proceso #{$record->id})";
+    }
+
+    private function orderStatusLabel(string $status): string
+    {
+        return match ($status) {
+            Order::STATUS_PENDING => 'pendiente',
+            Order::STATUS_FINISHED => 'finalizado',
+            Order::STATUS_INCIDENT => 'con incidencia',
+            default => "en estado {$status}",
+        };
+    }
+
+    private function palletStatusLabel(int|string|null $status): string
+    {
+        return match ((int) $status) {
+            Pallet::STATE_REGISTERED => 'registrado',
+            Pallet::STATE_STORED => 'almacenado',
+            Pallet::STATE_SHIPPED => 'enviado',
+            Pallet::STATE_PROCESSED => 'procesado',
+            default => 'en un estado no reconocido',
+        };
+    }
+
+    private function reconciliationStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'ok' => 'correcta',
+            'warning' => 'con avisos',
+            'error' => 'con errores',
+            default => "en estado {$status}",
+        };
     }
 
     private function buildSummary(Production $production): array

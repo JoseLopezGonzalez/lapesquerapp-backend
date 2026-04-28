@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Box;
 use App\Models\CaptureZone;
 use App\Models\FishingGear;
+use App\Models\Order;
 use App\Models\OrderPlannedProductDetail;
 use App\Models\Pallet;
 use App\Models\PalletBox;
@@ -136,6 +137,47 @@ class ProductionBlockApiTest extends TestCase
             ->getJson('/api/v2/productions');
 
         $response->assertUnauthorized();
+    }
+
+    public function test_closure_check_returns_human_readable_blocking_reasons(): void
+    {
+        $production = Production::query()->with(['species', 'captureZone'])->firstOrFail();
+        $product = $this->createValidProduct($production->species, $production->captureZone, 'HRM');
+        $order = Order::factory()->incident()->create();
+        $pallet = Pallet::factory()->create([
+            'status' => Pallet::STATE_REGISTERED,
+            'order_id' => $order->id,
+        ]);
+        $box = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => $production->lot,
+        ]);
+
+        PalletBox::create([
+            'pallet_id' => $pallet->id,
+            'box_id' => $box->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/'.$production->id.'/closure-check');
+
+        $response->assertOk();
+
+        $reasons = collect($response->json('data.blockingReasons'));
+        $processReason = $reasons->firstWhere('code', 'process_not_finished');
+        $orderReason = $reasons->firstWhere('code', 'pending_order');
+
+        $this->assertNotNull($processReason);
+        $this->assertSame('Proceso sin finalizar', $processReason['label']);
+        $this->assertStringContainsString($processReason['processName'], $processReason['message']);
+        $this->assertStringNotContainsString('proceso ID', $processReason['message']);
+        $this->assertSame($processReason['entityLabel'], $processReason['processName'].' (proceso #'.$processReason['recordId'].')');
+
+        $this->assertNotNull($orderReason);
+        $this->assertSame('Pedido no cerrado', $orderReason['label']);
+        $this->assertSame('con incidencia', $orderReason['orderStatusLabel']);
+        $this->assertStringContainsString('con incidencia', $orderReason['message']);
+        $this->assertStringNotContainsString("'incident'", $orderReason['message']);
     }
 
     public function test_production_store_rejects_duplicate_lot(): void

@@ -134,15 +134,78 @@ GET /api/v2/statistics/orders/profitability-products
 
 ## 3. Exportación de auditoría del margen
 
+### Flujo recomendado: exportación asíncrona
+
+Para rangos amplios, la exportación debe generarse en background para evitar timeouts HTTP y picos de memoria en la petición del navegador.
+
+```http
+POST /api/v2/statistics/orders/profitability-summary/export-jobs
+```
+
+Parámetros:
+
+| Parámetro | Tipo | Requerido | Descripción |
+|---|---|---|---|
+| `dateFrom` | `string` (YYYY-MM-DD) | Sí | Inicio del rango sobre `load_date`. |
+| `dateTo` | `string` (YYYY-MM-DD) | Sí | Fin del rango. |
+| `productIds[]` | `integer[]` | No | Filtra las cajas/productos incluidos en el cálculo. |
+| `onlyMissingCosts` | `boolean` | No | Si es `true`, genera solo `Resumen` y `Cajas sin coste`, recomendado para trabajo manual. |
+
+Respuesta `202 Accepted`:
+
+```json
+{
+  "id": "8b84f421-3a64-4c34-b257-d7f96891d0c2",
+  "status": "pending",
+  "filters": {
+    "dateFrom": "2025-12-31",
+    "dateTo": "2026-04-28",
+    "productIds": [],
+    "onlyMissingCosts": true
+  },
+  "filename": null,
+  "errorMessage": null,
+  "createdAt": "2026-04-28T14:55:00+00:00",
+  "startedAt": null,
+  "finishedAt": null,
+  "downloadUrl": null
+}
+```
+
+Consultar estado:
+
+```http
+GET /api/v2/statistics/orders/profitability-summary/export-jobs/{id}
+```
+
+Estados posibles:
+
+| Estado | Descripción |
+|---|---|
+| `pending` | Exportación creada, pendiente de procesar. |
+| `processing` | El job está generando el Excel. |
+| `finished` | El archivo está listo y `downloadUrl` tiene valor. |
+| `failed` | Falló la exportación; revisar `errorMessage`. |
+
+Descargar cuando `status = finished`:
+
+```http
+GET /api/v2/statistics/orders/profitability-summary/export-jobs/{id}/download
+```
+
+Si el archivo aún no está listo, la descarga responde `409 Conflict`.
+
+### Exportación síncrona legacy
+
 ```http
 GET /api/v2/statistics/orders/profitability-summary/export
 ```
 
-Exporta un archivo `.xlsx` con el detalle de cajas usado para reconciliar el cálculo de `profitability-summary` y detectar cajas sin coste.
+Exporta un archivo `.xlsx` en la misma petición HTTP. Se mantiene por compatibilidad, pero para rangos grandes debe usarse el flujo asíncrono.
 
 ### Parámetros
 
-Acepta los mismos parámetros que el endpoint de KPIs globales:
+Acepta los mismos parámetros base que el endpoint de KPIs globales:
 
 | Parámetro | Tipo | Requerido | Descripción |
 |---|---|---|---|

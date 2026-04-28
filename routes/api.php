@@ -327,6 +327,9 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         /* Rentabilidad: KPIs y desglose por producto */
         Route::get('statistics/orders/profitability-summary', [OrderProfitabilityStatsController::class, 'summary'])->name('v2.statistics.orders.profitability_summary');
         Route::get('statistics/orders/profitability-summary/export', [OrderProfitabilityStatsController::class, 'exportSummary'])->name('v2.statistics.orders.profitability_summary.export');
+        Route::post('statistics/orders/profitability-summary/export-jobs', [OrderProfitabilityStatsController::class, 'createExportJob'])->name('v2.statistics.orders.profitability_summary.export_jobs.store');
+        Route::get('statistics/orders/profitability-summary/export-jobs/{uuid}', [OrderProfitabilityStatsController::class, 'showExportJob'])->name('v2.statistics.orders.profitability_summary.export_jobs.show');
+        Route::get('statistics/orders/profitability-summary/export-jobs/{uuid}/download', [OrderProfitabilityStatsController::class, 'downloadExportJob'])->name('v2.statistics.orders.profitability_summary.export_jobs.download');
         Route::get('statistics/orders/profitability-products', [OrderProfitabilityStatsController::class, 'byProduct'])->name('v2.statistics.orders.profitability_products');
 
         /* orders/sales-by-salesperson */

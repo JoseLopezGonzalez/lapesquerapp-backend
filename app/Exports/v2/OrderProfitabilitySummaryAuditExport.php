@@ -17,12 +17,13 @@ class OrderProfitabilitySummaryAuditExport implements WithMultipleSheets
     use Exportable;
 
     public function __construct(
-        private readonly array $data
+        private readonly array $data,
+        private readonly bool $onlyMissingCosts = false
     ) {}
 
     public function sheets(): array
     {
-        return [
+        $sheets = [
             new OrderProfitabilitySummaryAuditSheet(
                 'Resumen',
                 [
@@ -31,6 +32,21 @@ class OrderProfitabilitySummaryAuditExport implements WithMultipleSheets
                 ],
                 $this->data['summary']
             ),
+        ];
+
+        if ($this->onlyMissingCosts) {
+            $sheets[] = new OrderProfitabilitySummaryAuditSheet(
+                'Cajas sin coste',
+                $this->missingCostHeadings(),
+                $this->data['missingCosts'],
+                $this->missingCostKeys()
+            );
+
+            return $sheets;
+        }
+
+        return [
+            ...$sheets,
             new OrderProfitabilitySummaryAuditSheet(
                 'Detalle cajas',
                 $this->detailHeadings(),
