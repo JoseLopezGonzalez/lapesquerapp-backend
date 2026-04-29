@@ -228,6 +228,74 @@ class OrderStatisticsApiTest extends TestCase
             ->assertJsonPath('products.0.ordersCount', 1);
     }
 
+    public function test_profitability_summary_includes_cost_coverage_by_boxes(): void
+    {
+        $species = Species::factory()->create([
+            'fishing_gear_id' => FishingGear::factory()->create()->id,
+        ]);
+
+        $product = Product::factory()->create([
+            'name' => 'Merluza cobertura test',
+            'species_id' => $species->id,
+            'capture_zone_id' => CaptureZone::factory()->create()->id,
+            'family_id' => ProductFamily::factory()->create()->id,
+        ]);
+
+        $reception = RawMaterialReception::factory()->create();
+        $order = Order::factory()->create([
+            'entry_date' => '2026-03-10',
+            'load_date' => '2026-03-15',
+        ]);
+
+        OrderPlannedProductDetail::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'unit_price' => 5.0,
+        ]);
+
+        $pallet = Pallet::factory()->create([
+            'order_id' => $order->id,
+            'reception_id' => $reception->id,
+            'status' => Pallet::STATE_SHIPPED,
+        ]);
+
+        RawMaterialReceptionProduct::factory()->create([
+            'reception_id' => $reception->id,
+            'product_id' => $product->id,
+            'lot' => 'LOT-COVERED',
+            'price' => 3.0,
+        ]);
+
+        $coveredBox = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-COVERED',
+            'net_weight' => 10.0,
+            'gross_weight' => 10.5,
+        ]);
+        $uncoveredBox = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-UNCOVERED',
+            'net_weight' => 5.0,
+            'gross_weight' => 5.2,
+        ]);
+
+        PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $coveredBox->id]);
+        PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $uncoveredBox->id]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/statistics/orders/profitability-summary?'.http_build_query([
+                'dateFrom' => '2026-03-01',
+                'dateTo' => '2026-03-31',
+            ]));
+
+        $response->assertOk()
+            ->assertJsonPath('totalRevenue', 75)
+            ->assertJsonPath('totalCost', 30)
+            ->assertJsonPath('coveredBoxes', 1)
+            ->assertJsonPath('uncoveredBoxes', 1)
+            ->assertJsonPath('costCoverageBoxesPct', 50);
+    }
+
     public function test_can_export_profitability_summary_audit_excel(): void
     {
         $species = Species::factory()->create([

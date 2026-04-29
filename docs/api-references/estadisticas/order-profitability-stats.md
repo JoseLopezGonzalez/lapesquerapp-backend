@@ -43,7 +43,10 @@ GET /api/v2/statistics/orders/profitability-summary
   "totalRevenue": 48200.00,
   "totalCost": 36800.00,
   "grossMargin": 11400.00,
-  "marginPercentage": 23.65
+  "marginPercentage": 23.65,
+  "coveredBoxes": 28,
+  "uncoveredBoxes": 6,
+  "costCoverageBoxesPct": 82.35
 }
 ```
 
@@ -55,6 +58,9 @@ GET /api/v2/statistics/orders/profitability-summary
 | `totalCost` | `number \| null` | Suma del coste de todas las cajas expedidas. `null` si ninguna tiene coste calculable. |
 | `grossMargin` | `number \| null` | `totalRevenue − totalCost`. |
 | `marginPercentage` | `number \| null` | `(grossMargin / totalRevenue) × 100`, 2 decimales. |
+| `coveredBoxes` | `integer` | Cajas expedidas incluidas en el cálculo con coste calculable. |
+| `uncoveredBoxes` | `integer` | Cajas expedidas incluidas en el cálculo sin coste calculable. |
+| `costCoverageBoxesPct` | `number` | `coveredBoxes / (coveredBoxes + uncoveredBoxes) × 100`, 2 decimales. |
 
 ---
 

@@ -18,10 +18,14 @@ class OrderProfitabilityStatsService
 
         $totalRevenue = 0.0;
         $totalCost = null;
+        $coveredBoxes = 0;
+        $uncoveredBoxes = 0;
 
         foreach ($orders as $order) {
             $f = self::computeOrderFinancials($order, $productIds);
             $totalRevenue += $f['revenue'];
+            $coveredBoxes += $f['coveredBoxes'];
+            $uncoveredBoxes += $f['uncoveredBoxes'];
             if ($f['cost'] !== null) {
                 $totalCost = ($totalCost ?? 0.0) + $f['cost'];
             }
@@ -31,6 +35,10 @@ class OrderProfitabilityStatsService
         $marginPct = ($grossMargin !== null && $totalRevenue > 0)
             ? round($grossMargin / $totalRevenue * 100, 2)
             : null;
+        $totalBoxes = $coveredBoxes + $uncoveredBoxes;
+        $costCoverageBoxesPct = $totalBoxes > 0
+            ? round($coveredBoxes / $totalBoxes * 100, 2)
+            : 0.0;
 
         return [
             'period' => ['from' => $from, 'to' => $to],
@@ -39,6 +47,9 @@ class OrderProfitabilityStatsService
             'totalCost' => $totalCost !== null ? round($totalCost, 2) : null,
             'grossMargin' => $grossMargin,
             'marginPercentage' => $marginPct,
+            'coveredBoxes' => $coveredBoxes,
+            'uncoveredBoxes' => $uncoveredBoxes,
+            'costCoverageBoxesPct' => $costCoverageBoxesPct,
         ];
     }
 
@@ -399,6 +410,8 @@ class OrderProfitabilityStatsService
         $priceMap = self::buildPriceMap($order);
         $revenue = 0.0;
         $cost = null;
+        $coveredBoxes = 0;
+        $uncoveredBoxes = 0;
 
         foreach ($order->pallets as $pallet) {
             foreach ($pallet->boxes as $palletBox) {
@@ -418,11 +431,19 @@ class OrderProfitabilityStatsService
                 $boxCost = $box->total_cost;
                 if ($boxCost !== null) {
                     $cost = ($cost ?? 0.0) + $boxCost;
+                    $coveredBoxes++;
+                } else {
+                    $uncoveredBoxes++;
                 }
             }
         }
 
-        return ['revenue' => $revenue, 'cost' => $cost];
+        return [
+            'revenue' => $revenue,
+            'cost' => $cost,
+            'coveredBoxes' => $coveredBoxes,
+            'uncoveredBoxes' => $uncoveredBoxes,
+        ];
     }
 
     private static function periodKey(string $date, string $granularity): string
