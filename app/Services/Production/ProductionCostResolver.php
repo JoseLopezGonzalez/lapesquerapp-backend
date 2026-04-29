@@ -235,6 +235,19 @@ class ProductionCostResolver
             return $this->boxCostPerKgCache[$box->id];
         }
 
+        $traceableCostPerKg = $this->getBoxTraceableCostPerKg($box);
+        if ($traceableCostPerKg !== null) {
+            return $this->rememberBoxCostPerKg($box, $traceableCostPerKg);
+        }
+
+        return $this->rememberBoxCostPerKg(
+            $box,
+            $box->manual_cost_per_kg !== null ? (float) $box->manual_cost_per_kg : null
+        );
+    }
+
+    public function getBoxTraceableCostPerKg(Box $box): ?float
+    {
         $pallet = $box->pallet;
         if ($pallet && $pallet->reception_id) {
             $reception = $pallet->reception;
@@ -243,17 +256,19 @@ class ProductionCostResolver
                 ->where('lot', $box->lot)
                 ->first();
 
-            return $this->rememberBoxCostPerKg($box, $receptionProduct?->price);
+            if ($receptionProduct?->price !== null) {
+                return (float) $receptionProduct->price;
+            }
         }
 
-        if ($box->article_id === null || $box->lot === null || trim($box->lot) === '') {
-            return $this->rememberBoxCostPerKg($box, null);
+        if ($box->article_id !== null && $box->lot !== null && trim($box->lot) !== '') {
+            $productionCostPerKg = $this->getProductionLotProductCostPerKg((string) $box->lot, (int) $box->article_id);
+            if ($productionCostPerKg !== null) {
+                return $productionCostPerKg;
+            }
         }
 
-        return $this->rememberBoxCostPerKg(
-            $box,
-            $this->getProductionLotProductCostPerKg((string) $box->lot, (int) $box->article_id)
-        );
+        return null;
     }
 
     public function getBoxTotalCost(Box $box): ?float

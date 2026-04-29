@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\v2;
 
+use App\Enums\Role;
 use App\Models\ExternalUser;
 use App\Models\Pallet;
 use App\Services\ActorScopeService;
@@ -36,6 +37,7 @@ class UpdatePalletRequest extends FormRequest
             'boxes.*.gs1128' => 'required_with:boxes|string|max:255',
             'boxes.*.grossWeight' => 'required_with:boxes|numeric|min:0',
             'boxes.*.netWeight' => 'required_with:boxes|numeric|min:0.01',
+            'boxes.*.manualCostPerKg' => 'nullable|numeric|min:0',
             'orderId' => 'sometimes|nullable|integer|exists:tenant.orders,id',
         ];
     }
@@ -45,6 +47,13 @@ class UpdatePalletRequest extends FormRequest
         $validator->after(function ($validator) {
             $actor = $this->user();
             $scope = app(ActorScopeService::class);
+
+            if ($this->hasManualCostPerKg() && ! $this->userCanEditManualCost()) {
+                $validator->errors()->add(
+                    'boxes',
+                    'Solo usuarios administradores o técnicos pueden modificar el coste manual por kg de las cajas.'
+                );
+            }
 
             if (! $actor instanceof ExternalUser) {
                 return;
@@ -59,5 +68,24 @@ class UpdatePalletRequest extends FormRequest
                 $validator->errors()->add('store.id', 'El almacén seleccionado no pertenece al usuario externo.');
             }
         });
+    }
+
+    private function hasManualCostPerKg(): bool
+    {
+        foreach ($this->input('boxes', []) as $box) {
+            if (is_array($box) && array_key_exists('manualCostPerKg', $box)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function userCanEditManualCost(): bool
+    {
+        return $this->user()?->hasAnyRole([
+            Role::Administrador->value,
+            Role::Tecnico->value,
+        ]) ?? false;
     }
 }

@@ -76,13 +76,13 @@ class OperationalOrderExecutionService
 
                 $lot = trim((string) ($boxData['lot'] ?? ''));
                 if ($lot === '') {
-                    $lot = 'FIELD-ORDER-' . $order->id . '-' . ($index + 1);
+                    $lot = 'FIELD-ORDER-'.$order->id.'-'.($index + 1);
                 }
 
                 $gs1128 = trim((string) ($boxData['gs1128'] ?? ''));
                 if ($gs1128 === '') {
                     // DB column is non-null in migrations; keep deterministic-ish value for idempotence.
-                    $gs1128 = 'FIELD-ORDER-' . $order->id . '-' . $productId . '-' . $lot;
+                    $gs1128 = 'FIELD-ORDER-'.$order->id.'-'.$productId.'-'.$lot;
                     $gs1128 = mb_substr($gs1128, 0, 255);
                 }
 
@@ -172,4 +172,3 @@ class OperationalOrderExecutionService
         });
     }
 }
-

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\v2;
 
+use App\Enums\Role;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,6 +16,10 @@ class PalletResource extends JsonResource
     public function toArray(Request $request): array
     {
         $boxes = $this->relationLoaded('boxes') ? $this->boxes : collect();
+        $canViewManualCostContext = $request->user()?->hasAnyRole([
+            Role::Administrador->value,
+            Role::Tecnico->value,
+        ]) ?? false;
 
         if ($this->relationLoaded('storedPallet')) {
             $position = $this->storedPallet?->position;
@@ -29,8 +34,24 @@ class PalletResource extends JsonResource
             'observations' => $this->observations,
             'state' => $this->stateArray,
             'productsNames' => $this->relationLoaded('boxes') ? $this->productsNames : [],
-            'boxes' => $boxes->map(function ($box) {
-                return $box->toArrayAssocV2();
+            'boxes' => $boxes->map(function ($palletBox) use ($canViewManualCostContext) {
+                $data = $palletBox->toArrayAssocV2();
+
+                if (! $canViewManualCostContext) {
+                    unset(
+                        $data['manualCostPerKg'],
+                        $data['traceableCostPerKg'],
+                        $data['costPerKg'],
+                        $data['totalCost']
+                    );
+
+                    return $data;
+                }
+
+                $traceableCostPerKg = $palletBox->box?->traceable_cost_per_kg;
+                $data['traceableCostPerKg'] = $traceableCostPerKg !== null ? round((float) $traceableCostPerKg, 4) : null;
+
+                return $data;
             }),
             'lots' => $this->relationLoaded('boxes') ? $this->lots : [],
             'netWeight' => $this->relationLoaded('boxes') && $this->netWeight !== null ? round($this->netWeight, 3) : null,

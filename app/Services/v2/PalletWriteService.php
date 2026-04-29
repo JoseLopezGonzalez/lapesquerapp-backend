@@ -194,13 +194,19 @@ class PalletWriteService
                     $hasBeenUpdated = false;
                     foreach ($boxes as $index => $updatedBox) {
                         if ($updatedBox['id'] == $palletBox->box->id) {
-                            $palletBox->box->update([
+                            $boxChanges = [
                                 'article_id' => $updatedBox['product']['id'],
                                 'lot' => $updatedBox['lot'],
                                 'gs1_128' => $updatedBox['gs1128'],
                                 'gross_weight' => $updatedBox['grossWeight'],
                                 'net_weight' => $updatedBox['netWeight'],
-                            ]);
+                            ];
+
+                            if (array_key_exists('manualCostPerKg', $updatedBox)) {
+                                $boxChanges['manual_cost_per_kg'] = $updatedBox['manualCostPerKg'];
+                            }
+
+                            $palletBox->box->update($boxChanges);
                             $hasBeenUpdated = true;
                             unset($boxes[$index]);
                         }
@@ -218,6 +224,7 @@ class PalletWriteService
                         'gs1_128' => $box['gs1128'],
                         'gross_weight' => $box['grossWeight'],
                         'net_weight' => $box['netWeight'],
+                        'manual_cost_per_kg' => $box['manualCostPerKg'] ?? null,
                     ]);
                     PalletBox::create([
                         'pallet_id' => $updatedPallet->id,
@@ -264,6 +271,7 @@ class PalletWriteService
                 'gs1128' => $box->gs1_128,
                 'netWeight' => $box->net_weight,
                 'grossWeight' => $box->gross_weight,
+                'manualCostPerKg' => $box->manual_cost_per_kg !== null ? (float) $box->manual_cost_per_kg : null,
             ];
         }
 
@@ -352,6 +360,7 @@ class PalletWriteService
                     'gs1128' => $box->gs1_128,
                     'netWeight' => $box->net_weight,
                     'grossWeight' => $box->gross_weight,
+                    'manualCostPerKg' => $box->manual_cost_per_kg !== null ? (float) $box->manual_cost_per_kg : null,
                 ];
             }
 
@@ -384,6 +393,9 @@ class PalletWriteService
                 }
                 if (($old['grossWeight'] ?? null) != ($new['grossWeight'] ?? null)) {
                     $changes['grossWeight'] = ['from' => $old['grossWeight'], 'to' => $new['grossWeight']];
+                }
+                if (($old['manualCostPerKg'] ?? null) != ($new['manualCostPerKg'] ?? null)) {
+                    $changes['manualCostPerKg'] = ['from' => $old['manualCostPerKg'] ?? null, 'to' => $new['manualCostPerKg'] ?? null];
                 }
                 if (($old['lot'] ?? '') != ($new['lot'] ?? '')) {
                     $changes['lot'] = ['from' => $old['lot'], 'to' => $new['lot']];

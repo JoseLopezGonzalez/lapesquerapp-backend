@@ -3,6 +3,8 @@
 Dos endpoints independientes para alimentar el dashboard de rentabilidad: KPIs globales y desglose por producto.
 
 > **Nota de rendimiento**: los costes se calculan en tiempo real caja a caja. Para rangos amplios (>60 días con alto volumen de pedidos) la respuesta puede tardar varios segundos. Se documentará e implementará una tabla materializada en una fase posterior ([ADR-0002](../../architecture-decisions/0002-materialized-order-costs.md)).
+>
+> El coste de una caja se resuelve por recepción, por producción y, si no hay coste trazable, por `boxes.manual_cost_per_kg` como último fallback. Si este valor existe, se trata como un coste normal en todos los cálculos.
 
 ---
 

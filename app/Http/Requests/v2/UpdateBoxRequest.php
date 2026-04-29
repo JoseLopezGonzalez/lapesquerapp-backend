@@ -9,19 +9,14 @@ class UpdateBoxRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $id = $this->route('box');
-        if ($id instanceof Box) {
-            return $this->user()->can('update', $id);
+        $box = $this->route('box');
+        if (! $box instanceof Box) {
+            $box = Box::find($box);
         }
-        if (!$id) {
-            return false;
-        }
-        return $this->user()->can('update', Box::findOrFail($id));
+
+        return ! $box || $this->user()->can('update', $box);
     }
 
-    /**
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
@@ -33,9 +28,6 @@ class UpdateBoxRequest extends FormRequest
         ];
     }
 
-    /**
-     * @return array<string, string>
-     */
     public function messages(): array
     {
         return [

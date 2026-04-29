@@ -12,7 +12,8 @@ El coste de cada caja se resuelve en tiempo de ejecución a través de `Producti
 ```
 Order → Pallets → PalletBoxes → Box → ProductionCostResolver
                                          ├─ vía recepción: RawMaterialReceptionProduct.price
-                                         └─ vía producción: ProductionOutput → ProductionCost → cálculo ponderado
+                                         ├─ vía producción: ProductionOutput → ProductionCost → cálculo ponderado
+                                         └─ fallback manual: boxes.manual_cost_per_kg
 ```
 
 Este mecanismo funciona correctamente en endpoints de **pedido individual** (detail, cost-analysis) porque el número de cajas a resolver es acotado (~20–200 cajas por pedido).

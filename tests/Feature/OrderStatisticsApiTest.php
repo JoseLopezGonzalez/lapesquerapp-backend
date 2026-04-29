@@ -296,6 +296,61 @@ class OrderStatisticsApiTest extends TestCase
             ->assertJsonPath('costCoverageBoxesPct', 50);
     }
 
+    public function test_profitability_summary_uses_manual_box_cost_as_last_fallback(): void
+    {
+        $species = Species::factory()->create([
+            'fishing_gear_id' => FishingGear::factory()->create()->id,
+        ]);
+
+        $product = Product::factory()->create([
+            'name' => 'Merluza coste manual test',
+            'species_id' => $species->id,
+            'capture_zone_id' => CaptureZone::factory()->create()->id,
+            'family_id' => ProductFamily::factory()->create()->id,
+        ]);
+
+        $order = Order::factory()->create([
+            'entry_date' => '2026-03-10',
+            'load_date' => '2026-03-15',
+        ]);
+
+        OrderPlannedProductDetail::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'unit_price' => 5.0,
+        ]);
+
+        $pallet = Pallet::factory()->create([
+            'order_id' => $order->id,
+            'reception_id' => null,
+            'status' => Pallet::STATE_SHIPPED,
+        ]);
+
+        $box = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-MANUAL-COST',
+            'net_weight' => 10.0,
+            'gross_weight' => 10.5,
+            'manual_cost_per_kg' => 2.75,
+        ]);
+
+        PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $box->id]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/statistics/orders/profitability-summary?'.http_build_query([
+                'dateFrom' => '2026-03-01',
+                'dateTo' => '2026-03-31',
+            ]));
+
+        $response->assertOk()
+            ->assertJsonPath('totalRevenue', 50)
+            ->assertJsonPath('totalCost', 27.5)
+            ->assertJsonPath('grossMargin', 22.5)
+            ->assertJsonPath('coveredBoxes', 1)
+            ->assertJsonPath('uncoveredBoxes', 0)
+            ->assertJsonPath('costCoverageBoxesPct', 100);
+    }
+
     public function test_can_export_profitability_summary_audit_excel(): void
     {
         $species = Species::factory()->create([

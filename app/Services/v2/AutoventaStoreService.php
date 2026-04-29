@@ -11,7 +11,6 @@ use App\Models\Pallet;
 use App\Models\PalletBox;
 use App\Models\RouteStop;
 use App\Models\Tax;
-use App\Services\v2\PalletTimelineService;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -24,9 +23,10 @@ class AutoventaStoreService
      * Crea una autoventa: Order (order_type=autoventa), OrderPlannedProductDetails,
      * un Pallet en estado enviado y las cajas (Box + PalletBox).
      *
-     * @param array<string, mixed> $validated Datos validados (orderType=autoventa, customer, entryDate, loadDate, invoiceRequired, observations, items, boxes)
-     * @param User $user Usuario comercial (salesperson_id se usa para el pedido)
+     * @param  array<string, mixed>  $validated  Datos validados (orderType=autoventa, customer, entryDate, loadDate, invoiceRequired, observations, items, boxes)
+     * @param  User  $user  Usuario comercial (salesperson_id se usa para el pedido)
      * @return Order Pedido creado con relaciones cargadas
+     *
      * @throws \Throwable
      */
     public static function store(array $validated, User $user): Order
@@ -94,7 +94,7 @@ class AutoventaStoreService
                 $netWeight = (float) $boxData['netWeight'];
                 $lot = trim((string) ($boxData['lot'] ?? ''));
                 if ($lot === '') {
-                    $lot = 'AUTOVENTA-' . $order->id . '-' . ($index + 1);
+                    $lot = 'AUTOVENTA-'.$order->id.'-'.($index + 1);
                 }
                 $newBox = Box::create([
                     'article_id' => $boxData['productId'],
@@ -182,7 +182,7 @@ class AutoventaStoreService
                 'a3erp_code' => null,
                 'facilcom_code' => null,
             ]);
-            $customer->alias = 'Cliente Nº ' . $customer->id;
+            $customer->alias = 'Cliente Nº '.$customer->id;
             $customer->save();
 
             return [$customer->id, null];

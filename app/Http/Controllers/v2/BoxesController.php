@@ -40,7 +40,7 @@ class BoxesController extends Controller
         /* Filter by product name */
         if ($request->has('name')) {
             $query->whereHas('product', function ($query) use ($request) {
-                $query->where('name', 'like', '%' . $request->name . '%');
+                $query->where('name', 'like', '%'.$request->name.'%');
             });
         }
 
@@ -106,16 +106,16 @@ class BoxesController extends Controller
         /* orderState - Filtro por estado de la orden del pallet */
         if ($request->has('orderState')) {
             $orderStates = is_array($request->orderState) ? $request->orderState : [$request->orderState];
-            
+
             // Manejar el caso especial de 'without_order'
             if (in_array('without_order', $orderStates)) {
-                $orderStates = array_filter($orderStates, function($state) {
+                $orderStates = array_filter($orderStates, function ($state) {
                     return $state !== 'without_order';
                 });
-                
-                if (!empty($orderStates)) {
+
+                if (! empty($orderStates)) {
                     // Si hay otros estados además de 'without_order', usar OR
-                    $query->where(function($query) use ($orderStates) {
+                    $query->where(function ($query) use ($orderStates) {
                         $query->whereHas('palletBox.pallet.order', function ($query) use ($orderStates) {
                             $query->whereIn('status', $orderStates);
                         })->orWhereHas('palletBox.pallet', function ($query) {
@@ -167,7 +167,7 @@ class BoxesController extends Controller
         /* notes - Filtro por observaciones del pallet */
         if ($request->has('notes')) {
             $query->whereHas('palletBox.pallet', function ($query) use ($request) {
-                $query->where('observations', 'like', '%' . $request->notes . '%');
+                $query->where('observations', 'like', '%'.$request->notes.'%');
             });
         }
 
@@ -201,7 +201,7 @@ class BoxesController extends Controller
         /* orderBuyerReference - Filtro por referencia de compra */
         if ($request->has('orderBuyerReference')) {
             $query->whereHas('palletBox.pallet.order', function ($query) use ($request) {
-                $query->where('buyer_reference', 'like', '%' . $request->orderBuyerReference . '%');
+                $query->where('buyer_reference', 'like', '%'.$request->orderBuyerReference.'%');
             });
         }
 
@@ -210,6 +210,7 @@ class BoxesController extends Controller
 
         /* no filter more */
         $perPage = $request->input('perPage', 12); // Default a 12 si no se proporciona
+
         return BoxResource::collection($query->paginate($perPage));
     }
 
@@ -272,6 +273,4 @@ class BoxesController extends Controller
 
         return response()->json(['message' => 'Cajas eliminadas con éxito']);
     }
-
-    
 }

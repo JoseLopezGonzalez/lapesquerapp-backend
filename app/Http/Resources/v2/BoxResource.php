@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\v2;
 
+use App\Enums\Role;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,6 +18,10 @@ class BoxResource extends JsonResource
         $production = $this->production;
         $product = $this->relationLoaded('product') ? $this->product : null;
         $palletId = null;
+        $canViewManualCostContext = $request->user()?->hasAnyRole([
+            Role::Administrador->value,
+            Role::Tecnico->value,
+        ]) ?? false;
 
         if ($this->relationLoaded('palletBox')) {
             $palletId = $this->palletBox?->pallet_id;
@@ -24,8 +29,8 @@ class BoxResource extends JsonResource
             // Fallback para mantener compatibilidad si no hubo eager loading explícito.
             $palletId = $this->pallet->id;
         }
-        
-        return [
+
+        $data = [
             'id' => $this->id,
             'palletId' => $palletId,
             'product' => $product ? [
@@ -48,5 +53,15 @@ class BoxResource extends JsonResource
                 'lot' => $production->lot,
             ] : null, // Información de la producción más reciente en la que se usó esta caja
         ];
+
+        if ($canViewManualCostContext) {
+            $traceableCostPerKg = $this->traceable_cost_per_kg;
+            $data['manualCostPerKg'] = $this->manual_cost_per_kg !== null ? (float) $this->manual_cost_per_kg : null;
+            $data['traceableCostPerKg'] = $traceableCostPerKg !== null ? round((float) $traceableCostPerKg, 4) : null;
+            $data['costPerKg'] = $this->cost_per_kg;
+            $data['totalCost'] = $this->total_cost;
+        }
+
+        return $data;
     }
 }

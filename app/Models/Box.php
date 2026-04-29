@@ -14,7 +14,11 @@ class Box extends Model
     use UsesTenantConnection;
     //protected $table = 'boxes';
 
-    protected $fillable = ['article_id', 'lot', 'gs1_128', 'gross_weight', 'net_weight'];
+    protected $fillable = ['article_id', 'lot', 'gs1_128', 'gross_weight', 'net_weight', 'manual_cost_per_kg'];
+
+    protected $casts = [
+        'manual_cost_per_kg' => 'decimal:4',
+    ];
 
     /**
      * Boot del modelo - Validaciones y eventos
@@ -196,6 +200,11 @@ class Box extends Model
         return app(ProductionCostResolver::class)->getBoxCostPerKg($this);
     }
 
+    public function getTraceableCostPerKgAttribute(): ?float
+    {
+        return app(ProductionCostResolver::class)->getBoxTraceableCostPerKg($this);
+    }
+
     /**
      * Calcula el coste total de la caja
      */
@@ -214,6 +223,7 @@ class Box extends Model
             'gs1128' => $this->gs1_128,
             'grossWeight' => $this->gross_weight,
             'netWeight' => $this->net_weight,
+            'manualCostPerKg' => $this->manual_cost_per_kg !== null ? (float) $this->manual_cost_per_kg : null,
             'createdAt' => $this->created_at, //formatear para mostrar solo fecha
         ];
     }
@@ -230,6 +240,7 @@ class Box extends Model
             'gs1128' => $this->gs1_128,
             'grossWeight' => (float) $this->gross_weight,
             'netWeight' => (float) $this->net_weight,
+            'manualCostPerKg' => $this->manual_cost_per_kg !== null ? (float) $this->manual_cost_per_kg : null,
             'createdAt' => $this->created_at?->format('Y-m-d'), // Solo fecha
             'isAvailable' => $this->isAvailable, // Flag que indica si la caja está disponible (no usada en producción)
             'production' => $production ? [
