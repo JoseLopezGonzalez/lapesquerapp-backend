@@ -240,9 +240,15 @@ class ProductionCostResolver
             return $this->rememberBoxCostPerKg($box, $traceableCostPerKg);
         }
 
+        $manualCostPerKg = array_key_exists('manual_cost_per_kg', $box->getAttributes())
+            ? $box->manual_cost_per_kg
+            : $box->newQueryWithoutRelationships()
+                ->whereKey($box->getKey())
+                ->value('manual_cost_per_kg');
+
         return $this->rememberBoxCostPerKg(
             $box,
-            $box->manual_cost_per_kg !== null ? (float) $box->manual_cost_per_kg : null
+            $manualCostPerKg !== null ? (float) $manualCostPerKg : null
         );
     }
 

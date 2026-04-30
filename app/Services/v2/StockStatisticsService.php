@@ -53,19 +53,19 @@ class StockStatisticsService
         $costStats = self::computeCostStats((float) $totalWeight, (int) $totalBoxes);
 
         return [
-            'totalNetWeight'        => round($totalWeight, 2),
-            'totalPallets'          => $totalPallets,
-            'totalBoxes'            => $totalBoxes,
-            'totalSpecies'          => $totalSpecies,
-            'totalStores'           => $totalStores,
-            'totalStockCost'        => $costStats['totalStockCost'],
-            'stockCostPerKg'        => $costStats['stockCostPerKg'],
-            'coveredNetWeightKg'    => $costStats['coveredNetWeightKg'],
-            'uncoveredNetWeightKg'  => $costStats['uncoveredNetWeightKg'],
+            'totalNetWeight' => round($totalWeight, 2),
+            'totalPallets' => $totalPallets,
+            'totalBoxes' => $totalBoxes,
+            'totalSpecies' => $totalSpecies,
+            'totalStores' => $totalStores,
+            'totalStockCost' => $costStats['totalStockCost'],
+            'stockCostPerKg' => $costStats['stockCostPerKg'],
+            'coveredNetWeightKg' => $costStats['coveredNetWeightKg'],
+            'uncoveredNetWeightKg' => $costStats['uncoveredNetWeightKg'],
             'costCoverageWeightPct' => $costStats['costCoverageWeightPct'],
-            'coveredBoxes'          => $costStats['coveredBoxes'],
-            'uncoveredBoxes'        => $costStats['uncoveredBoxes'],
-            'costCoverageBoxesPct'  => $costStats['costCoverageBoxesPct'],
+            'coveredBoxes' => $costStats['coveredBoxes'],
+            'uncoveredBoxes' => $costStats['uncoveredBoxes'],
+            'costCoverageBoxesPct' => $costStats['costCoverageBoxesPct'],
         ];
     }
 
@@ -78,6 +78,7 @@ class StockStatisticsService
      * - Para cajas de producción (sin recepción): se resuelve el coste por lote+producto
      *   usando ProductionCostResolver, que cachea por par (lot, article_id) para evitar
      *   queries redundantes cuando hay muchas cajas del mismo lote.
+     * - Si no hay coste trazable, se usa manual_cost_per_kg como último fallback.
      *
      * La cobertura indica qué porcentaje del stock (en kg y en cajas) tiene coste calculable,
      * para que el front pueda evaluar cuánto de fiable es el coste total mostrado.
@@ -103,6 +104,7 @@ class StockStatisticsService
                 'b.net_weight',
                 'b.article_id',
                 'b.lot',
+                'b.manual_cost_per_kg',
                 'pal.reception_id',
                 'rmp.price as reception_price',
             ])
@@ -110,25 +112,25 @@ class StockStatisticsService
 
         // Para cajas de producción, resolver coste por par único (lot, article_id)
         // para aprovechar el caché interno del resolver y minimizar queries.
-        $resolver = new ProductionCostResolver();
+        $resolver = new ProductionCostResolver;
         $productionCostMap = [];
 
         $rows
             ->filter(fn ($r) => $r->reception_id === null && $r->lot !== null && $r->lot !== '')
-            ->unique(fn ($r) => $r->article_id . ':' . $r->lot)
+            ->unique(fn ($r) => $r->article_id.':'.$r->lot)
             ->each(function ($r) use ($resolver, &$productionCostMap) {
-                $key = $r->article_id . ':' . $r->lot;
+                $key = $r->article_id.':'.$r->lot;
                 $productionCostMap[$key] = $resolver->getProductionLotProductCostPerKg(
                     (string) $r->lot,
                     (int) $r->article_id
                 );
             });
 
-        $totalStockCost    = null;
-        $coveredNetWeight  = 0.0;
+        $totalStockCost = null;
+        $coveredNetWeight = 0.0;
         $uncoveredNetWeight = 0.0;
-        $coveredBoxes      = 0;
-        $uncoveredBoxes    = 0;
+        $coveredBoxes = 0;
+        $uncoveredBoxes = 0;
 
         foreach ($rows as $row) {
             $weight = (float) $row->net_weight;
@@ -136,12 +138,16 @@ class StockStatisticsService
             if ($row->reception_id !== null) {
                 $costPerKg = $row->reception_price !== null ? (float) $row->reception_price : null;
             } else {
-                $key = $row->article_id . ':' . $row->lot;
+                $key = $row->article_id.':'.$row->lot;
                 $costPerKg = $productionCostMap[$key] ?? null;
             }
 
+            if ($costPerKg === null && $row->manual_cost_per_kg !== null) {
+                $costPerKg = (float) $row->manual_cost_per_kg;
+            }
+
             if ($costPerKg !== null) {
-                $totalStockCost    = ($totalStockCost ?? 0.0) + ($weight * $costPerKg);
+                $totalStockCost = ($totalStockCost ?? 0.0) + ($weight * $costPerKg);
                 $coveredNetWeight += $weight;
                 $coveredBoxes++;
             } else {
@@ -163,14 +169,14 @@ class StockStatisticsService
             : 0.0;
 
         return [
-            'totalStockCost'        => $totalStockCost !== null ? round($totalStockCost, 2) : null,
-            'stockCostPerKg'        => $stockCostPerKg,
-            'coveredNetWeightKg'    => round($coveredNetWeight, 2),
-            'uncoveredNetWeightKg'  => round($uncoveredNetWeight, 2),
+            'totalStockCost' => $totalStockCost !== null ? round($totalStockCost, 2) : null,
+            'stockCostPerKg' => $stockCostPerKg,
+            'coveredNetWeightKg' => round($coveredNetWeight, 2),
+            'uncoveredNetWeightKg' => round($uncoveredNetWeight, 2),
             'costCoverageWeightPct' => $costCoverageWeightPct,
-            'coveredBoxes'          => $coveredBoxes,
-            'uncoveredBoxes'        => $uncoveredBoxes,
-            'costCoverageBoxesPct'  => $costCoverageBoxesPct,
+            'coveredBoxes' => $coveredBoxes,
+            'uncoveredBoxes' => $uncoveredBoxes,
+            'costCoverageBoxesPct' => $costCoverageBoxesPct,
         ];
     }
 
@@ -196,12 +202,13 @@ class StockStatisticsService
 
         $data = $rows->map(function ($row) use ($speciesList) {
             $species = $speciesList[$row->species_id] ?? null;
+
             return [
                 'id' => $row->species_id,
                 'name' => $species?->name ?? 'Desconocida',
                 'totalNetWeight' => round($row->totalNetWeight, 2),
             ];
-        })->filter(fn($item) => $item['id'] !== null)->values();
+        })->filter(fn ($item) => $item['id'] !== null)->values();
 
         $totalNetWeight = $data->sum('totalNetWeight');
 
@@ -209,6 +216,7 @@ class StockStatisticsService
             $item['percentage'] = $totalNetWeight > 0
                 ? round(($item['totalNetWeight'] / $totalNetWeight) * 100, 2)
                 : 0;
+
             return $item;
         })->sortByDesc('totalNetWeight')->values()->toArray();
     }

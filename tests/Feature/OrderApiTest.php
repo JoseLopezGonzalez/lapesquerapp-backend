@@ -2,8 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Models\Box;
+use App\Models\CaptureZone;
+use App\Models\FishingGear;
 use App\Models\Order;
 use App\Models\Pallet;
+use App\Models\PalletBox;
+use App\Models\Product;
+use App\Models\ProductFamily;
+use App\Models\Species;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsOperationsScenario;
 use Tests\Concerns\ConfiguresTenantConnection;
@@ -11,11 +18,12 @@ use Tests\TestCase;
 
 class OrderApiTest extends TestCase
 {
-    use RefreshDatabase;
-    use ConfiguresTenantConnection;
     use BuildsOperationsScenario;
+    use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?string $token = null;
+
     private ?string $tenantSubdomain = null;
 
     protected function setUp(): void
@@ -37,7 +45,7 @@ class OrderApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $this->token,
+            'Authorization' => 'Bearer '.$this->token,
             'Accept' => 'application/json',
         ];
     }
@@ -116,11 +124,57 @@ class OrderApiTest extends TestCase
         $order = $this->createOrder($deps);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/orders/' . $order->id);
+            ->getJson('/api/v2/orders/'.$order->id);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.id', $order->id);
         $response->assertJsonPath('data.status', 'pending');
+    }
+
+    public function test_show_order_uses_manual_box_cost_as_fallback(): void
+    {
+        $deps = $this->createOrderDependencies();
+        $order = $this->createOrder($deps);
+
+        $species = Species::factory()->create([
+            'fishing_gear_id' => FishingGear::factory()->create()->id,
+        ]);
+        $product = Product::factory()->create([
+            'family_id' => ProductFamily::factory()->create()->id,
+            'species_id' => $species->id,
+            'capture_zone_id' => CaptureZone::factory()->create()->id,
+        ]);
+        $pallet = Pallet::factory()->create([
+            'order_id' => $order->id,
+            'reception_id' => null,
+            'status' => Pallet::STATE_SHIPPED,
+        ]);
+        $box = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-MANUAL-ORDER',
+            'net_weight' => 10,
+            'gross_weight' => 10.5,
+            'manual_cost_per_kg' => 2.75,
+        ]);
+
+        PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $box->id]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/orders/'.$order->id);
+
+        $response->assertOk()
+            ->assertJsonPath('data.pallets.0.boxes.0.manualCostPerKg', 2.75)
+            ->assertJsonPath('data.pallets.0.boxes.0.costPerKg', 2.75)
+            ->assertJsonPath('data.pallets.0.boxes.0.totalCost', 27.5)
+            ->assertJsonPath('data.totalCost', 27.5)
+            ->assertJsonPath('data.costPerKg', 2.75);
+
+        $analysisResponse = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/orders/'.$order->id.'/cost-analysis');
+
+        $analysisResponse->assertOk()
+            ->assertJsonPath('summary.totalCost', 27.5)
+            ->assertJsonPath('summary.costPerKg', 2.75);
     }
 
     // ---- UPDATE ----
@@ -131,7 +185,7 @@ class OrderApiTest extends TestCase
         $order = $this->createOrder($deps);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->putJson('/api/v2/orders/' . $order->id, [
+            ->putJson('/api/v2/orders/'.$order->id, [
                 'buyerReference' => 'REF-TEST-123',
             ]);
 
@@ -147,7 +201,7 @@ class OrderApiTest extends TestCase
         $order = $this->createOrder($deps);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/orders/' . $order->id);
+            ->deleteJson('/api/v2/orders/'.$order->id);
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('orders', ['id' => $order->id], 'tenant');
@@ -163,7 +217,7 @@ class OrderApiTest extends TestCase
         $pallet->save();
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/orders/' . $order->id);
+            ->deleteJson('/api/v2/orders/'.$order->id);
 
         $response->assertStatus(400);
         $response->assertJsonFragment(['message' => 'No se puede eliminar el pedido porque está en uso']);
@@ -215,7 +269,7 @@ class OrderApiTest extends TestCase
         $order = $this->createOrder($deps);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->putJson('/api/v2/orders/' . $order->id . '/status', [
+            ->putJson('/api/v2/orders/'.$order->id.'/status', [
                 'status' => 'finished',
             ]);
 

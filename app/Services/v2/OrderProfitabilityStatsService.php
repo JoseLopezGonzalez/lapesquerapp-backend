@@ -313,6 +313,7 @@ class OrderProfitabilityStatsService
                 $revenue = $unitPrice !== null ? $unitPrice * $weight : 0.0;
                 $totalCost = $box->total_cost;
                 $costPerKg = ($totalCost !== null && $weight > 0) ? $totalCost / $weight : null;
+                $manualCostPerKg = $box->manual_cost_per_kg !== null ? (float) $box->manual_cost_per_kg : null;
                 $grossMargin = $totalCost !== null ? $revenue - $totalCost : null;
                 $marginPercentage = ($grossMargin !== null && $revenue > 0)
                     ? $grossMargin / $revenue * 100
@@ -341,8 +342,8 @@ class OrderProfitabilityStatsService
                     'is_available' => 'yes',
                     'included_in_summary' => 'yes',
                     'exclusion_reason' => null,
-                    'manual_cost_per_kg' => null,
-                    'manual_total_cost' => null,
+                    'manual_cost_per_kg' => $manualCostPerKg !== null ? round($manualCostPerKg, 4) : null,
+                    'manual_total_cost' => $manualCostPerKg !== null ? round($manualCostPerKg * $weight, 2) : null,
                     'notes' => null,
                 ];
             }
@@ -397,7 +398,11 @@ class OrderProfitabilityStatsService
             }
         }
 
-        return 'production';
+        if ($box->traceable_cost_per_kg !== null) {
+            return 'production';
+        }
+
+        return $box->manual_cost_per_kg !== null ? 'manual' : 'missing';
     }
 
     private static function formatDate($date): ?string

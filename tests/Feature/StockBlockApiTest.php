@@ -201,6 +201,37 @@ class StockBlockApiTest extends TestCase
         ]);
     }
 
+    public function test_stock_total_stats_use_manual_box_cost_as_fallback(): void
+    {
+        $this->seedTenantForReceptions();
+        $product = Product::on('tenant')->first();
+
+        $pallet = Pallet::factory()->create([
+            'status' => Pallet::STATE_REGISTERED,
+            'reception_id' => null,
+            'order_id' => null,
+        ]);
+        $box = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-STOCK-MANUAL',
+            'net_weight' => 10,
+            'gross_weight' => 10.5,
+            'manual_cost_per_kg' => 2.5,
+        ]);
+
+        PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $box->id]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/statistics/stock/total');
+
+        $response->assertOk()
+            ->assertJsonPath('totalNetWeight', 10)
+            ->assertJsonPath('totalStockCost', 25)
+            ->assertJsonPath('stockCostPerKg', 2.5)
+            ->assertJsonPath('coveredBoxes', 1)
+            ->assertJsonPath('uncoveredBoxes', 0);
+    }
+
     public function test_can_get_stock_by_species_stats(): void
     {
         $response = $this->withHeaders($this->authHeaders())
@@ -250,16 +281,17 @@ class StockBlockApiTest extends TestCase
             'net_weight' => 5,
             'gross_weight' => 5.2,
         ]);
-        $uncostedBox = Box::factory()->create([
+        $manualCostBox = Box::factory()->create([
             'article_id' => $product->id,
             'lot' => 'LOT-WITHOUT-COST',
             'net_weight' => 3,
             'gross_weight' => 3.2,
+            'manual_cost_per_kg' => 3.0,
         ]);
 
         PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $costedBoxA->id]);
         PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $costedBoxB->id]);
-        PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $uncostedBox->id]);
+        PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $manualCostBox->id]);
 
         $response = $this->withHeaders($this->authHeaders())
             ->getJson('/api/v2/stores/total-stock-by-products');
@@ -270,7 +302,7 @@ class StockBlockApiTest extends TestCase
 
         $this->assertNotNull($row);
         $this->assertEquals(18.0, $row['total_kg']);
-        $this->assertEquals(2.0, $row['average_cost_per_kg']);
+        $this->assertEquals(2.1667, $row['average_cost_per_kg']);
         $this->assertEquals(100.0, $row['percentage']);
     }
 

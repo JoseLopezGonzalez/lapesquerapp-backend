@@ -7,6 +7,7 @@ use App\Http\Controllers\v2\CaptureZoneController as V2CaptureZoneController;
 use App\Http\Controllers\v2\CeboDispatchController as V2CeboDispatchController;
 use App\Http\Controllers\v2\CeboDispatchStatisticsController;
 use App\Http\Controllers\v2\CommercialInteractionController;
+use App\Http\Controllers\v2\CostRegularizationController;
 use App\Http\Controllers\v2\CountryController;
 use App\Http\Controllers\v2\CrmDashboardController;
 use App\Http\Controllers\v2\CustomerController as V2CustomerController;
@@ -331,6 +332,10 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('statistics/orders/profitability-summary/export-jobs/{uuid}', [OrderProfitabilityStatsController::class, 'showExportJob'])->name('v2.statistics.orders.profitability_summary.export_jobs.show');
         Route::get('statistics/orders/profitability-summary/export-jobs/{uuid}/download', [OrderProfitabilityStatsController::class, 'downloadExportJob'])->name('v2.statistics.orders.profitability_summary.export_jobs.download');
         Route::get('statistics/orders/profitability-products', [OrderProfitabilityStatsController::class, 'byProduct'])->name('v2.statistics.orders.profitability_products');
+
+        Route::get('cost-regularization/sales/missing-cost-boxes', [CostRegularizationController::class, 'salesMissingCostBoxes'])->name('v2.cost_regularization.sales.missing_cost_boxes');
+        Route::get('cost-regularization/stock/missing-cost-boxes', [CostRegularizationController::class, 'stockMissingCostBoxes'])->name('v2.cost_regularization.stock.missing_cost_boxes');
+        Route::post('cost-regularization/manual-costs/apply-by-product', [CostRegularizationController::class, 'applyManualCostsByProduct'])->name('v2.cost_regularization.manual_costs.apply_by_product');
 
         /* orders/sales-by-salesperson */
         Route::get('orders/sales-by-salesperson', [V2OrderController::class, 'salesBySalesperson']);

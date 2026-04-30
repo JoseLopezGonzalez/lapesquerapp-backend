@@ -67,7 +67,7 @@ Módulo de producción pesquera (el más complejo):
 
 ### Inventario ([./inventario/](./inventario/))
 
-- [30-almacenes.md](./inventario/30-almacenes.md), [31-palets.md](./inventario/31-palets.md), [32-cajas.md](./inventario/32-cajas.md), [33-estadisticas-stock.md](./inventario/33-estadisticas-stock.md)
+- [30-almacenes.md](./inventario/30-almacenes.md), [31-palets.md](./inventario/31-palets.md), [32-cajas.md](./inventario/32-cajas.md), [33-estadisticas-stock.md](./inventario/33-estadisticas-stock.md), [34-regularizacion-costes-cajas.md](./inventario/34-regularizacion-costes-cajas.md)
 
 ### Catálogos ([./catalogos/](./catalogos/))
 
