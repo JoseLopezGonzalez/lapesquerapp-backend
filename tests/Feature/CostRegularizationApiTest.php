@@ -137,6 +137,35 @@ class CostRegularizationApiTest extends TestCase
         $this->assertEquals(2.75, (float) $box->refresh()->manual_cost_per_kg);
     }
 
+    public function test_applies_manual_costs_by_product_with_flat_sales_payload(): void
+    {
+        $product = $this->createProduct();
+        $order = Order::factory()->finished()->create([
+            'entry_date' => '2026-03-10',
+            'load_date' => '2026-03-15',
+        ]);
+        $box = $this->createBoxOnPallet($product, [
+            'order_id' => $order->id,
+            'status' => Pallet::STATE_SHIPPED,
+        ], 'LOT-APPLY-FLAT-SALE');
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/cost-regularization/manual-costs/apply-by-product', [
+                'scope' => 'sales',
+                'products' => [
+                    ['productId' => $product->id, 'manualCostPerKg' => 13.07],
+                ],
+                'dateFrom' => '2026-03-01',
+                'dateTo' => '2026-03-31',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('updatedBoxesCount', 1)
+            ->assertJsonPath('products.0.manualCostPerKg', 13.07);
+
+        $this->assertEquals(13.07, (float) $box->refresh()->manual_cost_per_kg);
+    }
+
     public function test_applies_manual_costs_by_lot_product_for_stock_scope(): void
     {
         $product = $this->createProduct();

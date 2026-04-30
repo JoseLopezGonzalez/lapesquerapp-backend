@@ -10,6 +10,33 @@ class ApplyManualBoxCostsByProductRequest extends FormRequest
 {
     use AuthorizesCostRegularization;
 
+    protected function prepareForValidation(): void
+    {
+        $normalized = [];
+
+        if (! $this->has('filters')) {
+            $filters = [];
+
+            foreach (['dateFrom', 'dateTo', 'productIds', 'customerIds', 'orderIds', 'storeIds', 'lot', 'createdFrom', 'createdTo'] as $field) {
+                if ($this->has($field)) {
+                    $filters[$field] = $this->input($field);
+                }
+            }
+
+            if ($filters !== []) {
+                $normalized['filters'] = $filters;
+            }
+        }
+
+        if (! $this->has('productCosts') && $this->has('products')) {
+            $normalized['productCosts'] = $this->input('products');
+        }
+
+        if ($normalized !== []) {
+            $this->merge($normalized);
+        }
+    }
+
     public function rules(): array
     {
         return [
