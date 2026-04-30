@@ -1,6 +1,6 @@
 # Pantalla de control de producciones
 
-> **Estado**: Revisado y corregido (2026-04-30).
+> **Estado**: Implementado (2026-04-30). Endpoints activos: `GET /api/v2/productions/control-panel` y `GET /api/v2/productions/orphan-stock`.
 > **Ambito**: Frontend de producciones, alertas operativas, conciliacion, trazabilidad de lotes, stock y costes.
 > **Base actual**: API v2 de producciones, conciliacion por producto, cierre definitivo, stock/palets/cajas y regularizacion de costes.
 
@@ -643,35 +643,14 @@ GET /api/v2/production-dashboard
   "summary": {
     "openProductions": 12,
     "closedProductions": 80,
-    "productionsWithCriticalAlerts": 5,
-    "productionsWithWarnings": 9,
-    "notReconciledProductions": 7,
-    "readyToCloseProductions": 3,
-    "lotsInStockWithoutProduction": 4,
-    "lotsInStockWithoutProductionBoxesCount": 12,
     "boxesWithoutCost": 38
   },
-  "alerts": [
-    {
-      "severity": "critical",
-      "code": "stock_without_production",
-      "title": "Stock sin produccion ni recepcion",
-      "message": "El lote L-2026-001 tiene 120.5 kg en stock sin produccion ni recepcion asociada.",
-      "lot": "L-2026-001",
-      "product": { "id": 12, "name": "Producto" },
-      "weightKg": 120.5,
-      "boxesCount": 8,
-      "actions": [
-        { "type": "open_lot_search", "label": "Ver cajas" }
-      ]
-    }
-  ],
   "productions": [
     {
       "id": 45,
       "lot": "LOT-2026-0045",
       "date": "2026-04-29",
-      "status": "open",
+      "status": "not_reconciled",
       "species": { "id": 1, "name": "Merluza" },
       "metrics": {
         "inputWeightKg": 1000.0,
@@ -679,11 +658,8 @@ GET /api/v2/production-dashboard
         "salesWeightKg": 500.0,
         "stockWeightKg": 200.0,
         "reprocessedWeightKg": 100.0,
-        "balanceWeightKg": 20.0,
-        "wastePercentage": 18.0
+        "balanceWeightKg": 20.0
       },
-      // wastePercentage = (inputWeightKg - producedWeightKg) / inputWeightKg * 100
-      // Ejemplo: (1000 - 820) / 1000 * 100 = 18.0%
       "reconciliation": {
         "status": "warning",
         "productsOk": 3,
@@ -694,9 +670,6 @@ GET /api/v2/production-dashboard
         "canClose": false,
         "blockingReasons": ["stock_remaining", "reconciliation_not_ok"]
       },
-      // blockingReasons es un array ordenado por severidad.
-      // No usar un campo "mainBlockingReason" unico: con varios bloqueos activos,
-      // mostrar solo uno lleva al usuario al sitio equivocado.
       "costs": {
         "hasMissingCosts": true,
         "missingCostBoxesCount": 4,
@@ -706,18 +679,23 @@ GET /api/v2/production-dashboard
         {
           "severity": "warning",
           "code": "reconciliation_not_ok",
-          "message": "Faltan 20 kg por contabilizar."
+          "message": "Faltan 20 kg por contabilizar.",
+          "action": null
+        },
+        {
+          "severity": "info",
+          "code": "missing_cost",
+          "message": "Hay 4 cajas (55.2 kg) sin coste trazable conocido.",
+          "action": null
         }
       ]
-      // alerts[] contiene alertas operativas de la produccion (conciliacion, procesos, cajas).
-      // closure.blockingReasons[] es el subconjunto de alerts que impide el cierre definitivo.
-      // No son listas independientes: todo blocking reason debe tener su correspondiente alert.
     }
   ],
   "pagination": {
     "currentPage": 1,
     "perPage": 25,
-    "total": 90
+    "total": 90,
+    "lastPage": 4
   }
 }
 ```
@@ -807,42 +785,27 @@ Requiere:
 
 ---
 
-## 11. Propuesta de siguiente paso tecnico
+## 11. Implementacion tecnica (completada)
 
-Crear un servicio backend:
+Los siguientes artefactos han sido creados e integrados en el proyecto:
 
-```text
-App\Services\Production\ProductionControlPanelService
+| Artefacto | Ruta |
+| --------- | ---- |
+| Servicio principal | `app/Services/Production/ProductionControlPanelService.php` |
+| Controlador principal | `app/Http/Controllers/v2/ProductionControlPanelController.php` |
+| Form Request principal | `app/Http/Requests/v2/IndexProductionControlPanelRequest.php` |
+| Servicio lotes huerfanos | `app/Services/Production/OrphanStockService.php` |
+| Controlador lotes huerfanos | `app/Http/Controllers/v2/OrphanStockController.php` |
+| Form Request lotes huerfanos | `app/Http/Requests/v2/IndexOrphanStockRequest.php` |
+
+Ambas rutas estan registradas en `routes/api.php` **antes** del `Route::apiResource('productions', ...)` para evitar colision con el parametro `{id}`:
+
+```php
+Route::get('productions/control-panel', [ProductionControlPanelController::class, 'index'])->name('productions.controlPanel');
+Route::get('productions/orphan-stock',  [OrphanStockController::class, 'index'])->name('productions.orphanStock');
 ```
 
-Responsabilidades:
-
-- Construir resumen global.
-- Listar producciones con metricas compactas.
-- Generar alertas normalizadas.
-- Detectar lotes/cajas en stock sin origen claro.
-- Exponer filtros y ordenes pensados para frontend.
-
-Y un controlador:
-
-```text
-App\Http\Controllers\v2\ProductionControlPanelController
-```
-
-Endpoint:
-
-```http
-GET /api/v2/productions/control-panel
-```
-
-**Requisitos de implementacion**:
-
-- Autorizar con `authorize('viewAny', Production::class)` o Policy equivalente. No dejar el endpoint sin control de acceso.
-- Registrar la ruta en `api.php` **antes** que `GET /api/v2/productions/{id}`, o renombrar a `/api/v2/production-dashboard` para evitar colision.
-- Para los campos de coste usar `ProductionCostResolver` o `CostRegularizationService` por lote/producto; no intentar filtrar por `traceable_cost_per_kg` a nivel de caja en SQL.
-- Pre-calcular los flags de coste y origen en el servicio antes de paginar, para que los filtros de la sección 5 sean viables sin sub-queries N+1.
-
-Con esto el frontend puede empezar con una pantalla rapida y accionable, sin acoplarse a multiples endpoints pesados por fila.
+Ambos endpoints requieren permiso `viewAny` sobre el modelo `Production`.
 
 ---
 
@@ -852,13 +815,16 @@ Esta seccion documenta el contrato exacto del endpoint implementado. Todo lo que
 
 ---
 
-### 12.1 Endpoint y autenticacion
+### 12.1 Endpoints y autenticacion
 
-```
-GET /api/v2/productions/control-panel
-```
+El panel de control se sirve desde **dos endpoints independientes**:
 
-**Headers obligatorios:**
+| Endpoint | Proposito |
+| -------- | --------- |
+| `GET /api/v2/productions/control-panel` | Lista paginada de producciones con metricas, reconciliacion, cierre y costes. Tambien devuelve un resumen global del tenant. |
+| `GET /api/v2/productions/orphan-stock` | Lista paginada de lotes en stock sin produccion ni recepcion, con desglose por palet y producto. |
+
+**Headers obligatorios (ambos endpoints):**
 
 | Header          | Valor                      |
 | --------------- | -------------------------- |
@@ -905,31 +871,12 @@ GET /api/v2/productions/control-panel?status=open&sort_by=date&sort_dir=desc&per
   "data": {
 
     // ── RESUMEN GLOBAL ────────────────────────────────────────────────────
+    // Refleja el estado de TODO el tenant, independientemente de los filtros activos.
     "summary": {
-      "openProductions": 12,                         // int: producciones abiertas en el tenant
-      "closedProductions": 80,                        // int: producciones cerradas en el tenant
-      "lotsInStockWithoutProduction": 4,              // int: lotes distintos en stock sin produccion ni recepcion
-      "lotsInStockWithoutProductionBoxesCount": 23,   // int: total de cajas de esos lotes
-      "boxesWithoutCost": 38                          // int: cajas en stock sin coste conocido (aprox. V1)
+      "openProductions": 12,    // int: producciones con opened_at != null y closed_at = null
+      "closedProductions": 80,  // int: producciones con closed_at != null
+      "boxesWithoutCost": 38    // int: cajas en stock sin manual_cost_per_kg ni recepcion ni ProductionInput (aprox. V1)
     },
-
-    // ── ALERTAS GLOBALES (no ligadas a una produccion) ───────────────────
-    // Puede ser array vacio [].
-    "alerts": [
-      {
-        "severity": "critical",                        // string enum: ver 12.4
-        "code": "stock_without_production",            // string enum: ver 12.4
-        "title": "Stock sin produccion ni recepcion",
-        "message": "El lote L-2026-001 tiene 120.5 kg en stock sin produccion ni recepcion asociada.",
-        "lot": "L-2026-001",                           // string: el lote afectado
-        "product": { "id": 12, "name": "Merluza" },    // objeto: producto del lote
-        "weightKg": 120.5,                             // float: kg totales en stock
-        "boxesCount": 8,                               // int: numero de cajas
-        "actions": [
-          { "type": "open_lot_search", "label": "Ver cajas" }  // ver 12.7
-        ]
-      }
-    ],
 
     // ── LISTA PAGINADA DE PRODUCCIONES ───────────────────────────────────
     "productions": [
@@ -974,7 +921,7 @@ GET /api/v2/productions/control-panel?status=open&sort_by=date&sort_dir=desc&per
           "missingCostWeightKg": 55.2          // float: kg sin coste conocido
         },
 
-        // Alertas de esta produccion (ver 12.4 y 12.6 para todos los codigos posibles)
+        // Alertas de esta produccion (ver 12.4 para todos los codigos posibles)
         // Puede ser array vacio [].
         "alerts": [
           {
@@ -1055,18 +1002,6 @@ Todos los codigos posibles que pueden aparecer en `productions[].alerts[].code`:
 | `missing_cost`          | `info`     | Cost status         | Hay cajas sin coste manual ni de recepcion (aproximacion V1). |
 
 > Los codigos `already_closed` y `not_open` no aparecen en `alerts[]` porque son estados, no incidencias de una produccion activa. Si `closure.blockingReasons` los contiene, la produccion ya estara en `status: closed` o sera un dato inconsistente.
-
-#### `code` de alertas globales (`data.alerts[]`)
-
-| Codigo                    | Severity   | Descripcion                                                  |
-| ------------------------- | ---------- | ------------------------------------------------------------ |
-| `stock_without_production`| `critical` | Hay cajas en stock cuyo lote no existe en ninguna produccion ni viene de recepcion. |
-
-#### `actions[].type` en alertas globales
-
-| Tipo               | Descripcion                                                        |
-| ------------------ | ------------------------------------------------------------------ |
-| `open_lot_search`  | Abrir busqueda/inventario filtrado por el lote indicado en `lot`.  |
 
 ---
 
@@ -1168,12 +1103,6 @@ Cada alerta del panel lateral debe llevar al usuario al modulo correcto. El camp
 
 > **Nota sobre IDs en alertas**: los campos `recordId`, `orderId`, `palletId`, `boxId` estan incluidos en el texto del campo `action` de la respuesta pero NO como campos estructurados. En V1 el frontend los extrae del campo `message` o navega a la produccion general. En V2 se añadiran como campos dedicados en la respuesta de alerta.
 
-#### Alertas globales
-
-| Tipo               | Accion                                            | Ruta sugerida                   |
-| ------------------ | ------------------------------------------------- | ------------------------------- |
-| `open_lot_search`  | Mostrar cajas del lote en inventario              | `/inventario?lot={alert.lot}`   |
-
 ---
 
 ### 12.8 Paginacion y filtros
@@ -1214,7 +1143,6 @@ El `summary` siempre refleja el estado global del tenant, **independientemente d
 | Situacion                              | Comportamiento de la respuesta                                   |
 | -------------------------------------- | ---------------------------------------------------------------- |
 | Sin producciones con los filtros       | `productions: []`, `pagination.total: 0`, `summary` se mantiene.|
-| Sin alertas globales                   | `alerts: []`.                                                    |
 | Produccion sin especie                 | `species: null`.                                                 |
 | Produccion sin fecha declarada         | `date: null`.                                                    |
 | Produccion recien creada sin procesos  | `metrics` todos a `0.0`, `reconciliation.status: ok`, `closure.blockingReasons: ["no_processes"]`, `status: not_closeable`. |
@@ -1229,7 +1157,7 @@ El `summary` siempre refleja el estado global del tenant, **independientemente d
 
 1. **No hacer llamadas adicionales por fila.** El endpoint agrega todo lo necesario para la tabla y el panel lateral. No llamar a `/productions/{id}` ni a `/closure-check` por cada fila.
 
-2. **`summary` es global, no paginado.** Mostrar las tarjetas de resumen fijas en la cabecera. No actualizar al cambiar pagina o filtros.
+2. **`summary` es global, no paginado.** Contiene tres contadores del tenant (`openProductions`, `closedProductions`, `boxesWithoutCost`). Mostrarlos como tarjetas fijas en la cabecera. No cambian al filtrar la tabla ni al cambiar de pagina. Para el conteo de lotes huerfanos usar `pagination.total` del endpoint `orphan-stock`.
 
 3. **El filtro `reconciliation_status` es solo de cliente en V1.** Si el usuario filtra por estado de conciliacion, aplicarlo sobre el array `productions` en memoria o desactivar ese filtro hasta V2.
 
@@ -1245,4 +1173,113 @@ El `summary` siempre refleja el estado global del tenant, **independientemente d
 
 9. **El campo `closure.blockingReasons` es un array de strings** (codigos), no objetos. Para obtener el mensaje completo de cada razon hay que buscarlo en `alerts[]` por el mismo `code`.
 
-10. **Las alertas globales (`data.alerts[]`) no estan paginadas.** Se devuelven todas en cada llamada. Si hay muchos lotes sin produccion, el array puede ser largo. Mostrar las primeras 5 con un boton "ver todas" o colapsar.
+---
+
+## 13. Endpoint de lotes huerfanos en stock
+
+Los lotes que tienen cajas en stock pero no pertenecen a ninguna produccion ni vienen de una recepcion se sirven desde un endpoint dedicado. El card de "Lotes huerfanos" en la cabecera del panel usa `pagination.total` de este endpoint como contador.
+
+---
+
+### 13.1 Endpoint y parametros
+
+```
+GET /api/v2/productions/orphan-stock
+```
+
+**Headers obligatorios**: identicos a los del endpoint principal (ver 12.1).
+
+**Autorizacion**: permiso `viewAny` sobre el modelo `Production`. Respuesta `403` si no se tiene.
+
+**Parametros de query string** (todos opcionales):
+
+| Parametro  | Tipo    | Default | Valores validos       | Descripcion                                    |
+| ---------- | ------- | ------- | --------------------- | ---------------------------------------------- |
+| `lot`      | string  | —       | max 255 chars         | Busqueda parcial por texto (`LIKE %valor%`).   |
+| `per_page` | integer | `25`    | 1–100                 | Lotes por pagina.                              |
+| `sort_dir` | string  | `asc`   | `asc` \| `desc`       | Orden alfabetico del lote.                     |
+| `page`     | integer | `1`     | >= 1                  | Pagina solicitada.                             |
+
+**Definicion de "lote huerfano"**: lote cuyas cajas estan en palets con estado `registered` (1) o `stored` (2), sin `reception_id` en el palet, y cuyo valor de `lot` no aparece en ninguna fila de `productions.lot`.
+
+---
+
+### 13.2 Estructura de respuesta completa
+
+```jsonc
+{
+  "message": "Lotes huerfanos en stock obtenidos correctamente.",
+  "data": {
+
+    // ── LISTA PAGINADA DE LOTES ───────────────────────────────────────────
+    // La pagina contiene exactamente per_page lotes distintos (o menos en la ultima pagina).
+    "lots": [
+      {
+        "lot": "L-2026-001",          // string: el lote (raiz de agrupacion)
+        "totalWeightKg": 245.6,       // float (3 dec): kg totales del lote en stock
+        "totalBoxes": 18,             // int: total de cajas del lote en stock
+        "totalPallets": 3,            // int: numero de palets distintos que contienen el lote
+
+        // Palets que contienen cajas de este lote
+        "pallets": [
+          {
+            "id": 101,                // int: pallet.id
+            "status": 2,              // int: 1 = registered, 2 = stored
+            "statusLabel": "Almacenado",  // string: etiqueta legible del estado
+            "location": "Camara 1 / A-03",  // string|null: "Almacen / Posicion" o solo "Almacen"; null si no tiene ubicacion
+            "createdAt": "2026-03-15T10:22:00.000000Z",  // string: timestamp ISO 8601 de creacion del palet
+            "weightKg": 120.0,        // float (3 dec): kg de cajas de ESTE lote en este palet
+            "boxesCount": 9,          // int: cajas de ESTE lote en este palet
+
+            // Desglose por producto dentro del palet
+            "products": [
+              {
+                "id": 12,             // int: product.id (article_id de la caja)
+                "name": "Merluza congelada 400-600",  // string: product.name
+                "weightKg": 80.0,     // float (3 dec): kg de este producto en este palet
+                "boxes": 6            // int: cajas de este producto en este palet
+              },
+              {
+                "id": 15,
+                "name": "Merluza congelada 600-800",
+                "weightKg": 40.0,
+                "boxes": 3
+              }
+            ]
+          }
+        ]
+      }
+    ],
+
+    // ── PAGINACION ───────────────────────────────────────────────────────
+    // La paginacion es por LOTE, no por fila. Un lote con varios palets cuenta como 1.
+    "pagination": {
+      "currentPage": 1,    // int
+      "perPage": 25,       // int
+      "total": 4,          // int: total de lotes huerfanos distintos (usar para el card de cabecera)
+      "lastPage": 1        // int: ultima pagina disponible
+    }
+
+  }
+}
+```
+
+---
+
+### 13.3 Notas de implementacion para el equipo frontend
+
+1. **La unidad de paginacion es el lote, no la fila.** Un lote con 3 palets y 12 productos ocupa 1 entrada en `lots[]` y consume 1 unidad del `per_page`. Esto significa que el numero de elementos del array `lots[]` nunca supera `per_page`, pero cada elemento puede tener N palets anidados.
+
+2. **`pagination.total` es el numero de lotes huerfanos distintos.** Usarlo en el card de cabecera del panel de control ("X lotes sin produccion en stock"). No mezclar con `totalBoxes` ni `totalWeightKg`.
+
+3. **`location` puede ser `null`.** Un palet con estado `registered` que aun no tiene posicion de almacen devuelve `location: null`. Mostrar "Sin ubicar" o similar.
+
+4. **`statusLabel` esta en castellano.** Valores posibles: `"Registrado"` (status 1) y `"Almacenado"` (status 2). El campo `status` (int) permite comparar sin depender del idioma.
+
+5. **`createdAt` es la fecha de creacion del palet**, no la fecha en que las cajas llegaron al lote. Es la mejor aproximacion disponible en V1 para saber desde cuando existe ese stock.
+
+6. **Estructura de tabla recomendada**: tabla de primer nivel por lote (lot, totalWeightKg, totalBoxes, totalPallets), expandible para mostrar la sublista de palets, y a su vez expandible por palet para ver el desglose de productos.
+
+7. **Accion principal por lote**: "Abrir inventario filtrado por lote" → `/inventario?lot={lot}`. No hay endpoint dedicado de detalle por lote en V1; la pantalla de inventario es el destino natural.
+
+8. **El endpoint no devuelve alertas ni codigos de severidad.** Los lotes huerfanos son per se una anomalia; el frontend puede mostrarlos siempre con un icono de aviso sin necesitar un campo `severity` en la respuesta.

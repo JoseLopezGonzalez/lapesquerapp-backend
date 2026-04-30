@@ -39,6 +39,7 @@ use App\Http\Controllers\v2\ProcessController as V2ProcessController;
 use App\Http\Controllers\v2\ProductCategoryController;
 use App\Http\Controllers\v2\ProductController as V2ProductController;
 use App\Http\Controllers\v2\ProductFamilyController;
+use App\Http\Controllers\v2\OrphanStockController;
 use App\Http\Controllers\v2\ProductionControlPanelController;
 use App\Http\Controllers\v2\ProductionController as V2ProductionController;
 use App\Http\Controllers\v2\ProductionInputController;
@@ -453,6 +454,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
         /* Production Module v2 */
         Route::get('productions/control-panel', [ProductionControlPanelController::class, 'index'])->name('productions.controlPanel');
+        Route::get('productions/orphan-stock', [OrphanStockController::class, 'index'])->name('productions.orphanStock');
         Route::apiResource('productions', V2ProductionController::class);
         Route::delete('productions', [V2ProductionController::class, 'destroyMultiple']);
         Route::get('productions/{id}/diagram', [V2ProductionController::class, 'getDiagram'])->name('productions.getDiagram');
