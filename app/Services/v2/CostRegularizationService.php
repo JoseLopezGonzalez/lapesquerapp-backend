@@ -96,6 +96,82 @@ class CostRegularizationService
         });
     }
 
+    public function applyManualCostsByLotProduct(array $payload): array
+    {
+        return DB::transaction(function () use ($payload) {
+            $scope = $payload['scope'];
+            $filters = $payload['filters'];
+            $costsByLotProduct = collect($payload['lotProductCosts'])
+                ->mapWithKeys(fn (array $row): array => [
+                    $this->lotProductKey((int) $row['productId'], $row['lot']) => (float) $row['manualCostPerKg'],
+                ]);
+
+            $rows = $scope === 'sales'
+                ? $this->salesMissingCostRows($filters)
+                : $this->stockMissingCostRows($filters);
+
+            $targetRows = $rows->filter(fn (array $row): bool => $costsByLotProduct->has(
+                $this->lotProductKey((int) $row['product']['id'], $row['lot'])
+            ));
+            $lotProducts = [];
+            $updatedBoxesCount = 0;
+            $updatedNetWeightKg = 0.0;
+            $estimatedManualCost = 0.0;
+
+            foreach ($targetRows as $row) {
+                /** @var Box|null $box */
+                $box = Box::query()->lockForUpdate()->find($row['id']);
+                if (! $box || ! $this->boxIsMissingCost($box)) {
+                    continue;
+                }
+
+                $productId = (int) $box->article_id;
+                $lot = $box->lot;
+                $key = $this->lotProductKey($productId, $lot);
+                $manualCostPerKg = (float) $costsByLotProduct->get($key);
+                $weight = (float) $box->net_weight;
+
+                $box->manual_cost_per_kg = $manualCostPerKg;
+                $box->save();
+
+                if (! isset($lotProducts[$key])) {
+                    $lotProducts[$key] = [
+                        'product' => $row['product'],
+                        'lot' => $lot,
+                        'manualCostPerKg' => round($manualCostPerKg, 4),
+                        'updatedBoxesCount' => 0,
+                        'updatedNetWeightKg' => 0.0,
+                        'estimatedManualCost' => 0.0,
+                    ];
+                }
+
+                $lotProducts[$key]['updatedBoxesCount']++;
+                $lotProducts[$key]['updatedNetWeightKg'] += $weight;
+                $lotProducts[$key]['estimatedManualCost'] += $weight * $manualCostPerKg;
+
+                $updatedBoxesCount++;
+                $updatedNetWeightKg += $weight;
+                $estimatedManualCost += $weight * $manualCostPerKg;
+            }
+
+            $lotProducts = array_map(function (array $row): array {
+                $row['updatedNetWeightKg'] = round($row['updatedNetWeightKg'], 3);
+                $row['estimatedManualCost'] = round($row['estimatedManualCost'], 2);
+
+                return $row;
+            }, array_values($lotProducts));
+
+            return [
+                'scope' => $scope,
+                'updatedBoxesCount' => $updatedBoxesCount,
+                'skippedBoxesCount' => $targetRows->count() - $updatedBoxesCount,
+                'updatedNetWeightKg' => round($updatedNetWeightKg, 3),
+                'estimatedManualCost' => round($estimatedManualCost, 2),
+                'lotProducts' => $lotProducts,
+            ];
+        });
+    }
+
     private function salesMissingCostRows(array $filters): Collection
     {
         return $this->salesCandidateBoxes($filters)
@@ -175,6 +251,7 @@ class CostRegularizationService
                 'reception.products',
                 'boxes.box.product',
                 'boxes.box.palletBox.pallet.reception.products',
+                'boxes.box.palletBox.pallet.storedPallet.store',
             ])
             ->get();
 
@@ -270,6 +347,7 @@ class CostRegularizationService
             ],
             'summary' => $this->summaryPayload($rows, 'ordersCount'),
             'products' => $this->productsPayload($rows, 'ordersCount'),
+            'lotProducts' => $this->lotProductsPayload($rows, 'ordersCount'),
             'boxes' => $rows->values()->all(),
         ];
     }
@@ -279,6 +357,7 @@ class CostRegularizationService
         return [
             'summary' => $this->summaryPayload($rows, 'palletsCount'),
             'products' => $this->productsPayload($rows, 'palletsCount'),
+            'lotProducts' => $this->lotProductsPayload($rows, 'palletsCount'),
             'boxes' => $rows->values()->all(),
         ];
     }
@@ -319,11 +398,39 @@ class CostRegularizationService
             ->all();
     }
 
+    private function lotProductsPayload(Collection $rows, string $countKey): array
+    {
+        return $rows
+            ->groupBy(fn (array $row): string => $this->lotProductKey((int) $row['product']['id'], $row['lot']))
+            ->map(function (Collection $lotRows) use ($countKey): array {
+                $first = $lotRows->first();
+                $countIds = $countKey === 'ordersCount'
+                    ? $lotRows->pluck('orderId')->filter()->unique()->count()
+                    : $lotRows->pluck('palletId')->filter()->unique()->count();
+
+                return [
+                    'product' => $first['product'],
+                    'lot' => $first['lot'],
+                    'boxesCount' => $lotRows->count(),
+                    'netWeightKg' => round((float) $lotRows->sum('netWeightKg'), 3),
+                    $countKey => $countIds,
+                    'suggestedManualCostPerKg' => null,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
     private function productPayload(?Product $product, int $fallbackId): array
     {
         return [
             'id' => $product?->id ?? $fallbackId,
             'name' => $product?->name,
         ];
+    }
+
+    private function lotProductKey(int $productId, mixed $lot): string
+    {
+        return $productId.'|'.($lot ?? '');
     }
 }

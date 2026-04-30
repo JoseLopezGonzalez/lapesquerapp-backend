@@ -12,6 +12,7 @@ Esta carpeta contiene toda la documentación relacionada con el frontend del mó
 
 ### 📖 Documentación Detallada
 
+- **[Pantalla de control de producciones](./pantalla-control-producciones.md)** - Propuesta inicial para panel de resumen, alertas, conciliacion, trazabilidad y costes
 - **[FRONTEND-Nodos-Re-procesados-y-Faltantes.md](./FRONTEND-Nodos-Re-procesados-y-Faltantes.md)** - Documentación completa de nodos re-procesados y balance
 - **[FRONTEND-Relaciones-Padre-Hijo-Nodos.md](./FRONTEND-Relaciones-Padre-Hijo-Nodos.md)** - Explicación de relaciones entre nodos
 - **[FRONTEND-Nodos-Venta-y-Stock-Diagrama.md](./FRONTEND-Nodos-Venta-y-Stock-Diagrama.md)** - Diagrama de nodos de venta y stock
@@ -40,4 +41,3 @@ Esta carpeta contiene toda la documentación relacionada con el frontend del mó
 - Todos los documentos hacen referencia al endpoint `/v2/productions/{id}/process-tree`
 - La versión actual es **v4** con nodos `sales`, `stock`, `reprocessed` y `balance`
 - El nodo `missing` fue renombrado a `balance` (ver migración)
-

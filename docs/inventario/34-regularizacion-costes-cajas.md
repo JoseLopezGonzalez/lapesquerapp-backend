@@ -15,7 +15,7 @@ El bloque debe cubrir dos escenarios:
 1. **Ventas sin coste**: cajas vendidas dentro de un rango de fechas cuyos costes no se pueden resolver por recepcion, produccion ni coste manual.
 2. **Stock actual sin coste**: cajas actualmente en stock cuyos costes no se pueden resolver por recepcion, produccion ni coste manual.
 
-La accion principal sera aplicar un **coste manual medio por producto**. El usuario selecciona uno o varios productos, introduce un coste €/kg para cada producto y el backend aplica ese valor a todas las cajas afectadas de esos productos.
+La accion principal sera aplicar un **coste manual medio por producto**. Adicionalmente, se permite aplicar coste por **agrupacion producto + lote** para casos donde un mismo producto tenga lotes antiguos con costes medios distintos.
 
 ---
 
@@ -251,7 +251,7 @@ Respuesta orientativa:
 9. El backend devuelve resumen de cambios.
 10. El frontend refresca el listado.
 
-### 7.2 Reglas del dialog
+### 7.2 Reglas del dialog por producto
 
 - Solo mostrar productos que tienen al menos una caja sin coste en el listado actual.
 - Permitir dejar productos sin coste informado; esos productos no se modifican.
@@ -297,6 +297,36 @@ Para stock:
   "productCosts": [
     {
       "productId": 12,
+      "manualCostPerKg": 2.75
+    }
+  ]
+}
+```
+
+### 7.3 Dialog por producto + lote
+
+Este dialog es una alternativa al de producto. Se usa cuando el usuario quiere introducir costes distintos para lotes concretos de un mismo producto.
+
+Reglas:
+
+- La unidad de aplicacion es la pareja `productId + lot`.
+- Solo mostrar agrupaciones presentes en `lotProducts`.
+- El lote puede ser `null` si la caja no tiene lote informado.
+- El frontend no debe mandar IDs de cajas; manda la combinacion producto/lote y el backend recalcula el universo.
+- Si una agrupacion visible no se envia en `lotProductCosts`, no se modifica.
+
+Payload conceptual:
+
+```json
+{
+  "scope": "stock",
+  "filters": {
+    "productIds": [12]
+  },
+  "lotProductCosts": [
+    {
+      "productId": 12,
+      "lot": "LOT-001",
       "manualCostPerKg": 2.75
     }
   ]
@@ -367,6 +397,49 @@ Respuesta orientativa:
       "updatedBoxesCount": 10,
       "updatedNetWeightKg": 120.5,
       "estimatedManualCost": 331.38
+    }
+  ]
+}
+```
+
+### 8.4 Aplicar costes manuales por producto + lote
+
+```http
+POST /api/v2/cost-regularization/manual-costs/apply-by-lot-product
+```
+
+Permiso:
+
+- `administrador`
+- `tecnico`
+
+Comportamiento:
+
+- recalcula en backend el universo de cajas a partir de `scope + filters`;
+- aplica cada coste solo a cajas sin coste cuya pareja `productId + lot` coincida;
+- solo actualiza cajas que siguen sin coste en el momento de ejecutar;
+- devuelve resumen por agrupacion lote-producto.
+
+Respuesta orientativa:
+
+```json
+{
+  "scope": "stock",
+  "updatedBoxesCount": 8,
+  "skippedBoxesCount": 1,
+  "updatedNetWeightKg": 96.2,
+  "estimatedManualCost": 264.55,
+  "lotProducts": [
+    {
+      "product": {
+        "id": 12,
+        "name": "Merluza 400-600"
+      },
+      "lot": "LOT-001",
+      "manualCostPerKg": 2.75,
+      "updatedBoxesCount": 8,
+      "updatedNetWeightKg": 96.2,
+      "estimatedManualCost": 264.55
     }
   ]
 }
@@ -485,6 +558,7 @@ Si otro rol llama al backend, recibira `403 Forbidden`.
 GET /api/v2/cost-regularization/sales/missing-cost-boxes
 GET /api/v2/cost-regularization/stock/missing-cost-boxes
 POST /api/v2/cost-regularization/manual-costs/apply-by-product
+POST /api/v2/cost-regularization/manual-costs/apply-by-lot-product
 ```
 
 Cabeceras:
@@ -526,11 +600,21 @@ type MissingSalesCostBoxesResponse = {
     ordersCount: number;
   };
   products: MissingSalesCostProductSummary[];
+  lotProducts: MissingSalesCostLotProductSummary[];
   boxes: MissingSalesCostBox[];
 };
 
 type MissingSalesCostProductSummary = {
   product: ProductRef;
+  boxesCount: number;
+  netWeightKg: number;
+  ordersCount: number;
+  suggestedManualCostPerKg: null;
+};
+
+type MissingSalesCostLotProductSummary = {
+  product: ProductRef;
+  lot: string | null;
   boxesCount: number;
   netWeightKg: number;
   ordersCount: number;
@@ -588,11 +672,21 @@ type MissingStockCostBoxesResponse = {
     palletsCount: number;
   };
   products: MissingStockCostProductSummary[];
+  lotProducts: MissingStockCostLotProductSummary[];
   boxes: MissingStockCostBox[];
 };
 
 type MissingStockCostProductSummary = {
   product: ProductRef;
+  boxesCount: number;
+  netWeightKg: number;
+  palletsCount: number;
+  suggestedManualCostPerKg: null;
+};
+
+type MissingStockCostLotProductSummary = {
+  product: ProductRef;
+  lot: string | null;
   boxesCount: number;
   netWeightKg: number;
   palletsCount: number;
@@ -687,6 +781,76 @@ type ApplyManualCostsByProductResponse = {
 };
 ```
 
+### POST aplicar costes manuales por producto + lote
+
+```http
+POST /api/v2/cost-regularization/manual-costs/apply-by-lot-product
+```
+
+Payload para ventas:
+
+```json
+{
+  "scope": "sales",
+  "filters": {
+    "dateFrom": "2026-03-01",
+    "dateTo": "2026-03-31",
+    "productIds": [12]
+  },
+  "lotProductCosts": [
+    {
+      "productId": 12,
+      "lot": "LOT-001",
+      "manualCostPerKg": 2.75
+    },
+    {
+      "productId": 12,
+      "lot": "LOT-002",
+      "manualCostPerKg": 2.95
+    }
+  ]
+}
+```
+
+Payload para stock:
+
+```json
+{
+  "scope": "stock",
+  "filters": {
+    "productIds": [12],
+    "storeIds": [3]
+  },
+  "lotProductCosts": [
+    {
+      "productId": 12,
+      "lot": "LOT-001",
+      "manualCostPerKg": 2.75
+    }
+  ]
+}
+```
+
+Respuesta:
+
+```ts
+type ApplyManualCostsByLotProductResponse = {
+  scope: 'sales' | 'stock';
+  updatedBoxesCount: number;
+  skippedBoxesCount: number;
+  updatedNetWeightKg: number;
+  estimatedManualCost: number;
+  lotProducts: Array<{
+    product: ProductRef;
+    lot: string | null;
+    manualCostPerKg: number;
+    updatedBoxesCount: number;
+    updatedNetWeightKg: number;
+    estimatedManualCost: number;
+  }>;
+};
+```
+
 ### Validaciones relevantes
 
 El backend valida:
@@ -698,6 +862,11 @@ El backend valida:
 - `productCosts`: requerido, array con al menos una fila.
 - `productCosts.*.productId`: requerido, existente y no repetido.
 - `productCosts.*.manualCostPerKg`: requerido, numerico y `>= 0`.
+- `lotProductCosts`: requerido en `apply-by-lot-product`, array con al menos una fila.
+- `lotProductCosts.*.productId`: requerido y existente.
+- `lotProductCosts.*.lot`: requerido como campo, pero puede ser `null`.
+- `lotProductCosts.*.manualCostPerKg`: requerido, numerico y `>= 0`.
+- La combinacion `lotProductCosts.*.productId + lotProductCosts.*.lot` no puede repetirse.
 
 Errores habituales:
 
@@ -719,7 +888,9 @@ Errores habituales:
 - Despues de aplicar costes, el frontend debe refrescar la pestana actual.
 - `scope = both` no existe. El usuario aplica sobre una pestana cada vez.
 - Los valores se aplican solo a productos presentes en `productCosts`.
+- En `apply-by-lot-product`, los valores se aplican solo a agrupaciones presentes en `lotProductCosts`.
 - Un producto visible en `products` puede no enviarse en `productCosts`; en ese caso no se modifica.
+- Una agrupacion visible en `lotProducts` puede no enviarse en `lotProductCosts`; en ese caso no se modifica.
 
 ### Modelo de estado recomendado
 
@@ -729,6 +900,15 @@ type CostRegularizationTab = 'sales' | 'stock';
 type ProductCostDraft = {
   productId: number;
   productName: string | null;
+  boxesCount: number;
+  netWeightKg: number;
+  manualCostPerKg: number | null;
+};
+
+type LotProductCostDraft = {
+  productId: number;
+  productName: string | null;
+  lot: string | null;
   boxesCount: number;
   netWeightKg: number;
   manualCostPerKg: number | null;
@@ -747,7 +927,9 @@ type ProductCostDraft = {
 - Mostrar tabla de detalle debajo.
 - Boton principal: `Aplicar costes medios`.
 - Dialog con una fila por producto y un input numerico `€/kg`.
+- Dialog alternativo con una fila por producto + lote y un input numerico `€/kg`.
 - Mostrar coste total estimado por producto: `netWeightKg * manualCostPerKg`.
+- En modo lote-producto, mostrar coste total estimado por agrupacion.
 - Deshabilitar confirmar si ningun producto tiene coste informado.
 - Tras respuesta exitosa, mostrar resumen:
   - cajas actualizadas;
@@ -768,7 +950,10 @@ type ProductCostDraft = {
 - No incluye cajas con `manual_cost_per_kg`.
 - Aplica coste manual por producto en ventas.
 - Aplica coste manual por producto en stock.
+- Aplica coste manual por producto + lote en ventas.
+- Aplica coste manual por producto + lote en stock.
 - No aplica coste a productos no enviados.
+- No aplica coste a lotes no enviados dentro del mismo producto.
 - Rechaza rol no autorizado.
 - Recalcula universo en backend y no actualiza cajas que ya recibieron coste entre consulta y aplicacion.
 
@@ -776,6 +961,7 @@ type ProductCostDraft = {
 
 - Render de tabs y filtros.
 - Dialog con resumen por producto.
+- Dialog con resumen por producto + lote.
 - Validacion de coste numerico y no negativo.
 - Confirmacion con impacto.
 - Refresco de listado tras aplicar.
@@ -798,6 +984,7 @@ type ProductCostDraft = {
 - `app/Http/Requests/v2/MissingSalesCostBoxesRequest.php`
 - `app/Http/Requests/v2/MissingStockCostBoxesRequest.php`
 - `app/Http/Requests/v2/ApplyManualBoxCostsByProductRequest.php`
+- `app/Http/Requests/v2/ApplyManualBoxCostsByLotProductRequest.php`
 - `app/Http/Requests/v2/Concerns/AuthorizesCostRegularization.php`
 - `app/Services/v2/CostRegularizationService.php`
 - `tests/Feature/CostRegularizationApiTest.php`

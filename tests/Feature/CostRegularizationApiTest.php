@@ -66,6 +66,8 @@ class CostRegularizationApiTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('summary.boxesCount', 1)
+            ->assertJsonPath('lotProducts.0.lot', 'LOT-MISSING-SALE')
+            ->assertJsonPath('lotProducts.0.boxesCount', 1)
             ->assertJsonPath('boxes.0.id', $missingBox->id)
             ->assertJsonPath('boxes.0.orderId', $finishedOrder->id);
     }
@@ -98,6 +100,8 @@ class CostRegularizationApiTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('summary.boxesCount', 1)
+            ->assertJsonPath('lotProducts.0.lot', 'LOT-STOCK-MISSING')
+            ->assertJsonPath('lotProducts.0.boxesCount', 1)
             ->assertJsonPath('boxes.0.id', $stockBox->id)
             ->assertJsonPath('boxes.0.store.id', $store->id);
     }
@@ -131,6 +135,42 @@ class CostRegularizationApiTest extends TestCase
             ->assertJsonPath('products.0.manualCostPerKg', 2.75);
 
         $this->assertEquals(2.75, (float) $box->refresh()->manual_cost_per_kg);
+    }
+
+    public function test_applies_manual_costs_by_lot_product_for_stock_scope(): void
+    {
+        $product = $this->createProduct();
+        $targetBox = $this->createBoxOnPallet($product, [
+            'order_id' => null,
+            'status' => Pallet::STATE_REGISTERED,
+        ], 'LOT-APPLY-STOCK-A');
+        $otherLotBox = $this->createBoxOnPallet($product, [
+            'order_id' => null,
+            'status' => Pallet::STATE_REGISTERED,
+        ], 'LOT-APPLY-STOCK-B');
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/cost-regularization/manual-costs/apply-by-lot-product', [
+                'scope' => 'stock',
+                'filters' => [
+                    'productIds' => [$product->id],
+                ],
+                'lotProductCosts' => [
+                    [
+                        'productId' => $product->id,
+                        'lot' => 'LOT-APPLY-STOCK-A',
+                        'manualCostPerKg' => 3.15,
+                    ],
+                ],
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('updatedBoxesCount', 1)
+            ->assertJsonPath('lotProducts.0.lot', 'LOT-APPLY-STOCK-A')
+            ->assertJsonPath('lotProducts.0.manualCostPerKg', 3.15);
+
+        $this->assertEquals(3.15, (float) $targetBox->refresh()->manual_cost_per_kg);
+        $this->assertNull($otherLotBox->refresh()->manual_cost_per_kg);
     }
 
     public function test_rejects_non_admin_roles(): void

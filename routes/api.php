@@ -39,6 +39,7 @@ use App\Http\Controllers\v2\ProcessController as V2ProcessController;
 use App\Http\Controllers\v2\ProductCategoryController;
 use App\Http\Controllers\v2\ProductController as V2ProductController;
 use App\Http\Controllers\v2\ProductFamilyController;
+use App\Http\Controllers\v2\ProductionControlPanelController;
 use App\Http\Controllers\v2\ProductionController as V2ProductionController;
 use App\Http\Controllers\v2\ProductionInputController;
 use App\Http\Controllers\v2\ProductionOutputConsumptionController;
@@ -336,6 +337,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('cost-regularization/sales/missing-cost-boxes', [CostRegularizationController::class, 'salesMissingCostBoxes'])->name('v2.cost_regularization.sales.missing_cost_boxes');
         Route::get('cost-regularization/stock/missing-cost-boxes', [CostRegularizationController::class, 'stockMissingCostBoxes'])->name('v2.cost_regularization.stock.missing_cost_boxes');
         Route::post('cost-regularization/manual-costs/apply-by-product', [CostRegularizationController::class, 'applyManualCostsByProduct'])->name('v2.cost_regularization.manual_costs.apply_by_product');
+        Route::post('cost-regularization/manual-costs/apply-by-lot-product', [CostRegularizationController::class, 'applyManualCostsByLotProduct'])->name('v2.cost_regularization.manual_costs.apply_by_lot_product');
 
         /* orders/sales-by-salesperson */
         Route::get('orders/sales-by-salesperson', [V2OrderController::class, 'salesBySalesperson']);
@@ -450,6 +452,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::apiResource('labels', LabelController::class);
 
         /* Production Module v2 */
+        Route::get('productions/control-panel', [ProductionControlPanelController::class, 'index'])->name('productions.controlPanel');
         Route::apiResource('productions', V2ProductionController::class);
         Route::delete('productions', [V2ProductionController::class, 'destroyMultiple']);
         Route::get('productions/{id}/diagram', [V2ProductionController::class, 'getDiagram'])->name('productions.getDiagram');
