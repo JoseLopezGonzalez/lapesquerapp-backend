@@ -280,6 +280,8 @@ class ProductionControlPanelService
                 $boxes->loadMissing([
                     'product:id,name',
                     'palletBox.pallet:id,status,order_id,reception_id',
+                    'palletBox.pallet.reception:id',
+                    'palletBox.pallet.reception.products:id,reception_id,product_id,lot,price',
                 ]);
 
                 foreach ($boxes as $box) {
