@@ -350,7 +350,93 @@ class OrderStatisticsApiTest extends TestCase
             ->assertJsonPath('totalCost', 30)
             ->assertJsonPath('coveredBoxes', 1)
             ->assertJsonPath('uncoveredBoxes', 1)
-            ->assertJsonPath('costCoverageBoxesPct', 50);
+            ->assertJsonPath('costCoverageBoxesPct', 50)
+            ->assertJsonPath('salePriceAlert.active', false)
+            ->assertJsonPath('salePriceAlert.boxesWithoutSalePrice', 0)
+            ->assertJsonPath('salePriceAlert.hint', null);
+    }
+
+    public function test_profitability_summary_sale_price_alert_when_box_has_no_planned_price(): void
+    {
+        $species = Species::factory()->create([
+            'fishing_gear_id' => FishingGear::factory()->create()->id,
+        ]);
+        $family = ProductFamily::factory()->create();
+        $captureZone = CaptureZone::factory()->create();
+
+        $productPlanned = Product::factory()->create([
+            'name' => 'Merluza planificada alerta test',
+            'species_id' => $species->id,
+            'capture_zone_id' => $captureZone->id,
+            'family_id' => $family->id,
+        ]);
+        $productUnplanned = Product::factory()->create([
+            'name' => 'Bacalao sin línea prevista',
+            'species_id' => $species->id,
+            'capture_zone_id' => $captureZone->id,
+            'family_id' => $family->id,
+        ]);
+
+        $reception = RawMaterialReception::factory()->create();
+        $order = Order::factory()->finished()->create([
+            'entry_date' => '2026-03-10',
+            'load_date' => '2026-03-15',
+        ]);
+
+        OrderPlannedProductDetail::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $productPlanned->id,
+            'unit_price' => 5.0,
+        ]);
+
+        $pallet = Pallet::factory()->create([
+            'order_id' => $order->id,
+            'reception_id' => $reception->id,
+            'status' => Pallet::STATE_SHIPPED,
+        ]);
+
+        RawMaterialReceptionProduct::factory()->create([
+            'reception_id' => $reception->id,
+            'product_id' => $productPlanned->id,
+            'lot' => 'LOT-PLANNED',
+            'price' => 3.0,
+        ]);
+        RawMaterialReceptionProduct::factory()->create([
+            'reception_id' => $reception->id,
+            'product_id' => $productUnplanned->id,
+            'lot' => 'LOT-UNPLANNED',
+            'price' => 4.0,
+        ]);
+
+        $boxWithPrice = Box::factory()->create([
+            'article_id' => $productPlanned->id,
+            'lot' => 'LOT-PLANNED',
+            'net_weight' => 10.0,
+            'gross_weight' => 10.5,
+        ]);
+        $boxWithoutSalePrice = Box::factory()->create([
+            'article_id' => $productUnplanned->id,
+            'lot' => 'LOT-UNPLANNED',
+            'net_weight' => 8.0,
+            'gross_weight' => 8.3,
+        ]);
+
+        PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $boxWithPrice->id]);
+        PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $boxWithoutSalePrice->id]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/statistics/orders/profitability-summary?'.http_build_query([
+                'dateFrom' => '2026-03-01',
+                'dateTo' => '2026-03-31',
+            ]));
+
+        $response->assertOk()
+            ->assertJsonPath('totalRevenue', 50.0)
+            ->assertJsonPath('salePriceAlert.active', true)
+            ->assertJsonPath('salePriceAlert.boxesWithoutSalePrice', 1);
+
+        self::assertIsString($response->json('salePriceAlert.hint'));
+        self::assertStringContainsString('caja sin precio unitario', $response->json('salePriceAlert.hint'));
     }
 
     public function test_profitability_summary_excludes_pending_orders(): void

@@ -21,11 +21,14 @@ class OrderProfitabilityStatsService
         $coveredBoxes = 0;
         $uncoveredBoxes = 0;
 
+        $boxesMissingSalePrice = 0;
+
         foreach ($orders as $order) {
             $f = self::computeOrderFinancials($order, $productIds);
             $totalRevenue += $f['revenue'];
             $coveredBoxes += $f['coveredBoxes'];
             $uncoveredBoxes += $f['uncoveredBoxes'];
+            $boxesMissingSalePrice += $f['missingSalePriceBoxes'];
             if ($f['cost'] !== null) {
                 $totalCost = ($totalCost ?? 0.0) + $f['cost'];
             }
@@ -50,6 +53,17 @@ class OrderProfitabilityStatsService
             'coveredBoxes' => $coveredBoxes,
             'uncoveredBoxes' => $uncoveredBoxes,
             'costCoverageBoxesPct' => $costCoverageBoxesPct,
+            'salePriceAlert' => [
+                'active' => $boxesMissingSalePrice > 0,
+                'boxesWithoutSalePrice' => $boxesMissingSalePrice,
+                'hint' => $boxesMissingSalePrice > 0
+                    ? sprintf(
+                        '%d %s sin precio unitario (€/kg) en la previsión del pedido.',
+                        $boxesMissingSalePrice,
+                        $boxesMissingSalePrice === 1 ? 'caja' : 'cajas'
+                    )
+                    : null,
+            ],
         ];
     }
 
@@ -208,6 +222,9 @@ class OrderProfitabilityStatsService
                     $weight = (float) $box->net_weight;
                     $entry = $priceMap[$pid] ?? null;
                     $cost = $box->total_cost;
+                    $lineRevenue = ($entry !== null && ($entry['has_sale_price'] ?? false))
+                        ? ($entry['price'] * $weight)
+                        : 0.0;
 
                     if (! isset($byProduct[$pid])) {
                         $byProduct[$pid] = [
@@ -220,9 +237,7 @@ class OrderProfitabilityStatsService
                     }
 
                     $byProduct[$pid]['totalWeightKg'] += $weight;
-                    if ($entry) {
-                        $byProduct[$pid]['totalRevenue'] += $entry['price'] * $weight;
-                    }
+                    $byProduct[$pid]['totalRevenue'] += $lineRevenue;
                     if ($cost !== null) {
                         $byProduct[$pid]['totalCost'] = ($byProduct[$pid]['totalCost'] ?? 0.0) + $cost;
                     }
@@ -311,8 +326,10 @@ class OrderProfitabilityStatsService
                 }
 
                 $weight = (float) $box->net_weight;
-                $unitPrice = $priceMap[$box->article_id]['price'] ?? null;
-                $revenue = $unitPrice !== null ? $unitPrice * $weight : 0.0;
+                $lineSale = $priceMap[$box->article_id] ?? null;
+                $hasPlannedSalePrice = $lineSale !== null && ($lineSale['has_sale_price'] ?? false);
+                $unitPrice = $hasPlannedSalePrice ? ($lineSale['price'] ?? null) : null;
+                $revenue = $hasPlannedSalePrice ? ($unitPrice ?? 0.0) * $weight : 0.0;
                 $totalCost = $box->total_cost;
                 $costPerKg = ($totalCost !== null && $weight > 0) ? $totalCost / $weight : null;
                 $manualCostPerKg = $box->manual_cost_per_kg !== null ? (float) $box->manual_cost_per_kg : null;
@@ -330,7 +347,7 @@ class OrderProfitabilityStatsService
                     'pallet_id' => $pallet->id,
                     'box_id' => $box->id,
                     'product_id' => $box->article_id,
-                    'product_name' => $box->product?->name ?? ($priceMap[$box->article_id]['productName'] ?? null),
+                    'product_name' => $box->product?->name ?? ($lineSale['productName'] ?? null),
                     'lot' => $box->lot,
                     'net_weight_kg' => round($weight, 3),
                     'unit_price' => $unitPrice,
@@ -376,6 +393,7 @@ class OrderProfitabilityStatsService
         foreach ($order->plannedProductDetails as $detail) {
             $map[$detail->product_id] = [
                 'price' => (float) ($detail->unit_price ?? 0),
+                'has_sale_price' => $detail->unit_price !== null,
                 'taxRate' => $detail->tax ? (float) $detail->tax->rate : 0,
                 'productName' => $detail->product?->name,
             ];
@@ -421,6 +439,7 @@ class OrderProfitabilityStatsService
         $cost = null;
         $coveredBoxes = 0;
         $uncoveredBoxes = 0;
+        $missingSalePriceBoxes = 0;
 
         foreach ($order->pallets as $pallet) {
             foreach ($pallet->boxes as $palletBox) {
@@ -433,8 +452,10 @@ class OrderProfitabilityStatsService
                 }
 
                 $entry = $priceMap[$box->article_id] ?? null;
-                if ($entry) {
+                if ($entry !== null && ($entry['has_sale_price'] ?? false)) {
                     $revenue += $entry['price'] * (float) $box->net_weight;
+                } else {
+                    $missingSalePriceBoxes++;
                 }
 
                 $boxCost = $box->total_cost;
@@ -452,6 +473,7 @@ class OrderProfitabilityStatsService
             'cost' => $cost,
             'coveredBoxes' => $coveredBoxes,
             'uncoveredBoxes' => $uncoveredBoxes,
+            'missingSalePriceBoxes' => $missingSalePriceBoxes,
         ];
     }
 
