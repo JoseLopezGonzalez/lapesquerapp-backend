@@ -12,6 +12,7 @@ class ProductionControlPanelService
 {
     public function __construct(
         private ProductionClosureService $closureService,
+        private ProductionCostResolver $costResolver,
     ) {}
 
     // ========================================================
@@ -218,13 +219,11 @@ class ProductionControlPanelService
 
     private function getProductionCostStatus(Production $production): array
     {
-        $base = Box::where('lot', $production->lot)
-            ->whereNull('manual_cost_per_kg')
-            ->whereDoesntHave('productionInputs')
-            ->whereHas('palletBox.pallet', fn ($q) => $q->whereNull('reception_id'));
+        $base = Box::query()
+            ->where('lot', $production->lot)
+            ->whereDoesntHave('productionInputs');
 
-        $count  = $base->count();
-        $weight = (float) $base->sum('net_weight');
+        ['count' => $count, 'weight' => $weight] = $this->countMissingCosts($base);
 
         return [
             'hasMissingCosts'       => $count > 0,
@@ -246,12 +245,34 @@ class ProductionControlPanelService
 
     private function countBoxesWithoutKnownCost(): int
     {
-        return Box::whereNull('manual_cost_per_kg')
+        $base = Box::query()
             ->whereDoesntHave('productionInputs')
             ->whereHas('palletBox.pallet', fn ($q) =>
                 $q->whereIn('status', [Pallet::STATE_REGISTERED, Pallet::STATE_STORED])
-                  ->whereNull('reception_id')
-            )
-            ->count();
+            );
+
+        return $this->countMissingCosts($base)['count'];
+    }
+
+    private function countMissingCosts(Builder $query): array
+    {
+        $count = 0;
+        $weight = 0.0;
+
+        $query
+            ->select(['id', 'net_weight', 'article_id', 'lot', 'manual_cost_per_kg'])
+            ->orderBy('id')
+            ->chunkById(500, function ($boxes) use (&$count, &$weight) {
+                foreach ($boxes as $box) {
+                    if ($this->costResolver->getBoxCostPerKg($box) !== null) {
+                        continue;
+                    }
+
+                    $count++;
+                    $weight += (float) $box->net_weight;
+                }
+            });
+
+        return ['count' => $count, 'weight' => $weight];
     }
 }
