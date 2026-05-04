@@ -191,7 +191,7 @@ class CostRegularizationService
     private function salesCandidateBoxes(array $filters): Collection
     {
         $orders = Order::query()
-            ->whereIn('status', [Order::STATUS_FINISHED, Order::STATUS_INCIDENT])
+            ->whereIn('status', Order::closedSalesReportingStatuses())
             ->whereBetween('load_date', [
                 $filters['dateFrom'].' 00:00:00',
                 $filters['dateTo'].' 23:59:59',
@@ -237,10 +237,10 @@ class CostRegularizationService
             ->whereIn('status', [Pallet::STATE_REGISTERED, Pallet::STATE_STORED])
             ->where(function (Builder $query): void {
                 $query->whereNull('order_id')
-                    ->orWhereHas('order', fn (Builder $orderQuery) => $orderQuery->whereNotIn('status', [
-                        Order::STATUS_FINISHED,
-                        Order::STATUS_INCIDENT,
-                    ]));
+                    ->orWhereHas('order', fn (Builder $orderQuery) => $orderQuery->whereNotIn(
+                        'status',
+                        Order::closedSalesReportingStatuses()
+                    ));
             })
             ->when(! empty($filters['storeIds']), function (Builder $query) use ($filters): void {
                 $query->whereHas('storedPallet', fn (Builder $storedQuery) => $storedQuery->whereIn('store_id', $filters['storeIds']));

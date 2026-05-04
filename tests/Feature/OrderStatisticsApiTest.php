@@ -15,6 +15,7 @@ use App\Models\ProductFamily;
 use App\Models\RawMaterialReception;
 use App\Models\RawMaterialReceptionProduct;
 use App\Models\Species;
+use App\Models\Tax;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -124,6 +125,62 @@ class OrderStatisticsApiTest extends TestCase
                 'toPrev',
             ],
         ]);
+    }
+
+    public function test_total_amount_stats_use_box_net_weight_not_planned_quantity(): void
+    {
+        $tax = Tax::factory()->create(['name' => 'IVA 10 stats', 'rate' => 10]);
+
+        $species = Species::factory()->create([
+            'fishing_gear_id' => FishingGear::factory()->create()->id,
+        ]);
+
+        $product = Product::factory()->create([
+            'species_id' => $species->id,
+            'capture_zone_id' => CaptureZone::factory()->create()->id,
+            'family_id' => ProductFamily::factory()->create()->id,
+        ]);
+
+        $order = Order::factory()->finished()->create([
+            'entry_date' => '2026-03-10',
+            'load_date' => '2026-03-15 10:00:00',
+        ]);
+
+        OrderPlannedProductDetail::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'tax_id' => $tax->id,
+            'quantity' => 99.0,
+            'unit_price' => 2.0,
+        ]);
+
+        $pallet = Pallet::factory()->create([
+            'order_id' => $order->id,
+            'status' => Pallet::STATE_SHIPPED,
+        ]);
+
+        $box = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-WEIGHT-STATS',
+            'net_weight' => 30.0,
+            'gross_weight' => 30.5,
+        ]);
+
+        PalletBox::create([
+            'pallet_id' => $pallet->id,
+            'box_id' => $box->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/statistics/orders/total-amount?'.http_build_query([
+                'dateFrom' => '2026-03-01',
+                'dateTo' => '2026-03-31',
+            ]));
+
+        $response->assertOk();
+        $response->assertJsonPath('subtotal', 60);
+        $response->assertJsonPath('tax', 6);
+        $response->assertJsonPath('value', 66);
     }
 
     public function test_can_get_order_ranking_stats(): void

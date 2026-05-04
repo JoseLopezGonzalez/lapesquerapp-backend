@@ -57,7 +57,7 @@ class OrderStatisticsController extends Controller
      * Formato de respuesta:
      * {
      *   "value": float,                 // Importe total del rango actual (subtotal + impuestos)
-     *   "subtotal": float,             // Subtotal sin impuestos del rango actual
+     *   "subtotal": float,             // Base sin IVA: unit_price (previsión) × kg reales en cajas del pedido (palets), no quantity planificada
      *   "tax": float,                  // Importe de impuestos del rango actual
      *
      *   "comparisonValue": float,      // Importe total del mismo rango del año anterior
@@ -124,10 +124,9 @@ class OrderStatisticsController extends Controller
      *   ...
      * ]
      *
-     * @param \Illuminate\Http\Request $request
+     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
-
     public function orderRankingStats(OrderRankingStatsRequest $request)
     {
         $this->authorize('viewAny', Order::class);
@@ -143,8 +142,8 @@ class OrderStatisticsController extends Controller
         $results = OrderStatisticsService::getOrderRankingStats(
             $validated['groupBy'],
             $validated['valueType'],
-            $validated['dateFrom'] . ' 00:00:00',
-            $validated['dateTo'] . ' 23:59:59',
+            $validated['dateFrom'].' 00:00:00',
+            $validated['dateTo'].' 23:59:59',
             $validated['speciesId'] ?? null,
             $request->user()
         );
@@ -174,7 +173,7 @@ class OrderStatisticsController extends Controller
      *   ...
      * ]
      *
-     * @param \Illuminate\Http\Request $request
+     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function salesChartData(OrderSalesChartDataRequest $request)
@@ -182,8 +181,8 @@ class OrderStatisticsController extends Controller
         $this->authorize('viewAny', Order::class);
 
         $validated = $request->validated();
-        $dateFrom = $validated['dateFrom'] . ' 00:00:00';
-        $dateTo = $validated['dateTo'] . ' 23:59:59';
+        $dateFrom = $validated['dateFrom'].' 00:00:00';
+        $dateTo = $validated['dateTo'].' 23:59:59';
         $valueType = $validated['valueType'];
         $groupBy = $validated['groupBy'] ?? 'day';
 
@@ -199,5 +198,4 @@ class OrderStatisticsController extends Controller
 
         return response()->json($results);
     }
-
 }

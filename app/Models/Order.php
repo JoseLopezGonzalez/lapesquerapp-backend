@@ -46,6 +46,15 @@ class Order extends Model
     }
 
     /**
+     * Pedidos contados como ventas cerradas en KPIs coherentes entre sí (estadísticas, rentabilidad, regularización ventas).
+     * Quedan fuera los `pending` (pedidos aún activos antes de cerrar expedición según proceso).
+     */
+    public static function closedSalesReportingStatuses(): array
+    {
+        return [self::STATUS_FINISHED, self::STATUS_INCIDENT];
+    }
+
+    /**
      * Lista de tipos de pedido válidos
      */
     public static function getValidOrderTypes(): array
@@ -609,7 +618,7 @@ class Order extends Model
     public function getCostPerKgAttribute(): ?float
     {
         $cost = $this->total_cost;
-        $kg   = $this->total_net_weight;
+        $kg = $this->total_net_weight;
 
         if ($cost === null || ! $kg || $kg <= 0) {
             return null;
@@ -621,7 +630,7 @@ class Order extends Model
     public function getMarginPerKgAttribute(): ?float
     {
         $margin = $this->gross_margin;
-        $kg     = $this->total_net_weight;
+        $kg = $this->total_net_weight;
 
         if ($margin === null || ! $kg || $kg <= 0) {
             return null;

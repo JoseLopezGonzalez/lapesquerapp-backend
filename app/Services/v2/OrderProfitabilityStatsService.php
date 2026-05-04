@@ -275,7 +275,7 @@ class OrderProfitabilityStatsService
     private static function loadOrders(string $from, string $to, array $productIds = []): Collection
     {
         $query = Order::query()
-            ->whereIn('status', [Order::STATUS_FINISHED, Order::STATUS_INCIDENT])
+            ->whereIn('status', Order::closedSalesReportingStatuses())
             ->whereBetween('load_date', [
                 $from.' 00:00:00',
                 $to.' 23:59:59',
@@ -357,7 +357,7 @@ class OrderProfitabilityStatsService
     private static function loadOrdersForProducts(string $from, string $to): Collection
     {
         return Order::query()
-            ->whereIn('status', [Order::STATUS_FINISHED, Order::STATUS_INCIDENT])
+            ->whereIn('status', Order::closedSalesReportingStatuses())
             ->whereBetween('load_date', [
                 $from.' 00:00:00',
                 $to.' 23:59:59',
