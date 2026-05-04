@@ -15,7 +15,7 @@ class ProductionControlPanelController extends Controller
     public function index(IndexProductionControlPanelRequest $request)
     {
         $filters = $request->only([
-            'lot', 'species_id', 'status', 'date_from', 'date_to',
+            'lot', 'species_id', 'date_from', 'date_to',
             'reconciliation_status', 'per_page', 'sort_by', 'sort_dir',
         ]);
 

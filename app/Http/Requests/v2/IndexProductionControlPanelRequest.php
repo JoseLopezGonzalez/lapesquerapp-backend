@@ -17,7 +17,7 @@ class IndexProductionControlPanelRequest extends FormRequest
         return [
             'lot'                   => 'nullable|string|max:255',
             'species_id'            => 'nullable|exists:tenant.species,id',
-            'status'                => 'nullable|in:open,closed',
+            'status'                => 'prohibited',
             'date_from'             => 'nullable|date',
             'date_to'               => 'nullable|date|after_or_equal:date_from',
             'reconciliation_status' => 'nullable|in:ok,warning,error',

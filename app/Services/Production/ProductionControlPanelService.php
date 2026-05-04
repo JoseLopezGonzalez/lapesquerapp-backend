@@ -46,7 +46,6 @@ class ProductionControlPanelService
     {
         return [
             'openProductions'  => Production::whereNotNull('opened_at')->whereNull('closed_at')->count(),
-            'closedProductions' => Production::whereNotNull('closed_at')->count(),
             'boxesWithoutCost' => $this->countBoxesWithoutKnownCost(),
         ];
     }
@@ -59,20 +58,15 @@ class ProductionControlPanelService
     {
         $query = Production::query()->with(['species']);
 
+        // Panel únicamente operativo sobre producciones no cerradas.
+        $query->whereNull('closed_at');
+
         if (!empty($filters['lot'])) {
             $query->where('lot', 'like', '%' . $filters['lot'] . '%');
         }
 
         if (!empty($filters['species_id'])) {
             $query->where('species_id', $filters['species_id']);
-        }
-
-        if (!empty($filters['status'])) {
-            match ($filters['status']) {
-                'open'   => $query->whereNotNull('opened_at')->whereNull('closed_at'),
-                'closed' => $query->whereNotNull('closed_at'),
-                default  => null,
-            };
         }
 
         if (!empty($filters['date_from'])) {
