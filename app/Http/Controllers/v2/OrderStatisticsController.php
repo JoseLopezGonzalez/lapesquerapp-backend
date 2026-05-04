@@ -98,7 +98,7 @@ class OrderStatisticsController extends Controller
 
     /**
      * Devuelve un ranking de pedidos agrupado por cliente, país o producto,
-     * basado en la cantidad total (kg) o el importe total (€), dentro de un rango de fechas,
+     * basado en la cantidad total planificada (kg) o el importe en base sin IVA (€), dentro de un rango de fechas,
      * y opcionalmente filtrado por especie.
      *
      * Parámetros esperados (query params):

@@ -235,7 +235,6 @@ class OrderStatisticsService
             ->join('products', 'order_planned_product_details.product_id', '=', 'products.id')
             ->join('customers', 'orders.customer_id', '=', 'customers.id')
             ->leftJoin('countries', 'customers.country_id', '=', 'countries.id')
-            ->leftJoin('taxes', 'order_planned_product_details.tax_id', '=', 'taxes.id')
             ->tap(fn (Builder $q) => self::applyExpeditedKgAllocationJoins($q))
             ->whereBetween('orders.load_date', [$dateFrom, $dateTo]);
         self::applyClosedSalesOrdersFilter($query);
@@ -255,7 +254,8 @@ class OrderStatisticsService
         };
 
         $valueField = match ($valueType) {
-            'totalAmount' => "SUM(order_planned_product_details.unit_price * {$allocated} * (1 + COALESCE(taxes.rate, 0) / 100))",
+            // Base sin IVA (alineado con subtotal de total-amount y gráfico amount)
+            'totalAmount' => "SUM(order_planned_product_details.unit_price * {$allocated})",
             'totalQuantity' => 'SUM(order_planned_product_details.quantity)',
         };
 
