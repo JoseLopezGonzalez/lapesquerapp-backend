@@ -32,6 +32,8 @@ use App\Http\Controllers\v2\OrderPlannedProductDetailController;
 use App\Http\Controllers\v2\OrderProfitabilityStatsController;
 use App\Http\Controllers\v2\OrdersReportController;
 use App\Http\Controllers\v2\OrderStatisticsController;
+use App\Http\Controllers\v2\OrphanBoxesController;
+use App\Http\Controllers\v2\OrphanStockController;
 use App\Http\Controllers\v2\PalletController as V2PalletController;
 use App\Http\Controllers\v2\PaymentTermController as V2PaymentTermController;
 use App\Http\Controllers\v2\PdfExtractionController;
@@ -39,9 +41,8 @@ use App\Http\Controllers\v2\ProcessController as V2ProcessController;
 use App\Http\Controllers\v2\ProductCategoryController;
 use App\Http\Controllers\v2\ProductController as V2ProductController;
 use App\Http\Controllers\v2\ProductFamilyController;
-use App\Http\Controllers\v2\OrphanStockController;
-use App\Http\Controllers\v2\ProductionControlPanelController;
 use App\Http\Controllers\v2\ProductionController as V2ProductionController;
+use App\Http\Controllers\v2\ProductionControlPanelController;
 use App\Http\Controllers\v2\ProductionInputController;
 use App\Http\Controllers\v2\ProductionOutputConsumptionController;
 use App\Http\Controllers\v2\ProductionOutputController;
@@ -454,17 +455,19 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
         /* Production Module v2 */
         Route::get('productions/control-panel', [ProductionControlPanelController::class, 'index'])->name('productions.controlPanel');
+        Route::get('productions/orphan-boxes', [OrphanBoxesController::class, 'index'])->name('productions.orphanBoxes');
         Route::get('productions/orphan-stock', [OrphanStockController::class, 'index'])->name('productions.orphanStock');
-        Route::apiResource('productions', V2ProductionController::class);
+        Route::apiResource('productions', V2ProductionController::class)
+            ->whereNumber('production');
         Route::delete('productions', [V2ProductionController::class, 'destroyMultiple']);
-        Route::get('productions/{id}/diagram', [V2ProductionController::class, 'getDiagram'])->name('productions.getDiagram');
-        Route::get('productions/{id}/process-tree', [V2ProductionController::class, 'getProcessTree'])->name('productions.getProcessTree');
-        Route::get('productions/{id}/totals', [V2ProductionController::class, 'getTotals'])->name('productions.getTotals');
-        Route::get('productions/{id}/reconciliation', [V2ProductionController::class, 'getReconciliation'])->name('productions.getReconciliation');
-        Route::get('productions/{id}/available-products-for-outputs', [V2ProductionController::class, 'getAvailableProductsForOutputs'])->name('productions.getAvailableProductsForOutputs');
-        Route::get('productions/{id}/closure-check', [V2ProductionController::class, 'closureCheck'])->name('productions.closureCheck');
-        Route::post('productions/{id}/close', [V2ProductionController::class, 'close'])->name('productions.close');
-        Route::post('productions/{id}/reopen', [V2ProductionController::class, 'reopen'])->name('productions.reopen');
+        Route::get('productions/{id}/diagram', [V2ProductionController::class, 'getDiagram'])->whereNumber('id')->name('productions.getDiagram');
+        Route::get('productions/{id}/process-tree', [V2ProductionController::class, 'getProcessTree'])->whereNumber('id')->name('productions.getProcessTree');
+        Route::get('productions/{id}/totals', [V2ProductionController::class, 'getTotals'])->whereNumber('id')->name('productions.getTotals');
+        Route::get('productions/{id}/reconciliation', [V2ProductionController::class, 'getReconciliation'])->whereNumber('id')->name('productions.getReconciliation');
+        Route::get('productions/{id}/available-products-for-outputs', [V2ProductionController::class, 'getAvailableProductsForOutputs'])->whereNumber('id')->name('productions.getAvailableProductsForOutputs');
+        Route::get('productions/{id}/closure-check', [V2ProductionController::class, 'closureCheck'])->whereNumber('id')->name('productions.closureCheck');
+        Route::post('productions/{id}/close', [V2ProductionController::class, 'close'])->whereNumber('id')->name('productions.close');
+        Route::post('productions/{id}/reopen', [V2ProductionController::class, 'reopen'])->whereNumber('id')->name('productions.reopen');
 
         Route::get('production-records/options', [ProductionRecordController::class, 'options'])->name('production-records.options');
         Route::get('production-records/{id}/sources-data', [ProductionRecordController::class, 'getSourcesData'])->name('production-records.sources-data');
