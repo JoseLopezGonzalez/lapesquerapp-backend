@@ -201,10 +201,20 @@ class ProductionControlPanelService
         }
 
         if ($costStatus['hasMissingCosts']) {
+            $sampleIds = collect($costStatus['missingCostBoxesSample'] ?? [])
+                ->pluck('boxId')
+                ->filter()
+                ->take(5)
+                ->implode(', ');
+
+            $sampleSuffix = $sampleIds !== ''
+                ? " Ejemplos de cajas: {$sampleIds}."
+                : '';
+
             $alerts[] = [
                 'severity' => 'info',
                 'code'     => 'missing_cost',
-                'message'  => "Hay {$costStatus['missingCostBoxesCount']} cajas ({$costStatus['missingCostWeightKg']} kg) sin coste trazable conocido.",
+                'message'  => "Hay {$costStatus['missingCostBoxesCount']} cajas ({$costStatus['missingCostWeightKg']} kg) sin coste trazable conocido.{$sampleSuffix}",
             ];
         }
 
@@ -223,12 +233,15 @@ class ProductionControlPanelService
             ->where('lot', $production->lot)
             ->whereDoesntHave('productionInputs');
 
-        ['count' => $count, 'weight' => $weight] = $this->countMissingCosts($base);
+        $result = $this->countMissingCosts($base, includeDetails: true, detailLimit: 25);
+        $count = $result['count'];
+        $weight = $result['weight'];
 
         return [
             'hasMissingCosts'       => $count > 0,
             'missingCostBoxesCount' => $count,
             'missingCostWeightKg'   => round($weight, 3),
+            'missingCostBoxesSample' => $result['details'],
         ];
     }
 
@@ -254,15 +267,21 @@ class ProductionControlPanelService
         return $this->countMissingCosts($base)['count'];
     }
 
-    private function countMissingCosts(Builder $query): array
+    private function countMissingCosts(Builder $query, bool $includeDetails = false, int $detailLimit = 0): array
     {
         $count = 0;
         $weight = 0.0;
+        $details = [];
 
         $query
             ->select(['id', 'net_weight', 'article_id', 'lot', 'manual_cost_per_kg'])
             ->orderBy('id')
-            ->chunkById(500, function ($boxes) use (&$count, &$weight) {
+            ->chunkById(500, function ($boxes) use (&$count, &$weight, &$details, $includeDetails, $detailLimit) {
+                $boxes->loadMissing([
+                    'product:id,name',
+                    'palletBox.pallet:id,status,order_id,reception_id',
+                ]);
+
                 foreach ($boxes as $box) {
                     if ($this->costResolver->getBoxCostPerKg($box) !== null) {
                         continue;
@@ -270,9 +289,31 @@ class ProductionControlPanelService
 
                     $count++;
                     $weight += (float) $box->net_weight;
+
+                    if (! $includeDetails || count($details) >= $detailLimit) {
+                        continue;
+                    }
+
+                    $pallet = $box->pallet;
+                    $details[] = [
+                        'boxId' => $box->id,
+                        'lot' => $box->lot,
+                        'product' => $box->product
+                            ? ['id' => $box->product->id, 'name' => $box->product->name]
+                            : null,
+                        'netWeightKg' => round((float) $box->net_weight, 3),
+                        'manualCostPerKg' => $box->manual_cost_per_kg !== null ? (float) $box->manual_cost_per_kg : null,
+                        'location' => [
+                            'palletId' => $pallet?->id,
+                            'palletStatus' => $pallet?->status,
+                            'orderId' => $pallet?->order_id,
+                            'receptionId' => $pallet?->reception_id,
+                        ],
+                        'reason' => 'No se pudo resolver coste trazable ni coste manual para la caja.',
+                    ];
                 }
             });
 
-        return ['count' => $count, 'weight' => $weight];
+        return ['count' => $count, 'weight' => $weight, 'details' => $details];
     }
 }
