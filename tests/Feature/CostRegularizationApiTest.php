@@ -72,6 +72,31 @@ class CostRegularizationApiTest extends TestCase
             ->assertJsonPath('boxes.0.orderId', $finishedOrder->id);
     }
 
+    public function test_lists_incident_sales_boxes_missing_costs(): void
+    {
+        $product = $this->createProduct();
+        $incidentOrder = Order::factory()->incident()->create([
+            'entry_date' => '2026-03-10',
+            'load_date' => '2026-03-15',
+        ]);
+
+        $missingBox = $this->createBoxOnPallet($product, [
+            'order_id' => $incidentOrder->id,
+            'status' => Pallet::STATE_SHIPPED,
+        ], 'LOT-MISSING-INCIDENT');
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/cost-regularization/sales/missing-cost-boxes?'.http_build_query([
+                'dateFrom' => '2026-03-01',
+                'dateTo' => '2026-03-31',
+            ]));
+
+        $response->assertOk()
+            ->assertJsonPath('summary.boxesCount', 1)
+            ->assertJsonPath('boxes.0.id', $missingBox->id)
+            ->assertJsonPath('boxes.0.orderId', $incidentOrder->id);
+    }
+
     public function test_lists_current_stock_boxes_missing_costs(): void
     {
         $product = $this->createProduct();

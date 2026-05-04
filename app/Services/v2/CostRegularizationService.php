@@ -191,7 +191,7 @@ class CostRegularizationService
     private function salesCandidateBoxes(array $filters): Collection
     {
         $orders = Order::query()
-            ->where('status', Order::STATUS_FINISHED)
+            ->whereIn('status', [Order::STATUS_FINISHED, Order::STATUS_INCIDENT])
             ->whereBetween('load_date', [
                 $filters['dateFrom'].' 00:00:00',
                 $filters['dateTo'].' 23:59:59',

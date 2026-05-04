@@ -274,17 +274,19 @@ class OrderProfitabilityStatsService
 
     private static function loadOrders(string $from, string $to, array $productIds = []): Collection
     {
-        $query = Order::whereBetween('load_date', [
-            $from.' 00:00:00',
-            $to.' 23:59:59',
-        ])->with([
-            'customer',
-            'plannedProductDetails.tax',
-            'plannedProductDetails.product',
-            'pallets.boxes.box.productionInputs',
-            'pallets.boxes.box.product',
-            'pallets.boxes.box.palletBox.pallet.reception.products',
-        ]);
+        $query = Order::query()
+            ->whereIn('status', [Order::STATUS_FINISHED, Order::STATUS_INCIDENT])
+            ->whereBetween('load_date', [
+                $from.' 00:00:00',
+                $to.' 23:59:59',
+            ])->with([
+                'customer',
+                'plannedProductDetails.tax',
+                'plannedProductDetails.product',
+                'pallets.boxes.box.productionInputs',
+                'pallets.boxes.box.product',
+                'pallets.boxes.box.palletBox.pallet.reception.products',
+            ]);
 
         if (! empty($productIds)) {
             $query->whereHas('plannedProductDetails', fn ($q) => $q->whereIn('product_id', $productIds));
@@ -354,16 +356,18 @@ class OrderProfitabilityStatsService
 
     private static function loadOrdersForProducts(string $from, string $to): Collection
     {
-        return Order::whereBetween('load_date', [
-            $from.' 00:00:00',
-            $to.' 23:59:59',
-        ])->with([
-            'plannedProductDetails.tax',
-            'plannedProductDetails.product',
-            'pallets.boxes.box.productionInputs',
-            'pallets.boxes.box.product',
-            'pallets.boxes.box.palletBox.pallet.reception.products',
-        ])->get();
+        return Order::query()
+            ->whereIn('status', [Order::STATUS_FINISHED, Order::STATUS_INCIDENT])
+            ->whereBetween('load_date', [
+                $from.' 00:00:00',
+                $to.' 23:59:59',
+            ])->with([
+                'plannedProductDetails.tax',
+                'plannedProductDetails.product',
+                'pallets.boxes.box.productionInputs',
+                'pallets.boxes.box.product',
+                'pallets.boxes.box.palletBox.pallet.reception.products',
+            ])->get();
     }
 
     private static function buildPriceMap(Order $order): array
