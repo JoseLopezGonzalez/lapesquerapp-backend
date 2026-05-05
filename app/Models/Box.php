@@ -72,12 +72,17 @@ class Box extends Model
 
     /**
      * Un lote cerrado bloquea cualquier caja con ese lote, independientemente del producto o especie.
+     * Para actualizaciones sin cambios reales (no-op) no se aplica la restricción.
      */
     protected function validateClosedLotRules(): void
     {
         if (! $this->exists) {
             app(ProductionLotLockService::class)->assertLotIsMutable($this->lot, 'crear caja');
 
+            return;
+        }
+
+        if (! $this->isDirty()) {
             return;
         }
 

@@ -111,7 +111,11 @@ class PalletWriteService
     public static function update(Request $request, Pallet $pallet, array $validated): Pallet
     {
         $pallet->load('boxes.box.product', 'storedPallet.store', 'order');
-        app(ProductionLotLockService::class)->assertPalletIsMutable($pallet, 'editar palet');
+
+        if (array_key_exists('boxes', $validated)) {
+            app(ProductionLotLockService::class)->assertPalletIsMutable($pallet, 'editar palet');
+        }
+
         $snapshot = self::snapshotPalletForTimeline($pallet);
         $actor = $request->user();
 

@@ -34,11 +34,14 @@ class ProductionLotLockService
     }
 
     /**
-     * Lanza excepción si el palet contiene cajas de un lote bloqueado.
+     * Lanza excepción si el palet contiene cajas editables de un lote bloqueado.
+     * Las cajas gastadas (usadas en producción) quedan excluidas: ya no pueden
+     * ser modificadas ni eliminadas por sus propias reglas de modelo.
      */
     public function assertPalletIsMutable(Pallet $pallet, string $operation): void
     {
         $lockedLots = $pallet->boxes()
+            ->whereHas('box', fn ($q) => $q->whereDoesntHave('productionInputs'))
             ->with('box:id,lot')
             ->get()
             ->pluck('box.lot')
