@@ -50,7 +50,7 @@ class Store extends Model
         }
 
         return $this->palletsV2->sum(function ($pallet) {
-            return $pallet->netWeight ?? 0;
+            return $pallet->totalAvailableWeight ?? 0;
         });
     }
 
