@@ -23,9 +23,7 @@ class ApplyManualBoxCostsByProductRequest extends FormRequest
                 }
             }
 
-            if ($filters !== []) {
-                $normalized['filters'] = $filters;
-            }
+            $normalized['filters'] = $filters;
         }
 
         if (! $this->has('productCosts') && $this->has('products')) {
@@ -41,7 +39,7 @@ class ApplyManualBoxCostsByProductRequest extends FormRequest
     {
         return [
             'scope' => ['required', Rule::in(['sales', 'stock'])],
-            'filters' => 'required|array',
+            'filters' => 'array',
             'filters.dateFrom' => 'required_if:scope,sales|date_format:Y-m-d',
             'filters.dateTo' => 'required_if:scope,sales|date_format:Y-m-d|after_or_equal:filters.dateFrom',
             'filters.productIds' => 'sometimes|array',

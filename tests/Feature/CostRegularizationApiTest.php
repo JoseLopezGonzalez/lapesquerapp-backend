@@ -191,6 +191,51 @@ class CostRegularizationApiTest extends TestCase
         $this->assertEquals(13.07, (float) $box->refresh()->manual_cost_per_kg);
     }
 
+    public function test_applies_manual_costs_by_product_for_stock_with_empty_filters(): void
+    {
+        $product = $this->createProduct();
+        $box = $this->createBoxOnPallet($product, [
+            'order_id' => null,
+            'status' => Pallet::STATE_REGISTERED,
+        ], 'LOT-EMPTY-FILTERS');
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/cost-regularization/manual-costs/apply-by-product', [
+                'scope' => 'stock',
+                'filters' => [],
+                'products' => [
+                    ['productId' => $product->id, 'manualCostPerKg' => 4.5],
+                ],
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('updatedBoxesCount', 1);
+
+        $this->assertEquals(4.5, (float) $box->refresh()->manual_cost_per_kg);
+    }
+
+    public function test_applies_manual_costs_by_product_for_stock_omitting_filters_key(): void
+    {
+        $product = $this->createProduct();
+        $box = $this->createBoxOnPallet($product, [
+            'order_id' => null,
+            'status' => Pallet::STATE_REGISTERED,
+        ], 'LOT-NO-FILTERS-KEY');
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/cost-regularization/manual-costs/apply-by-product', [
+                'scope' => 'stock',
+                'products' => [
+                    ['productId' => $product->id, 'manualCostPerKg' => 3.2],
+                ],
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('updatedBoxesCount', 1);
+
+        $this->assertEquals(3.2, (float) $box->refresh()->manual_cost_per_kg);
+    }
+
     public function test_applies_manual_costs_by_lot_product_for_stock_scope(): void
     {
         $product = $this->createProduct();

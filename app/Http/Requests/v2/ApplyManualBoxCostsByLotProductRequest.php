@@ -10,11 +10,18 @@ class ApplyManualBoxCostsByLotProductRequest extends FormRequest
 {
     use AuthorizesCostRegularization;
 
+    protected function prepareForValidation(): void
+    {
+        if (! $this->has('filters')) {
+            $this->merge(['filters' => []]);
+        }
+    }
+
     public function rules(): array
     {
         return [
             'scope' => ['required', Rule::in(['sales', 'stock'])],
-            'filters' => 'required|array',
+            'filters' => 'array',
             'filters.dateFrom' => 'required_if:scope,sales|date_format:Y-m-d',
             'filters.dateTo' => 'required_if:scope,sales|date_format:Y-m-d|after_or_equal:filters.dateFrom',
             'filters.productIds' => 'sometimes|array',
