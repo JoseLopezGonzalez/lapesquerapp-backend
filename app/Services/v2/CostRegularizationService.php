@@ -31,7 +31,7 @@ class CostRegularizationService
     {
         return DB::transaction(function () use ($payload) {
             $scope = $payload['scope'];
-            $filters = $payload['filters'];
+            $filters = $payload['filters'] ?? [];
             $costsByProduct = collect($payload['productCosts'])
                 ->mapWithKeys(fn (array $row): array => [(int) $row['productId'] => (float) $row['manualCostPerKg']]);
 
@@ -100,7 +100,7 @@ class CostRegularizationService
     {
         return DB::transaction(function () use ($payload) {
             $scope = $payload['scope'];
-            $filters = $payload['filters'];
+            $filters = $payload['filters'] ?? [];
             $costsByLotProduct = collect($payload['lotProductCosts'])
                 ->mapWithKeys(fn (array $row): array => [
                     $this->lotProductKey((int) $row['productId'], $row['lot']) => (float) $row['manualCostPerKg'],
