@@ -97,6 +97,94 @@ class ProductionInputService
     }
 
     /**
+     * Sincroniza inputs de un proceso de producción aplicando diff.
+     *
+     * @return array{
+     *   added: array<int, ProductionInput>,
+     *   removed: array<int, int>,
+     *   unchanged: array<int, int>
+     * }
+     */
+    public function syncMultiple(int $productionRecordId, array $boxIds): array
+    {
+        return DB::transaction(function () use ($productionRecordId, $boxIds) {
+            $desiredBoxIds = collect($boxIds)
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+
+            $currentInputs = ProductionInput::with(['box.palletBox.pallet'])
+                ->where('production_record_id', $productionRecordId)
+                ->get()
+                ->keyBy('box_id');
+
+            $currentBoxIds = $currentInputs->keys()
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+
+            $toAdd = array_values(array_diff($desiredBoxIds, $currentBoxIds));
+            $toRemove = array_values(array_diff($currentBoxIds, $desiredBoxIds));
+            $unchanged = array_values(array_intersect($currentBoxIds, $desiredBoxIds));
+
+            $palletsToUpdate = [];
+
+            if ($toRemove !== []) {
+                foreach ($toRemove as $boxId) {
+                    /** @var ProductionInput $input */
+                    $input = $currentInputs->get($boxId);
+                    if (! $input || ! $input->box) {
+                        continue;
+                    }
+
+                    // Mantener restricciones actuales: si el lote está cerrado, falla.
+                    $this->lotLock->assertBoxIsMutable($input->box, 'eliminar input de producción');
+
+                    $pallet = $input->box->palletBox->pallet ?? null;
+                    if ($pallet) {
+                        $palletsToUpdate[$pallet->id] = $pallet->id;
+                    }
+
+                    $input->delete();
+                }
+            }
+
+            $added = [];
+            if ($toAdd !== []) {
+                foreach ($toAdd as $boxId) {
+                    $input = ProductionInput::create([
+                        'production_record_id' => $productionRecordId,
+                        'box_id' => $boxId,
+                    ]);
+
+                    $input->load(['productionRecord', 'box.product', 'box.product.species', 'box.product.captureZone', 'box.palletBox.pallet']);
+
+                    $pallet = $input->box->palletBox->pallet ?? null;
+                    if ($pallet) {
+                        $palletsToUpdate[$pallet->id] = $pallet->id;
+                    }
+
+                    $added[] = $input;
+                }
+            }
+
+            foreach ($palletsToUpdate as $palletId) {
+                $pallet = \App\Models\Pallet::find($palletId);
+                if ($pallet) {
+                    $pallet->updateStateBasedOnBoxes();
+                }
+            }
+
+            return [
+                'added' => $added,
+                'removed' => $toRemove,
+                'unchanged' => $unchanged,
+            ];
+        });
+    }
+
+    /**
      * Delete a production input
      */
     public function delete(ProductionInput $input): bool

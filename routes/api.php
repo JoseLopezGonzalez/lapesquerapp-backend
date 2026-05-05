@@ -479,6 +479,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
         // Las rutas específicas deben ir ANTES del apiResource para evitar conflictos
         Route::post('production-inputs/multiple', [ProductionInputController::class, 'storeMultiple'])->name('production-inputs.storeMultiple');
+        Route::put('production-inputs/multiple', [ProductionInputController::class, 'syncMultiple'])->name('production-inputs.syncMultiple');
         Route::delete('production-inputs/multiple', [ProductionInputController::class, 'destroyMultiple'])->name('production-inputs.destroyMultiple');
         Route::apiResource('production-inputs', ProductionInputController::class);
 

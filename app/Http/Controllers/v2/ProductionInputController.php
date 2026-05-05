@@ -7,6 +7,7 @@ use App\Http\Requests\v2\DestroyMultipleProductionInputsRequest;
 use App\Http\Requests\v2\IndexProductionInputRequest;
 use App\Http\Requests\v2\StoreMultipleProductionInputsRequest;
 use App\Http\Requests\v2\StoreProductionInputRequest;
+use App\Http\Requests\v2\SyncMultipleProductionInputsRequest;
 use App\Http\Resources\v2\ProductionInputResource;
 use App\Models\ProductionInput;
 use App\Services\Production\ProductionInputService;
@@ -123,6 +124,35 @@ class ProductionInputController extends Controller
 
         return response()->json([
             'message' => "{$deletedCount} entrada(s) de producción eliminada(s) correctamente.",
+        ], 200);
+    }
+
+    /**
+     * Sync inputs to match the final set of boxes.
+     */
+    public function syncMultiple(SyncMultipleProductionInputsRequest $request)
+    {
+        $validated = $request->validated();
+        $productionRecordId = (int) $validated['production_record_id'];
+        $desiredBoxIds = array_map('intval', $validated['box_ids']);
+
+        $currentInputs = ProductionInput::where('production_record_id', $productionRecordId)
+            ->whereNotIn('box_id', $desiredBoxIds)
+            ->get();
+
+        foreach ($currentInputs as $input) {
+            $this->authorize('delete', $input);
+        }
+
+        $result = $this->productionInputService->syncMultiple($productionRecordId, $desiredBoxIds);
+
+        return response()->json([
+            'message' => 'Inputs sincronizados correctamente.',
+            'data' => [
+                'added' => ProductionInputResource::collection(collect($result['added'])),
+                'removedBoxIds' => $result['removed'],
+                'unchangedBoxIds' => $result['unchanged'],
+            ],
         ], 200);
     }
 }
