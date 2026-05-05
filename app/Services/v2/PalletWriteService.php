@@ -193,11 +193,33 @@ class PalletWriteService
 
             if (array_key_exists('boxes', $palletData)) {
                 $boxes = $palletData['boxes'];
+                $existingBoxIds = $updatedPallet->boxes
+                    ->pluck('box.id')
+                    ->filter()
+                    ->values();
+                $usedBoxIds = Box::query()
+                    ->whereIn('id', $existingBoxIds)
+                    ->whereHas('productionInputs')
+                    ->pluck('id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+                $usedBoxIdMap = array_flip($usedBoxIds);
 
-                $updatedPallet->boxes->map(function ($palletBox) use (&$boxes) {
+                $updatedPallet->boxes->map(function ($palletBox) use (&$boxes, $usedBoxIdMap) {
+                    if (! $palletBox->box) {
+                        return;
+                    }
+
                     $hasBeenUpdated = false;
                     foreach ($boxes as $index => $updatedBox) {
                         if ($updatedBox['id'] == $palletBox->box->id) {
+                            // Las cajas usadas en producción se tratan como inmutables.
+                            if (isset($usedBoxIdMap[(int) $palletBox->box->id])) {
+                                $hasBeenUpdated = true;
+                                unset($boxes[$index]);
+                                break;
+                            }
+
                             $boxChanges = [
                                 'article_id' => $updatedBox['product']['id'],
                                 'lot' => $updatedBox['lot'],
@@ -213,9 +235,14 @@ class PalletWriteService
                             $palletBox->box->update($boxChanges);
                             $hasBeenUpdated = true;
                             unset($boxes[$index]);
+                            break;
                         }
                     }
                     if (! $hasBeenUpdated) {
+                        if (isset($usedBoxIdMap[(int) $palletBox->box->id])) {
+                            return;
+                        }
+
                         $palletBox->box->delete();
                     }
                 });
