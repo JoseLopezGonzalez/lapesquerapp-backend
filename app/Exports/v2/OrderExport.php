@@ -95,6 +95,10 @@ class OrderExport implements FromQuery, WithHeadings, WithMapping
 
     public function map($order): array
     {
+        $subtotalAmount = (float) ($order->subtotal_amount ?? 0);
+        $totalAmount = (float) ($order->total_amount ?? 0);
+        $taxAmount = $totalAmount - $subtotalAmount;
+
         return [
             'Id'           => $order->id,
             'Cliente'      => $order->customer->name,
@@ -107,6 +111,9 @@ class OrderExport implements FromQuery, WithHeadings, WithMapping
             'Cajas'        => $order->totalBoxes ?? 'N/A',
             'Incoterm'     => $order->incoterm->code ?? 'N/A',
             'Peso Total'   => number_format($order->totalNetWeight, 2, ',', '.'),
+            'Subtotal'     => number_format($subtotalAmount, 2, ',', '.'),
+            'Impuestos'    => number_format($taxAmount, 2, ',', '.'),
+            'Total'        => number_format($totalAmount, 2, ',', '.'),
         ];
     }
 
@@ -124,6 +131,9 @@ class OrderExport implements FromQuery, WithHeadings, WithMapping
             'Cajas',
             'Incoterm',
             'Peso Total',
+            'Subtotal',
+            'Impuestos',
+            'Total',
         ];
     }
 }
