@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\v2;
 
+use App\Support\PalletManualCostPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -33,8 +34,13 @@ class OrderDetailsResource extends JsonResource
             'loadDate' => $this->load_date,
             'status' => $this->status,
             'pallets' => $this->relationLoaded('pallets')
-                ? $this->pallets->map(function ($pallet) {
-                    return $pallet->toArrayAssocV2();
+                ? $this->pallets->map(function ($pallet) use ($request) {
+                    $assoc = $pallet->toArrayAssocV2();
+                    if (! PalletManualCostPolicy::authorized($request->user())) {
+                        return PalletManualCostPolicy::stripFromPalletAssocArray($assoc);
+                    }
+
+                    return $assoc;
                 })
                 : [],
             'incoterm' => $this->relationLoaded('incoterm') ? $this->incoterm?->toArrayAssoc() : null,

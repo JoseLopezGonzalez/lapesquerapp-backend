@@ -2,7 +2,7 @@
 
 namespace App\Http\Resources\v2;
 
-use App\Enums\Role;
+use App\Support\PalletManualCostPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -16,10 +16,7 @@ class PalletResource extends JsonResource
     public function toArray(Request $request): array
     {
         $boxes = $this->relationLoaded('boxes') ? $this->boxes : collect();
-        $canViewManualCostContext = $request->user()?->hasAnyRole([
-            Role::Administrador->value,
-            Role::Tecnico->value,
-        ]) ?? false;
+        $canViewManualCostContext = PalletManualCostPolicy::authorized($request->user());
 
         if ($this->relationLoaded('storedPallet')) {
             $position = $this->storedPallet?->position;
@@ -29,7 +26,7 @@ class PalletResource extends JsonResource
             $storeModel = $this->store;
         }
 
-        return [
+        $base = [
             'id' => $this->id,
             'observations' => $this->observations,
             'state' => $this->stateArray,
@@ -69,8 +66,13 @@ class PalletResource extends JsonResource
             'totalUsedWeight' => $this->relationLoaded('boxes') && $this->totalUsedWeight !== null ? round($this->totalUsedWeight, 3) : 0,
             // Nuevos campos de recepción y coste
             'receptionId' => $this->reception_id,
-            'costPerKg' => $this->relationLoaded('boxes') && $this->cost_per_kg !== null ? round($this->cost_per_kg, 4) : null,
-            'totalCost' => $this->relationLoaded('boxes') && $this->total_cost !== null ? round($this->total_cost, 2) : null,
         ];
+
+        if ($canViewManualCostContext) {
+            $base['costPerKg'] = $this->relationLoaded('boxes') && $this->cost_per_kg !== null ? round($this->cost_per_kg, 4) : null;
+            $base['totalCost'] = $this->relationLoaded('boxes') && $this->total_cost !== null ? round($this->total_cost, 2) : null;
+        }
+
+        return $base;
     }
 }

@@ -23,6 +23,7 @@ use App\Services\v2\PalletActionService;
 use App\Services\v2\PalletListService;
 use App\Services\v2\PalletTimelineService;
 use App\Services\v2\PalletWriteService;
+use Illuminate\Http\Request;
 
 class PalletController extends Controller
 {
@@ -279,15 +280,15 @@ class PalletController extends Controller
 
     public function searchByLot(SearchByLotPalletRequest $request)
     {
-        $data = PalletListService::searchByLot($request->validated('lot'));
+        $data = PalletListService::searchByLot($request->validated('lot'), $request->user());
 
         return response()->json(['data' => $data], 200);
     }
 
-    public function registeredPallets()
+    public function registeredPallets(Request $request)
     {
         $this->authorize('viewAny', Pallet::class);
-        $data = PalletListService::registeredPallets();
+        $data = PalletListService::registeredPallets($request->user());
 
         return response()->json($data, 200);
     }

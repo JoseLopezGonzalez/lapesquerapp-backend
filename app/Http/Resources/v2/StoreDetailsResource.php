@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\v2;
 
+use App\Support\PalletManualCostPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -29,10 +30,13 @@ class StoreDetailsResource extends JsonResource
             'netWeightPallets' => $this->netWeightPallets,
             'totalNetWeight' => $this->totalNetWeight,
             'content' => [
-                'pallets' => $this->relationLoaded('palletsV2') ? $this->palletsV2->map(function ($pallet) {
-                    /* return $pallet->toArrayAssocV2(); */ /* resource */
-                    return $pallet->toArrayAssocV2();
+                'pallets' => $this->relationLoaded('palletsV2') ? $this->palletsV2->map(function ($pallet) use ($request) {
+                    $assoc = $pallet->toArrayAssocV2();
+                    if (! PalletManualCostPolicy::authorized($request->user())) {
+                        return PalletManualCostPolicy::stripFromPalletAssocArray($assoc);
+                    }
 
+                    return $assoc;
                 }) : [],
                 'boxes' => [],
                 'bigBoxes' => [],

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\v2;
 
+use App\Support\PalletManualCostPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -32,7 +33,14 @@ class FieldOrderDetailsResource extends JsonResource
             // execution: same V2 pallet shape as OrderDetailsResource (costs, availability, position).
             // OrderDetailService eager-loads `pallets.boxes.box`; toArrayAssocV2 falls back from boxesV2.
             'pallets' => $this->relationLoaded('pallets')
-                ? $this->pallets->map(fn ($pallet) => $pallet->toArrayAssocV2())->values()
+                ? $this->pallets->map(function ($pallet) use ($request) {
+                    $assoc = $pallet->toArrayAssocV2();
+                    if (! PalletManualCostPolicy::authorized($request->user())) {
+                        return PalletManualCostPolicy::stripFromPalletAssocArray($assoc);
+                    }
+
+                    return $assoc;
+                })->values()
                 : [],
 
             'totalBoxes' => $this->totalBoxes,

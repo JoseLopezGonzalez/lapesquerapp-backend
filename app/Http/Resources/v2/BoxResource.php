@@ -2,7 +2,7 @@
 
 namespace App\Http\Resources\v2;
 
-use App\Enums\Role;
+use App\Support\PalletManualCostPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -18,10 +18,7 @@ class BoxResource extends JsonResource
         $production = $this->production;
         $product = $this->relationLoaded('product') ? $this->product : null;
         $palletId = null;
-        $canViewManualCostContext = $request->user()?->hasAnyRole([
-            Role::Administrador->value,
-            Role::Tecnico->value,
-        ]) ?? false;
+        $canViewManualCostContext = PalletManualCostPolicy::authorized($request->user());
 
         if ($this->relationLoaded('palletBox')) {
             $palletId = $this->palletBox?->pallet_id;

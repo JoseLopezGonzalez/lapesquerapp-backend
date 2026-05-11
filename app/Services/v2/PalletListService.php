@@ -4,6 +4,8 @@ namespace App\Services\v2;
 
 use App\Models\Pallet;
 use App\Services\ActorScopeService;
+use App\Support\PalletManualCostPolicy;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -196,7 +198,7 @@ class PalletListService
     /**
      * Buscar palets registrados por lote con cajas disponibles.
      */
-    public static function searchByLot(string $lot): array
+    public static function searchByLot(string $lot, ?Authenticatable $viewer = null): array
     {
         $pallets = Pallet::where('status', Pallet::STATE_REGISTERED)
             ->whereHas('boxes.box', function ($query) use ($lot) {
@@ -234,6 +236,12 @@ class PalletListService
             return $palletArray;
         })->filter()->values();
 
+        if (! PalletManualCostPolicy::authorized($viewer)) {
+            $formattedPallets = $formattedPallets->map(
+                fn (array $p) => PalletManualCostPolicy::stripFromPalletAssocArray($p)
+            )->values();
+        }
+
         return [
             'pallets' => $formattedPallets,
             'total' => $formattedPallets->count(),
@@ -244,13 +252,20 @@ class PalletListService
     /**
      * Obtener palets registrados (formato similar a StoreDetailsResource).
      */
-    public static function registeredPallets(): array
+    public static function registeredPallets(?Authenticatable $viewer = null): array
     {
         $query = Pallet::query()->where('status', Pallet::STATE_REGISTERED);
         $query = self::loadRelations($query);
         $pallets = $query->orderBy('id', 'desc')->get();
 
         $netWeightPallets = $pallets->sum(fn ($p) => $p->netWeight ?? 0);
+
+        $palletRows = $pallets->map(fn ($p) => $p->toArrayAssocV2())->values();
+        if (! PalletManualCostPolicy::authorized($viewer)) {
+            $palletRows = $palletRows->map(
+                fn (array $p) => PalletManualCostPolicy::stripFromPalletAssocArray($p)
+            )->values();
+        }
 
         return [
             'id' => null,
@@ -260,7 +275,7 @@ class PalletListService
             'netWeightPallets' => round($netWeightPallets, 3),
             'totalNetWeight' => round($netWeightPallets, 3),
             'content' => [
-                'pallets' => $pallets->map(fn ($p) => $p->toArrayAssocV2())->values(),
+                'pallets' => $palletRows,
                 'boxes' => [],
                 'bigBoxes' => [],
             ],

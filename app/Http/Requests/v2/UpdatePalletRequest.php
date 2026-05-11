@@ -2,14 +2,37 @@
 
 namespace App\Http\Requests\v2;
 
-use App\Enums\Role;
 use App\Models\ExternalUser;
 use App\Models\Pallet;
 use App\Services\ActorScopeService;
+use App\Support\PalletManualCostPolicy;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdatePalletRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if (PalletManualCostPolicy::authorized($this->user())) {
+            return;
+        }
+
+        $boxes = $this->input('boxes');
+        if (! is_array($boxes)) {
+            return;
+        }
+
+        $boxes = array_map(static function ($box) {
+            if (! is_array($box)) {
+                return $box;
+            }
+            unset($box['manualCostPerKg']);
+
+            return $box;
+        }, $boxes);
+
+        $this->merge(['boxes' => $boxes]);
+    }
+
     public function authorize(): bool
     {
         $id = $this->route('pallet');
@@ -83,9 +106,6 @@ class UpdatePalletRequest extends FormRequest
 
     private function userCanEditManualCost(): bool
     {
-        return $this->user()?->hasAnyRole([
-            Role::Administrador->value,
-            Role::Tecnico->value,
-        ]) ?? false;
+        return PalletManualCostPolicy::authorized($this->user());
     }
 }
