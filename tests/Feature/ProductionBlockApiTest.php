@@ -874,6 +874,135 @@ class ProductionBlockApiTest extends TestCase
         $this->assertEquals(25, $response->json('data.totals.totalOutputWeight'));
     }
 
+    public function test_filtered_process_tree_traces_sources_and_removes_unrelated_parent_data(): void
+    {
+        [$production, $parentRecord, $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $rawA = $this->createValidProduct($species, $captureZone, '10RA');
+        $rawB = $this->createValidProduct($species, $captureZone, '10RB');
+        $finalA = $this->createValidProduct($species, $captureZone, '10FA');
+        $finalB = $this->createValidProduct($species, $captureZone, '10FB');
+
+        $rawBoxA = Box::factory()->create([
+            'article_id' => $rawA->id,
+            'lot' => 'RAW-A',
+            'net_weight' => 100,
+            'gross_weight' => 101,
+        ]);
+        $rawBoxB = Box::factory()->create([
+            'article_id' => $rawB->id,
+            'lot' => 'RAW-B',
+            'net_weight' => 50,
+            'gross_weight' => 51,
+        ]);
+        ProductionInput::create([
+            'production_record_id' => $parentRecord->id,
+            'box_id' => $rawBoxA->id,
+        ]);
+        ProductionInput::create([
+            'production_record_id' => $parentRecord->id,
+            'box_id' => $rawBoxB->id,
+        ]);
+
+        $parentOutputA = ProductionOutput::create([
+            'production_record_id' => $parentRecord->id,
+            'product_id' => $rawA->id,
+            'lot_id' => 'PARENT-A',
+            'boxes' => 10,
+            'weight_kg' => 100,
+        ]);
+        $parentOutputB = ProductionOutput::create([
+            'production_record_id' => $parentRecord->id,
+            'product_id' => $rawB->id,
+            'lot_id' => 'PARENT-B',
+            'boxes' => 5,
+            'weight_kg' => 50,
+        ]);
+        ProductionOutputSource::create([
+            'production_output_id' => $parentOutputA->id,
+            'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_PRODUCT,
+            'product_id' => $rawA->id,
+            'contributed_weight_kg' => 100,
+        ]);
+        ProductionOutputSource::create([
+            'production_output_id' => $parentOutputB->id,
+            'source_type' => ProductionOutputSource::SOURCE_TYPE_STOCK_PRODUCT,
+            'product_id' => $rawB->id,
+            'contributed_weight_kg' => 50,
+        ]);
+
+        $consumptionA = ProductionOutputConsumption::create([
+            'production_record_id' => $childRecord->id,
+            'production_output_id' => $parentOutputA->id,
+            'consumed_weight_kg' => 100,
+            'consumed_boxes' => 10,
+        ]);
+        $consumptionB = ProductionOutputConsumption::create([
+            'production_record_id' => $childRecord->id,
+            'production_output_id' => $parentOutputB->id,
+            'consumed_weight_kg' => 50,
+            'consumed_boxes' => 5,
+        ]);
+
+        $finalOutputA = ProductionOutput::create([
+            'production_record_id' => $childRecord->id,
+            'product_id' => $finalA->id,
+            'lot_id' => 'FINAL-A',
+            'boxes' => 10,
+            'weight_kg' => 100,
+        ]);
+        $finalOutputB = ProductionOutput::create([
+            'production_record_id' => $childRecord->id,
+            'product_id' => $finalB->id,
+            'lot_id' => 'FINAL-B',
+            'boxes' => 5,
+            'weight_kg' => 50,
+        ]);
+        ProductionOutputSource::create([
+            'production_output_id' => $finalOutputA->id,
+            'source_type' => ProductionOutputSource::SOURCE_TYPE_PARENT_OUTPUT,
+            'production_output_consumption_id' => $consumptionA->id,
+            'contributed_weight_kg' => 100,
+        ]);
+        ProductionOutputSource::create([
+            'production_output_id' => $finalOutputB->id,
+            'source_type' => ProductionOutputSource::SOURCE_TYPE_PARENT_OUTPUT,
+            'production_output_consumption_id' => $consumptionB->id,
+            'contributed_weight_kg' => 50,
+        ]);
+
+        $salesContext = $this->createSalesContext('PTRACE');
+        $customer = $this->createCustomerForTest($salesContext, 'PTRACE');
+        $order = $this->createOrderForTest($customer, $salesContext);
+        $order->update(['status' => Order::STATUS_FINISHED]);
+        $tax = Tax::query()->firstOrCreate(
+            ['name' => 'IVA Trace'],
+            ['name' => 'IVA Trace', 'rate' => 10]
+        );
+        OrderPlannedProductDetail::create([
+            'order_id' => $order->id,
+            'product_id' => $finalA->id,
+            'tax_id' => $tax->id,
+            'quantity' => 20,
+            'boxes' => 1,
+            'unit_price' => 4,
+        ]);
+        $this->createShippedPalletWithBox($order, $finalA, $production->lot, 20);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/'.$production->id.'/process-tree?orderId='.$order->id);
+
+        $response->assertOk();
+        $root = $response->json('data.processNodes.0');
+        $child = $root['children'][0];
+
+        $this->assertSame([$rawA->id], collect($root['inputs'])->pluck('product.id')->unique()->values()->all());
+        $this->assertSame([$rawA->id], collect($root['outputs'])->pluck('productId')->values()->all());
+        $this->assertSame([$parentOutputA->id], collect($child['parentOutputConsumptions'])->pluck('productionOutputId')->values()->all());
+        $this->assertSame([$finalA->id], collect($child['outputs'])->pluck('productId')->values()->all());
+    }
+
     public function test_production_process_tree_stock_node_includes_cost_metrics(): void
     {
         [$production, , $childRecord] = $this->createProductionWithRecords();

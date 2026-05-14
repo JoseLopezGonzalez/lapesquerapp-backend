@@ -1102,15 +1102,15 @@ class Production extends Model
         $filtered = [];
 
         foreach ($nodes as $node) {
-            $filteredNode = $this->filterProcessNodeForSalesScope(
+            $result = $this->filterProcessNodeForSalesScope(
                 $node,
                 $salesDataByProduct,
                 $salesTotalsByProduct,
                 $producedTotalsByProduct
             );
 
-            if ($filteredNode !== null) {
-                $filtered[] = $filteredNode;
+            if ($result['node'] !== null) {
+                $filtered[] = $result['node'];
             }
         }
 
@@ -1122,65 +1122,113 @@ class Production extends Model
         array $salesDataByProduct,
         array $salesTotalsByProduct,
         array $producedTotalsByProduct
-    ): ?array {
-        $originalInputWeight = (float) ($node['totalInputWeight'] ?? 0);
-        $originalOutputWeight = (float) ($node['totalOutputWeight'] ?? 0);
-        $filteredChildren = $this->filterProcessNodesForSalesScope(
-            $node['children'] ?? [],
-            $salesDataByProduct,
-            $salesTotalsByProduct,
-            $producedTotalsByProduct
-        );
+    ): array {
+        $filteredChildren = [];
+        $requiredOutputWeights = [];
 
-        $nodeFactor = null;
-        $filteredOutputs = [];
+        foreach (($node['children'] ?? []) as $child) {
+            $childResult = $this->filterProcessNodeForSalesScope(
+                $child,
+                $salesDataByProduct,
+                $salesTotalsByProduct,
+                $producedTotalsByProduct
+            );
+
+            if ($childResult['node'] !== null) {
+                $filteredChildren[] = $childResult['node'];
+            }
+
+            foreach ($childResult['requirements']['outputs'] as $outputId => $weight) {
+                $requiredOutputWeights[$outputId] = ($requiredOutputWeights[$outputId] ?? 0) + $weight;
+            }
+        }
+
+        $selectedOutputWeights = [];
 
         if (($node['isFinal'] ?? false) === true) {
-            $originalRelevantOutputWeight = 0.0;
-            $filteredOutputWeight = 0.0;
-
             foreach (($node['outputs'] ?? []) as $output) {
+                $outputId = $output['id'] ?? null;
                 $productId = $output['productId'] ?? null;
                 $outputWeight = (float) ($output['weightKg'] ?? 0);
                 $producedWeight = (float) ($producedTotalsByProduct[$productId]['weight'] ?? 0);
                 $salesWeight = (float) ($salesTotalsByProduct[$productId]['weight'] ?? 0);
 
-                if (! $productId || $outputWeight <= 0 || $producedWeight <= 0 || $salesWeight <= 0) {
+                if (! $outputId || ! $productId || $outputWeight <= 0 || $producedWeight <= 0 || $salesWeight <= 0) {
                     continue;
                 }
 
                 $factor = $salesWeight / $producedWeight;
-                $filteredOutputs[] = $this->scaleOutputData($output, $factor);
-                $originalRelevantOutputWeight += $outputWeight;
-                $filteredOutputWeight += $outputWeight * $factor;
+                $selectedOutputWeights[$outputId] = $outputWeight * $factor;
             }
+        } else {
+            foreach (($node['outputs'] ?? []) as $output) {
+                $outputId = $output['id'] ?? null;
+                $outputWeight = (float) ($output['weightKg'] ?? 0);
+                $requiredWeight = (float) ($requiredOutputWeights[$outputId] ?? 0);
 
-            if ($originalRelevantOutputWeight > 0) {
-                $nodeFactor = $filteredOutputWeight / $originalRelevantOutputWeight;
+                if (! $outputId || $outputWeight <= 0 || $requiredWeight <= 0) {
+                    continue;
+                }
+
+                $selectedOutputWeights[$outputId] = min($outputWeight, $requiredWeight);
             }
-        } elseif (! empty($filteredChildren)) {
-            $filteredChildrenWeight = array_sum(array_map(static function ($child) {
-                $inputWeight = (float) ($child['totalInputWeight'] ?? 0);
-
-                return $inputWeight > 0
-                    ? $inputWeight
-                    : (float) ($child['totalOutputWeight'] ?? 0);
-            }, $filteredChildren));
-            $baseWeight = $originalInputWeight > 0 ? $originalInputWeight : $originalOutputWeight;
-            $nodeFactor = $baseWeight > 0 ? min(1, $filteredChildrenWeight / $baseWeight) : 1;
-            $filteredOutputs = array_map(
-                fn ($output) => $this->scaleOutputData($output, $nodeFactor),
-                $node['outputs'] ?? []
-            );
         }
 
-        if ($nodeFactor === null || ($nodeFactor <= 0 && empty($filteredChildren) && empty($filteredOutputs))) {
-            return null;
+        $filteredOutputs = [];
+        $neededConsumptionWeights = [];
+        $neededStockProductWeights = [];
+
+        foreach (($node['outputs'] ?? []) as $output) {
+            $outputId = $output['id'] ?? null;
+            $outputWeight = (float) ($output['weightKg'] ?? 0);
+            $selectedWeight = (float) ($selectedOutputWeights[$outputId] ?? 0);
+
+            if (! $outputId || $outputWeight <= 0 || $selectedWeight <= 0) {
+                continue;
+            }
+
+            $factor = min(1, $selectedWeight / $outputWeight);
+            $scaledOutput = $this->scaleOutputData($output, $factor);
+            $filteredOutputs[] = $scaledOutput;
+
+            foreach (($scaledOutput['sources'] ?? []) as $source) {
+                $sourceWeight = (float) ($source['contributedWeightKg'] ?? 0);
+                $consumptionId = $source['productionOutputConsumptionId'] ?? null;
+
+                if ($consumptionId && $sourceWeight > 0) {
+                    $neededConsumptionWeights[$consumptionId] = ($neededConsumptionWeights[$consumptionId] ?? 0) + $sourceWeight;
+
+                    continue;
+                }
+
+                $sourceProductId = $source['productId'] ?? $source['product']['id'] ?? $scaledOutput['productId'] ?? null;
+                if ($sourceProductId && $sourceWeight > 0) {
+                    $neededStockProductWeights[$sourceProductId] = ($neededStockProductWeights[$sourceProductId] ?? 0) + $sourceWeight;
+                }
+            }
         }
 
-        $node = $this->scaleProcessNodeData($node, $nodeFactor);
+        $filteredParentConsumptions = $this->filterParentConsumptionsByRequiredWeights(
+            $node['parentOutputConsumptions'] ?? [],
+            $neededConsumptionWeights
+        );
+        $filteredStockInputs = $this->filterStockInputsByRequiredProductWeights(
+            $node['inputs'] ?? [],
+            $neededStockProductWeights
+        );
+
+        if (empty($filteredOutputs) && empty($filteredChildren)) {
+            return [
+                'node' => null,
+                'requirements' => ['outputs' => []],
+            ];
+        }
+
         $node['outputs'] = array_values($filteredOutputs);
+        $node['parentOutputConsumptions'] = $filteredParentConsumptions;
+        $node['inputs'] = array_values(array_merge($filteredStockInputs, $filteredParentConsumptions));
         $node['children'] = $filteredChildren;
+        $node = $this->recalculateFilteredNodeTotals($node);
 
         if (($node['isFinal'] ?? false) === true && $filteredOutputs !== []) {
             $salesNode = $this->createFilteredSalesNodeForFinalNode(
@@ -1194,6 +1242,140 @@ class Production extends Model
             if ($salesNode !== null) {
                 $node['children'][] = $salesNode;
             }
+        }
+
+        return [
+            'node' => $node,
+            'requirements' => [
+                'outputs' => $this->buildParentOutputRequirements($filteredParentConsumptions),
+            ],
+        ];
+    }
+
+    private function filterParentConsumptionsByRequiredWeights(array $consumptions, array $requiredWeights): array
+    {
+        $filtered = [];
+
+        foreach ($consumptions as $consumption) {
+            $consumptionId = $consumption['id'] ?? null;
+            $originalWeight = (float) ($consumption['consumedWeightKg'] ?? $consumption['weight'] ?? 0);
+            $requiredWeight = (float) ($requiredWeights[$consumptionId] ?? 0);
+
+            if (! $consumptionId || $originalWeight <= 0 || $requiredWeight <= 0) {
+                continue;
+            }
+
+            $filtered[] = $this->scaleParentConsumptionData(
+                $consumption,
+                min(1, $requiredWeight / $originalWeight)
+            );
+        }
+
+        return $filtered;
+    }
+
+    private function filterStockInputsByRequiredProductWeights(array $inputs, array $requiredProductWeights): array
+    {
+        $stockInputs = array_values(array_filter(
+            $inputs,
+            static fn ($input) => ($input['type'] ?? null) === 'stock_box'
+        ));
+        $weightsByProduct = [];
+
+        foreach ($stockInputs as $input) {
+            $productId = $input['product']['id'] ?? $input['box']['product']['id'] ?? null;
+            if (! $productId) {
+                continue;
+            }
+
+            $weightsByProduct[$productId] = ($weightsByProduct[$productId] ?? 0) + (float) ($input['weight'] ?? 0);
+        }
+
+        $filtered = [];
+        foreach ($stockInputs as $input) {
+            $productId = $input['product']['id'] ?? $input['box']['product']['id'] ?? null;
+            $originalProductWeight = (float) ($weightsByProduct[$productId] ?? 0);
+            $requiredWeight = (float) ($requiredProductWeights[$productId] ?? 0);
+
+            if (! $productId || $originalProductWeight <= 0 || $requiredWeight <= 0) {
+                continue;
+            }
+
+            $filtered[] = $this->scaleInputData($input, min(1, $requiredWeight / $originalProductWeight));
+        }
+
+        return $filtered;
+    }
+
+    private function buildParentOutputRequirements(array $parentConsumptions): array
+    {
+        $requirements = [];
+
+        foreach ($parentConsumptions as $consumption) {
+            $outputId = $consumption['productionOutputId'] ?? null;
+            $weight = (float) ($consumption['consumedWeightKg'] ?? $consumption['weight'] ?? 0);
+
+            if ($outputId && $weight > 0) {
+                $requirements[$outputId] = ($requirements[$outputId] ?? 0) + $weight;
+            }
+        }
+
+        return $requirements;
+    }
+
+    private function recalculateFilteredNodeTotals(array $node): array
+    {
+        $inputWeight = (float) array_sum(array_map(
+            static fn ($input) => (float) ($input['weight'] ?? $input['consumedWeightKg'] ?? 0),
+            $node['inputs'] ?? []
+        ));
+        $outputWeight = (float) array_sum(array_map(
+            static fn ($output) => (float) ($output['weightKg'] ?? 0),
+            $node['outputs'] ?? []
+        ));
+        $stockInputBoxes = count(array_filter(
+            $node['inputs'] ?? [],
+            static fn ($input) => ($input['type'] ?? null) === 'stock_box'
+        ));
+        $parentInputBoxes = (float) array_sum(array_map(
+            static fn ($input) => (float) ($input['consumedBoxes'] ?? 0),
+            $node['parentOutputConsumptions'] ?? []
+        ));
+        $outputBoxes = (float) array_sum(array_map(
+            static fn ($output) => (float) ($output['boxes'] ?? 0),
+            $node['outputs'] ?? []
+        ));
+        $difference = $inputWeight - $outputWeight;
+        $waste = $difference > 0 ? $difference : 0;
+        $yield = $difference < 0 ? abs($difference) : 0;
+
+        $node['totalInputWeight'] = round($inputWeight, 2);
+        $node['totalOutputWeight'] = round($outputWeight, 2);
+        $node['totalInputBoxes'] = round($stockInputBoxes + $parentInputBoxes, 2);
+        $node['totalOutputBoxes'] = round($outputBoxes, 2);
+        $node['waste'] = round($waste, 2);
+        $node['wastePercentage'] = $inputWeight > 0 && $waste > 0 ? round(($waste / $inputWeight) * 100, 2) : 0;
+        $node['yield'] = round($yield, 2);
+        $node['yieldPercentage'] = $inputWeight > 0 && $yield > 0 ? round(($yield / $inputWeight) * 100, 2) : 0;
+
+        $node['totals'] = [
+            'inputWeight' => $node['totalInputWeight'],
+            'outputWeight' => $node['totalOutputWeight'],
+            'waste' => $node['waste'],
+            'wastePercentage' => $node['wastePercentage'],
+            'yield' => $node['yield'],
+            'yieldPercentage' => $node['yieldPercentage'],
+            'inputBoxes' => $node['totalInputBoxes'],
+            'outputBoxes' => $node['totalOutputBoxes'],
+        ];
+
+        if (isset($node['costs']) && is_array($node['costs'])) {
+            $totalCost = (float) array_sum(array_map(
+                static fn ($output) => (float) ($output['totalCost'] ?? 0),
+                $node['outputs'] ?? []
+            ));
+            $node['costs']['totalCost'] = round($totalCost, 4);
+            $node['costs']['averageCostPerKg'] = $outputWeight > 0 ? round($totalCost / $outputWeight, 4) : 0.0;
         }
 
         return $node;
@@ -1268,6 +1450,14 @@ class Production extends Model
             }
         }
 
+        if (isset($consumption['productionOutput']) && is_array($consumption['productionOutput'])) {
+            foreach (['weightKg', 'boxes'] as $key) {
+                if (isset($consumption['productionOutput'][$key]) && is_numeric($consumption['productionOutput'][$key])) {
+                    $consumption['productionOutput'][$key] = round((float) $consumption['productionOutput'][$key] * $factor, 4);
+                }
+            }
+        }
+
         return $consumption;
     }
 
@@ -1291,7 +1481,31 @@ class Production extends Model
             }, $output['sources']));
         }
 
+        if (isset($output['costBreakdown']) && is_array($output['costBreakdown'])) {
+            $output['costBreakdown'] = $this->scaleCostBreakdownData($output['costBreakdown'], $factor);
+        }
+
         return $output;
+    }
+
+    private function scaleCostBreakdownData(array $value, float $factor): array
+    {
+        foreach ($value as $key => $item) {
+            if (is_array($item)) {
+                $value[$key] = $this->scaleCostBreakdownData($item, $factor);
+
+                continue;
+            }
+
+            if (
+                is_numeric($item)
+                && in_array($key, ['total_cost', 'source_total_cost'], true)
+            ) {
+                $value[$key] = round((float) $item * $factor, 4);
+            }
+        }
+
+        return $value;
     }
 
     private function createFilteredSalesNodeForFinalNode(
