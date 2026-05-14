@@ -391,6 +391,46 @@ class ProductionBlockApiTest extends TestCase
         ]);
     }
 
+    private function createShippedPalletWithBox(Order $order, Product $product, string $lot, float $netWeight): Pallet
+    {
+        $box = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => $lot,
+            'net_weight' => $netWeight,
+            'gross_weight' => $netWeight + 1,
+        ]);
+
+        $pallet = Pallet::factory()->shipped()->create([
+            'order_id' => $order->id,
+        ]);
+
+        PalletBox::create([
+            'box_id' => $box->id,
+            'pallet_id' => $pallet->id,
+        ]);
+
+        return $pallet;
+    }
+
+    private function createStoredPalletWithBox(Product $product, string $lot, float $netWeight): Pallet
+    {
+        $box = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => $lot,
+            'net_weight' => $netWeight,
+            'gross_weight' => $netWeight + 1,
+        ]);
+
+        $pallet = Pallet::factory()->stored()->create();
+
+        PalletBox::create([
+            'box_id' => $box->id,
+            'pallet_id' => $pallet->id,
+        ]);
+
+        return $pallet;
+    }
+
     public function test_production_record_show_returns_parent_with_process(): void
     {
         [, $parentRecord, $childRecord] = $this->createProductionWithRecords();
@@ -640,6 +680,198 @@ class ProductionBlockApiTest extends TestCase
             ->assertJsonPath('data.processNodes.0.children.0.children.0.summary.marginTotalExTax', 70)
             ->assertJsonPath('data.processNodes.0.children.0.children.0.summary.marginPerKgExTax', 3.5)
             ->assertJsonPath('data.processNodes.0.children.0.children.0.summary.marginPercentageExTax', 87.5);
+    }
+
+    public function test_filtered_process_tree_by_customer_only_includes_expedited_sales_for_that_customer(): void
+    {
+        [$production, , $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $product = $this->createValidProduct($species, $captureZone, '10FC');
+        $otherProduct = $this->createValidProduct($species, $captureZone, '10FO');
+
+        ProductionOutput::create([
+            'production_record_id' => $childRecord->id,
+            'product_id' => $product->id,
+            'lot_id' => 'L-FILTERED-CUSTOMER',
+            'boxes' => 10,
+            'weight_kg' => 100,
+        ]);
+        ProductionOutput::create([
+            'production_record_id' => $childRecord->id,
+            'product_id' => $otherProduct->id,
+            'lot_id' => 'L-FILTERED-OTHER',
+            'boxes' => 5,
+            'weight_kg' => 50,
+        ]);
+
+        $salesContext = $this->createSalesContext('PFILTER');
+        $customer = $this->createCustomerForTest($salesContext, 'PFILTER');
+        $otherCustomer = $this->createCustomerForTest($salesContext, 'PFILTER-OTHER');
+        $order = $this->createOrderForTest($customer, $salesContext);
+        $order->update(['status' => Order::STATUS_FINISHED]);
+        $otherOrder = $this->createOrderForTest($otherCustomer, $salesContext);
+        $otherOrder->update(['status' => Order::STATUS_FINISHED]);
+        $tax = Tax::query()->firstOrCreate(
+            ['name' => 'IVA Filtered'],
+            ['name' => 'IVA Filtered', 'rate' => 10]
+        );
+
+        OrderPlannedProductDetail::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'tax_id' => $tax->id,
+            'quantity' => 25,
+            'boxes' => 1,
+            'unit_price' => 4,
+        ]);
+        OrderPlannedProductDetail::create([
+            'order_id' => $otherOrder->id,
+            'product_id' => $otherProduct->id,
+            'tax_id' => $tax->id,
+            'quantity' => 30,
+            'boxes' => 1,
+            'unit_price' => 5,
+        ]);
+
+        $this->createShippedPalletWithBox($order, $product, $production->lot, 25);
+        $this->createShippedPalletWithBox($otherOrder, $otherProduct, $production->lot, 30);
+        $this->createStoredPalletWithBox($product, $production->lot, 45);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/'.$production->id.'/process-tree?customerId='.$customer->id);
+
+        $response->assertOk()
+            ->assertJsonPath('data.processNodes.0.children.0.outputs.0.productId', $product->id)
+            ->assertJsonPath('data.processNodes.0.children.0.outputs.0.weightKg', 25)
+            ->assertJsonPath('data.processNodes.0.children.0.children.0.type', 'sales')
+            ->assertJsonPath('data.processNodes.0.children.0.children.0.orders.0.order.id', $order->id)
+            ->assertJsonPath('data.processNodes.0.children.0.children.0.orders.0.products.0.totalNetWeight', 25)
+            ->assertJsonPath('data.totals.totalSalesWeight', 25);
+
+        $types = collect($response->json('data.processNodes.0.children.0.children'))->pluck('type')->all();
+        $this->assertNotContains('stock', $types);
+        $this->assertNotContains('reprocessed', $types);
+        $this->assertNotContains('balance', $types);
+    }
+
+    public function test_filtered_process_tree_by_order_accepts_incident_orders_when_pallets_are_shipped(): void
+    {
+        [$production, , $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $product = $this->createValidProduct($species, $captureZone, '10FI');
+
+        ProductionOutput::create([
+            'production_record_id' => $childRecord->id,
+            'product_id' => $product->id,
+            'lot_id' => 'L-FILTERED-INCIDENT',
+            'boxes' => 10,
+            'weight_kg' => 100,
+        ]);
+
+        $salesContext = $this->createSalesContext('PINC');
+        $customer = $this->createCustomerForTest($salesContext, 'PINC');
+        $order = $this->createOrderForTest($customer, $salesContext);
+        $order->update(['status' => Order::STATUS_INCIDENT]);
+        $tax = Tax::query()->firstOrCreate(
+            ['name' => 'IVA Incident'],
+            ['name' => 'IVA Incident', 'rate' => 10]
+        );
+        OrderPlannedProductDetail::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'tax_id' => $tax->id,
+            'quantity' => 20,
+            'boxes' => 1,
+            'unit_price' => 4,
+        ]);
+        $this->createShippedPalletWithBox($order, $product, $production->lot, 20);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/'.$production->id.'/process-tree?orderId='.$order->id);
+
+        $response->assertOk()
+            ->assertJsonPath('data.processNodes.0.children.0.children.0.orders.0.order.status', Order::STATUS_INCIDENT)
+            ->assertJsonPath('data.processNodes.0.children.0.children.0.orders.0.products.0.totalNetWeight', 20);
+    }
+
+    public function test_filtered_process_tree_rejects_customer_and_order_together(): void
+    {
+        [$production] = $this->createProductionWithRecords();
+        $salesContext = $this->createSalesContext('PBOTH');
+        $customer = $this->createCustomerForTest($salesContext, 'PBOTH');
+        $order = $this->createOrderForTest($customer, $salesContext);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/'.$production->id.'/process-tree?customerId='.$customer->id.'&orderId='.$order->id);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['customerId']);
+    }
+
+    public function test_filtered_process_tree_allocates_same_product_across_final_nodes_proportionally(): void
+    {
+        [$production, $parentRecord, $childRecord] = $this->createProductionWithRecords();
+        $species = Species::query()->firstOrFail();
+        $captureZone = CaptureZone::query()->firstOrFail();
+        $product = $this->createValidProduct($species, $captureZone, '10FP');
+        $secondProcess = Process::create(['name' => 'Segundo final '.uniqid(), 'type' => 'final']);
+        $secondFinalRecord = ProductionRecord::create([
+            'production_id' => $production->id,
+            'parent_record_id' => $parentRecord->id,
+            'process_id' => $secondProcess->id,
+            'started_at' => now(),
+        ]);
+
+        ProductionOutput::create([
+            'production_record_id' => $childRecord->id,
+            'product_id' => $product->id,
+            'lot_id' => 'L-FILTERED-PROP-A',
+            'boxes' => 6,
+            'weight_kg' => 60,
+        ]);
+        ProductionOutput::create([
+            'production_record_id' => $secondFinalRecord->id,
+            'product_id' => $product->id,
+            'lot_id' => 'L-FILTERED-PROP-B',
+            'boxes' => 4,
+            'weight_kg' => 40,
+        ]);
+
+        $salesContext = $this->createSalesContext('PPROP');
+        $customer = $this->createCustomerForTest($salesContext, 'PPROP');
+        $order = $this->createOrderForTest($customer, $salesContext);
+        $order->update(['status' => Order::STATUS_FINISHED]);
+        $tax = Tax::query()->firstOrCreate(
+            ['name' => 'IVA Prop'],
+            ['name' => 'IVA Prop', 'rate' => 10]
+        );
+        OrderPlannedProductDetail::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'tax_id' => $tax->id,
+            'quantity' => 25,
+            'boxes' => 1,
+            'unit_price' => 4,
+        ]);
+        $this->createShippedPalletWithBox($order, $product, $production->lot, 25);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/'.$production->id.'/process-tree?orderId='.$order->id);
+
+        $response->assertOk();
+
+        $children = collect($response->json('data.processNodes.0.children'));
+        $weights = $children
+            ->map(fn ($node) => $node['outputs'][0]['weightKg'] ?? null)
+            ->filter()
+            ->sort()
+            ->values()
+            ->all();
+
+        $this->assertEquals([10, 15], $weights);
+        $this->assertEquals(25, $response->json('data.totals.totalOutputWeight'));
     }
 
     public function test_production_process_tree_stock_node_includes_cost_metrics(): void
@@ -1374,7 +1606,7 @@ class ProductionBlockApiTest extends TestCase
             'box_id' => $box->id,
         ]);
 
-        $service = new ProductionInputService();
+        $service = new ProductionInputService;
         $input = $service->create([
             'production_record_id' => $parentRecord->id,
             'box_id' => $box->id,
@@ -1450,7 +1682,7 @@ class ProductionBlockApiTest extends TestCase
             'box_id' => $processedBox->id,
         ]);
 
-        $service = new ProductionInputService();
+        $service = new ProductionInputService;
         $input = $service->create([
             'production_record_id' => $parentRecord->id,
             'box_id' => $processedBox->id,

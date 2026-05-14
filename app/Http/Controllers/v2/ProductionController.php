@@ -135,10 +135,27 @@ class ProductionController extends Controller
      * Obtener el árbol completo de procesos de una producción
      * Incluye nodos de venta y stock como hijos de nodos finales
      */
-    public function getProcessTree(string $id)
+    public function getProcessTree(Request $request, string $id)
     {
+        $validated = $request->validate([
+            'customerId' => ['nullable', 'integer', 'exists:customers,id', 'prohibited_with:orderId'],
+            'orderId' => ['nullable', 'integer', 'exists:orders,id', 'prohibited_with:customerId'],
+        ]);
+
         $production = Production::findOrFail($id);
         $this->authorize('view', $production);
+
+        if (isset($validated['customerId']) || isset($validated['orderId'])) {
+            $filteredTree = $production->buildFilteredProcessTree(
+                isset($validated['customerId']) ? (int) $validated['customerId'] : null,
+                isset($validated['orderId']) ? (int) $validated['orderId'] : null,
+            );
+
+            return response()->json([
+                'message' => 'Árbol de procesos obtenido correctamente.',
+                'data' => $filteredTree,
+            ]);
+        }
 
         $tree = $production->buildProcessTree();
 
@@ -248,7 +265,7 @@ class ProductionController extends Controller
     /**
      * Obtener productos disponibles con ese lote para facilitar creación de outputs
      * ✨ Devuelve productos con sus totales (cajas y peso) desde stock, ventas y reprocesados
-     * 
+     *
      * Este endpoint facilita al frontend la creación de outputs basándose en
      * los productos que realmente existen en el sistema con ese lote.
      */

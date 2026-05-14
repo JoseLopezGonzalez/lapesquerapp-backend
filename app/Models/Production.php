@@ -384,6 +384,45 @@ class Production extends Model
     }
 
     /**
+     * Construir el árbol de procesos limitado a la parte expedida para un cliente o pedido.
+     */
+    public function buildFilteredProcessTree(?int $customerId = null, ?int $orderId = null): array
+    {
+        $tree = $this->buildProcessTree();
+        $processNodes = $tree->map(function ($record) {
+            return $record->getNodeData();
+        })->toArray();
+
+        $salesDataByProduct = $this->getSalesDataByProduct(
+            $this->lot,
+            $customerId,
+            $orderId,
+            true
+        );
+
+        if (empty($salesDataByProduct)) {
+            return [
+                'processNodes' => [],
+                'totals' => $this->emptyFilteredTotals(),
+            ];
+        }
+
+        $salesTotalsByProduct = $this->summarizeSalesDataByProduct($salesDataByProduct);
+        $producedTotalsByProduct = $this->summarizeFinalOutputTotalsByProduct($processNodes);
+        $filteredNodes = $this->filterProcessNodesForSalesScope(
+            $processNodes,
+            $salesDataByProduct,
+            $salesTotalsByProduct,
+            $producedTotalsByProduct
+        );
+
+        return [
+            'processNodes' => $filteredNodes,
+            'totals' => $this->calculateFilteredTreeTotals($filteredNodes, $salesTotalsByProduct),
+        ];
+    }
+
+    /**
      * Obtener solo los inputs de materia prima desde stock
      * ✨ Solo cuenta las entradas de stock (no incluye consumos de outputs del padre)
      *
@@ -968,6 +1007,533 @@ class Production extends Model
     // NODOS DE VENTA Y STOCK EN ÁRBOL DE PROCESOS
     // ============================================
 
+    private function emptyFilteredTotals(): array
+    {
+        return [
+            'totalInputWeight' => 0,
+            'totalOutputWeight' => 0,
+            'totalWaste' => 0,
+            'totalWastePercentage' => 0,
+            'totalYield' => 0,
+            'totalYieldPercentage' => 0,
+            'totalInputBoxes' => 0,
+            'totalOutputBoxes' => 0,
+            'totalSalesWeight' => 0,
+            'totalSalesBoxes' => 0,
+            'totalSalesPallets' => 0,
+            'totalStockWeight' => 0,
+            'totalStockBoxes' => 0,
+            'totalStockPallets' => 0,
+        ];
+    }
+
+    private function summarizeSalesDataByProduct(array $salesDataByProduct): array
+    {
+        $totals = [];
+
+        foreach ($salesDataByProduct as $productId => $orders) {
+            $totals[$productId] = [
+                'weight' => 0.0,
+                'boxes' => 0.0,
+                'pallets' => [],
+            ];
+
+            foreach ($orders as $orderData) {
+                foreach ($orderData['pallets'] as $palletData) {
+                    $totals[$productId]['pallets'][$palletData['pallet']->id] = true;
+                    $boxes = collect($palletData['boxes']);
+                    $totals[$productId]['boxes'] += $boxes->count();
+                    $totals[$productId]['weight'] += (float) $boxes->sum('net_weight');
+                }
+            }
+        }
+
+        return $totals;
+    }
+
+    private function summarizeFinalOutputTotalsByProduct(array $nodes): array
+    {
+        $totals = [];
+
+        foreach ($nodes as $node) {
+            if (($node['isFinal'] ?? false) === true) {
+                foreach (($node['outputs'] ?? []) as $output) {
+                    $productId = $output['productId'] ?? null;
+                    if (! $productId) {
+                        continue;
+                    }
+
+                    if (! isset($totals[$productId])) {
+                        $totals[$productId] = [
+                            'weight' => 0.0,
+                            'boxes' => 0.0,
+                        ];
+                    }
+
+                    $totals[$productId]['weight'] += (float) ($output['weightKg'] ?? 0);
+                    $totals[$productId]['boxes'] += (float) ($output['boxes'] ?? 0);
+                }
+            }
+
+            if (! empty($node['children'])) {
+                foreach ($this->summarizeFinalOutputTotalsByProduct($node['children']) as $productId => $childTotals) {
+                    if (! isset($totals[$productId])) {
+                        $totals[$productId] = [
+                            'weight' => 0.0,
+                            'boxes' => 0.0,
+                        ];
+                    }
+
+                    $totals[$productId]['weight'] += $childTotals['weight'];
+                    $totals[$productId]['boxes'] += $childTotals['boxes'];
+                }
+            }
+        }
+
+        return $totals;
+    }
+
+    private function filterProcessNodesForSalesScope(
+        array $nodes,
+        array $salesDataByProduct,
+        array $salesTotalsByProduct,
+        array $producedTotalsByProduct
+    ): array {
+        $filtered = [];
+
+        foreach ($nodes as $node) {
+            $filteredNode = $this->filterProcessNodeForSalesScope(
+                $node,
+                $salesDataByProduct,
+                $salesTotalsByProduct,
+                $producedTotalsByProduct
+            );
+
+            if ($filteredNode !== null) {
+                $filtered[] = $filteredNode;
+            }
+        }
+
+        return $filtered;
+    }
+
+    private function filterProcessNodeForSalesScope(
+        array $node,
+        array $salesDataByProduct,
+        array $salesTotalsByProduct,
+        array $producedTotalsByProduct
+    ): ?array {
+        $originalInputWeight = (float) ($node['totalInputWeight'] ?? 0);
+        $originalOutputWeight = (float) ($node['totalOutputWeight'] ?? 0);
+        $filteredChildren = $this->filterProcessNodesForSalesScope(
+            $node['children'] ?? [],
+            $salesDataByProduct,
+            $salesTotalsByProduct,
+            $producedTotalsByProduct
+        );
+
+        $nodeFactor = null;
+        $filteredOutputs = [];
+
+        if (($node['isFinal'] ?? false) === true) {
+            $originalRelevantOutputWeight = 0.0;
+            $filteredOutputWeight = 0.0;
+
+            foreach (($node['outputs'] ?? []) as $output) {
+                $productId = $output['productId'] ?? null;
+                $outputWeight = (float) ($output['weightKg'] ?? 0);
+                $producedWeight = (float) ($producedTotalsByProduct[$productId]['weight'] ?? 0);
+                $salesWeight = (float) ($salesTotalsByProduct[$productId]['weight'] ?? 0);
+
+                if (! $productId || $outputWeight <= 0 || $producedWeight <= 0 || $salesWeight <= 0) {
+                    continue;
+                }
+
+                $factor = $salesWeight / $producedWeight;
+                $filteredOutputs[] = $this->scaleOutputData($output, $factor);
+                $originalRelevantOutputWeight += $outputWeight;
+                $filteredOutputWeight += $outputWeight * $factor;
+            }
+
+            if ($originalRelevantOutputWeight > 0) {
+                $nodeFactor = $filteredOutputWeight / $originalRelevantOutputWeight;
+            }
+        } elseif (! empty($filteredChildren)) {
+            $filteredChildrenWeight = array_sum(array_map(static function ($child) {
+                $inputWeight = (float) ($child['totalInputWeight'] ?? 0);
+
+                return $inputWeight > 0
+                    ? $inputWeight
+                    : (float) ($child['totalOutputWeight'] ?? 0);
+            }, $filteredChildren));
+            $baseWeight = $originalInputWeight > 0 ? $originalInputWeight : $originalOutputWeight;
+            $nodeFactor = $baseWeight > 0 ? min(1, $filteredChildrenWeight / $baseWeight) : 1;
+            $filteredOutputs = array_map(
+                fn ($output) => $this->scaleOutputData($output, $nodeFactor),
+                $node['outputs'] ?? []
+            );
+        }
+
+        if ($nodeFactor === null || ($nodeFactor <= 0 && empty($filteredChildren) && empty($filteredOutputs))) {
+            return null;
+        }
+
+        $node = $this->scaleProcessNodeData($node, $nodeFactor);
+        $node['outputs'] = array_values($filteredOutputs);
+        $node['children'] = $filteredChildren;
+
+        if (($node['isFinal'] ?? false) === true && $filteredOutputs !== []) {
+            $salesNode = $this->createFilteredSalesNodeForFinalNode(
+                (int) $node['id'],
+                $filteredOutputs,
+                $salesDataByProduct,
+                $salesTotalsByProduct,
+                $producedTotalsByProduct
+            );
+
+            if ($salesNode !== null) {
+                $node['children'][] = $salesNode;
+            }
+        }
+
+        return $node;
+    }
+
+    private function scaleProcessNodeData(array $node, float $factor): array
+    {
+        foreach (['totalInputWeight', 'totalOutputWeight', 'waste', 'yield'] as $key) {
+            if (isset($node[$key]) && is_numeric($node[$key])) {
+                $node[$key] = round((float) $node[$key] * $factor, 2);
+            }
+        }
+
+        foreach (['totalInputBoxes', 'totalOutputBoxes'] as $key) {
+            if (isset($node[$key]) && is_numeric($node[$key])) {
+                $node[$key] = round((float) $node[$key] * $factor, 2);
+            }
+        }
+
+        if (isset($node['totals']) && is_array($node['totals'])) {
+            foreach (['inputWeight', 'outputWeight', 'waste', 'yield', 'inputBoxes', 'outputBoxes'] as $key) {
+                if (isset($node['totals'][$key]) && is_numeric($node['totals'][$key])) {
+                    $node['totals'][$key] = round((float) $node['totals'][$key] * $factor, 2);
+                }
+            }
+        }
+
+        if (isset($node['costs']) && is_array($node['costs'])) {
+            foreach ($node['costs'] as $key => $value) {
+                if (is_numeric($value) && ! str_contains(strtolower((string) $key), 'perkg')) {
+                    $node['costs'][$key] = round((float) $value * $factor, 4);
+                }
+            }
+        }
+
+        $node['inputs'] = array_values(array_map(
+            fn ($input) => $this->scaleInputData($input, $factor),
+            $node['inputs'] ?? []
+        ));
+        $node['parentOutputConsumptions'] = array_values(array_map(
+            fn ($consumption) => $this->scaleParentConsumptionData($consumption, $factor),
+            $node['parentOutputConsumptions'] ?? []
+        ));
+
+        return $node;
+    }
+
+    private function scaleInputData(array $input, float $factor): array
+    {
+        foreach (['weight', 'totalCost'] as $key) {
+            if (isset($input[$key]) && is_numeric($input[$key])) {
+                $input[$key] = round((float) $input[$key] * $factor, 4);
+            }
+        }
+
+        if (isset($input['box']) && is_array($input['box'])) {
+            foreach (['netWeight', 'grossWeight'] as $key) {
+                if (isset($input['box'][$key]) && is_numeric($input['box'][$key])) {
+                    $input['box'][$key] = round((float) $input['box'][$key] * $factor, 4);
+                }
+            }
+        }
+
+        return $input;
+    }
+
+    private function scaleParentConsumptionData(array $consumption, float $factor): array
+    {
+        foreach (['consumedWeightKg', 'consumedBoxes', 'weight', 'totalCost'] as $key) {
+            if (isset($consumption[$key]) && is_numeric($consumption[$key])) {
+                $consumption[$key] = round((float) $consumption[$key] * $factor, 4);
+            }
+        }
+
+        return $consumption;
+    }
+
+    private function scaleOutputData(array $output, float $factor): array
+    {
+        foreach (['weightKg', 'boxes', 'totalCost'] as $key) {
+            if (isset($output[$key]) && is_numeric($output[$key])) {
+                $output[$key] = round((float) $output[$key] * $factor, 4);
+            }
+        }
+
+        if (isset($output['sources']) && is_array($output['sources'])) {
+            $output['sources'] = array_values(array_map(function ($source) use ($factor) {
+                foreach (['contributedWeightKg', 'contributedBoxes', 'sourceTotalCost'] as $key) {
+                    if (isset($source[$key]) && is_numeric($source[$key])) {
+                        $source[$key] = round((float) $source[$key] * $factor, 4);
+                    }
+                }
+
+                return $source;
+            }, $output['sources']));
+        }
+
+        return $output;
+    }
+
+    private function createFilteredSalesNodeForFinalNode(
+        int $finalNodeId,
+        array $filteredOutputs,
+        array $salesDataByProduct,
+        array $salesTotalsByProduct,
+        array $producedTotalsByProduct
+    ): ?array {
+        $productFactors = [];
+        foreach ($filteredOutputs as $output) {
+            $productId = $output['productId'] ?? null;
+            $producedWeight = (float) ($producedTotalsByProduct[$productId]['weight'] ?? 0);
+            $outputWeight = (float) ($output['weightKg'] ?? 0);
+            $salesWeight = (float) ($salesTotalsByProduct[$productId]['weight'] ?? 0);
+
+            if ($productId && $producedWeight > 0 && $salesWeight > 0) {
+                $productFactors[$productId] = $outputWeight / $salesWeight;
+            }
+        }
+
+        if ($productFactors === []) {
+            return null;
+        }
+
+        $ordersMap = [];
+        $allProducts = [];
+        $totalBoxes = 0.0;
+        $totalNetWeight = 0.0;
+        $totalPallets = 0.0;
+        $nodeSalesSubtotal = 0.0;
+        $nodeSalesTotal = 0.0;
+        $nodeCostTotal = 0.0;
+
+        foreach ($productFactors as $productId => $factor) {
+            foreach (($salesDataByProduct[$productId] ?? []) as $orderId => $orderData) {
+                $order = $orderData['order'];
+
+                if (! isset($ordersMap[$orderId])) {
+                    $ordersMap[$orderId] = [
+                        'order' => $order,
+                        'products' => [],
+                    ];
+                }
+
+                $palletsData = [];
+                $productBoxes = 0.0;
+                $productNetWeight = 0.0;
+                $productCostTotal = 0.0;
+
+                foreach ($orderData['pallets'] as $palletData) {
+                    $pallet = $palletData['pallet'];
+                    $boxes = collect($palletData['boxes']);
+                    $scaledBoxes = $boxes->count() * $factor;
+                    $scaledWeight = (float) $boxes->sum('net_weight') * $factor;
+
+                    $palletsData[] = [
+                        'id' => $pallet->id,
+                        'availableBoxesCount' => round($scaledBoxes, 2),
+                        'totalAvailableWeight' => round($scaledWeight, 2),
+                    ];
+
+                    $productBoxes += $scaledBoxes;
+                    $productNetWeight += $scaledWeight;
+                    $productCostTotal += (float) $boxes->sum(function ($box) {
+                        return (float) ($box->total_cost ?? 0);
+                    }) * $factor;
+                    $totalPallets += $factor;
+                }
+
+                $plannedProductDetail = $order->plannedProductDetails
+                    ->firstWhere('product_id', $orderData['product']->id);
+                $salePricePerKg = $plannedProductDetail?->unit_price !== null
+                    ? (float) $plannedProductDetail->unit_price
+                    : null;
+                $taxRate = $plannedProductDetail?->tax?->rate !== null
+                    ? (float) $plannedProductDetail->tax->rate
+                    : 0.0;
+                $saleSubtotal = $salePricePerKg !== null ? $salePricePerKg * $productNetWeight : 0.0;
+                $saleTotal = $saleSubtotal + ($saleSubtotal * $taxRate / 100);
+                $productCostPerKg = $productNetWeight > 0 ? $productCostTotal / $productNetWeight : 0.0;
+                $marginTotalExTax = $saleSubtotal - $productCostTotal;
+                $marginPerKgExTax = $productNetWeight > 0 ? $marginTotalExTax / $productNetWeight : 0.0;
+                $marginPercentageExTax = $saleSubtotal > 0 ? ($marginTotalExTax / $saleSubtotal) * 100 : 0.0;
+
+                $ordersMap[$orderId]['products'][$productId] = [
+                    'product' => [
+                        'id' => $orderData['product']->id,
+                        'name' => $orderData['product']->name,
+                    ],
+                    'pallets' => $palletsData,
+                    'totalBoxes' => round($productBoxes, 2),
+                    'totalNetWeight' => round($productNetWeight, 2),
+                    'salePricePerKg' => $salePricePerKg,
+                    'saleSubtotal' => round($saleSubtotal, 2),
+                    'saleTotal' => round($saleTotal, 2),
+                    'costPerKg' => round($productCostPerKg, 4),
+                    'costTotal' => round($productCostTotal, 2),
+                    'marginTotalExTax' => round($marginTotalExTax, 2),
+                    'marginPerKgExTax' => round($marginPerKgExTax, 4),
+                    'marginPercentageExTax' => round($marginPercentageExTax, 2),
+                ];
+
+                $allProducts[$productId] = $orderData['product'];
+                $totalBoxes += $productBoxes;
+                $totalNetWeight += $productNetWeight;
+                $nodeSalesSubtotal += $saleSubtotal;
+                $nodeSalesTotal += $saleTotal;
+                $nodeCostTotal += $productCostTotal;
+            }
+        }
+
+        $ordersData = [];
+        foreach ($ordersMap as $orderInfo) {
+            $orderProducts = array_values($orderInfo['products']);
+            $orderTotalBoxes = array_sum(array_column($orderProducts, 'totalBoxes'));
+            $orderTotalNetWeight = array_sum(array_column($orderProducts, 'totalNetWeight'));
+            $orderSalesSubtotal = array_sum(array_column($orderProducts, 'saleSubtotal'));
+            $orderSalesTotal = array_sum(array_column($orderProducts, 'saleTotal'));
+            $orderCostTotal = array_sum(array_column($orderProducts, 'costTotal'));
+            $orderMarginTotalExTax = array_sum(array_column($orderProducts, 'marginTotalExTax'));
+
+            $ordersData[] = [
+                'order' => [
+                    'id' => $orderInfo['order']->id,
+                    'formattedId' => $orderInfo['order']->formatted_id,
+                    'customer' => $orderInfo['order']->customer ? [
+                        'id' => $orderInfo['order']->customer->id,
+                        'name' => $orderInfo['order']->customer->name,
+                    ] : null,
+                    'loadDate' => $orderInfo['order']->load_date
+                        ? (\Carbon\Carbon::parse($orderInfo['order']->load_date)->toIso8601String())
+                        : null,
+                    'status' => $orderInfo['order']->status,
+                ],
+                'products' => $orderProducts,
+                'totalBoxes' => round($orderTotalBoxes, 2),
+                'totalNetWeight' => round($orderTotalNetWeight, 2),
+                'salePricePerKg' => $orderTotalNetWeight > 0 ? round($orderSalesSubtotal / $orderTotalNetWeight, 4) : 0.0,
+                'saleSubtotal' => round($orderSalesSubtotal, 2),
+                'saleTotal' => round($orderSalesTotal, 2),
+                'costPerKg' => $orderTotalNetWeight > 0 ? round($orderCostTotal / $orderTotalNetWeight, 4) : 0.0,
+                'costTotal' => round($orderCostTotal, 2),
+                'marginTotalExTax' => round($orderMarginTotalExTax, 2),
+                'marginPerKgExTax' => $orderTotalNetWeight > 0 ? round($orderMarginTotalExTax / $orderTotalNetWeight, 4) : 0.0,
+                'marginPercentageExTax' => $orderSalesSubtotal > 0 ? round(($orderMarginTotalExTax / $orderSalesSubtotal) * 100, 2) : 0.0,
+            ];
+        }
+
+        return [
+            'type' => 'sales',
+            'id' => "sales-{$finalNodeId}",
+            'parentRecordId' => $finalNodeId,
+            'productionId' => $this->id,
+            'orders' => $ordersData,
+            'totalBoxes' => round($totalBoxes, 2),
+            'totalNetWeight' => round($totalNetWeight, 2),
+            'summary' => [
+                'ordersCount' => count($ordersData),
+                'productsCount' => count($allProducts),
+                'palletsCount' => round($totalPallets, 2),
+                'boxesCount' => round($totalBoxes, 2),
+                'netWeight' => round($totalNetWeight, 2),
+                'salePricePerKg' => $totalNetWeight > 0 ? round($nodeSalesSubtotal / $totalNetWeight, 4) : 0.0,
+                'saleSubtotal' => round($nodeSalesSubtotal, 2),
+                'saleTotal' => round($nodeSalesTotal, 2),
+                'costPerKg' => $totalNetWeight > 0 ? round($nodeCostTotal / $totalNetWeight, 4) : 0.0,
+                'costTotal' => round($nodeCostTotal, 2),
+                'marginTotalExTax' => round($nodeSalesSubtotal - $nodeCostTotal, 2),
+                'marginPerKgExTax' => $totalNetWeight > 0 ? round(($nodeSalesSubtotal - $nodeCostTotal) / $totalNetWeight, 4) : 0.0,
+                'marginPercentageExTax' => $nodeSalesSubtotal > 0 ? round((($nodeSalesSubtotal - $nodeCostTotal) / $nodeSalesSubtotal) * 100, 2) : 0.0,
+            ],
+            'children' => [],
+        ];
+    }
+
+    private function calculateFilteredTreeTotals(array $nodes, array $salesTotalsByProduct): array
+    {
+        $totals = $this->emptyFilteredTotals();
+        foreach ($nodes as $node) {
+            $totals['totalInputWeight'] += (float) ($node['totalInputWeight'] ?? 0);
+            $totals['totalOutputWeight'] += $this->sumFinalOutputWeight($node);
+            $totals['totalInputBoxes'] += (float) ($node['totalInputBoxes'] ?? 0);
+            $totals['totalOutputBoxes'] += $this->sumFinalOutputBoxes($node);
+        }
+
+        $difference = $totals['totalInputWeight'] - $totals['totalOutputWeight'];
+        if ($difference > 0) {
+            $totals['totalWaste'] = round($difference, 2);
+            $totals['totalWastePercentage'] = $totals['totalInputWeight'] > 0
+                ? round(($difference / $totals['totalInputWeight']) * 100, 2)
+                : 0;
+        } elseif ($difference < 0) {
+            $totals['totalYield'] = round(abs($difference), 2);
+            $totals['totalYieldPercentage'] = $totals['totalInputWeight'] > 0
+                ? round((abs($difference) / $totals['totalInputWeight']) * 100, 2)
+                : 0;
+        }
+
+        foreach ($salesTotalsByProduct as $productTotals) {
+            $totals['totalSalesWeight'] += (float) $productTotals['weight'];
+            $totals['totalSalesBoxes'] += (float) $productTotals['boxes'];
+            $totals['totalSalesPallets'] += count($productTotals['pallets']);
+        }
+
+        foreach (['totalInputWeight', 'totalOutputWeight', 'totalInputBoxes', 'totalOutputBoxes', 'totalSalesWeight', 'totalSalesBoxes'] as $key) {
+            $totals[$key] = round((float) $totals[$key], 2);
+        }
+
+        return $totals;
+    }
+
+    private function sumFinalOutputWeight(array $node): float
+    {
+        if (($node['isFinal'] ?? false) === true) {
+            return (float) array_sum(array_map(
+                static fn ($output) => (float) ($output['weightKg'] ?? 0),
+                $node['outputs'] ?? []
+            ));
+        }
+
+        return (float) array_sum(array_map(
+            fn ($child) => $this->sumFinalOutputWeight($child),
+            $node['children'] ?? []
+        ));
+    }
+
+    private function sumFinalOutputBoxes(array $node): float
+    {
+        if (($node['isFinal'] ?? false) === true) {
+            return (float) array_sum(array_map(
+                static fn ($output) => (float) ($output['boxes'] ?? 0),
+                $node['outputs'] ?? []
+            ));
+        }
+
+        return (float) array_sum(array_map(
+            fn ($child) => $this->sumFinalOutputBoxes($child),
+            $node['children'] ?? []
+        ));
+    }
+
     /**
      * Añadir nodos de venta y stock como hijos de nodos finales o como nodos independientes
      *
@@ -1149,11 +1715,29 @@ class Production extends Model
      * @param  string  $lot  Lote de la producción
      * @return array Datos agrupados por producto y pedido
      */
-    private function getSalesDataByProduct(string $lot)
-    {
+    private function getSalesDataByProduct(
+        string $lot,
+        ?int $customerId = null,
+        ?int $orderId = null,
+        bool $onlyExpedited = false
+    ) {
         // Obtener palets asignados a pedidos con cajas del lote disponibles
         $salesPallets = Pallet::query()
             ->whereNotNull('order_id')
+            ->when($onlyExpedited, fn ($query) => $query->where('status', Pallet::STATE_SHIPPED))
+            ->whereHas('order', function ($query) use ($customerId, $orderId, $onlyExpedited) {
+                if ($onlyExpedited) {
+                    $query->whereIn('status', [Order::STATUS_FINISHED, Order::STATUS_INCIDENT]);
+                }
+
+                if ($customerId !== null) {
+                    $query->where('customer_id', $customerId);
+                }
+
+                if ($orderId !== null) {
+                    $query->whereKey($orderId);
+                }
+            })
             ->whereHas('boxes.box', function ($query) use ($lot) {
                 $query->where('lot', $lot)
                     ->whereDoesntHave('productionInputs');
