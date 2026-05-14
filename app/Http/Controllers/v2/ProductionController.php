@@ -14,6 +14,7 @@ use App\Models\Production;
 use App\Services\Production\ProductionClosureService;
 use App\Services\Production\ProductionService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ProductionController extends Controller
 {
@@ -138,9 +139,16 @@ class ProductionController extends Controller
     public function getProcessTree(Request $request, string $id)
     {
         $validated = $request->validate([
-            'customerId' => ['nullable', 'integer', 'exists:customers,id', 'prohibited_with:orderId'],
-            'orderId' => ['nullable', 'integer', 'exists:orders,id', 'prohibited_with:customerId'],
+            'customerId' => ['nullable', 'integer', 'exists:customers,id'],
+            'orderId' => ['nullable', 'integer', 'exists:orders,id'],
         ]);
+
+        if (isset($validated['customerId'], $validated['orderId'])) {
+            throw ValidationException::withMessages([
+                'customerId' => ['El filtro customerId no puede combinarse con orderId.'],
+                'orderId' => ['El filtro orderId no puede combinarse con customerId.'],
+            ]);
+        }
 
         $production = Production::findOrFail($id);
         $this->authorize('view', $production);
