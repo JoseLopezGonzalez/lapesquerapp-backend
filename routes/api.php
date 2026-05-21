@@ -457,6 +457,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('productions/control-panel', [ProductionControlPanelController::class, 'index'])->name('productions.controlPanel');
         Route::get('productions/orphan-boxes', [OrphanBoxesController::class, 'index'])->name('productions.orphanBoxes');
         Route::get('productions/orphan-stock', [OrphanStockController::class, 'index'])->name('productions.orphanStock');
+        Route::get('productions/by-lot/{lot}', [V2ProductionController::class, 'showByLot'])->name('productions.showByLot');
         Route::apiResource('productions', V2ProductionController::class)
             ->whereNumber('production');
         Route::delete('productions', [V2ProductionController::class, 'destroyMultiple']);

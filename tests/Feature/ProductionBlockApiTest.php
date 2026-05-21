@@ -1825,4 +1825,48 @@ class ProductionBlockApiTest extends TestCase
         $this->assertSame(Pallet::STATE_STORED, $storedPallet->status);
         $this->assertNotNull($storedPallet->storedPallet()->first());
     }
+
+    public function test_productions_by_lot_returns_id_for_exact_match(): void
+    {
+        $production = Production::query()->firstOrFail();
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/by-lot/'.rawurlencode($production->lot));
+
+        $response->assertOk()
+            ->assertJsonPath('data.id', $production->id)
+            ->assertJsonPath('data.lot', $production->lot);
+    }
+
+    public function test_productions_by_lot_returns_404_when_lot_has_no_production(): void
+    {
+        $orphanLot = 'ORPHAN-LOT-'.uniqid();
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/by-lot/'.rawurlencode($orphanLot));
+
+        $response->assertNotFound()
+            ->assertJsonPath('userMessage', 'No existe ninguna producción con ese lote.');
+    }
+
+    public function test_productions_by_lot_does_not_match_partial_lot(): void
+    {
+        $production = Production::query()->firstOrFail();
+        $partial = substr($production->lot, 0, max(3, (int) (strlen($production->lot) / 2)));
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/productions/by-lot/'.rawurlencode($partial));
+
+        $response->assertNotFound();
+    }
+
+    public function test_productions_by_lot_requires_authentication(): void
+    {
+        $production = Production::query()->firstOrFail();
+
+        $response = $this->withHeaders(['X-Tenant' => $this->tenantSubdomain, 'Accept' => 'application/json'])
+            ->getJson('/api/v2/productions/by-lot/'.rawurlencode($production->lot));
+
+        $response->assertUnauthorized();
+    }
 }

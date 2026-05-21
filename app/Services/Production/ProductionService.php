@@ -106,6 +106,21 @@ class ProductionService
     }
 
     /**
+     * Busca una producción por lote (igualdad exacta, índice único en productions.lot).
+     */
+    public function findByLot(string $lot): ?Production
+    {
+        $lot = trim($lot);
+        if ($lot === '') {
+            return null;
+        }
+
+        return Production::query()
+            ->where('lot', $lot)
+            ->first();
+    }
+
+    /**
      * Get production with reconciliation
      */
     public function getWithReconciliation(int $id): array

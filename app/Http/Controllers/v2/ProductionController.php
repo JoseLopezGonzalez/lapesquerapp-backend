@@ -50,6 +50,33 @@ class ProductionController extends Controller
     }
 
     /**
+     * Resuelve el id de producción a partir del lote (match exacto).
+     */
+    public function showByLot(string $lot)
+    {
+        $this->authorize('viewAny', Production::class);
+
+        $production = $this->productionService->findByLot($lot);
+
+        if ($production === null) {
+            return response()->json([
+                'message' => 'No existe ninguna producción con ese lote.',
+                'userMessage' => 'No existe ninguna producción con ese lote.',
+            ], 404);
+        }
+
+        $this->authorize('view', $production);
+
+        return response()->json([
+            'message' => 'Producción obtenida correctamente.',
+            'data' => [
+                'id' => $production->id,
+                'lot' => $production->lot,
+            ],
+        ]);
+    }
+
+    /**
      * Display the specified resource.
      */
     public function show(string $id)
