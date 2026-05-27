@@ -421,7 +421,7 @@ class AuthBlockApiTest extends TestCase
         $tokenIds = $sessionUser->tokens()->whereIn('name', ['bulk-device-1', 'bulk-device-2'])->pluck('id')->all();
 
         $response = $this->withHeaders($this->authHeaders())
-            ->postJson('/api/v2/sessions/revoke-many', [
+            ->deleteJson('/api/v2/sessions', [
                 'ids' => $tokenIds,
             ]);
 
@@ -453,7 +453,7 @@ class AuthBlockApiTest extends TestCase
         ]);
 
         $response = $this->withHeaders($this->authHeadersForUser($operario))
-            ->postJson('/api/v2/sessions/revoke-many', [
+            ->deleteJson('/api/v2/sessions', [
                 'ids' => [$ownerTokenId],
             ]);
 
