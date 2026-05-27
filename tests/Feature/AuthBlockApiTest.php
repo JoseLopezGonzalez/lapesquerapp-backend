@@ -407,4 +407,58 @@ class AuthBlockApiTest extends TestCase
         $this->assertNull(PersonalAccessToken::find($accessToken->id));
     }
 
+    public function test_sessions_destroy_multiple_returns_200_for_allowed_role(): void
+    {
+        $sessionUser = User::create([
+            'name' => 'Bulk Session User',
+            'email' => 'bulk-session-' . uniqid() . '@test.com',
+            'role' => Role::Operario->value,
+            'active' => true,
+        ]);
+
+        $sessionUser->createToken('bulk-device-1');
+        $sessionUser->createToken('bulk-device-2');
+        $tokenIds = $sessionUser->tokens()->whereIn('name', ['bulk-device-1', 'bulk-device-2'])->pluck('id')->all();
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/sessions/revoke-many', [
+                'ids' => $tokenIds,
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.requested', 2);
+        $response->assertJsonPath('data.deleted', 2);
+        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $tokenIds[0]], 'tenant');
+        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $tokenIds[1]], 'tenant');
+    }
+
+    public function test_sessions_destroy_multiple_returns_403_for_role_without_permission(): void
+    {
+        $owner = User::create([
+            'name' => 'Owner Session User',
+            'email' => 'owner-session-' . uniqid() . '@test.com',
+            'role' => Role::Operario->value,
+            'active' => true,
+        ]);
+
+        $owner->createToken('owner-device');
+        $ownerTokenId = $owner->tokens()->where('name', 'owner-device')->value('id');
+        $this->assertNotNull($ownerTokenId);
+
+        $operario = User::create([
+            'name' => 'No Permission Session User',
+            'email' => 'no-permission-session-' . uniqid() . '@test.com',
+            'role' => Role::Operario->value,
+            'active' => true,
+        ]);
+
+        $response = $this->withHeaders($this->authHeadersForUser($operario))
+            ->postJson('/api/v2/sessions/revoke-many', [
+                'ids' => [$ownerTokenId],
+            ]);
+
+        $response->assertStatus(403);
+        $this->assertNotNull(PersonalAccessToken::find($ownerTokenId));
+    }
+
 }

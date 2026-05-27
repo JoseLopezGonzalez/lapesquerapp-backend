@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\DestroyMultipleSessionsRequest;
 use App\Http\Requests\v2\IndexSessionRequest;
 use App\Http\Resources\v2\SessionResource;
 use App\Sanctum\PersonalAccessToken;
@@ -49,5 +50,27 @@ class SessionController extends Controller
         $token->delete();
 
         return response()->json(['message' => 'Sesión cerrada correctamente']);
+    }
+
+    /**
+     * Cerrar múltiples sesiones específicas.
+     */
+    public function destroyMultiple(DestroyMultipleSessionsRequest $request)
+    {
+        $tokens = PersonalAccessToken::whereIn('id', $request->validated()['ids'])->get();
+
+        foreach ($tokens as $token) {
+            $this->authorize('delete', $token);
+        }
+
+        $deleted = PersonalAccessToken::whereIn('id', $tokens->pluck('id'))->delete();
+
+        return response()->json([
+            'message' => 'Sesiones cerradas correctamente',
+            'data' => [
+                'requested' => count($request->validated()['ids']),
+                'deleted' => $deleted,
+            ],
+        ]);
     }
 }

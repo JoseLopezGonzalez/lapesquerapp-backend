@@ -242,6 +242,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
         /* Controladores de sistema */
         Route::apiResource('sessions', SessionController::class)->only(['index', 'destroy']);
+        Route::post('sessions/revoke-many', [SessionController::class, 'destroyMultiple'])->name('sessions.destroy_multiple');
         Route::post('users/{user}/resend-invitation', [UserController::class, 'resendInvitation'])->name('v2.users.resend-invitation');
         Route::apiResource('users', UserController::class);
         Route::post('external-users/{externalUser}/resend-access', [ExternalUserController::class, 'resendAccess'])->name('v2.external-users.resend-access');
