@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Services\v2\PalletTimelineService;
+use App\Traits\HasAttachments;
 use App\Traits\UsesTenantConnection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Pallet extends Model
 {
+    use HasAttachments;
     use HasFactory;
     use UsesTenantConnection;
 

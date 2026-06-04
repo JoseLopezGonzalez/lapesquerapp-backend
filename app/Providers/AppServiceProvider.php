@@ -2,9 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\Order;
+use App\Models\Pallet;
+use App\Models\RawMaterialReception;
 use App\Sanctum\PersonalAccessToken;
 use App\Services\Production\ProductionCostResolver;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
@@ -26,6 +30,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Relation::morphMap([
+            'pallet' => Pallet::class,
+            'order' => Order::class,
+            'reception' => RawMaterialReception::class,
+        ]);
+
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
 
         Model::preventLazyLoading(! app()->isProduction());

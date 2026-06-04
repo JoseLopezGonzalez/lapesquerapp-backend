@@ -15,6 +15,7 @@ audience: Backend Engineers
 
 ## Contenido principal
 
+- **[implementacion/04_Plan_sistema_adjuntos_archivos.md](./implementacion/04_Plan_sistema_adjuntos_archivos.md)** — Plan para adjuntos persistentes en palets, pedidos y recepciones.
 - **[utilidades/90-Generacion-PDF.md](./utilidades/90-Generacion-PDF.md)** — Generación de documentos PDF.
 - **[utilidades/91-Exportacion-Excel.md](./utilidades/91-Exportacion-Excel.md)** — Exportación a Excel.
 - **[utilidades/92-Extraccion-Documentos-AI.md](./utilidades/92-Extraccion-Documentos-AI.md)** — Extracción de datos con IA (documentos).

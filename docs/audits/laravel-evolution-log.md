@@ -5,6 +5,34 @@ Cada entrada sigue el formato definido en `docs/prompts/01_Laravel incremental e
 
 ---
 
+## [2026-06-04] A.NEW Sistema transversal de adjuntos — Fase 1+2 (piloto Pallet)
+
+**Rating**: N/A → 9/10
+**Prioridad**: Alta | **Complejidad**: Alta | **Estado**: ✅ Completado
+
+### Cambios
+- Migración tenant `attachments` con campos completos (morphMap key, disk, path, stored_name, mime_type, extension, size, checksum SHA-256, notes, metadata, soft delete).
+- Modelo `Attachment` con `UsesTenantConnection` y `SoftDeletes`. Trait `HasAttachments` añadido a `Pallet`.
+- MorphMap registrado en `AppServiceProvider` (`pallet`, `order`, `reception`): `attachable_type` almacena clave corta, no FQCN.
+- `AttachmentCollectionRegistry`: lista blanca de colecciones, MIME, tamaño máximo y límite por colección. Configurable en `config/attachments.php`.
+- `AttachmentPathGenerator`: rutas tenant-aware (`tenants/{slug}/{entity}s/{id}/{collection}/{ulid}.{ext}`).
+- `AttachmentService`: store (MIME detectado server-side con `finfo`, validación de colección/MIME/tamaño/límite, transacción con rollback físico si falla DB), list (paginado), update (solo notes/metadata), download (stream privado), delete (físico primero, soft delete después; robusto ante `UnableToDeleteFile`).
+- `AttachmentPolicy`: `viewAny`, `view`, `create`, `update`, `download` delegan en la policy del attachable; `delete` solo `administrador` y `tecnico`.
+- `PalletAttachmentController` thin con 6 endpoints: `GET index`, `POST store`, `GET show`, `PATCH update`, `GET download`, `DELETE destroy`.
+- Disco `attachments` privado en `config/filesystems.php` (driver configurable vía `ATTACHMENTS_DISK_DRIVER`).
+- Colección piloto confirmada: `pallet_image` (JPEG/PNG/WEBP, 10 MB, máx 20 por pallet).
+- Plan de implementación documentado en `docs/implementacion/04_Plan_sistema_adjuntos_archivos.md`.
+
+### Tests
+- `tests/Feature/AttachmentsBlockApiTest.php`: 13 tests cubriendo subida válida, rechazo MIME inválido, rechazo colección inválida, autenticación requerida, listado paginado, filtro por colección, detalle, actualización de notas, descarga, borrado autorizado, denegación de borrado a operario, verificación de morphMap key en BD.
+
+### Gap to 10/10
+- `finfo` puede no estar activo en todos los entornos: añadir fallback a `mime_content_type()` en `AttachmentService::detectMime()`.
+- Falta comando de auditoría para detectar archivos físicos sin registro en BD.
+- Fases 3 (Orders) y 4 (Receptions) pendientes de implementar cuando se defina su taxonomía.
+
+---
+
 ## [2026-02-25] F-01: Timeline de modificaciones en Palet
 
 **Prioridad**: Media | **Complejidad**: Baja | **Estado**: Implementado

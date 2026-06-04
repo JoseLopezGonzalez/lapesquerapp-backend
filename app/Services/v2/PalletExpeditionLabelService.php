@@ -118,7 +118,7 @@ class PalletExpeditionLabelService
 
     private function qrPayload(Order $order, Pallet $pallet): string
     {
-        return "PALLET:{$pallet->id};ORDER:{$order->id}";
+        return "P={$pallet->id};O={$order->id}";
     }
 
     private function qrUrl(string $payload): string

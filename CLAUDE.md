@@ -235,4 +235,30 @@ Documento maestro: `docs/prompts/01_Laravel incremental evolution prompt.md`.
 
 ---
 
-**Última actualización**: 2026-02-15. Mantener este archivo alineado con el estado real del CORE y con las convenciones aplicadas en el evolution log.
+## 20. Skills Disponibles (Slash Commands)
+
+Las skills están en `.claude/commands/` y se invocan como `/nombre` dentro de Claude Code.
+
+| Skill | Cuándo usarla |
+|-------|---------------|
+| `/caveman` | Entender código o arquitectura compleja explicada en lenguaje simple con analogías pesqueras |
+| `/humanizer` | Convertir texto técnico (logs, errores, docs de API) a lenguaje comprensible para no-técnicos |
+| `/napkin` | Generar un diagrama Mermaid rápido de flujo, estados, entidades o secuencia de llamadas |
+| `/token-optimizer` | Reducir el tamaño de un prompt sin perder significado; útil para los prompts en `.claude/` |
+| `/find-skills` | Encontrar qué skill usar para una tarea concreta |
+| `/skill-creator` | Crear una nueva skill siguiendo el patrón del proyecto |
+| `/task-workflow` | Ejecutar el flujo completo de evolución de un bloque (STEP 0a → STEP 5 → evolution log) |
+
+## 21. Agentes Especializados
+
+Los agentes están en `.claude/agents/` y pueden invocarse o referenciarse en tareas complejas.
+
+| Agente | Especialidad |
+|--------|-------------|
+| `laravel-expert` | Laravel 10 + PHP 8.2, convenciones del proyecto, multi-tenant, Services/Policies |
+| `domain-expert` | Dominio pesquero, terminología, reglas de negocio, flujos cross-módulo |
+| `evolution-workflow` | Workflow de 7 pasos, rating de bloques, entradas para el evolution log |
+
+---
+
+**Última actualización**: 2026-06-04. Mantener este archivo alineado con el estado real del CORE y con las convenciones aplicadas en el evolution log.

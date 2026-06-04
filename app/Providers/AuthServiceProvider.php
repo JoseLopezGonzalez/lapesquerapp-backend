@@ -55,6 +55,7 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\Prospect::class => \App\Policies\ProspectPolicy::class,
         \App\Models\CommercialInteraction::class => \App\Policies\CommercialInteractionPolicy::class,
         \App\Models\Offer::class => \App\Policies\OfferPolicy::class,
+        \App\Models\Attachment::class => \App\Policies\AttachmentPolicy::class,
     ];
 
     /**
