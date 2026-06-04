@@ -35,6 +35,7 @@ use App\Http\Controllers\v2\OrderStatisticsController;
 use App\Http\Controllers\v2\OrphanBoxesController;
 use App\Http\Controllers\v2\OrphanStockController;
 use App\Http\Controllers\v2\PalletController as V2PalletController;
+use App\Http\Controllers\v2\PalletExpeditionLabelController;
 use App\Http\Controllers\v2\PaymentTermController as V2PaymentTermController;
 use App\Http\Controllers\v2\PdfExtractionController;
 use App\Http\Controllers\v2\ProcessController as V2ProcessController;
@@ -272,6 +273,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('/orders/{orderId}/available-pallets', [V2PalletController::class, 'availableForOrder']);
         // Resto de rutas de pallets ligadas a pedidos
         Route::get('/orders/options', [V2OrderController::class, 'options']);
+        Route::get('/pallets/{pallet}/pdf/expedition-label', [PalletExpeditionLabelController::class, 'show'])->whereNumber('pallet')->name('pallets.expedition_label');
+        Route::post('/pallets/pdf/expedition-labels', [PalletExpeditionLabelController::class, 'store'])->name('pallets.expedition_labels');
         Route::post('/pallets/{id}/link-order', [V2PalletController::class, 'linkOrder']);
         Route::post('/pallets/link-orders', [V2PalletController::class, 'linkOrders']);
         Route::post('/pallets/{id}/unlink-order', [V2PalletController::class, 'unlinkOrder']);
@@ -523,6 +526,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('orders/pdf/order-sheets-filtered', [\App\Http\Controllers\v2\PDFController::class, 'generateOrderSheetsWithFilters'])->name('generate_order_sheets_filtered');
         Route::get('orders/{orderId}/pdf/order-signs', [\App\Http\Controllers\v2\PDFController::class, 'generateOrderSigns'])->name('generate_order_signs');
         Route::get('orders/{orderId}/pdf/restricted-order-signs', [\App\Http\Controllers\v2\PDFController::class, 'generateRestrictedOrderSigns'])->name('generate_restricted_order_signs');
+        Route::get('orders/{orderId}/pdf/pallet-expedition-labels', [\App\Http\Controllers\v2\PDFController::class, 'generatePalletExpeditionLabels'])->name('generate_pallet_expedition_labels');
         Route::get('orders/{orderId}/pdf/order-packing-list', [\App\Http\Controllers\v2\PDFController::class, 'generateOrderPackingList'])->name('generate_order_packing_list');
         Route::get('orders/{orderId}/pdf/loading-note', [\App\Http\Controllers\v2\PDFController::class, 'generateLoadingNote'])->name('generate_loading_note');
         Route::get('orders/{orderId}/pdf/restricted-loading-note', [\App\Http\Controllers\v2\PDFController::class, 'generateRestrictedLoadingNote'])->name('generate_restricted_loading_note');

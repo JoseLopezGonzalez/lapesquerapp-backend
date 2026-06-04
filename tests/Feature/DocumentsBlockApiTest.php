@@ -7,8 +7,8 @@ use App\Models\Country;
 use App\Models\Customer;
 use App\Models\Incoterm;
 use App\Models\Order;
-use App\Models\PaymentTerm;
 use App\Models\Pallet;
+use App\Models\PaymentTerm;
 use App\Models\Salesperson;
 use App\Models\Tenant;
 use App\Models\Transport;
@@ -22,11 +22,13 @@ use Tests\TestCase;
  */
 class DocumentsBlockApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?string $token = null;
+
     private ?string $tenantSubdomain = null;
+
     private ?Order $order = null;
 
     protected function setUp(): void
@@ -39,8 +41,8 @@ class DocumentsBlockApiTest extends TestCase
 
     private function createTenantUserAndOrder(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'docs-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'docs-'.uniqid();
         Tenant::create([
             'name' => 'Test Tenant Docs',
             'subdomain' => $slug,
@@ -50,7 +52,7 @@ class DocumentsBlockApiTest extends TestCase
 
         $user = User::create([
             'name' => 'Test User Docs',
-            'email' => $slug . '@test.com',
+            'email' => $slug.'@test.com',
             'role' => Role::Administrador->value,
             'active' => true,
         ]);
@@ -61,8 +63,8 @@ class DocumentsBlockApiTest extends TestCase
         $country = Country::firstOrCreate(['name' => 'España']);
         $paymentTerm = PaymentTerm::firstOrCreate(['name' => 'Contado']);
         $transport = Transport::firstOrCreate(
-            ['name' => 'Transport Docs ' . uniqid()],
-            ['vat_number' => 'B' . uniqid(), 'address' => 'A', 'emails' => 't@t.com']
+            ['name' => 'Transport Docs '.uniqid()],
+            ['vat_number' => 'B'.uniqid(), 'address' => 'A', 'emails' => 't@t.com']
         );
         $salesperson = Salesperson::firstOrCreate(['name' => 'Comercial Docs']);
         $incoterm = Incoterm::firstOrCreate(
@@ -70,8 +72,8 @@ class DocumentsBlockApiTest extends TestCase
             ['description' => 'Ex Works']
         );
         $customer = Customer::create([
-            'name' => 'C Docs ' . uniqid(),
-            'vat_number' => 'B' . uniqid(),
+            'name' => 'C Docs '.uniqid(),
+            'vat_number' => 'B'.uniqid(),
             'payment_term_id' => $paymentTerm->id,
             'billing_address' => 'B',
             'shipping_address' => 'S',
@@ -102,7 +104,7 @@ class DocumentsBlockApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $this->token,
+            'Authorization' => 'Bearer '.$this->token,
             'Accept' => 'application/json',
         ];
     }
@@ -205,8 +207,8 @@ class DocumentsBlockApiTest extends TestCase
     public function test_restricted_order_signs_returns_403_for_comercial(): void
     {
         $comercialUser = User::create([
-            'name' => 'Test User Comercal Docs ' . uniqid(),
-            'email' => $this->tenantSubdomain . '-comercial-' . uniqid() . '@test.com',
+            'name' => 'Test User Comercal Docs '.uniqid(),
+            'email' => $this->tenantSubdomain.'-comercial-'.uniqid().'@test.com',
             'role' => Role::Comercial->value,
             'active' => true,
         ]);
@@ -215,7 +217,7 @@ class DocumentsBlockApiTest extends TestCase
 
         $response = $this->withHeaders([
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $comercialToken,
+            'Authorization' => 'Bearer '.$comercialToken,
             'Accept' => 'application/pdf',
         ])->get("/api/v2/orders/{$this->order->id}/pdf/restricted-order-signs");
 
@@ -242,4 +244,89 @@ class DocumentsBlockApiTest extends TestCase
         $response->assertHeader('content-type', 'application/pdf');
     }
 
+    public function test_pallet_expedition_labels_return_403_for_comercial(): void
+    {
+        $comercialUser = User::create([
+            'name' => 'Test User Comercial Pallet Labels '.uniqid(),
+            'email' => $this->tenantSubdomain.'-comercial-labels-'.uniqid().'@test.com',
+            'role' => Role::Comercial->value,
+            'active' => true,
+        ]);
+
+        $comercialToken = $comercialUser->createToken('test')->plainTextToken;
+
+        $response = $this->withHeaders([
+            'X-Tenant' => $this->tenantSubdomain,
+            'Authorization' => 'Bearer '.$comercialToken,
+            'Accept' => 'application/pdf',
+        ])->get("/api/v2/orders/{$this->order->id}/pdf/pallet-expedition-labels");
+
+        $response->assertStatus(403);
+    }
+
+    public function test_pallet_expedition_labels_return_200_for_admin(): void
+    {
+        if (! file_exists('/usr/bin/google-chrome') && ! file_exists('/usr/bin/chromium')) {
+            $this->markTestSkipped('Chromium not available for PDF generation');
+        }
+
+        $pallet = new Pallet(['status' => Pallet::STATE_REGISTERED]);
+        $pallet->order_id = $this->order->id;
+        $pallet->save();
+
+        $headers = $this->authHeaders();
+        $headers['Accept'] = 'application/pdf';
+
+        $response = $this->withHeaders($headers)
+            ->get("/api/v2/orders/{$this->order->id}/pdf/pallet-expedition-labels");
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_single_pallet_expedition_label_returns_200_for_admin(): void
+    {
+        if (! file_exists('/usr/bin/google-chrome') && ! file_exists('/usr/bin/chromium')) {
+            $this->markTestSkipped('Chromium not available for PDF generation');
+        }
+
+        $pallet = new Pallet(['status' => Pallet::STATE_REGISTERED]);
+        $pallet->order_id = $this->order->id;
+        $pallet->save();
+
+        $headers = $this->authHeaders();
+        $headers['Accept'] = 'application/pdf';
+
+        $response = $this->withHeaders($headers)
+            ->get("/api/v2/pallets/{$pallet->id}/pdf/expedition-label");
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_multiple_pallet_expedition_labels_return_200_for_admin(): void
+    {
+        if (! file_exists('/usr/bin/google-chrome') && ! file_exists('/usr/bin/chromium')) {
+            $this->markTestSkipped('Chromium not available for PDF generation');
+        }
+
+        $firstPallet = new Pallet(['status' => Pallet::STATE_REGISTERED]);
+        $firstPallet->order_id = $this->order->id;
+        $firstPallet->save();
+
+        $secondPallet = new Pallet(['status' => Pallet::STATE_REGISTERED]);
+        $secondPallet->order_id = $this->order->id;
+        $secondPallet->save();
+
+        $headers = $this->authHeaders();
+        $headers['Accept'] = 'application/pdf';
+
+        $response = $this->withHeaders($headers)
+            ->postJson('/api/v2/pallets/pdf/expedition-labels', [
+                'palletIds' => [$firstPallet->id, $secondPallet->id],
+            ]);
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
+    }
 }
