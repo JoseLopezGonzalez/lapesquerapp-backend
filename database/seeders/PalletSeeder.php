@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
-use App\Models\Pallet;
 use App\Models\Order;
+use App\Models\Pallet;
 use App\Models\RawMaterialReception;
-use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
 
 /**
  * Palés de desarrollo (estados 1=registered, 2=stored, 3=shipped, 4=processed).
@@ -19,6 +19,7 @@ class PalletSeeder extends Seeder
     {
         if (Pallet::count() >= 20) {
             $this->command?->info('PalletSeeder: Ya existen suficientes palés. Omitiendo creación.');
+
             return;
         }
 
@@ -52,6 +53,7 @@ class PalletSeeder extends Seeder
 
             Pallet::create([
                 'observations' => $faker->optional(0.3)->sentence(),
+                'pallet_tare_weight_kg' => $faker->optional(0.4)->randomFloat(3, 8, 30),
                 'status' => $status,
                 'order_id' => $orderId,
                 'reception_id' => $receptionId,

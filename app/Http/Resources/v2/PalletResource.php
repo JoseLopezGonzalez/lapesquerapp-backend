@@ -29,6 +29,7 @@ class PalletResource extends JsonResource
         $base = [
             'id' => $this->id,
             'observations' => $this->observations,
+            'palletTareWeightKg' => $this->pallet_tare_weight_kg !== null ? (float) $this->pallet_tare_weight_kg : null,
             'state' => $this->stateArray,
             'productsNames' => $this->relationLoaded('boxes') ? $this->productsNames : [],
             'boxes' => $boxes->map(function ($palletBox) use ($canViewManualCostContext) {

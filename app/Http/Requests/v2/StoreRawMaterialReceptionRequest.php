@@ -31,6 +31,7 @@ class StoreRawMaterialReceptionRequest extends FormRequest
             'details.*.boxes' => 'nullable|integer|min:0',
             'pallets' => 'required_without:details|array',
             'pallets.*.observations' => 'nullable|string|max:1000',
+            'pallets.*.palletTareWeightKg' => 'nullable|numeric|min:0',
             'pallets.*.store.id' => 'nullable|integer|exists:tenant.stores,id',
             'pallets.*.boxes' => 'required_with:pallets|array|min:1',
             'pallets.*.boxes.*.product.id' => 'required|exists:tenant.products,id',

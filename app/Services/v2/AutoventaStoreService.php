@@ -86,6 +86,7 @@ class AutoventaStoreService
 
             $pallet = new Pallet;
             $pallet->observations = null;
+            $pallet->pallet_tare_weight_kg = $validated['palletTareWeightKg'] ?? null;
             $pallet->status = Pallet::STATE_SHIPPED;
             $pallet->order_id = $order->id;
             $pallet->save();
@@ -114,6 +115,7 @@ class AutoventaStoreService
             PalletTimelineService::record($pallet, 'pallet_created', 'Palet creado (autoventa)', [
                 'boxesCount' => $boxesCount,
                 'totalNetWeight' => round($totalNetWeight, 2),
+                'palletTareWeightKg' => $pallet->pallet_tare_weight_kg !== null ? (float) $pallet->pallet_tare_weight_kg : null,
                 'initialState' => 'shipped',
                 'storeId' => null,
                 'storeName' => null,

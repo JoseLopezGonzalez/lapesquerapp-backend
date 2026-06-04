@@ -342,6 +342,7 @@ class PalletListService
                 'numberOfBoxes' => $pallet->numberOfBoxes ?? 0,
                 'availableBoxesCount' => $pallet->availableBoxesCount ?? 0,
                 'netWeight' => $pallet->netWeight !== null ? round($pallet->netWeight, 3) : null,
+                'palletTareWeightKg' => $pallet->pallet_tare_weight_kg !== null ? (float) $pallet->pallet_tare_weight_kg : null,
                 'totalAvailableWeight' => $pallet->totalAvailableWeight !== null ? round($pallet->totalAvailableWeight, 3) : null,
                 'storedPallet' => $pallet->storedPallet ? [
                     'store_id' => $pallet->storedPallet->store_id,

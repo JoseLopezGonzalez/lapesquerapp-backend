@@ -64,9 +64,10 @@ class Pallet extends Model
         ];
     }
 
-    protected $fillable = ['observations', 'status', 'order_id', 'reception_id', 'timeline'];
+    protected $fillable = ['observations', 'pallet_tare_weight_kg', 'status', 'order_id', 'reception_id', 'timeline'];
 
     protected $casts = [
+        'pallet_tare_weight_kg' => 'decimal:3',
         'timeline' => 'array',
     ];
 
@@ -722,6 +723,7 @@ class Pallet extends Model
         return [
             'id' => $this->id,
             'observations' => $this->observations,
+            'palletTareWeightKg' => $this->pallet_tare_weight_kg !== null ? (float) $this->pallet_tare_weight_kg : null,
             'state' => $this->stateArray,
             'boxes' => $boxes->map(function ($box) {
                 return $box->toArrayAssoc();
@@ -750,6 +752,7 @@ class Pallet extends Model
         return [
             'id' => $this->id,
             'observations' => $this->observations,
+            'palletTareWeightKg' => $this->pallet_tare_weight_kg !== null ? (float) $this->pallet_tare_weight_kg : null,
             'state' => $this->stateArray,
             'boxes' => $boxesPayload,
             'netWeight' => $this->relationLoaded('boxes') ? $this->netWeight : 0,

@@ -13,16 +13,17 @@ class UpdateRawMaterialReceptionRequest extends FormRequest
         if ($id instanceof RawMaterialReception) {
             return $this->user()->can('update', $id);
         }
-        if (!$id) {
+        if (! $id) {
             return false;
         }
+
         return $this->user()->can('update', RawMaterialReception::findOrFail($id));
     }
 
     public function rules(): array
     {
         $reception = $this->getReception();
-        if (!$reception) {
+        if (! $reception) {
             return [
                 'supplier.id' => 'required',
                 'date' => 'required|date',
@@ -44,6 +45,7 @@ class UpdateRawMaterialReceptionRequest extends FormRequest
             $base['details.*.price'] = 'nullable|numeric|min:0';
             $base['details.*.lot'] = 'nullable|string|max:255';
             $base['details.*.boxes'] = 'nullable|integer|min:0';
+
             return $base;
         }
 
@@ -51,6 +53,7 @@ class UpdateRawMaterialReceptionRequest extends FormRequest
             $base['pallets'] = 'nullable|array|min:1';
             $base['pallets.*.id'] = 'nullable|integer|exists:tenant.pallets,id';
             $base['pallets.*.observations'] = 'nullable|string|max:1000';
+            $base['pallets.*.palletTareWeightKg'] = 'nullable|numeric|min:0';
             $base['pallets.*.store.id'] = 'nullable|integer|exists:tenant.stores,id';
             $base['pallets.*.boxes'] = 'required_with:pallets|array|min:1';
             $base['pallets.*.boxes.*.id'] = 'nullable|integer|exists:tenant.boxes,id';
@@ -63,6 +66,7 @@ class UpdateRawMaterialReceptionRequest extends FormRequest
             $base['prices.*.product.id'] = 'required_with:pallets|exists:tenant.products,id';
             $base['prices.*.lot'] = 'required_with:pallets|string|max:255';
             $base['prices.*.price'] = 'required_with:pallets|numeric|min:0';
+
             return $base;
         }
 
@@ -72,6 +76,7 @@ class UpdateRawMaterialReceptionRequest extends FormRequest
         $base['details.*.price'] = 'nullable|numeric|min:0';
         $base['details.*.lot'] = 'nullable|string|max:255';
         $base['details.*.boxes'] = 'nullable|integer|min:0';
+
         return $base;
     }
 
@@ -81,9 +86,10 @@ class UpdateRawMaterialReceptionRequest extends FormRequest
         if ($id instanceof RawMaterialReception) {
             return $id;
         }
-        if (!$id) {
+        if (! $id) {
             return null;
         }
+
         return RawMaterialReception::find($id);
     }
 }

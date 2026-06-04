@@ -48,8 +48,12 @@ class OperationalOrderExecutionService
             if (! $palletForNew) {
                 $palletForNew = new Pallet;
                 $palletForNew->observations = null;
+                $palletForNew->pallet_tare_weight_kg = $validated['palletTareWeightKg'] ?? null;
                 $palletForNew->status = Pallet::STATE_SHIPPED;
                 $palletForNew->order_id = $order->id;
+                $palletForNew->save();
+            } elseif (array_key_exists('palletTareWeightKg', $validated)) {
+                $palletForNew->pallet_tare_weight_kg = $validated['palletTareWeightKg'];
                 $palletForNew->save();
             }
 

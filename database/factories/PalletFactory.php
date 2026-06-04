@@ -23,6 +23,7 @@ class PalletFactory extends Factory
     {
         return [
             'observations' => $this->faker->sentence,
+            'pallet_tare_weight_kg' => null,
             'status' => $this->faker->randomElement(Pallet::getValidStates()),
             'order_id' => null,
             'reception_id' => null,

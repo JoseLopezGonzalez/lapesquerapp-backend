@@ -8,7 +8,6 @@ use App\Models\PalletBox;
 use App\Models\Product;
 use App\Models\RawMaterialReception;
 use App\Models\StoredPallet;
-use App\Services\v2\PalletTimelineService;
 use Illuminate\Database\Eloquent\Model;
 
 use function normalizeDateToBusiness;
@@ -23,7 +22,7 @@ class RawMaterialReceptionWriteService
      */
     public static function store(array $data): RawMaterialReception
     {
-        $reception = new RawMaterialReception();
+        $reception = new RawMaterialReception;
         $reception->supplier_id = $data['supplier']['id'];
         $reception->date = normalizeDateToBusiness($data['date']);
         $reception->notes = $data['notes'] ?? null;
@@ -115,12 +114,16 @@ class RawMaterialReceptionWriteService
             if ($palletId && $existingPallets->has($palletId)) {
                 if (in_array($palletId, $lockedPalletIds)) {
                     $processedPalletIds[] = $palletId;
+
                     continue;
                 }
                 $pallet = $existingPallets->get($palletId);
                 $pallet->load('boxes.box.product', 'storedPallet.store');
                 $timelineSnapshot = self::snapshotPalletForTimeline($pallet);
                 $pallet->observations = $palletData['observations'] ?? null;
+                if (array_key_exists('palletTareWeightKg', $palletData)) {
+                    $pallet->pallet_tare_weight_kg = $palletData['palletTareWeightKg'];
+                }
 
                 // Solo actualizar almacén/estado si el payload incluye explícitamente "store"
                 $hasStoreKey = array_key_exists('store', $palletData) && array_key_exists('id', $palletData['store'] ?? []);
@@ -153,12 +156,13 @@ class RawMaterialReceptionWriteService
                 $palletWasNew = false;
             } else {
                 if ($hasUsedBoxes) {
-                    throw new \Exception("No se pueden crear nuevos palets cuando hay cajas siendo usadas en producción");
+                    throw new \Exception('No se pueden crear nuevos palets cuando hay cajas siendo usadas en producción');
                 }
                 $palletWasNew = true;
-                $pallet = new Pallet();
+                $pallet = new Pallet;
                 $pallet->reception_id = $reception->id;
                 $pallet->observations = $palletData['observations'] ?? null;
+                $pallet->pallet_tare_weight_kg = $palletData['palletTareWeightKg'] ?? null;
                 $pallet->status = $storeId ? Pallet::STATE_STORED : Pallet::STATE_REGISTERED;
                 $pallet->save();
                 if ($storeId) {
@@ -188,6 +192,7 @@ class RawMaterialReceptionWriteService
                             throw new \Exception("No se puede modificar el peso neto de la caja #{$boxId}: está siendo usada en producción");
                         }
                         $processedBoxIds[] = $boxId;
+
                         continue;
                     }
                     if (isset($boxData['product']['id'])) {
@@ -217,9 +222,9 @@ class RawMaterialReceptionWriteService
                     $groupedByProduct[$key]['net_weight'] += $box->net_weight;
                 } else {
                     if ($hasUsedBoxes) {
-                        throw new \Exception("No se pueden crear nuevas cajas cuando hay cajas siendo usadas en producción");
+                        throw new \Exception('No se pueden crear nuevas cajas cuando hay cajas siendo usadas en producción');
                     }
-                    $box = new Box();
+                    $box = new Box;
                     $box->article_id = $productId;
                     $box->lot = $boxLot;
                     $box->gs1_128 = $boxData['gs1128'];
@@ -264,6 +269,7 @@ class RawMaterialReceptionWriteService
                     'receptionId' => $reception->id,
                     'boxesCount' => $boxesCount,
                     'totalNetWeight' => round($totalNetWeight, 2),
+                    'palletTareWeightKg' => $pallet->pallet_tare_weight_kg !== null ? (float) $pallet->pallet_tare_weight_kg : null,
                 ]);
             }
         }
@@ -329,6 +335,7 @@ class RawMaterialReceptionWriteService
                 if ($hasUsedBoxes) {
                     throw new \Exception("El producto {$original['product_id']} con lote {$original['lot']} ya no tiene cajas. No se pueden eliminar todos los productos cuando hay cajas usadas.");
                 }
+
                 continue;
             }
             $difference = $original['net_weight'] - $newTotals[$key]['net_weight'];
@@ -396,9 +403,10 @@ class RawMaterialReceptionWriteService
             $pricesMap[$key] = $priceData['price'];
         }
         foreach ($pallets as $palletData) {
-            $pallet = new Pallet();
+            $pallet = new Pallet;
             $pallet->reception_id = $reception->id;
             $pallet->observations = $palletData['observations'] ?? null;
+            $pallet->pallet_tare_weight_kg = $palletData['palletTareWeightKg'] ?? null;
             $storeId = $palletData['store']['id'] ?? null;
             $pallet->status = $storeId ? Pallet::STATE_STORED : Pallet::STATE_REGISTERED;
             $pallet->save();
@@ -408,7 +416,7 @@ class RawMaterialReceptionWriteService
             foreach ($palletData['boxes'] as $boxData) {
                 $productId = $boxData['product']['id'];
                 $boxLot = $boxData['lot'] ?? self::generateLotFromReception($reception, $productId);
-                $box = new Box();
+                $box = new Box;
                 $box->article_id = $productId;
                 $box->lot = $boxLot;
                 $box->gs1_128 = $boxData['gs1128'];
@@ -423,6 +431,7 @@ class RawMaterialReceptionWriteService
                 'receptionId' => $reception->id,
                 'boxesCount' => $boxesCount,
                 'totalNetWeight' => round($totalNetWeight, 2),
+                'palletTareWeightKg' => $pallet->pallet_tare_weight_kg !== null ? (float) $pallet->pallet_tare_weight_kg : null,
             ]);
         }
         $reception->load('pallets.boxes.box');
@@ -457,7 +466,7 @@ class RawMaterialReceptionWriteService
         $palletWasNew = false;
         if (! $pallet) {
             $palletWasNew = true;
-            $pallet = new Pallet();
+            $pallet = new Pallet;
             $pallet->reception_id = $reception->id;
             $pallet->observations = "Auto-generado desde recepción #{$reception->id}";
             $pallet->status = Pallet::STATE_REGISTERED;
@@ -475,7 +484,7 @@ class RawMaterialReceptionWriteService
             }
             if ($hasUsedBoxes) {
                 if (! self::detailsMatchCurrentProducts($reception, $details)) {
-                    throw new \Exception("RECEPTION_LINES_MODE: No se puede modificar la recepción porque hay materia prima siendo usada en producción");
+                    throw new \Exception('RECEPTION_LINES_MODE: No se puede modificar la recepción porque hay materia prima siendo usada en producción');
                 }
                 // Las líneas no han cambiado: solo actualizar precios en reception.products
                 foreach ($details as $detail) {
@@ -486,6 +495,7 @@ class RawMaterialReceptionWriteService
                             ->update(['price' => $detail['price']]);
                     }
                 }
+
                 return;
             }
             foreach ($pallet->boxes as $palletBox) {
@@ -510,7 +520,7 @@ class RawMaterialReceptionWriteService
             $accumulatedWeight = $weightPerBox * ($numBoxes - 1);
             $lastBoxWeight = $totalWeight - $accumulatedWeight;
             for ($i = 0; $i < $numBoxes; $i++) {
-                $box = new Box();
+                $box = new Box;
                 $box->article_id = $productId;
                 $box->lot = $lot;
                 $box->gs1_128 = self::generateGS1128($reception, $productId, $i);
@@ -534,7 +544,7 @@ class RawMaterialReceptionWriteService
 
     private static function createDetailsFromRequest(RawMaterialReception $reception, array $details, int $supplierId): void
     {
-        $pallet = new Pallet();
+        $pallet = new Pallet;
         $pallet->reception_id = $reception->id;
         $pallet->observations = "Auto-generado desde recepción #{$reception->id}";
         $pallet->status = Pallet::STATE_REGISTERED;
@@ -554,7 +564,7 @@ class RawMaterialReceptionWriteService
             $weightPerBox = round($totalWeight / $numBoxes, 2);
             $lastBoxWeight = $totalWeight - $weightPerBox * ($numBoxes - 1);
             for ($i = 0; $i < $numBoxes; $i++) {
-                $box = new Box();
+                $box = new Box;
                 $box->article_id = $productId;
                 $box->lot = $lot;
                 $box->gs1_128 = self::generateGS1128($reception, $productId, $i);
@@ -586,8 +596,10 @@ class RawMaterialReceptionWriteService
                 ->whereNotNull('price')
                 ->orderBy('created_at', 'desc')
                 ->first();
+
             return $lastProduct?->price;
         }
+
         return null;
     }
 
@@ -600,6 +612,7 @@ class RawMaterialReceptionWriteService
         $date = strtotime($reception->date);
         $faoCode = $product->species->fao ?? '';
         $captureZoneId = str_pad((string) $product->capture_zone_id, 2, '0', STR_PAD_LEFT);
+
         return date('d', $date).date('m', $date).date('y', $date).$faoCode.$captureZoneId.'REC';
     }
 
@@ -632,10 +645,12 @@ class RawMaterialReceptionWriteService
                 'grossWeight' => $box->gross_weight,
             ];
         }
+
         return [
             'order_id' => $pallet->order_id,
             'status' => $pallet->status,
             'observations' => $pallet->observations,
+            'pallet_tare_weight_kg' => $pallet->pallet_tare_weight_kg !== null ? (float) $pallet->pallet_tare_weight_kg : null,
             'store_id' => $store?->id,
             'store_name' => $store?->name,
             'boxes' => $boxes,
@@ -655,6 +670,16 @@ class RawMaterialReceptionWriteService
 
         if ((string) $newObs !== (string) $snapshot['observations']) {
             $details['observations'] = ['from' => $snapshot['observations'], 'to' => $newObs];
+        }
+
+        if (array_key_exists('palletTareWeightKg', $palletData)) {
+            $newTare = $palletData['palletTareWeightKg'];
+            if ($newTare != $snapshot['pallet_tare_weight_kg']) {
+                $details['palletTareWeightKg'] = [
+                    'from' => $snapshot['pallet_tare_weight_kg'],
+                    'to' => $newTare !== null ? (float) $newTare : null,
+                ];
+            }
         }
 
         if ($pallet->status !== $snapshot['status']) {
@@ -800,6 +825,7 @@ class RawMaterialReceptionWriteService
                 if ($p->product_id !== $productId) {
                     return false;
                 }
+
                 // Si el frontend envía lote, debe coincidir; si no, aceptar cualquier lote del mismo producto
                 return $incomingLot === null || $p->lot === $incomingLot;
             });

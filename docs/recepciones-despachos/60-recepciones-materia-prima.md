@@ -275,6 +275,7 @@ POST /v2/raw-material-receptions
     'notes' => 'nullable|string',
     'pallets' => 'required_without:details|array',
     'pallets.*.observations' => 'nullable|string',
+    'pallets.*.palletTareWeightKg' => 'nullable|numeric|min:0',
     'pallets.*.store.id' => 'nullable|integer|exists:tenant.stores,id',
     'pallets.*.boxes' => 'required_with:pallets|array|min:1',
     'pallets.*.boxes.*.product.id' => 'required|exists:tenant.products,id',
@@ -338,6 +339,7 @@ POST /v2/raw-material-receptions
     "pallets": [
         {
             "observations": "Palet 1",
+            "palletTareWeightKg": 22.25,
             "store": {
                 "id": 1
             },
@@ -613,4 +615,3 @@ GET /v2/raw-material-receptions/a3erp-xls
 ---
 
 **Última actualización**: Documentación generada desde código fuente en fecha de generación.
-

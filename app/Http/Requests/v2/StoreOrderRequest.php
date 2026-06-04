@@ -82,6 +82,7 @@ class StoreOrderRequest extends FormRequest
         if ($isAutoventa) {
             $rules['invoiceRequired'] = 'required|boolean';
             $rules['observations'] = 'nullable|string|max:1000';
+            $rules['palletTareWeightKg'] = 'nullable|numeric|min:0';
             $rules['items'] = 'required|array|min:1';
             $rules['items.*.productId'] = 'required|integer|exists:tenant.products,id';
             $rules['items.*.boxesCount'] = 'required|integer|min:1';

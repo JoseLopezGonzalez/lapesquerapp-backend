@@ -37,6 +37,7 @@ class PalletWriteService
 
         $newPallet = new Pallet;
         $newPallet->observations = $validated['observations'];
+        $newPallet->pallet_tare_weight_kg = $validated['palletTareWeightKg'] ?? null;
         $newPallet->status = $storeId
             ? Pallet::STATE_STORED
             : ($validated['state']['id'] ?? Pallet::STATE_REGISTERED);
@@ -72,6 +73,7 @@ class PalletWriteService
         PalletTimelineService::record($newPallet, 'pallet_created', 'Palet creado', [
             'boxesCount' => $boxesCount,
             'totalNetWeight' => round($totalNetWeight, 2),
+            'palletTareWeightKg' => $newPallet->pallet_tare_weight_kg !== null ? (float) $newPallet->pallet_tare_weight_kg : null,
             'initialState' => Pallet::getStateName($newPallet->status),
             'storeId' => $storeId,
             'storeName' => $storeName,
@@ -166,6 +168,10 @@ class PalletWriteService
                 if ($palletData['observations'] != $updatedPallet->observations) {
                     $updatedPallet->observations = $palletData['observations'];
                 }
+            }
+
+            if ($request->has('palletTareWeightKg')) {
+                $updatedPallet->pallet_tare_weight_kg = $palletData['palletTareWeightKg'];
             }
 
             $updatedPallet->save();
@@ -310,6 +316,7 @@ class PalletWriteService
             'order_id' => $pallet->order_id,
             'status' => $pallet->status,
             'observations' => $pallet->observations,
+            'pallet_tare_weight_kg' => $pallet->pallet_tare_weight_kg !== null ? (float) $pallet->pallet_tare_weight_kg : null,
             'store_id' => $store?->id,
             'store_name' => $store?->name,
             'boxes' => $boxes,
@@ -330,6 +337,16 @@ class PalletWriteService
             $newObs = $validated['observations'];
             if ((string) $newObs !== (string) $snapshot['observations']) {
                 $details['observations'] = ['from' => $snapshot['observations'], 'to' => $newObs];
+            }
+        }
+
+        if (array_key_exists('palletTareWeightKg', $validated)) {
+            $newTare = $validated['palletTareWeightKg'];
+            if ($newTare != $snapshot['pallet_tare_weight_kg']) {
+                $details['palletTareWeightKg'] = [
+                    'from' => $snapshot['pallet_tare_weight_kg'],
+                    'to' => $newTare !== null ? (float) $newTare : null,
+                ];
             }
         }
 

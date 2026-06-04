@@ -394,6 +394,7 @@ class StockBlockApiTest extends TestCase
 
         $payload = [
             'observations' => 'Palet test',
+            'palletTareWeightKg' => 24.5,
             'boxes' => [
                 [
                     'product' => ['id' => $product->id],
@@ -409,9 +410,23 @@ class StockBlockApiTest extends TestCase
             ->postJson('/api/v2/pallets', $payload);
 
         $response->assertStatus(201);
+        $response->assertJsonPath('palletTareWeightKg', 24.5);
         $json = $response->json();
         $this->assertTrue(isset($json['id']) || isset($json['data']['id']), 'Response should have id');
-        $this->assertDatabaseHas('pallets', ['observations' => 'Palet test'], 'tenant');
+        $this->assertDatabaseHas('pallets', ['observations' => 'Palet test', 'pallet_tare_weight_kg' => 24.5], 'tenant');
+
+        $palletId = $json['id'] ?? $json['data']['id'];
+        $payload['id'] = $palletId;
+        $payload['palletTareWeightKg'] = 18.75;
+        $payload['boxes'][0]['id'] = $response->json('boxes.0.id');
+        $payload['boxes'][0]['grossWeight'] = 11.5;
+
+        $updateResponse = $this->withHeaders($this->authHeaders())
+            ->putJson('/api/v2/pallets/'.$palletId, $payload);
+
+        $updateResponse->assertStatus(201);
+        $updateResponse->assertJsonPath('palletTareWeightKg', 18.75);
+        $this->assertDatabaseHas('pallets', ['id' => $palletId, 'pallet_tare_weight_kg' => 18.75], 'tenant');
     }
 
     public function test_can_store_raw_material_reception_with_details(): void
@@ -421,6 +436,7 @@ class StockBlockApiTest extends TestCase
         $product = Product::on('tenant')->first();
         $this->assertNotNull($supplier, 'Tenant should have at least one supplier');
         $this->assertNotNull($product, 'Tenant should have at least one product');
+        $lot = 'LOT-PRICE-'.uniqid();
 
         $payload = [
             'supplier' => ['id' => $supplier->id],
@@ -443,6 +459,50 @@ class StockBlockApiTest extends TestCase
         $response->assertJsonStructure(['message', 'data' => ['id', 'date', 'creationMode', 'details']]);
         $response->assertJsonPath('data.creationMode', 'lines');
         $this->assertDatabaseHas('raw_material_receptions', ['supplier_id' => $supplier->id], 'tenant');
+    }
+
+    public function test_can_store_raw_material_reception_with_pallet_tare_weight(): void
+    {
+        $this->seedTenantForReceptions();
+        $supplier = Supplier::on('tenant')->first();
+        $product = Product::on('tenant')->first();
+        $this->assertNotNull($supplier, 'Tenant should have at least one supplier');
+        $this->assertNotNull($product, 'Tenant should have at least one product');
+
+        $payload = [
+            'supplier' => ['id' => $supplier->id],
+            'date' => now()->format('Y-m-d'),
+            'notes' => 'Reception with pallet tare',
+            'pallets' => [
+                [
+                    'observations' => 'Palet con tara',
+                    'palletTareWeightKg' => 22.25,
+                    'boxes' => [
+                        [
+                            'product' => ['id' => $product->id],
+                            'lot' => $lot,
+                            'gs1128' => '01000000000000001123',
+                            'grossWeight' => 12.5,
+                            'netWeight' => 10.0,
+                        ],
+                    ],
+                ],
+            ],
+            'prices' => [
+                ['product' => ['id' => $product->id], 'lot' => $lot, 'price' => 2.5],
+            ],
+        ];
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/raw-material-receptions', $payload);
+
+        $response->assertStatus(201);
+        $response->assertJsonPath('data.creationMode', 'pallets');
+        $response->assertJsonPath('data.pallets.0.palletTareWeightKg', 22.25);
+        $this->assertDatabaseHas('pallets', [
+            'observations' => 'Palet con tara',
+            'pallet_tare_weight_kg' => 22.25,
+        ], 'tenant');
     }
 
     public function test_can_show_raw_material_reception(): void

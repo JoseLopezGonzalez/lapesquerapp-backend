@@ -8,8 +8,9 @@ use Throwable;
 
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use App\Exceptions\DomainValidationException;
 
@@ -81,6 +82,14 @@ class Handler extends ExceptionHandler
                     'userMessage' => 'No tienes permiso para realizar esta acción.',
                     'error' => $exception->getMessage(),
                 ], 403); // 403 Forbidden
+            }
+
+            // ModelNotFoundException → 404 (route model binding o findOrFail fallidos)
+            if ($exception instanceof ModelNotFoundException) {
+                return response()->json([
+                    'message'     => 'Recurso no encontrado.',
+                    'userMessage' => 'El recurso solicitado no existe o ha sido eliminado.',
+                ], 404);
             }
 
             // Manejar errores HTTP estándar (404, 403, etc.)

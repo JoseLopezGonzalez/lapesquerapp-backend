@@ -51,6 +51,7 @@ class UpdatePalletRequest extends FormRequest
         return [
             'id' => 'required|integer',
             'observations' => 'sometimes|nullable|string|max:1000',
+            'palletTareWeightKg' => 'sometimes|nullable|numeric|min:0',
             'store.id' => 'sometimes|nullable|integer|exists:tenant.stores,id',
             'state.id' => 'sometimes|integer|in:1,2,3,4',
             'boxes' => 'sometimes|array',

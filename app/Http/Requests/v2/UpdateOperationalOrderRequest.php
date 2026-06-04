@@ -25,6 +25,7 @@ class UpdateOperationalOrderRequest extends FormRequest
             'plannedProducts' => 'prohibited',
 
             // Execution payload (same shape as autoventa where it applies)
+            'palletTareWeightKg' => 'sometimes|nullable|numeric|min:0',
             'items' => 'sometimes|array',
             'items.*.productId' => 'required|integer|exists:tenant.products,id',
             'items.*.boxesCount' => 'required|integer|min:1',

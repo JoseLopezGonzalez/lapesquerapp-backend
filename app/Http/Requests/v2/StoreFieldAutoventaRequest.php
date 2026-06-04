@@ -23,6 +23,7 @@ class StoreFieldAutoventaRequest extends FormRequest
             'loadDate' => 'required|date',
             'invoiceRequired' => 'required|boolean',
             'observations' => 'nullable|string|max:1000',
+            'palletTareWeightKg' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.productId' => 'required|integer|exists:tenant.products,id',
             'items.*.boxesCount' => 'required|integer|min:1',

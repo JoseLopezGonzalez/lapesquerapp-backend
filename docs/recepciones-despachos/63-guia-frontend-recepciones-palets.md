@@ -164,6 +164,7 @@ Los palets que provienen de una recepción **no se pueden modificar ni eliminar 
   - `prices[].price` (requerido): Precio por kg (≥ 0)
 - `pallets` (requerido si no hay `details`): Array de palets
   - `pallets[].observations` (opcional): Observaciones del palet
+  - `pallets[].palletTareWeightKg` (opcional): Tara/peso físico del palet vacío en kg
   - `pallets[].store.id` (opcional): ID del almacén (si se proporciona, el palet se crea como almacenado)
   - `pallets[].boxes` (requerido): Array de cajas
     - `boxes[].product.id` (requerido): ID del producto de la caja
@@ -347,6 +348,7 @@ Los palets ahora incluyen información de recepción y costes:
 ```json
 {
   "id": 10,
+  "palletTareWeightKg": 22.25,
   "receptionId": 1,
   "reception": {
     "id": 1,
@@ -649,4 +651,3 @@ POST /api/v2/raw-material-receptions
 ---
 
 **Última actualización**: 2025-01-XX
-

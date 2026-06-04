@@ -18,6 +18,7 @@ class StorePalletRequest extends FormRequest
     {
         return [
             'observations' => 'nullable|string|max:1000',
+            'palletTareWeightKg' => 'nullable|numeric|min:0',
             'boxes' => 'required|array|min:1',
             'boxes.*.product.id' => 'required|exists:tenant.products,id',
             'boxes.*.lot' => 'required|string|max:255',
