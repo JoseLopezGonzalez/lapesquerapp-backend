@@ -434,12 +434,13 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
         /* Supplier Liquidations */
         Route::get('supplier-liquidations', [SupplierLiquidationController::class, 'index'])->name('supplier-liquidations.index');
+        Route::post('supplier-liquidations', [SupplierLiquidationController::class, 'store'])->name('supplier-liquidations.store');
         Route::get('supplier-liquidations/suppliers', [SupplierLiquidationController::class, 'getSuppliers'])->name('supplier-liquidations.suppliers');
-        Route::post('supplier-liquidations/close', [SupplierLiquidationController::class, 'close'])->name('supplier-liquidations.close');
         Route::get('supplier-liquidations/{supplierId}/details', [SupplierLiquidationController::class, 'getDetails'])->name('supplier-liquidations.details');
-        Route::get('supplier-liquidations/{supplierId}/pdf', [SupplierLiquidationController::class, 'generatePdf'])->name('supplier-liquidations.pdf');
+        Route::get('supplier-liquidations/{supplierId}/preview-pdf', [SupplierLiquidationController::class, 'previewPdf'])->name('supplier-liquidations.preview-pdf');
         Route::get('supplier-liquidations/{liquidationId}/show', [SupplierLiquidationController::class, 'show'])->name('supplier-liquidations.show');
-        Route::delete('supplier-liquidations/{liquidationId}', [SupplierLiquidationController::class, 'reopen'])->name('supplier-liquidations.reopen');
+        Route::get('supplier-liquidations/{liquidationId}/pdf', [SupplierLiquidationController::class, 'pdf'])->name('supplier-liquidations.pdf');
+        Route::delete('supplier-liquidations/{liquidationId}', [SupplierLiquidationController::class, 'destroy'])->name('supplier-liquidations.destroy');
 
         Route::apiResource('capture-zones', V2CaptureZoneController::class);
         Route::delete('capture-zones', [V2CaptureZoneController::class, 'destroyMultiple']);

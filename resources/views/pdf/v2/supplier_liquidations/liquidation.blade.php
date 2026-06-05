@@ -33,11 +33,19 @@
     <div class="max-w-[210mm] mx-auto p-6 bg-white rounded min-h-screen">
         <!-- ENCABEZADO -->
         <div class="mb-6">
+            @if($is_preview ?? false)
+            <div class="mb-3 px-3 py-2 bg-yellow-100 border border-yellow-400 rounded text-yellow-800 font-bold text-sm">
+                BORRADOR — Previsualización. Este documento no corresponde a una liquidación registrada.
+            </div>
+            @endif
             <div class="rounded">
                 <h2 class="text-lg font-bold">LIQUIDACIÓN DE PROVEEDOR</h2>
+                @if(!empty($liquidation_id))
+                <p class="font-medium text-gray-500">Nº Liquidación: <span class="font-bold text-black">#{{ $liquidation_id }}</span></p>
+                @endif
                 <p class="font-medium">Proveedor: <span class="">{{ $supplier['name'] }}</span></p>
-                <p class="font-medium">Período: 
-                    <span class="">{{ date('d/m/Y', strtotime($date_range['start'])) }}</span> - 
+                <p class="font-medium">Período:
+                    <span class="">{{ date('d/m/Y', strtotime($date_range['start'])) }}</span> -
                     <span class="">{{ date('d/m/Y', strtotime($date_range['end'])) }}</span>
                 </p>
                 <p class="font-medium">Fecha de generación: <span class="">{{ date('d/m/Y H:i') }}</span></p>
