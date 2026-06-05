@@ -4,10 +4,13 @@ namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\v2\Traits\HandlesChromiumConfig;
+use App\Http\Requests\v2\CloseSupplierLiquidationRequest;
 use App\Http\Requests\v2\GenerateLiquidationPdfRequest;
 use App\Http\Requests\v2\GetLiquidationDetailsRequest;
 use App\Http\Requests\v2\GetSuppliersLiquidationRequest;
+use App\Http\Resources\v2\SupplierLiquidationResource;
 use App\Models\Supplier;
+use App\Models\SupplierLiquidation;
 use App\Services\SupplierLiquidationService;
 use Beganovich\Snappdf\Snappdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -21,7 +24,8 @@ class SupplierLiquidationController extends Controller
         $this->authorize('viewAny', Supplier::class);
 
         $dates = $request->input('dates', []);
-        $result = SupplierLiquidationService::getSuppliersWithActivity($dates);
+        $includeLiquidated = filter_var($request->input('include_liquidated', false), FILTER_VALIDATE_BOOLEAN);
+        $result = SupplierLiquidationService::getSuppliersWithActivity($dates, $includeLiquidated);
 
         return response()->json(['data' => $result]);
     }
@@ -35,6 +39,34 @@ class SupplierLiquidationController extends Controller
         $details = SupplierLiquidationService::getLiquidationDetails($supplierId, $dates);
 
         return response()->json($details);
+    }
+
+    public function close(CloseSupplierLiquidationRequest $request)
+    {
+        $supplier = Supplier::findOrFail($request->input('supplier_id'));
+        $this->authorize('update', $supplier);
+
+        $liquidation = SupplierLiquidationService::closeLiquidation(
+            $request->validated(),
+            $request->user()->id
+        );
+
+        return response()->json([
+            'data' => new SupplierLiquidationResource($liquidation),
+        ], 201);
+    }
+
+    public function reopen(int $liquidationId)
+    {
+        $liquidation = SupplierLiquidation::findOrFail($liquidationId);
+        $supplier = Supplier::findOrFail($liquidation->supplier_id);
+        $this->authorize('update', $supplier);
+
+        SupplierLiquidationService::reopenLiquidation($liquidation);
+
+        return response()->json([
+            'message' => 'La liquidación ha sido reabierta. Las recepciones y salidas de cebo han quedado disponibles de nuevo.',
+        ]);
     }
 
     public function generatePdf(GenerateLiquidationPdfRequest $request, int $supplierId): StreamedResponse

@@ -436,6 +436,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('supplier-liquidations/suppliers', [SupplierLiquidationController::class, 'getSuppliers'])->name('supplier-liquidations.suppliers');
         Route::get('supplier-liquidations/{supplierId}/details', [SupplierLiquidationController::class, 'getDetails'])->name('supplier-liquidations.details');
         Route::get('supplier-liquidations/{supplierId}/pdf', [SupplierLiquidationController::class, 'generatePdf'])->name('supplier-liquidations.pdf');
+        Route::post('supplier-liquidations/close', [SupplierLiquidationController::class, 'close'])->name('supplier-liquidations.close');
+        Route::delete('supplier-liquidations/{liquidationId}', [SupplierLiquidationController::class, 'reopen'])->name('supplier-liquidations.reopen');
 
         Route::apiResource('capture-zones', V2CaptureZoneController::class);
         Route::delete('capture-zones', [V2CaptureZoneController::class, 'destroyMultiple']);

@@ -28,6 +28,7 @@ class IndexRawMaterialReceptionRequest extends FormRequest
             'products' => 'nullable|array',
             'products.*' => 'integer',
             'notes' => 'nullable|string|max:1000',
+            'liquidation_status' => 'nullable|string|in:open,closed',
             'perPage' => 'nullable|integer|min:1|max:100',
         ];
     }

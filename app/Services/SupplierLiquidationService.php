@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Models\CeboDispatch;
 use App\Models\RawMaterialReception;
 use App\Models\Supplier;
+use App\Models\SupplierLiquidation;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class SupplierLiquidationService
 {
@@ -13,33 +15,46 @@ class SupplierLiquidationService
      * Lista proveedores con actividad en recepciones o salidas de cebo en el rango de fechas.
      *
      * @param  array{start: string, end: string}  $dates
+     * @param  bool  $includeLiquidated  Si true, incluye registros ya liquidados
      * @return \Illuminate\Support\Collection<int, array>
      */
-    public static function getSuppliersWithActivity(array $dates): Collection
+    public static function getSuppliersWithActivity(array $dates, bool $includeLiquidated = false): Collection
     {
         $startDate = date('Y-m-d 00:00:00', strtotime($dates['start']));
         $endDate = date('Y-m-d 23:59:59', strtotime($dates['end']));
 
-        $suppliersWithReceptions = Supplier::whereHas('rawMaterialReceptions', function ($query) use ($startDate, $endDate) {
+        $suppliersWithReceptions = Supplier::whereHas('rawMaterialReceptions', function ($query) use ($startDate, $endDate, $includeLiquidated) {
             $query->whereBetween('date', [$startDate, $endDate]);
+            if (! $includeLiquidated) {
+                $query->whereNull('supplier_liquidation_id');
+            }
         })->get();
 
-        $suppliersWithDispatches = Supplier::whereHas('ceboDispatches', function ($query) use ($startDate, $endDate) {
+        $suppliersWithDispatches = Supplier::whereHas('ceboDispatches', function ($query) use ($startDate, $endDate, $includeLiquidated) {
             $query->whereBetween('date', [$startDate, $endDate]);
+            if (! $includeLiquidated) {
+                $query->whereNull('supplier_liquidation_id');
+            }
         })->get();
 
         $allSuppliers = $suppliersWithReceptions->merge($suppliersWithDispatches)->unique('id');
 
-        return $allSuppliers->map(function ($supplier) use ($startDate, $endDate) {
-            $receptions = RawMaterialReception::where('supplier_id', $supplier->id)
+        return $allSuppliers->map(function ($supplier) use ($startDate, $endDate, $includeLiquidated) {
+            $receptionsQuery = RawMaterialReception::where('supplier_id', $supplier->id)
                 ->whereBetween('date', [$startDate, $endDate])
-                ->with('products')
-                ->get();
+                ->with('products');
+            if (! $includeLiquidated) {
+                $receptionsQuery->whereNull('supplier_liquidation_id');
+            }
+            $receptions = $receptionsQuery->get();
 
-            $dispatches = CeboDispatch::where('supplier_id', $supplier->id)
+            $dispatchesQuery = CeboDispatch::where('supplier_id', $supplier->id)
                 ->whereBetween('date', [$startDate, $endDate])
-                ->with('products')
-                ->get();
+                ->with('products');
+            if (! $includeLiquidated) {
+                $dispatchesQuery->whereNull('supplier_liquidation_id');
+            }
+            $dispatches = $dispatchesQuery->get();
 
             $totalReceptionsWeight = $receptions->sum(fn ($r) => $r->products->sum(fn ($p) => $p->net_weight ?? 0));
             $totalDispatchesWeight = $dispatches->sum(fn ($d) => $d->products->sum(fn ($p) => $p->net_weight ?? 0));
@@ -64,7 +79,7 @@ class SupplierLiquidationService
      *
      * @param  int  $supplierId
      * @param  array{start: string, end: string}  $dates
-     * @return array{supplier: array, date_range: array, receptions: array, dispatches: array, summary: array}
+     * @return array{supplier: array, date_range: array, receptions: array, dispatches: array, summary: array, existing_liquidation: array|null}
      */
     public static function getLiquidationDetails(int $supplierId, array $dates): array
     {
@@ -84,6 +99,12 @@ class SupplierLiquidationService
             ->orderBy('date', 'asc')
             ->get();
 
+        // Buscar liquidación cerrada exacta para este proveedor + rango de fechas
+        $existingLiquidation = SupplierLiquidation::where('supplier_id', $supplierId)
+            ->where('start_date', $dates['start'])
+            ->where('end_date', $dates['end'])
+            ->first();
+
         $receptionsData = [];
         $dispatchesData = [];
         $processedDispatchIds = [];
@@ -102,6 +123,12 @@ class SupplierLiquidationService
             $calculatedTotalWeight = $reception->products->sum(fn ($p) => $p->net_weight ?? 0);
             $calculatedTotalAmount = $reception->products->sum(fn ($p) => ($p->net_weight ?? 0) * ($p->price ?? 0));
             $averagePrice = $calculatedTotalWeight > 0 ? $calculatedTotalAmount / $calculatedTotalWeight : 0;
+
+            $liquidationClosedAt = null;
+            if ($reception->supplier_liquidation_id) {
+                $liq = SupplierLiquidation::find($reception->supplier_liquidation_id);
+                $liquidationClosedAt = $liq?->closed_at?->toIso8601String();
+            }
 
             $receptionsData[] = [
                 'id' => $reception->id,
@@ -130,6 +157,8 @@ class SupplierLiquidationService
                 'calculated_total_amount' => round($calculatedTotalAmount, 2),
                 'average_price' => round($averagePrice, 2),
                 'related_dispatches' => self::mapDispatchesToDetail($relatedDispatches),
+                'supplier_liquidation_id' => $reception->supplier_liquidation_id,
+                'liquidation_closed_at' => $liquidationClosedAt,
             ];
         }
 
@@ -160,7 +189,95 @@ class SupplierLiquidationService
             'receptions' => $receptionsData,
             'dispatches' => $dispatchesData,
             'summary' => $summary,
+            'existing_liquidation' => $existingLiquidation ? [
+                'id' => $existingLiquidation->id,
+                'closed_at' => $existingLiquidation->closed_at?->toIso8601String(),
+                'start_date' => $existingLiquidation->start_date?->format('Y-m-d'),
+                'end_date' => $existingLiquidation->end_date?->format('Y-m-d'),
+            ] : null,
         ];
+    }
+
+    /**
+     * Cierra una liquidación: crea el registro y vincula recepciones y despachos.
+     *
+     * @param  array  $data  Datos validados del request
+     * @param  int  $userId  ID del usuario que cierra
+     * @return SupplierLiquidation
+     *
+     * @throws \Illuminate\Validation\ValidationException  Si algún ID ya está vinculado a otra liquidación
+     */
+    public static function closeLiquidation(array $data, int $userId): SupplierLiquidation
+    {
+        $receptionIds = array_map('intval', $data['reception_ids']);
+        $dispatchIds = array_map('intval', $data['dispatch_ids']);
+
+        // Validar que ninguna recepción esté ya liquidada
+        if (! empty($receptionIds)) {
+            $alreadyLiquidatedReceptions = RawMaterialReception::whereIn('id', $receptionIds)
+                ->whereNotNull('supplier_liquidation_id')
+                ->pluck('id')
+                ->all();
+
+            if (! empty($alreadyLiquidatedReceptions)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'reception_ids' => 'Las siguientes recepciones ya pertenecen a una liquidación cerrada: ' . implode(', ', $alreadyLiquidatedReceptions),
+                ]);
+            }
+        }
+
+        // Validar que ningún despacho esté ya liquidado
+        if (! empty($dispatchIds)) {
+            $alreadyLiquidatedDispatches = CeboDispatch::whereIn('id', $dispatchIds)
+                ->whereNotNull('supplier_liquidation_id')
+                ->pluck('id')
+                ->all();
+
+            if (! empty($alreadyLiquidatedDispatches)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'dispatch_ids' => 'Las siguientes salidas de cebo ya pertenecen a una liquidación cerrada: ' . implode(', ', $alreadyLiquidatedDispatches),
+                ]);
+            }
+        }
+
+        return DB::transaction(function () use ($data, $userId, $receptionIds, $dispatchIds) {
+            $liquidation = SupplierLiquidation::create([
+                'supplier_id' => (int) $data['supplier_id'],
+                'start_date' => $data['start_date'],
+                'end_date' => $data['end_date'],
+                'closed_at' => now(),
+                'closed_by_user_id' => $userId,
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            if (! empty($receptionIds)) {
+                RawMaterialReception::whereIn('id', $receptionIds)
+                    ->update(['supplier_liquidation_id' => $liquidation->id]);
+            }
+
+            if (! empty($dispatchIds)) {
+                CeboDispatch::whereIn('id', $dispatchIds)
+                    ->update(['supplier_liquidation_id' => $liquidation->id]);
+            }
+
+            return $liquidation;
+        });
+    }
+
+    /**
+     * Reabre una liquidación: elimina el registro y desvincula recepciones y despachos.
+     */
+    public static function reopenLiquidation(SupplierLiquidation $liquidation): void
+    {
+        DB::transaction(function () use ($liquidation) {
+            RawMaterialReception::where('supplier_liquidation_id', $liquidation->id)
+                ->update(['supplier_liquidation_id' => null]);
+
+            CeboDispatch::where('supplier_liquidation_id', $liquidation->id)
+                ->update(['supplier_liquidation_id' => null]);
+
+            $liquidation->delete();
+        });
     }
 
     /**
@@ -179,6 +296,12 @@ class SupplierLiquidationService
         $baseAmount = round($dispatch->products->sum(fn ($p) => ($p->net_weight ?? 0) * ($p->price ?? 0)), 2);
         $ivaAmount = round($baseAmount * $ivaRate, 2);
         $totalAmount = round($baseAmount + $ivaAmount, 2);
+
+        $liquidationClosedAt = null;
+        if ($dispatch->supplier_liquidation_id) {
+            $liq = SupplierLiquidation::find($dispatch->supplier_liquidation_id);
+            $liquidationClosedAt = $liq?->closed_at?->toIso8601String();
+        }
 
         return [
             'id' => $dispatch->id,
@@ -205,6 +328,8 @@ class SupplierLiquidationService
             'base_amount' => $baseAmount,
             'iva_amount' => $ivaAmount,
             'total_amount' => $totalAmount,
+            'supplier_liquidation_id' => $dispatch->supplier_liquidation_id,
+            'liquidation_closed_at' => $liquidationClosedAt,
         ];
     }
 

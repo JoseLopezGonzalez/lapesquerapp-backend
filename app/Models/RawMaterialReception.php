@@ -12,7 +12,7 @@ class RawMaterialReception extends Model
     use UsesTenantConnection;
     use HasFactory;
 
-    protected $fillable = ['supplier_id', 'date', 'notes', 'declared_total_amount', 'declared_total_net_weight', 'creation_mode'];
+    protected $fillable = ['supplier_id', 'date', 'notes', 'declared_total_amount', 'declared_total_net_weight', 'creation_mode', 'supplier_liquidation_id'];
 
     // Constantes para creation_mode
     const CREATION_MODE_LINES = 'lines';
@@ -54,6 +54,11 @@ class RawMaterialReception extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function supplierLiquidation()
+    {
+        return $this->belongsTo(SupplierLiquidation::class);
     }
 
     public function products()

@@ -22,6 +22,7 @@ class CeboDispatchResource extends JsonResource
             'exportType' => $this->export_type,
             'netWeight' => $this->netWeight,
             'details' => $this->whenLoaded('products', fn () => CeboDispatchProductResource::collection($this->products)),
+            'supplier_liquidation_id' => $this->supplier_liquidation_id,
         ];
     }
 }

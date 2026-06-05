@@ -32,6 +32,7 @@ class IndexCeboDispatchRequest extends FormRequest
             'products.*' => 'integer',
             'notes' => 'nullable|string|max:1000',
             'export_type' => 'nullable|string|max:255',
+            'liquidation_status' => 'nullable|string|in:open,closed',
             'perPage' => 'nullable|integer|min:1|max:100',
         ];
     }

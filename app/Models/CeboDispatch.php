@@ -15,13 +15,18 @@ class CeboDispatch extends Model
     use UsesTenantConnection;
     use HasFactory;
 
-    protected $fillable = ['supplier_id', 'date', 'notes', 'export_type'];
+    protected $fillable = ['supplier_id', 'date', 'notes', 'export_type', 'supplier_liquidation_id'];
 
     protected $appends = ['net_weight', 'total_amount'];
 
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function supplierLiquidation()
+    {
+        return $this->belongsTo(SupplierLiquidation::class);
     }
 
     public function products()

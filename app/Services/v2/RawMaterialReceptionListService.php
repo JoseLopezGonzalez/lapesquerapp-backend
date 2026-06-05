@@ -56,6 +56,14 @@ class RawMaterialReceptionListService
             $query->where('notes', 'like', '%'.$request->input('notes').'%');
         }
 
+        if ($request->filled('liquidation_status')) {
+            if ($request->input('liquidation_status') === 'open') {
+                $query->whereNull('supplier_liquidation_id');
+            } else {
+                $query->whereNotNull('supplier_liquidation_id');
+            }
+        }
+
         $query->orderBy('date', 'desc');
 
         $perPage = min((int) $request->input('perPage', 12), 100);

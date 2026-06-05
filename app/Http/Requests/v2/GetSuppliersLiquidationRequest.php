@@ -19,6 +19,7 @@ class GetSuppliersLiquidationRequest extends FormRequest
         return [
             'dates.start' => 'required|date',
             'dates.end' => 'required|date|after_or_equal:dates.start',
+            'include_liquidated' => 'nullable|boolean',
         ];
     }
 

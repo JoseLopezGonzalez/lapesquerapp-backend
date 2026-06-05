@@ -72,6 +72,14 @@ class CeboDispatchListService
             $query->where('export_type', $request->export_type);
         }
 
+        if ($request->filled('liquidation_status')) {
+            if ($request->input('liquidation_status') === 'open') {
+                $query->whereNull('supplier_liquidation_id');
+            } else {
+                $query->whereNotNull('supplier_liquidation_id');
+            }
+        }
+
         return $query;
     }
 }
