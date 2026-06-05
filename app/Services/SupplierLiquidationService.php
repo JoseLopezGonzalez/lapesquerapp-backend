@@ -6,6 +6,8 @@ use App\Models\CeboDispatch;
 use App\Models\RawMaterialReception;
 use App\Models\Supplier;
 use App\Models\SupplierLiquidation;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -192,8 +194,12 @@ class SupplierLiquidationService
             'existing_liquidation' => $existingLiquidation ? [
                 'id' => $existingLiquidation->id,
                 'closed_at' => $existingLiquidation->closed_at?->toIso8601String(),
-                'start_date' => $existingLiquidation->start_date?->format('Y-m-d'),
-                'end_date' => $existingLiquidation->end_date?->format('Y-m-d'),
+                'start_date' => $existingLiquidation->start_date instanceof \Carbon\Carbon
+                    ? $existingLiquidation->start_date->format('Y-m-d')
+                    : (string) $existingLiquidation->start_date,
+                'end_date' => $existingLiquidation->end_date instanceof \Carbon\Carbon
+                    ? $existingLiquidation->end_date->format('Y-m-d')
+                    : (string) $existingLiquidation->end_date,
             ] : null,
         ];
     }
@@ -503,5 +509,128 @@ class SupplierLiquidationService
         }
 
         return $result;
+    }
+
+    /**
+     * Lista liquidaciones cerradas con filtros y paginación.
+     */
+    public static function list(Request $request): LengthAwarePaginator
+    {
+        $query = SupplierLiquidation::query()
+            ->with('supplier', 'closedBy')
+            ->withCount(['rawMaterialReceptions', 'ceboDispatches']);
+
+        if ($request->filled('suppliers')) {
+            $query->whereIn('supplier_id', $request->input('suppliers'));
+        }
+
+        if ($request->has('dates')) {
+            $dates = $request->input('dates');
+            if (! empty($dates['start'])) {
+                $query->where('start_date', '>=', $dates['start']);
+            }
+            if (! empty($dates['end'])) {
+                $query->where('end_date', '<=', $dates['end']);
+            }
+        }
+
+        if ($request->has('closed_at')) {
+            $closedAt = $request->input('closed_at');
+            if (! empty($closedAt['start'])) {
+                $query->where('closed_at', '>=', date('Y-m-d 00:00:00', strtotime($closedAt['start'])));
+            }
+            if (! empty($closedAt['end'])) {
+                $query->where('closed_at', '<=', date('Y-m-d 23:59:59', strtotime($closedAt['end'])));
+            }
+        }
+
+        $query->orderBy('closed_at', 'desc');
+
+        $perPage = min((int) $request->input('perPage', 15), 100);
+
+        return $query->paginate($perPage);
+    }
+
+    /**
+     * Devuelve el detalle completo de una liquidación cerrada: metadatos + recepciones + despachos + resumen.
+     */
+    public static function getDetail(SupplierLiquidation $liquidation): array
+    {
+        $receptions = RawMaterialReception::where('supplier_liquidation_id', $liquidation->id)
+            ->with(['products.product', 'supplier'])
+            ->orderBy('date', 'asc')
+            ->get();
+
+        $dispatches = CeboDispatch::where('supplier_liquidation_id', $liquidation->id)
+            ->with(['products.product', 'supplier'])
+            ->orderBy('date', 'asc')
+            ->get();
+
+        $receptionsData = $receptions->map(function ($reception) use ($liquidation) {
+            $calculatedTotalWeight = $reception->products->sum(fn ($p) => $p->net_weight ?? 0);
+            $calculatedTotalAmount = $reception->products->sum(fn ($p) => ($p->net_weight ?? 0) * ($p->price ?? 0));
+            $averagePrice = $calculatedTotalWeight > 0 ? $calculatedTotalAmount / $calculatedTotalWeight : 0;
+
+            return [
+                'id' => $reception->id,
+                'date' => $reception->date,
+                'notes' => $reception->notes,
+                'products' => $reception->products->map(function ($product) {
+                    $productModel = $product->product;
+
+                    return [
+                        'id' => $product->id,
+                        'product' => [
+                            'id' => $productModel->id ?? null,
+                            'name' => $productModel->name ?? null,
+                            'code' => $productModel->a3erp_code ?? $productModel->facil_com_code ?? null,
+                        ],
+                        'lot' => $product->lot ?? null,
+                        'net_weight' => round($product->net_weight ?? 0, 2),
+                        'price' => round($product->price ?? 0, 2),
+                        'amount' => round(($product->net_weight ?? 0) * ($product->price ?? 0), 2),
+                        'boxes' => $product->boxes ?? 0,
+                    ];
+                })->values()->all(),
+                'declared_total_net_weight' => round($reception->declared_total_net_weight ?? 0, 2),
+                'declared_total_amount' => round($reception->declared_total_amount ?? 0, 2),
+                'calculated_total_net_weight' => round($calculatedTotalWeight, 2),
+                'calculated_total_amount' => round($calculatedTotalAmount, 2),
+                'average_price' => round($averagePrice, 2),
+                'related_dispatches' => [],
+                'supplier_liquidation_id' => $liquidation->id,
+                'liquidation_closed_at' => $liquidation->closed_at?->toIso8601String(),
+            ];
+        })->values()->all();
+
+        $dispatchesData = $dispatches->map(fn ($d) => self::mapDispatchToDetail($d))->values()->all();
+
+        $summary = self::calculateSummary($receptionsData, $dispatchesData);
+
+        return [
+            'liquidation' => [
+                'id' => $liquidation->id,
+                'supplier_id' => $liquidation->supplier_id,
+                'start_date' => $liquidation->start_date instanceof \Carbon\Carbon
+                    ? $liquidation->start_date->format('Y-m-d')
+                    : (string) $liquidation->start_date,
+                'end_date' => $liquidation->end_date instanceof \Carbon\Carbon
+                    ? $liquidation->end_date->format('Y-m-d')
+                    : (string) $liquidation->end_date,
+                'closed_at' => $liquidation->closed_at?->toIso8601String(),
+                'closed_by_user_id' => $liquidation->closed_by_user_id,
+                'notes' => $liquidation->notes,
+            ],
+            'supplier' => [
+                'id' => $liquidation->supplier->id,
+                'name' => $liquidation->supplier->name,
+                'contact_person' => $liquidation->supplier->contact_person,
+                'phone' => $liquidation->supplier->phone,
+                'address' => $liquidation->supplier->address,
+            ],
+            'receptions' => $receptionsData,
+            'dispatches' => $dispatchesData,
+            'summary' => $summary,
+        ];
     }
 }

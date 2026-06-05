@@ -8,6 +8,7 @@ use App\Http\Requests\v2\CloseSupplierLiquidationRequest;
 use App\Http\Requests\v2\GenerateLiquidationPdfRequest;
 use App\Http\Requests\v2\GetLiquidationDetailsRequest;
 use App\Http\Requests\v2\GetSuppliersLiquidationRequest;
+use App\Http\Requests\v2\IndexSupplierLiquidationRequest;
 use App\Http\Resources\v2\SupplierLiquidationResource;
 use App\Models\Supplier;
 use App\Models\SupplierLiquidation;
@@ -18,6 +19,25 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class SupplierLiquidationController extends Controller
 {
     use HandlesChromiumConfig;
+
+    public function index(IndexSupplierLiquidationRequest $request)
+    {
+        $this->authorize('viewAny', Supplier::class);
+
+        $paginator = SupplierLiquidationService::list($request);
+
+        return SupplierLiquidationResource::collection($paginator);
+    }
+
+    public function show(int $liquidationId)
+    {
+        $liquidation = SupplierLiquidation::with('supplier')->findOrFail($liquidationId);
+        $this->authorize('view', $liquidation->supplier);
+
+        $detail = SupplierLiquidationService::getDetail($liquidation);
+
+        return response()->json($detail);
+    }
 
     public function getSuppliers(GetSuppliersLiquidationRequest $request)
     {
