@@ -238,6 +238,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('pallets/{pallet}/attachments/{attachment}', [PalletAttachmentController::class, 'show']);
         Route::patch('pallets/{pallet}/attachments/{attachment}', [PalletAttachmentController::class, 'update']);
         Route::get('pallets/{pallet}/attachments/{attachment}/download', [PalletAttachmentController::class, 'download']);
+        Route::get('pallets/{pallet}/attachments/{attachment}/thumbnail', [PalletAttachmentController::class, 'thumbnail']);
         Route::delete('pallets/{pallet}/attachments/{attachment}', [PalletAttachmentController::class, 'destroy']);
     });
 

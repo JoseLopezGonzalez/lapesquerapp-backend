@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Attachment;
 use App\Models\User;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AttachmentService
 {
@@ -99,7 +101,7 @@ class AttachmentService
     }
 
     /** Devuelve un stream del archivo para descarga autorizada. */
-    public function download(Attachment $attachment): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function download(Attachment $attachment): StreamedResponse
     {
         $disk = Storage::disk($attachment->disk);
 
@@ -107,11 +109,40 @@ class AttachmentService
             abort(404, 'El archivo no existe en storage.');
         }
 
-        return $disk->download($attachment->path, $attachment->original_name);
+        $response = $disk->download($attachment->path, $attachment->original_name);
+        $response->headers->set('Cache-Control', 'private, max-age=3600');
+
+        return $response;
     }
 
     /**
-     * Elimina el archivo físico y hace soft delete del registro.
+     * Devuelve la imagen redimensionada a ≤300px como JPEG inline.
+     * El thumbnail se genera una sola vez y se cachea en disco bajo thumbs/.
+     */
+    public function thumbnail(Attachment $attachment, int $maxDim = 300): StreamedResponse
+    {
+        if (! str_starts_with($attachment->mime_type, 'image/')) {
+            abort(415, 'El adjunto no es una imagen.');
+        }
+
+        $disk = Storage::disk($attachment->disk);
+        $thumbPath = 'thumbs/' . $attachment->path;
+
+        if (! $disk->exists($thumbPath)) {
+            $this->generateThumbnail($disk, $attachment->path, $thumbPath, $maxDim);
+        }
+
+        return response()->stream(function () use ($disk, $thumbPath) {
+            echo $disk->get($thumbPath);
+        }, 200, [
+            'Content-Type'        => 'image/jpeg',
+            'Cache-Control'       => 'private, max-age=86400',
+            'Content-Disposition' => 'inline',
+        ]);
+    }
+
+    /**
+     * Elimina el archivo físico (y su thumbnail si existe) y hace soft delete del registro.
      * Si el archivo no existe en disco se loguea y se continúa con el soft delete.
      * Si la eliminación física falla por otro motivo, no se hace soft delete.
      */
@@ -126,6 +157,11 @@ class AttachmentService
                 'attachment_id' => $attachment->id,
                 'path' => $attachment->path,
             ]);
+        }
+
+        $thumbPath = 'thumbs/' . $attachment->path;
+        if ($disk->exists($thumbPath)) {
+            $disk->delete($thumbPath);
         }
 
         $attachment->delete();
@@ -186,6 +222,48 @@ class AttachmentService
             'application/pdf' => 'pdf',
             default => 'bin',
         };
+    }
+
+    private function generateThumbnail(Filesystem $disk, string $srcPath, string $thumbPath, int $maxDim): void
+    {
+        $content = $disk->get($srcPath);
+        $src = @imagecreatefromstring($content);
+
+        if ($src === false) {
+            abort(422, 'No se pudo procesar la imagen para generar el thumbnail.');
+        }
+
+        $origW = imagesx($src);
+        $origH = imagesy($src);
+        $ratio = min($maxDim / $origW, $maxDim / $origH);
+
+        if ($ratio >= 1.0) {
+            // La imagen original ya es más pequeña que el thumbnail deseado
+            imagedestroy($src);
+            $disk->put($thumbPath, $content);
+
+            return;
+        }
+
+        $thumbW = (int) round($origW * $ratio);
+        $thumbH = (int) round($origH * $ratio);
+
+        $thumb = imagecreatetruecolor($thumbW, $thumbH);
+
+        // Fondo blanco para imágenes con transparencia (PNG)
+        $white = imagecolorallocate($thumb, 255, 255, 255);
+        imagefilledrectangle($thumb, 0, 0, $thumbW - 1, $thumbH - 1, $white);
+
+        imagecopyresampled($thumb, $src, 0, 0, 0, 0, $thumbW, $thumbH, $origW, $origH);
+
+        ob_start();
+        imagejpeg($thumb, null, 82);
+        $data = ob_get_clean();
+
+        imagedestroy($src);
+        imagedestroy($thumb);
+
+        $disk->put($thumbPath, $data);
     }
 
     private function morphKey(Model $model): string

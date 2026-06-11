@@ -74,6 +74,13 @@ class PalletAttachmentController extends Controller
         return $this->service->download($attachment);
     }
 
+    public function thumbnail(Pallet $pallet, Attachment $attachment): StreamedResponse
+    {
+        $this->authorize('download', $attachment);
+
+        return $this->service->thumbnail($attachment);
+    }
+
     public function destroy(Pallet $pallet, Attachment $attachment): JsonResponse
     {
         $this->authorize('delete', $attachment);
