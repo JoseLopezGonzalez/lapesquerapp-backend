@@ -19,7 +19,7 @@ class UpdateProductionRequest extends FormRequest
      */
     public function rules(): array
     {
-        $productionId = $this->route('id');
+        $productionId = $this->route('production')?->id ?? $this->route('production');
 
         return [
             'lot' => [
