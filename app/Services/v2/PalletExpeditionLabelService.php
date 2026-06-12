@@ -19,7 +19,7 @@ class PalletExpeditionLabelService
         $order->loadMissing([
             'customer:id,name,alias,shipping_address',
             'transport:id,name',
-            'pallets:id,observations,status,order_id',
+            'pallets:id,observations,status,order_id,pallet_tare_weight_kg',
             'pallets.boxes:id,pallet_id,box_id',
             'pallets.boxes.box:id,net_weight',
         ]);
@@ -82,6 +82,7 @@ class PalletExpeditionLabelService
             'transportName' => $this->shortText($order->transport?->name, 34),
             'boxesCount' => $pallet->numberOfBoxes,
             'netWeight' => round((float) $pallet->netWeight, 2),
+            'palletTareWeightKg' => $pallet->pallet_tare_weight_kg !== null ? round((float) $pallet->pallet_tare_weight_kg, 3) : null,
             'qrPayload' => $this->qrPayload($order, $pallet),
             'qrUrl' => $this->qrUrl($this->qrPayload($order, $pallet)),
         ];

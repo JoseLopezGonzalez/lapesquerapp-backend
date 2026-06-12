@@ -96,7 +96,7 @@
         .totals {
             margin-top: auto;
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             border: 0.55mm solid #111;
         }
 
@@ -111,7 +111,7 @@
 
         .total-value {
             display: block;
-            font-size: 22pt;
+            font-size: 18pt;
             line-height: 1;
             font-weight: 900;
             white-space: nowrap;
@@ -170,6 +170,10 @@
                 <div class="total">
                     <span class="total-value">{{ number_format($label['netWeight'], 2, ',', '.') }} kg</span>
                     <span class="total-label">Peso neto</span>
+                </div>
+                <div class="total">
+                    <span class="total-value">{{ $label['palletTareWeightKg'] !== null ? number_format($label['palletTareWeightKg'], 3, ',', '.') . ' kg' : '—' }}</span>
+                    <span class="total-label">Tara madera</span>
                 </div>
             </footer>
         </section>
