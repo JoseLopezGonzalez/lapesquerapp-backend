@@ -17,14 +17,33 @@ class SupplierLiquidationService
      * Lista proveedores con actividad en recepciones o salidas de cebo en el rango de fechas.
      *
      * @param  array{start: string, end: string}  $dates
-     * @param  bool  $includeLiquidated  Si true, incluye registros ya liquidados
+     * @param  bool  $includeLiquidated   Si true, incluye registros ya liquidados (comportamiento legacy)
+     * @param  bool  $onlyUnliquidated    Si true, solo proveedores con ≥1 ítem no liquidado; los totales
+     *                                    reflejan TODA la actividad del período (no solo ítems sin liquidar)
      * @return \Illuminate\Support\Collection<int, array>
      */
-    public static function getSuppliersWithActivity(array $dates, bool $includeLiquidated = false): Collection
+    public static function getSuppliersWithActivity(array $dates, bool $includeLiquidated = false, bool $onlyUnliquidated = false): Collection
     {
         $startDate = date('Y-m-d 00:00:00', strtotime($dates['start']));
         $endDate = date('Y-m-d 23:59:59', strtotime($dates['end']));
 
+        if ($onlyUnliquidated) {
+            // Paso 1: detectar proveedores con al menos un ítem aún no vinculado a liquidación
+            $suppliersWithReceptions = Supplier::whereHas('rawMaterialReceptions', function ($query) use ($startDate, $endDate) {
+                $query->whereBetween('date', [$startDate, $endDate])->whereNull('supplier_liquidation_id');
+            })->get();
+
+            $suppliersWithDispatches = Supplier::whereHas('ceboDispatches', function ($query) use ($startDate, $endDate) {
+                $query->whereBetween('date', [$startDate, $endDate])->whereNull('supplier_liquidation_id');
+            })->get();
+
+            $allSuppliers = $suppliersWithReceptions->merge($suppliersWithDispatches)->unique('id');
+
+            // Paso 2: totales = TODA la actividad del período (sin filtro de liquidación)
+            return $allSuppliers->map(fn ($supplier) => self::buildSupplierActivityRow($supplier, $startDate, $endDate, filterUnliquidated: false))->values();
+        }
+
+        // Comportamiento original controlado por $includeLiquidated
         $suppliersWithReceptions = Supplier::whereHas('rawMaterialReceptions', function ($query) use ($startDate, $endDate, $includeLiquidated) {
             $query->whereBetween('date', [$startDate, $endDate]);
             if (! $includeLiquidated) {
@@ -41,39 +60,42 @@ class SupplierLiquidationService
 
         $allSuppliers = $suppliersWithReceptions->merge($suppliersWithDispatches)->unique('id');
 
-        return $allSuppliers->map(function ($supplier) use ($startDate, $endDate, $includeLiquidated) {
-            $receptionsQuery = RawMaterialReception::where('supplier_id', $supplier->id)
-                ->whereBetween('date', [$startDate, $endDate])
-                ->with('products');
-            if (! $includeLiquidated) {
-                $receptionsQuery->whereNull('supplier_liquidation_id');
-            }
-            $receptions = $receptionsQuery->get();
+        return $allSuppliers->map(fn ($supplier) => self::buildSupplierActivityRow($supplier, $startDate, $endDate, filterUnliquidated: ! $includeLiquidated))->values();
+    }
 
-            $dispatchesQuery = CeboDispatch::where('supplier_id', $supplier->id)
-                ->whereBetween('date', [$startDate, $endDate])
-                ->with('products');
-            if (! $includeLiquidated) {
-                $dispatchesQuery->whereNull('supplier_liquidation_id');
-            }
-            $dispatches = $dispatchesQuery->get();
+    private static function buildSupplierActivityRow(Supplier $supplier, string $startDate, string $endDate, bool $filterUnliquidated): array
+    {
+        $receptionsQuery = RawMaterialReception::where('supplier_id', $supplier->id)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->with('products');
+        if ($filterUnliquidated) {
+            $receptionsQuery->whereNull('supplier_liquidation_id');
+        }
+        $receptions = $receptionsQuery->get();
 
-            $totalReceptionsWeight = $receptions->sum(fn ($r) => $r->products->sum(fn ($p) => $p->net_weight ?? 0));
-            $totalDispatchesWeight = $dispatches->sum(fn ($d) => $d->products->sum(fn ($p) => $p->net_weight ?? 0));
-            $totalReceptionsAmount = $receptions->sum(fn ($r) => $r->products->sum(fn ($p) => ($p->net_weight ?? 0) * ($p->price ?? 0)));
-            $totalDispatchesAmount = $dispatches->sum(fn ($d) => $d->products->sum(fn ($p) => ($p->net_weight ?? 0) * ($p->price ?? 0)));
+        $dispatchesQuery = CeboDispatch::where('supplier_id', $supplier->id)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->with('products');
+        if ($filterUnliquidated) {
+            $dispatchesQuery->whereNull('supplier_liquidation_id');
+        }
+        $dispatches = $dispatchesQuery->get();
 
-            return [
-                'id' => $supplier->id,
-                'name' => $supplier->name,
-                'receptions_count' => $receptions->count(),
-                'dispatches_count' => $dispatches->count(),
-                'total_receptions_weight' => round($totalReceptionsWeight, 2),
-                'total_dispatches_weight' => round($totalDispatchesWeight, 2),
-                'total_receptions_amount' => round($totalReceptionsAmount, 2),
-                'total_dispatches_amount' => round($totalDispatchesAmount, 2),
-            ];
-        })->values();
+        $totalReceptionsWeight = $receptions->sum(fn ($r) => $r->products->sum(fn ($p) => $p->net_weight ?? 0));
+        $totalDispatchesWeight = $dispatches->sum(fn ($d) => $d->products->sum(fn ($p) => $p->net_weight ?? 0));
+        $totalReceptionsAmount = $receptions->sum(fn ($r) => $r->products->sum(fn ($p) => ($p->net_weight ?? 0) * ($p->price ?? 0)));
+        $totalDispatchesAmount = $dispatches->sum(fn ($d) => $d->products->sum(fn ($p) => ($p->net_weight ?? 0) * ($p->price ?? 0)));
+
+        return [
+            'id' => $supplier->id,
+            'name' => $supplier->name,
+            'receptions_count' => $receptions->count(),
+            'dispatches_count' => $dispatches->count(),
+            'total_receptions_weight' => round($totalReceptionsWeight, 2),
+            'total_dispatches_weight' => round($totalDispatchesWeight, 2),
+            'total_receptions_amount' => round($totalReceptionsAmount, 2),
+            'total_dispatches_amount' => round($totalDispatchesAmount, 2),
+        ];
     }
 
     /**

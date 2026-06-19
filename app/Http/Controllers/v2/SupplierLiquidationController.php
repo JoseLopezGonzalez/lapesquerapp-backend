@@ -74,7 +74,8 @@ class SupplierLiquidationController extends Controller
 
         $dates = $request->input('dates', []);
         $includeLiquidated = filter_var($request->input('include_liquidated', false), FILTER_VALIDATE_BOOLEAN);
-        $result = SupplierLiquidationService::getSuppliersWithActivity($dates, $includeLiquidated);
+        $onlyUnliquidated = filter_var($request->input('only_unliquidated', false), FILTER_VALIDATE_BOOLEAN);
+        $result = SupplierLiquidationService::getSuppliersWithActivity($dates, $includeLiquidated, $onlyUnliquidated);
 
         return response()->json(['data' => $result]);
     }
