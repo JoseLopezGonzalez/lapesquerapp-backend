@@ -24,17 +24,23 @@ class SupplierLiquidationService
      */
     public static function getSuppliersWithActivity(array $dates, bool $includeLiquidated = false, bool $onlyUnliquidated = false): Collection
     {
-        $startDate = date('Y-m-d 00:00:00', strtotime($dates['start']));
-        $endDate = date('Y-m-d 23:59:59', strtotime($dates['end']));
+        $startDate = ! empty($dates['start']) ? date('Y-m-d 00:00:00', strtotime($dates['start'])) : null;
+        $endDate = ! empty($dates['end']) ? date('Y-m-d 23:59:59', strtotime($dates['end'])) : null;
 
         if ($onlyUnliquidated) {
             // Paso 1: detectar proveedores con al menos un ítem aún no vinculado a liquidación
             $suppliersWithReceptions = Supplier::whereHas('rawMaterialReceptions', function ($query) use ($startDate, $endDate) {
-                $query->whereBetween('date', [$startDate, $endDate])->whereNull('supplier_liquidation_id');
+                if ($startDate && $endDate) {
+                    $query->whereBetween('date', [$startDate, $endDate]);
+                }
+                $query->whereNull('supplier_liquidation_id');
             })->get();
 
             $suppliersWithDispatches = Supplier::whereHas('ceboDispatches', function ($query) use ($startDate, $endDate) {
-                $query->whereBetween('date', [$startDate, $endDate])->whereNull('supplier_liquidation_id');
+                if ($startDate && $endDate) {
+                    $query->whereBetween('date', [$startDate, $endDate]);
+                }
+                $query->whereNull('supplier_liquidation_id');
             })->get();
 
             $allSuppliers = $suppliersWithReceptions->merge($suppliersWithDispatches)->unique('id');
@@ -45,14 +51,18 @@ class SupplierLiquidationService
 
         // Comportamiento original controlado por $includeLiquidated
         $suppliersWithReceptions = Supplier::whereHas('rawMaterialReceptions', function ($query) use ($startDate, $endDate, $includeLiquidated) {
-            $query->whereBetween('date', [$startDate, $endDate]);
+            if ($startDate && $endDate) {
+                $query->whereBetween('date', [$startDate, $endDate]);
+            }
             if (! $includeLiquidated) {
                 $query->whereNull('supplier_liquidation_id');
             }
         })->get();
 
         $suppliersWithDispatches = Supplier::whereHas('ceboDispatches', function ($query) use ($startDate, $endDate, $includeLiquidated) {
-            $query->whereBetween('date', [$startDate, $endDate]);
+            if ($startDate && $endDate) {
+                $query->whereBetween('date', [$startDate, $endDate]);
+            }
             if (! $includeLiquidated) {
                 $query->whereNull('supplier_liquidation_id');
             }
@@ -63,19 +73,23 @@ class SupplierLiquidationService
         return $allSuppliers->map(fn ($supplier) => self::buildSupplierActivityRow($supplier, $startDate, $endDate, filterUnliquidated: ! $includeLiquidated))->values();
     }
 
-    private static function buildSupplierActivityRow(Supplier $supplier, string $startDate, string $endDate, bool $filterUnliquidated): array
+    private static function buildSupplierActivityRow(Supplier $supplier, ?string $startDate, ?string $endDate, bool $filterUnliquidated): array
     {
         $receptionsQuery = RawMaterialReception::where('supplier_id', $supplier->id)
-            ->whereBetween('date', [$startDate, $endDate])
             ->with('products');
+        if ($startDate && $endDate) {
+            $receptionsQuery->whereBetween('date', [$startDate, $endDate]);
+        }
         if ($filterUnliquidated) {
             $receptionsQuery->whereNull('supplier_liquidation_id');
         }
         $receptions = $receptionsQuery->get();
 
         $dispatchesQuery = CeboDispatch::where('supplier_id', $supplier->id)
-            ->whereBetween('date', [$startDate, $endDate])
             ->with('products');
+        if ($startDate && $endDate) {
+            $dispatchesQuery->whereBetween('date', [$startDate, $endDate]);
+        }
         if ($filterUnliquidated) {
             $dispatchesQuery->whereNull('supplier_liquidation_id');
         }
