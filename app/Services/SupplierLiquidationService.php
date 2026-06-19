@@ -289,10 +289,12 @@ class SupplierLiquidationService
         }
 
         return DB::transaction(function () use ($data, $userId, $receptionIds, $dispatchIds) {
+            [$startDate, $endDate] = self::resolveLiquidationDates($data, $receptionIds, $dispatchIds);
+
             $liquidation = SupplierLiquidation::create([
                 'supplier_id' => (int) $data['supplier_id'],
-                'start_date' => $data['start_date'],
-                'end_date' => $data['end_date'],
+                'start_date' => $startDate,
+                'end_date' => $endDate,
                 'closed_at' => now(),
                 'closed_by_user_id' => $userId,
                 'notes' => $data['notes'] ?? null,
@@ -310,6 +312,39 @@ class SupplierLiquidationService
 
             return $liquidation;
         });
+    }
+
+    private static function resolveLiquidationDates(array $data, array $receptionIds, array $dispatchIds): array
+    {
+        if (! empty($data['start_date']) && ! empty($data['end_date'])) {
+            return [$data['start_date'], $data['end_date']];
+        }
+
+        $dates = [];
+
+        if (! empty($receptionIds)) {
+            $receptionDates = RawMaterialReception::whereIn('id', $receptionIds)->pluck('date');
+            foreach ($receptionDates as $d) {
+                $dates[] = substr((string) $d, 0, 10);
+            }
+        }
+
+        if (! empty($dispatchIds)) {
+            $dispatchDates = CeboDispatch::whereIn('id', $dispatchIds)->pluck('date');
+            foreach ($dispatchDates as $d) {
+                $dates[] = substr((string) $d, 0, 10);
+            }
+        }
+
+        if (empty($dates)) {
+            $today = now()->format('Y-m-d');
+
+            return [$data['start_date'] ?? $today, $data['end_date'] ?? $today];
+        }
+
+        sort($dates);
+
+        return [$dates[0], end($dates)];
     }
 
     /**
