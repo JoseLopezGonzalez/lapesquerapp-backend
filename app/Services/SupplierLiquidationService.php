@@ -122,26 +122,32 @@ class SupplierLiquidationService
     public static function getLiquidationDetails(int $supplierId, array $dates): array
     {
         $supplier = Supplier::findOrFail($supplierId);
-        $startDate = date('Y-m-d 00:00:00', strtotime($dates['start']));
-        $endDate = date('Y-m-d 23:59:59', strtotime($dates['end']));
+        $startDate = ! empty($dates['start']) ? date('Y-m-d 00:00:00', strtotime($dates['start'])) : null;
+        $endDate = ! empty($dates['end']) ? date('Y-m-d 23:59:59', strtotime($dates['end'])) : null;
 
-        $receptions = RawMaterialReception::where('supplier_id', $supplierId)
-            ->whereBetween('date', [$startDate, $endDate])
+        $receptionsQuery = RawMaterialReception::where('supplier_id', $supplierId)
             ->with(['products.product', 'supplier'])
-            ->orderBy('date', 'asc')
-            ->get();
+            ->orderBy('date', 'asc');
+        if ($startDate && $endDate) {
+            $receptionsQuery->whereBetween('date', [$startDate, $endDate]);
+        }
+        $receptions = $receptionsQuery->get();
 
-        $dispatches = CeboDispatch::where('supplier_id', $supplierId)
-            ->whereBetween('date', [$startDate, $endDate])
+        $dispatchesQuery = CeboDispatch::where('supplier_id', $supplierId)
             ->with(['products.product', 'supplier'])
-            ->orderBy('date', 'asc')
-            ->get();
+            ->orderBy('date', 'asc');
+        if ($startDate && $endDate) {
+            $dispatchesQuery->whereBetween('date', [$startDate, $endDate]);
+        }
+        $dispatches = $dispatchesQuery->get();
 
         // Buscar liquidación cerrada exacta para este proveedor + rango de fechas
-        $existingLiquidation = SupplierLiquidation::where('supplier_id', $supplierId)
-            ->where('start_date', $dates['start'])
-            ->where('end_date', $dates['end'])
-            ->first();
+        $existingLiquidation = ($dates['start'] ?? null) && ($dates['end'] ?? null)
+            ? SupplierLiquidation::where('supplier_id', $supplierId)
+                ->where('start_date', $dates['start'])
+                ->where('end_date', $dates['end'])
+                ->first()
+            : null;
 
         $receptionsData = [];
         $dispatchesData = [];

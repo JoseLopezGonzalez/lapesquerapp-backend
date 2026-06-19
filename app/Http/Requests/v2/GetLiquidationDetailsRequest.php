@@ -17,8 +17,8 @@ class GetLiquidationDetailsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'dates.start' => 'required|date',
-            'dates.end' => 'required|date|after_or_equal:dates.start',
+            'dates.start' => 'nullable|date',
+            'dates.end' => 'nullable|date|after_or_equal:dates.start',
         ];
     }
 
