@@ -243,7 +243,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
     });
 
     // Rutas protegidas por Sanctum — por ahora todas accesibles para todos los roles (luego: policies y restricciones)
-    Route::middleware(['auth:sanctum', 'external.active', 'role:tecnico,administrador,direccion,administracion,comercial,operario'])->group(function () {
+    Route::middleware(['auth:sanctum', 'external.active', 'role:tecnico,administrador,direccion,administracion,comercial,operario,supervisor'])->group(function () {
         /* Options (sistema) */
         Route::get('roles/options', [RoleController::class, 'options']);
         Route::get('users/options', [UserController::class, 'options']);
@@ -302,35 +302,38 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('/countries/options', [CountryController::class, 'options']);
         Route::get('/payment-terms/options', [V2PaymentTermController::class, 'options']);
         Route::get('/prospect-categories/options', [ProspectCategoryController::class, 'options']);
-        Route::get('/crm/dashboard/pending-actions', [CrmDashboardController::class, 'pendingActions']);
-        Route::get('/crm/dashboard/customers', [CrmDashboardController::class, 'customers']);
-        Route::get('/crm/dashboard/prospects', [CrmDashboardController::class, 'prospects']);
-        Route::get('/crm/agenda', [\App\Http\Controllers\v2\CrmAgendaController::class, 'calendar']);
-        Route::get('/crm/agenda/summary', [\App\Http\Controllers\v2\CrmAgendaController::class, 'summary']);
-        Route::get('/crm/agenda/pending', [\App\Http\Controllers\v2\CrmAgendaController::class, 'pending']);
-        Route::post('/crm/agenda', [\App\Http\Controllers\v2\CrmAgendaController::class, 'store']);
-        Route::post('/crm/agenda/resolve-next-action', [\App\Http\Controllers\v2\CrmAgendaController::class, 'resolveNextAction']);
-        Route::post('/crm/agenda/{id}/reschedule', [\App\Http\Controllers\v2\CrmAgendaController::class, 'reschedule']);
-        Route::post('/crm/agenda/{id}/cancel', [\App\Http\Controllers\v2\CrmAgendaController::class, 'cancel']);
-        Route::get('/prospects/{id}/contacts', [ProspectController::class, 'contacts']);
-        Route::post('/prospects/{id}/contacts', [ProspectController::class, 'storeContact']);
-        Route::put('/prospects/{id}/contacts/{contactId}', [ProspectController::class, 'updateContact']);
-        Route::delete('/prospects/{id}/contacts/{contactId}', [ProspectController::class, 'destroyContact']);
-        Route::post('/prospects/{id}/convert-to-customer', [ProspectController::class, 'convertToCustomer']);
-        Route::post('/prospects/{id}/schedule-action', [ProspectController::class, 'scheduleAction']);
-        Route::delete('/prospects/{id}/next-action', [ProspectController::class, 'clearNextAction']);
-        Route::apiResource('prospect-categories', ProspectCategoryController::class);
-        Route::apiResource('prospects', ProspectController::class);
-        Route::apiResource('commercial-interactions', CommercialInteractionController::class)->only(['index', 'store', 'show']);
-        Route::post('/offers/{id}/send', [OfferController::class, 'send']);
-        Route::post('/offers/{id}/accept', [OfferController::class, 'accept']);
-        Route::post('/offers/{id}/reject', [OfferController::class, 'reject']);
-        Route::post('/offers/{id}/expire', [OfferController::class, 'expire']);
-        Route::get('/offers/{id}/pdf', [OfferController::class, 'pdf']);
-        Route::get('/offers/{id}/whatsapp-text', [OfferController::class, 'whatsappText']);
-        Route::post('/offers/{id}/email', [OfferController::class, 'email']);
-        Route::post('/offers/{id}/create-order', [OfferController::class, 'createOrder']);
-        Route::apiResource('offers', OfferController::class);
+        // CRM / Comercial — supervisor no tiene acceso
+        Route::middleware(['role:tecnico,administrador,direccion,administracion,comercial'])->group(function () {
+            Route::get('/crm/dashboard/pending-actions', [CrmDashboardController::class, 'pendingActions']);
+            Route::get('/crm/dashboard/customers', [CrmDashboardController::class, 'customers']);
+            Route::get('/crm/dashboard/prospects', [CrmDashboardController::class, 'prospects']);
+            Route::get('/crm/agenda', [\App\Http\Controllers\v2\CrmAgendaController::class, 'calendar']);
+            Route::get('/crm/agenda/summary', [\App\Http\Controllers\v2\CrmAgendaController::class, 'summary']);
+            Route::get('/crm/agenda/pending', [\App\Http\Controllers\v2\CrmAgendaController::class, 'pending']);
+            Route::post('/crm/agenda', [\App\Http\Controllers\v2\CrmAgendaController::class, 'store']);
+            Route::post('/crm/agenda/resolve-next-action', [\App\Http\Controllers\v2\CrmAgendaController::class, 'resolveNextAction']);
+            Route::post('/crm/agenda/{id}/reschedule', [\App\Http\Controllers\v2\CrmAgendaController::class, 'reschedule']);
+            Route::post('/crm/agenda/{id}/cancel', [\App\Http\Controllers\v2\CrmAgendaController::class, 'cancel']);
+            Route::get('/prospects/{id}/contacts', [ProspectController::class, 'contacts']);
+            Route::post('/prospects/{id}/contacts', [ProspectController::class, 'storeContact']);
+            Route::put('/prospects/{id}/contacts/{contactId}', [ProspectController::class, 'updateContact']);
+            Route::delete('/prospects/{id}/contacts/{contactId}', [ProspectController::class, 'destroyContact']);
+            Route::post('/prospects/{id}/convert-to-customer', [ProspectController::class, 'convertToCustomer']);
+            Route::post('/prospects/{id}/schedule-action', [ProspectController::class, 'scheduleAction']);
+            Route::delete('/prospects/{id}/next-action', [ProspectController::class, 'clearNextAction']);
+            Route::apiResource('prospect-categories', ProspectCategoryController::class);
+            Route::apiResource('prospects', ProspectController::class);
+            Route::apiResource('commercial-interactions', CommercialInteractionController::class)->only(['index', 'store', 'show']);
+            Route::post('/offers/{id}/send', [OfferController::class, 'send']);
+            Route::post('/offers/{id}/accept', [OfferController::class, 'accept']);
+            Route::post('/offers/{id}/reject', [OfferController::class, 'reject']);
+            Route::post('/offers/{id}/expire', [OfferController::class, 'expire']);
+            Route::get('/offers/{id}/pdf', [OfferController::class, 'pdf']);
+            Route::get('/offers/{id}/whatsapp-text', [OfferController::class, 'whatsappText']);
+            Route::post('/offers/{id}/email', [OfferController::class, 'email']);
+            Route::post('/offers/{id}/create-order', [OfferController::class, 'createOrder']);
+            Route::apiResource('offers', OfferController::class);
+        });
         /* totalStockByProducts */
         Route::get('stores/total-stock-by-products', [V2StoreController::class, 'totalStockByProducts']);
         /* stores/total-stock */
@@ -368,8 +371,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         /* Controladores Genericos */
         Route::apiResource('employees', EmployeeController::class);
         Route::delete('employees', [EmployeeController::class, 'destroyMultiple']);
-        // Fichajes: solo tecnico, administrador, administracion y operario
-        Route::middleware(['role:tecnico,administrador,administracion,operario'])->group(function () {
+        // Fichajes: tecnico, administrador, administracion, operario y supervisor
+        Route::middleware(['role:tecnico,administrador,administracion,operario,supervisor'])->group(function () {
             Route::get('punches/dashboard', [PunchController::class, 'dashboard'])->name('punches.dashboard');
             Route::get('punches/statistics', [PunchController::class, 'statistics'])->name('punches.statistics');
             Route::get('punches/calendar', [PunchController::class, 'calendar'])->name('punches.calendar');
@@ -423,12 +426,15 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::delete('pallets/{id}/timeline', [V2PalletController::class, 'clearTimeline'])->name('pallets.timeline.clear');
         Route::delete('pallets/{pallet}', [V2PalletController::class, 'destroy']);
         Route::delete('pallets', [V2PalletController::class, 'destroyMultiple']);
-        Route::apiResource('customers', V2CustomerController::class);
-        Route::delete('customers', [V2CustomerController::class, 'destroyMultiple']);
-        Route::get('customers/{customer}/interactions', [V2CustomerController::class, 'interactions'])->name('customers.interactions');
-        Route::get('customers/{customer}/order-history', [V2CustomerController::class, 'getOrderHistory'])->name('customers.order_history');
-        Route::get('customers/{customer}/order-history/ranges', [V2CustomerController::class, 'getOrderHistoryRanges'])->name('customers.order_history_ranges');
-        Route::put('customers/{customer}/assignment', [V2CustomerController::class, 'updateAssignment'])->name('customers.assignment');
+        // Clientes — supervisor no tiene acceso
+        Route::middleware(['role:tecnico,administrador,direccion,administracion,comercial'])->group(function () {
+            Route::apiResource('customers', V2CustomerController::class);
+            Route::delete('customers', [V2CustomerController::class, 'destroyMultiple']);
+            Route::get('customers/{customer}/interactions', [V2CustomerController::class, 'interactions'])->name('customers.interactions');
+            Route::get('customers/{customer}/order-history', [V2CustomerController::class, 'getOrderHistory'])->name('customers.order_history');
+            Route::get('customers/{customer}/order-history/ranges', [V2CustomerController::class, 'getOrderHistoryRanges'])->name('customers.order_history_ranges');
+            Route::put('customers/{customer}/assignment', [V2CustomerController::class, 'updateAssignment'])->name('customers.assignment');
+        });
 
         Route::apiResource('suppliers', V2SupplierController::class);
         Route::delete('suppliers', [V2SupplierController::class, 'destroyMultiple']);

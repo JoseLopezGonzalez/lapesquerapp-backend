@@ -11,6 +11,7 @@ enum Role: string
     case Comercial = 'comercial';
     case RepartidorAutoventa = 'repartidor_autoventa';
     case Operario = 'operario';
+    case Supervisor = 'supervisor';
 
     /**
      * Valores string para validación y almacenamiento.
@@ -33,6 +34,7 @@ enum Role: string
             self::Comercial => 'Comercial',
             self::RepartidorAutoventa => 'Repartidor / Autoventa',
             self::Operario => 'Operario',
+            self::Supervisor => 'Supervisor',
         };
     }
 
