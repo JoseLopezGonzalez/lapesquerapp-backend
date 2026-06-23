@@ -186,6 +186,13 @@ Route::prefix('v2/superadmin')->group(function () {
         Route::get('tenants/{tenant}/feature-flags', [\App\Http\Controllers\v2\Superadmin\FeatureFlagController::class, 'tenantFlags']);
         Route::put('tenants/{tenant}/feature-flags/{flag}', [\App\Http\Controllers\v2\Superadmin\FeatureFlagController::class, 'setOverride']);
         Route::delete('tenants/{tenant}/feature-flags/{flag}', [\App\Http\Controllers\v2\Superadmin\FeatureFlagController::class, 'removeOverride']);
+
+        // Superadmin users management
+        Route::get('admins', [\App\Http\Controllers\v2\Superadmin\SuperadminUserController::class, 'index']);
+        Route::post('admins', [\App\Http\Controllers\v2\Superadmin\SuperadminUserController::class, 'store']);
+        Route::get('admins/{admin}', [\App\Http\Controllers\v2\Superadmin\SuperadminUserController::class, 'show']);
+        Route::put('admins/{admin}', [\App\Http\Controllers\v2\Superadmin\SuperadminUserController::class, 'update']);
+        Route::delete('admins/{admin}', [\App\Http\Controllers\v2\Superadmin\SuperadminUserController::class, 'destroy']);
     });
 });
 
@@ -212,7 +219,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
     // Fichajes (público - para dispositivos NFC)
     Route::post('punches', [PunchController::class, 'store'])->name('v2.punches.store');
 
-    Route::middleware(['auth:sanctum', 'external.active', 'actor:internal,external'])->group(function () {
+    Route::middleware(['auth:sanctum', 'external.active', 'actor:internal,external', 'blocklist.email'])->group(function () {
         Route::get('/stores/options', [V2StoreController::class, 'options']);
         Route::get('/products/options', [V2ProductController::class, 'options']);
         Route::get('stores', [V2StoreController::class, 'index']);
@@ -243,7 +250,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
     });
 
     // Rutas protegidas por Sanctum — por ahora todas accesibles para todos los roles (luego: policies y restricciones)
-    Route::middleware(['auth:sanctum', 'external.active', 'role:tecnico,administrador,direccion,administracion,comercial,operario,supervisor'])->group(function () {
+    Route::middleware(['auth:sanctum', 'external.active', 'role:tecnico,administrador,direccion,administracion,comercial,operario,supervisor', 'blocklist.email'])->group(function () {
         /* Options (sistema) */
         Route::get('roles/options', [RoleController::class, 'options']);
         Route::get('users/options', [UserController::class, 'options']);
@@ -578,7 +585,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::post('orders/{orderId}/send-standard-documents', [OrderDocumentController::class, 'sendStandardDocumentation']);
     });
 
-    Route::middleware(['auth:sanctum', 'external.active', 'role:repartidor_autoventa'])->prefix('field')->group(function () {
+    Route::middleware(['auth:sanctum', 'external.active', 'role:repartidor_autoventa', 'blocklist.email'])->prefix('field')->group(function () {
         Route::get('customers/options', [FieldCustomerController::class, 'options']);
         Route::get('products/options', [FieldProductController::class, 'options']);
         Route::get('taxes/options', [FieldTaxController::class, 'options']);

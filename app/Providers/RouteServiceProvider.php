@@ -24,6 +24,8 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Route::model('admin', \App\Models\SuperadminUser::class);
+
         RateLimiter::for('api', function (Request $request) {
             $tenant = $request->header('X-Tenant', 'default');
             $userOrIp = $request->user()?->id ?? $request->ip();

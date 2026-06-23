@@ -69,6 +69,7 @@ class Kernel extends HttpKernel
         'feature' => \App\Http\Middleware\CheckFeatureFlag::class,
         'actor' => \App\Http\Middleware\EnsureAllowedActor::class,
         'external.active' => \App\Http\Middleware\EnsureExternalUserIsActive::class,
+        'blocklist.email' => \App\Http\Middleware\CheckTenantEmailBlocklist::class,
     ];
 
     /**

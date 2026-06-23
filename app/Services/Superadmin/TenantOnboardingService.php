@@ -202,7 +202,8 @@ class TenantOnboardingService
             return;
         }
 
-        $tenantUrl = 'https://' . $tenant->subdomain . '.lapesquerapp.es';
+        $baseDomain = parse_url(config('superadmin.tenant_base_url', 'https://lapesquerapp.es'), PHP_URL_HOST);
+        $tenantUrl = 'https://' . $tenant->subdomain . '.' . $baseDomain;
 
         Mail::to($tenant->admin_email)->send(
             new TenantWelcomeEmail($tenant->name, $tenantUrl, $tenant->admin_email)

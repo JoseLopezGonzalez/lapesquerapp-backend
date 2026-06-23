@@ -97,7 +97,7 @@ class SecurityController extends Controller
             'expires_at' => $request->expires_at,
         ]);
 
-        $this->invalidateBlocklistCache($tenant->id, $request->value);
+        Cache::forget("blocklist:{$tenant->id}:{$request->type}:{$request->value}");
 
         return response()->json(['message' => 'Bloqueo creado.', 'data' => $block], 201);
     }
@@ -109,15 +109,10 @@ class SecurityController extends Controller
     {
         $block = TenantBlocklist::where('tenant_id', $tenant->id)->findOrFail($blockId);
 
-        $this->invalidateBlocklistCache($tenant->id, $block->value);
+        Cache::forget("blocklist:{$tenant->id}:{$block->type}:{$block->value}");
 
         $block->delete();
 
         return response()->json(['message' => 'Bloqueo eliminado.']);
-    }
-
-    private function invalidateBlocklistCache(int $tenantId, string $value): void
-    {
-        Cache::forget("blocklist:{$tenantId}:{$value}:*");
     }
 }
