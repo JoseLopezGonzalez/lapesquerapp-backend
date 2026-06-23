@@ -6,39 +6,24 @@ use App\Models\Salesperson;
 use App\Models\User;
 use App\Enums\Role;
 use Illuminate\Database\Seeder;
-use Faker\Factory as Faker;
 
-/**
- * Comerciales / vendedores de desarrollo — entorno tipo producción.
- * Inspirado en patrones reales: name (nombre o nombre completo), emails (varios con ";").
- * Solo añade los que no existan (firstOrCreate por nombre).
- * Vincula un User con rol comercial al primer Salesperson sin user_id (para pruebas de permisos).
- */
 class SalespeopleSeeder extends Seeder
 {
     public function run(): void
     {
-        $faker = Faker::create('es_ES');
-        $faker->seed(5200);
-
-        $names = [
-            'Vicente',
-            'María',
-            'Carlos García',
-            'Ana',
-            'Luis Fernández',
-            'Elena',
+        $salespeople = [
+            ['name' => 'Vicente',       'emails' => 'vicente@comercial.es;'],
+            ['name' => 'María',         'emails' => 'maria@comercial.es;'],
+            ['name' => 'Carlos García', 'emails' => 'carlos.garcia@comercial.es;'],
+            ['name' => 'Ana',           'emails' => 'ana@comercial.es;'],
+            ['name' => 'Luis Fernández','emails' => 'luis.fernandez@comercial.es;'],
+            ['name' => 'Elena',         'emails' => 'elena@comercial.es;'],
         ];
 
-        foreach ($names as $name) {
-            $emails = $faker->unique()->safeEmail() . ';';
-            if ($faker->boolean(30)) {
-                $emails .= ' CC:' . $faker->safeEmail() . ';';
-            }
-
+        foreach ($salespeople as $data) {
             Salesperson::firstOrCreate(
-                ['name' => $name],
-                ['emails' => $emails]
+                ['name' => $data['name']],
+                ['emails' => $data['emails']]
             );
         }
 
