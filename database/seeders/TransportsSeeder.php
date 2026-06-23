@@ -4,42 +4,51 @@ namespace Database\Seeders;
 
 use App\Models\Transport;
 use Illuminate\Database\Seeder;
-use Faker\Factory as Faker;
 
-/**
- * Transportes de desarrollo — entorno tipo producción.
- * Inspirado en patrones reales: name (empresa S.L./S.L.U.), vat_number (B + 8 dígitos),
- * address (multilínea), emails (cadena con ";").
- * Solo añade los que no existan (firstOrCreate por nombre).
- */
 class TransportsSeeder extends Seeder
 {
     public function run(): void
     {
-        $faker = Faker::create('es_ES');
-        $faker->seed(5300);
-
-        $companyNames = [
-            'Transportes Marítimos del Sur S.L.',
-            'Logística Costa S.L.U.',
-            'Frío Express Andalucía S.L.',
-            'Carga y Distribución S.L.U.',
-            'Transmediterráneo S.L.',
+        $transports = [
+            [
+                'name'       => 'Transportes Marítimos del Sur S.L.',
+                'vat_number' => 'B53001234',
+                'address'    => "Calle Puerto, 12\n21001 Huelva (Huelva)",
+                'emails'     => 'info@transportesmaritimossur.es;',
+            ],
+            [
+                'name'       => 'Logística Costa S.L.U.',
+                'vat_number' => 'B53005678',
+                'address'    => "Avenida del Mar, 45\n11202 Algeciras (Cádiz)",
+                'emails'     => 'logistica@logisticacosta.es;',
+            ],
+            [
+                'name'       => 'Frío Express Andalucía S.L.',
+                'vat_number' => 'B53009012',
+                'address'    => "Polígono Industrial Sur, Nave 8\n41700 Dos Hermanas (Sevilla)",
+                'emails'     => 'expediciones@frioexpressandalucia.es;',
+            ],
+            [
+                'name'       => 'Carga y Distribución S.L.U.',
+                'vat_number' => 'B53003456',
+                'address'    => "Calle Almería, 3\n04004 Almería (Almería)",
+                'emails'     => 'carga@cargadistribucion.es;',
+            ],
+            [
+                'name'       => 'Transmediterráneo S.L.',
+                'vat_number' => 'B53007890',
+                'address'    => "Muelle de Poniente, 1\n46024 Valencia (Valencia)",
+                'emails'     => 'contacto@transmediterraneo.es;',
+            ],
         ];
 
-        foreach ($companyNames as $name) {
-            $address = implode("\n", [
-                $faker->streetAddress(),
-                $faker->postcode() . ' ' . $faker->city() . ' (' . $faker->randomElement(['Huelva', 'Sevilla', 'Cádiz', 'Málaga', 'Córdoba', 'Granada', 'Almería', 'Valencia', 'A Coruña']) . ')',
-            ]);
-            $emails = $faker->unique()->companyEmail() . ';';
-
+        foreach ($transports as $data) {
             Transport::firstOrCreate(
-                ['name' => $name],
+                ['name' => $data['name']],
                 [
-                    'vat_number' => 'B' . $faker->unique()->numerify('########'),
-                    'address' => $address,
-                    'emails' => $emails,
+                    'vat_number' => $data['vat_number'],
+                    'address'    => $data['address'],
+                    'emails'     => $data['emails'],
                 ]
             );
         }
