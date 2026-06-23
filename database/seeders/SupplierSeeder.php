@@ -4,71 +4,138 @@ namespace Database\Seeders;
 
 use App\Models\Supplier;
 use Illuminate\Database\Seeder;
-use Faker\Factory as Faker;
 
-/**
- * Proveedores de desarrollo ? entorno tipo producci?n.
- * Inspirado en patrones reales: cebo_export_type (facilcom/a3erp), type (raw_material o vac?o),
- * combinaciones de facil_com_code, a3erp_cebo_code, facilcom_cebo_code; algunos sin contacto.
- * Datos generados con Faker (no datos reales). Idempotente: firstOrCreate por nombre, solo a?ade los que no existan.
- */
 class SupplierSeeder extends Seeder
 {
     public function run(): void
     {
-        $faker = Faker::create('es_ES');
-        $faker->seed(4301);
-
-        $names = [
-            'Cebo Galicia S.L.',
-            'Suministros Pesqueros del Sur S.L.',
-            'Materias Primas Costa Norte S.L.',
-            'Cebo y Congelados Atlantico S.L.',
-            'Proveedora Mar de Cadiz S.L.',
-            'Suministros Facilcom Costa S.L.',
-            'Cebo A3ERP Mediterraneo S.L.',
-            'Materias Primas Cantabrico S.L.',
-            'Cebo y Descargas Huelva S.L.',
-            'Suministros Pesqueros Levante S.L.',
+        $suppliers = [
+            [
+                'name'               => 'Cebo Galicia S.L.',
+                'cebo_export_type'   => 'facilcom',
+                'facil_com_code'     => '12',
+                'facilcom_cebo_code' => '34',
+                'a3erp_cebo_code'    => null,
+                'type'               => 'raw_material',
+                'contact_person'     => null,
+                'phone'              => null,
+                'emails'             => null,
+                'address'            => null,
+            ],
+            [
+                'name'               => 'Suministros Pesqueros del Sur S.L.',
+                'cebo_export_type'   => 'facilcom',
+                'facil_com_code'     => '7',
+                'facilcom_cebo_code' => '21',
+                'a3erp_cebo_code'    => null,
+                'type'               => 'raw_material',
+                'contact_person'     => null,
+                'phone'              => null,
+                'emails'             => null,
+                'address'            => null,
+            ],
+            [
+                'name'               => 'Materias Primas Costa Norte S.L.',
+                'cebo_export_type'   => 'facilcom',
+                'facil_com_code'     => '45',
+                'facilcom_cebo_code' => '88',
+                'a3erp_cebo_code'    => null,
+                'type'               => '',
+                'contact_person'     => null,
+                'phone'              => null,
+                'emails'             => null,
+                'address'            => null,
+            ],
+            [
+                'name'               => 'Cebo y Congelados Atlantico S.L.',
+                'cebo_export_type'   => 'facilcom',
+                'facil_com_code'     => null,
+                'facilcom_cebo_code' => null,
+                'a3erp_cebo_code'    => null,
+                'type'               => 'raw_material',
+                'contact_person'     => null,
+                'phone'              => null,
+                'emails'             => null,
+                'address'            => null,
+            ],
+            [
+                'name'               => 'Proveedora Mar de Cadiz S.L.',
+                'cebo_export_type'   => 'facilcom',
+                'facil_com_code'     => '63',
+                'facilcom_cebo_code' => '15',
+                'a3erp_cebo_code'    => null,
+                'type'               => '',
+                'contact_person'     => null,
+                'phone'              => null,
+                'emails'             => null,
+                'address'            => null,
+            ],
+            [
+                'name'               => 'Suministros Facilcom Costa S.L.',
+                'cebo_export_type'   => 'a3erp',
+                'facil_com_code'     => '9',
+                'facilcom_cebo_code' => null,
+                'a3erp_cebo_code'    => '100234',
+                'type'               => 'raw_material',
+                'contact_person'     => null,
+                'phone'              => null,
+                'emails'             => null,
+                'address'            => null,
+            ],
+            [
+                'name'               => 'Cebo A3ERP Mediterraneo S.L.',
+                'cebo_export_type'   => 'a3erp',
+                'facil_com_code'     => '28',
+                'facilcom_cebo_code' => null,
+                'a3erp_cebo_code'    => '200567',
+                'type'               => 'raw_material',
+                'contact_person'     => null,
+                'phone'              => null,
+                'emails'             => null,
+                'address'            => null,
+            ],
+            [
+                'name'               => 'Materias Primas Cantabrico S.L.',
+                'cebo_export_type'   => 'facilcom',
+                'facil_com_code'     => '52',
+                'facilcom_cebo_code' => null,
+                'a3erp_cebo_code'    => null,
+                'type'               => '',
+                'contact_person'     => null,
+                'phone'              => null,
+                'emails'             => null,
+                'address'            => null,
+            ],
+            [
+                'name'               => 'Cebo y Descargas Huelva S.L.',
+                'cebo_export_type'   => 'facilcom',
+                'facil_com_code'     => null,
+                'facilcom_cebo_code' => null,
+                'a3erp_cebo_code'    => null,
+                'type'               => 'raw_material',
+                'contact_person'     => null,
+                'phone'              => null,
+                'emails'             => null,
+                'address'            => null,
+            ],
+            [
+                'name'               => 'Suministros Pesqueros Levante S.L.',
+                'cebo_export_type'   => 'a3erp',
+                'facil_com_code'     => '74',
+                'facilcom_cebo_code' => null,
+                'a3erp_cebo_code'    => '300891',
+                'type'               => 'raw_material',
+                'contact_person'     => null,
+                'phone'              => null,
+                'emails'             => null,
+                'address'            => null,
+            ],
         ];
 
-        // Patrones inspirados en producción: facilcom (con/sin códigos), a3erp (con códigos), type raw_material o ''
-        $patterns = [
-            ['cebo_export_type' => 'facilcom', 'facil_com_code' => true, 'facilcom_cebo_code' => true, 'type' => 'raw_material'],
-            ['cebo_export_type' => 'facilcom', 'facil_com_code' => true, 'facilcom_cebo_code' => true, 'type' => 'raw_material'],
-            ['cebo_export_type' => 'facilcom', 'facil_com_code' => true, 'facilcom_cebo_code' => true, 'type' => ''],
-            ['cebo_export_type' => 'facilcom', 'facil_com_code' => false, 'facilcom_cebo_code' => false, 'type' => 'raw_material'],
-            ['cebo_export_type' => 'facilcom', 'facil_com_code' => true, 'facilcom_cebo_code' => true, 'type' => ''],
-            ['cebo_export_type' => 'a3erp', 'facil_com_code' => true, 'a3erp_cebo_code' => true, 'type' => 'raw_material'],
-            ['cebo_export_type' => 'a3erp', 'facil_com_code' => true, 'a3erp_cebo_code' => true, 'type' => 'raw_material'],
-            ['cebo_export_type' => 'facilcom', 'facil_com_code' => true, 'facilcom_cebo_code' => false, 'type' => ''],
-            ['cebo_export_type' => 'facilcom', 'facil_com_code' => false, 'facilcom_cebo_code' => false, 'type' => 'raw_material'],
-            ['cebo_export_type' => 'a3erp', 'facil_com_code' => true, 'a3erp_cebo_code' => true, 'type' => 'raw_material'],
-        ];
-
-        foreach ($patterns as $i => $pattern) {
-            $name = $names[$i];
-            $facilCom = $pattern['facil_com_code'] ?? false ? (string) $faker->numberBetween(1, 99) : null;
-            $facilcomCebo = isset($pattern['facilcom_cebo_code']) && $pattern['facilcom_cebo_code']
-                ? (string) $faker->numberBetween(1, 99)
-                : null;
-            $a3erpCebo = isset($pattern['a3erp_cebo_code']) && $pattern['a3erp_cebo_code']
-                ? $faker->numerify('######')
-                : null;
-
+        foreach ($suppliers as $data) {
             Supplier::firstOrCreate(
-                ['name' => $name],
-                [
-                    'cebo_export_type' => $pattern['cebo_export_type'],
-                    'facil_com_code' => $facilCom,
-                    'a3erp_cebo_code' => $pattern['cebo_export_type'] === 'a3erp' ? $a3erpCebo : null,
-                    'facilcom_cebo_code' => $pattern['cebo_export_type'] === 'facilcom' ? $facilcomCebo : null,
-                    'type' => $pattern['type'],
-                    'contact_person' => $faker->optional(0.25)->name(),
-                    'phone' => $faker->optional(0.2)->phoneNumber(),
-                    'emails' => $faker->optional(0.2)->passthrough($faker->companyEmail() . '; CC:' . $faker->companyEmail()),
-                    'address' => $faker->optional(0.2)->address(),
-                ]
+                ['name' => $data['name']],
+                collect($data)->except('name')->toArray()
             );
         }
     }
