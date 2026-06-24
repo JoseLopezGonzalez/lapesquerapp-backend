@@ -125,12 +125,16 @@ class TenantMailConfigService
     public function getFromName(): string
     {
         $fromName = $this->getTenantSetting('company.mail.from_name');
-
-        if (empty($fromName)) {
-            return (string) config('mail.from.name', $this->getTenantSetting('company.name', 'PesquerApp'));
+        if (!empty($fromName)) {
+            return $fromName;
         }
 
-        return $fromName;
+        $companyName = $this->getTenantSetting('company.name');
+        if (!empty($companyName)) {
+            return $companyName;
+        }
+
+        return (string) config('app.name', 'PesquerApp');
     }
 }
 

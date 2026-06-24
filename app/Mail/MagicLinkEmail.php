@@ -20,11 +20,14 @@ class MagicLinkEmail extends Mailable
     {
         $mailConfigService = app(\App\Services\TenantMailConfigService::class);
 
-        return $this->subject('Inicia sesión en ' . ($mailConfigService->getFromName()))
-            ->from($mailConfigService->getFromAddress(), $mailConfigService->getFromName())
+        $companyName = $mailConfigService->getFromName();
+
+        return $this->subject('Inicia sesión en ' . $companyName)
+            ->from($mailConfigService->getFromAddress(), $companyName)
             ->view('emails.auth.magic-link', [
                 'magicLinkUrl' => $this->magicLinkUrl,
                 'expiresMinutes' => $this->expiresMinutes,
+                'companyName' => $companyName,
             ]);
     }
 }

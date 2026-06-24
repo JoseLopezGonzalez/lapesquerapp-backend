@@ -20,11 +20,14 @@ class OtpEmail extends Mailable
     {
         $mailConfigService = app(\App\Services\TenantMailConfigService::class);
 
+        $companyName = $mailConfigService->getFromName();
+
         return $this->subject('Tu código de acceso')
-            ->from($mailConfigService->getFromAddress(), $mailConfigService->getFromName())
+            ->from($mailConfigService->getFromAddress(), $companyName)
             ->view('emails.auth.otp', [
                 'code' => $this->code,
                 'expiresMinutes' => $this->expiresMinutes,
+                'companyName' => $companyName,
             ]);
     }
 }

@@ -19,15 +19,18 @@ class SuperadminAccessEmail extends Mailable
 
     public function build()
     {
-        return $this->subject('Accede al Panel de Administración — PesquerApp')
+        $appName = config('app.name', 'PesquerApp');
+
+        return $this->subject('Accede al Panel de Administración — ' . $appName)
             ->from(
                 config('mail.from.address', 'noreply@lapesquerapp.es'),
-                config('mail.from.name', 'PesquerApp')
+                $appName
             )
             ->view('emails.auth.access-html', [
                 'magicLinkUrl' => $this->magicLinkUrl,
                 'code' => $this->code,
                 'expiresMinutes' => $this->expiresMinutes,
+                'companyName' => $appName,
             ]);
     }
 }

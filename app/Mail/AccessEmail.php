@@ -21,12 +21,15 @@ class AccessEmail extends Mailable
     {
         $mailConfigService = app(\App\Services\TenantMailConfigService::class);
 
-        return $this->subject('Accede a ' . ($mailConfigService->getFromName()))
-            ->from($mailConfigService->getFromAddress(), $mailConfigService->getFromName())
+        $companyName = $mailConfigService->getFromName();
+
+        return $this->subject('Accede a ' . $companyName)
+            ->from($mailConfigService->getFromAddress(), $companyName)
             ->view('emails.auth.access-html', [
                 'magicLinkUrl' => $this->magicLinkUrl,
                 'code' => $this->code,
                 'expiresMinutes' => $this->expiresMinutes,
+                'companyName' => $companyName,
             ]);
     }
 }

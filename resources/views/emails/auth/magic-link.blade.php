@@ -37,7 +37,7 @@
   </div>
 
   @php
-    $companyName = tenantSetting('company.name', 'PesquerApp');
+    $companyName = $companyName ?? config('app.name', 'PesquerApp');
   @endphp
 
   {{-- Outer wrapper --}}
