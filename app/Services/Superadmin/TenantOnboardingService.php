@@ -175,6 +175,7 @@ class TenantOnboardingService
         $this->connectToTenantDb($tenant);
 
         $settingsFromCentral = [
+            'company.name' => $tenant->name,
             'company.display_name' => $tenant->name,
             'company.logo_url' => $tenant->branding_image_url ?? '',
         ];

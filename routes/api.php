@@ -66,6 +66,7 @@ use App\Http\Controllers\v2\SupplierController as V2SupplierController;
 use App\Http\Controllers\v2\SupplierLiquidationController;
 use App\Http\Controllers\v2\TaxController;
 use App\Http\Controllers\v2\TransportController as V2TransportController;
+use App\Http\Controllers\v2\ProfileController;
 use App\Http\Controllers\v2\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -206,6 +207,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
     Route::post('login', [V2AuthController::class, 'login'])->middleware('throttle:5,1')->name('v2.login');
     Route::post('logout', [V2AuthController::class, 'logout'])->middleware(['auth:sanctum', 'external.active'])->name('v2.logout');
     Route::get('me', [V2AuthController::class, 'me'])->middleware(['auth:sanctum', 'external.active'])->name('v2.me');
+    Route::put('me', [ProfileController::class, 'update'])->middleware(['auth:sanctum', 'external.active', 'actor:internal'])->name('v2.me.update');
 
     // Acceso por email: un solo botón "Acceder" → un email con magic link + código OTP (throttle para evitar abuso)
     Route::post('auth/request-access', [V2AuthController::class, 'requestAccess'])->middleware('throttle:5,1')->name('v2.auth.request-access');

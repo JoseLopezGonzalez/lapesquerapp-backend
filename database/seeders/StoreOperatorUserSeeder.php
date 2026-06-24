@@ -20,8 +20,6 @@ class StoreOperatorUserSeeder extends Seeder
                 'name' => 'Operario Tienda (demo)',
                 'role' => 'operario',
                 'assigned_store_id' => null,
-                'company_name' => 'PesquerApp Demo S.L.',
-                'company_logo_url' => 'https://via.placeholder.com/150x150/007bff/ffffff?text=LOGO',
             ]
         );
 

@@ -25,8 +25,6 @@ class User extends Authenticatable
         'active',
         'role',
         'assigned_store_id',
-        'company_name',
-        'company_logo_url',
     ];
 
     /**
@@ -101,8 +99,6 @@ class User extends Authenticatable
             'email' => $this->email,
             'emailVerifiedAt' => $this->email_verified_at,
             'assignedStoreId' => $this->assigned_store_id,
-            'companyName' => $this->company_name,
-            'companyLogoUrl' => $this->company_logo_url,
             'createdAt' => $this->created_at,
             'updatedAt' => $this->updated_at,
         ];

@@ -121,7 +121,7 @@ class AuthBlockApiTest extends TestCase
         $response->assertStatus(200);
         $response->assertJsonStructure([
             'id', 'name', 'email', 'role', 'active',
-            'assigned_store_id', 'company_name', 'company_logo_url',
+            'assigned_store_id',
             'created_at', 'updated_at',
             'salespersonId', 'fieldOperatorId', 'isFieldOperator',
         ]);

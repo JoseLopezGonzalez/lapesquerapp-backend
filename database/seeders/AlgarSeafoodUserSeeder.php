@@ -19,8 +19,6 @@ class AlgarSeafoodUserSeeder extends Seeder
                 'name' => 'Algar Seafood (Operario)',
                 'role' => 'operario',
                 'assigned_store_id' => 1,
-                'company_name' => 'Algar Seafood',
-                'company_logo_url' => null,
             ]
         );
 
