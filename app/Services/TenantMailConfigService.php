@@ -55,13 +55,10 @@ class TenantMailConfigService
             $missingFields[] = 'Email remitente';
         }
 
-        // Si faltan campos obligatorios, lanzar excepción
+        // Si faltan campos obligatorios, usar el mailer del sistema (.env) como fallback.
+        // Esto permite el primer acceso del administrador antes de configurar el SMTP del tenant.
         if (!empty($missingFields)) {
-            $fieldsList = implode(', ', $missingFields);
-            throw new MailConfigurationException(
-                "La configuración de email del tenant está incompleta. Faltan los siguientes campos: {$fieldsList}",
-                500
-            );
+            return;
         }
 
         // Configurar el mailer dinámicamente
