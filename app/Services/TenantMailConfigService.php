@@ -104,11 +104,12 @@ class TenantMailConfigService
     {
         $fromAddress = $this->getTenantSetting('company.mail.from_address');
 
-        if (empty($fromAddress) && app()->environment('local', 'testing')) {
-            return (string) config('mail.from.address', 'noreply@pesquerapp.local');
-        }
-
         if (empty($fromAddress)) {
+            $systemFrom = (string) config('mail.from.address', '');
+            if (!empty($systemFrom)) {
+                return $systemFrom;
+            }
+
             throw new MailConfigurationException('El email remitente no está configurado');
         }
 
@@ -126,10 +127,7 @@ class TenantMailConfigService
         $fromName = $this->getTenantSetting('company.mail.from_name');
 
         if (empty($fromName)) {
-            if (app()->environment('local', 'testing')) {
-                return (string) config('mail.from.name', $this->getTenantSetting('company.name', 'PesquerApp'));
-            }
-            return $this->getTenantSetting('company.name', 'PesquerApp');
+            return (string) config('mail.from.name', $this->getTenantSetting('company.name', 'PesquerApp'));
         }
 
         return $fromName;
