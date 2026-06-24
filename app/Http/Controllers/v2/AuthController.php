@@ -73,11 +73,29 @@ class AuthController extends Controller
 
         try {
             $sent = app(MagicLinkService::class)->sendAccessEmailToUser($actor);
+        } catch (\App\Exceptions\MailConfigurationException $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Configuración de email incompleta.',
+                'error'   => $e->getMessage(),
+                'hint'    => 'Configure el servidor SMTP en Ajustes → Empresa → Email.',
+            ], 500);
+        } catch (\Symfony\Component\Mailer\Exception\TransportException $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Error al conectar con el servidor de correo.',
+                'error'   => $e->getMessage(),
+                'hint'    => 'Verifique que el host SMTP, puerto, usuario y contraseña sean correctos.',
+            ], 500);
         } catch (\Throwable $e) {
             report($e);
 
             return response()->json([
-                'message' => 'No se pudo enviar el correo. Compruebe la configuración de email del tenant.',
+                'message' => 'No se pudo enviar el correo.',
+                'error'   => $e->getMessage(),
+                'hint'    => 'Revise los logs del servidor para más detalles.',
             ], 500);
         }
 
