@@ -2,16 +2,13 @@
 
 namespace App\Http\Requests\v2;
 
-use App\Models\Country;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateCountryRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $country = Country::findOrFail($this->route('country'));
-
-        return $this->user()->can('update', $country);
+        return $this->user()->can('update', $this->route('country'));
     }
 
     /**
@@ -19,7 +16,7 @@ class UpdateCountryRequest extends FormRequest
      */
     public function rules(): array
     {
-        $id = $this->route('country');
+        $id = $this->route('country')?->getKey();
 
         return [
             'name' => 'required|string|min:2|max:255|unique:tenant.countries,name,' . $id,

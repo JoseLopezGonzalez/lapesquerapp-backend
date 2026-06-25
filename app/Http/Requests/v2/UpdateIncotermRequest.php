@@ -2,16 +2,13 @@
 
 namespace App\Http\Requests\v2;
 
-use App\Models\Incoterm;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateIncotermRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $incoterm = Incoterm::findOrFail($this->route('incoterm'));
-
-        return $this->user()->can('update', $incoterm);
+        return $this->user()->can('update', $this->route('incoterm'));
     }
 
     /**
@@ -19,7 +16,7 @@ class UpdateIncotermRequest extends FormRequest
      */
     public function rules(): array
     {
-        $id = $this->route('incoterm');
+        $id = $this->route('incoterm')?->getKey();
 
         return [
             'code' => 'required|string|max:10|unique:tenant.incoterms,code,' . $id,
