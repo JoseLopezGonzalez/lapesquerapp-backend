@@ -2,14 +2,13 @@
 
 namespace App\Http\Requests\v2;
 
-use App\Models\PaymentTerm;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdatePaymentTermRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $paymentTerm = PaymentTerm::findOrFail($this->route('payment_term'));
+        $paymentTerm = $this->route('payment_term');
 
         return $this->user()->can('update', $paymentTerm);
     }
@@ -19,7 +18,7 @@ class UpdatePaymentTermRequest extends FormRequest
      */
     public function rules(): array
     {
-        $id = $this->route('payment_term');
+        $id = $this->route('payment_term')?->getKey();
 
         return [
             'name' => 'required|string|max:255|unique:tenant.payment_terms,name,' . $id,
