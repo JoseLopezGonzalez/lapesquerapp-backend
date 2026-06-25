@@ -40,6 +40,8 @@ class UpdateOrderRequest extends FormRequest
             'ccEmails.*' => 'string|email:rfc,dns|distinct',
             'transport' => 'sometimes|integer|exists:tenant.transports,id',
             'externalProcessor' => 'sometimes|nullable|integer|exists:tenant.external_processors,id',
+            'maquiladorDestination' => 'sometimes|nullable|string|max:500',
+            'loadingAddress' => 'sometimes|nullable|string|max:500',
             'entryDate' => 'sometimes|date',
             'loadDate' => 'sometimes|date',
             'status' => 'sometimes|string|in:pending,finished,incident',

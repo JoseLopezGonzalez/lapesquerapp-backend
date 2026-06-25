@@ -60,6 +60,8 @@ class StoreOrderRequest extends FormRequest
             'buyerReference' => 'nullable|string',
             'transport' => 'nullable|integer|exists:tenant.transports,id',
             'externalProcessor' => 'nullable|integer|exists:tenant.external_processors,id',
+            'maquiladorDestination' => 'nullable|string|max:500',
+            'loadingAddress' => 'nullable|string|max:500',
             'truckPlate' => 'nullable|string',
             'trailerPlate' => 'nullable|string',
             'temperature' => 'nullable|string',

@@ -32,6 +32,8 @@ class OrderDetailsResource extends JsonResource
             'transport' => $this->relationLoaded('transport') ? $this->transport?->toArrayAssoc() : null,
             'externalProcessor' => $this->relationLoaded('externalProcessor') ? $this->externalProcessor?->toArrayAssoc() : null,
             'externalProcessorId' => $this->external_processor_id,
+            'maquiladorDestination' => $this->maquilador_destination,
+            'loadingAddress' => $this->loading_address,
             'entryDate' => $this->entry_date,
             'loadDate' => $this->load_date,
             'status' => $this->status,

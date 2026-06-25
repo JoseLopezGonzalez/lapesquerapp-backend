@@ -39,7 +39,20 @@ return [
             'document_name' => 'Solicitud de Recogida de Transporte',
             'view_path' => 'pdf.v2.orders.transport_pickup_request',
             'subject_template' => 'Solicitud de Recogida de Transporte - Pedido #{order_id}',
-            'body_template' => 'emails.orders.generic', // ✅ Cambiado a genérico
+            'body_template' => 'emails.orders.generic',
+        ],
+        /* documentos maquilador */
+        'maquilador-cmr' => [
+            'document_name' => 'CMR Maquilador',
+            'view_path' => 'pdf.v2.orders.maquilador_cmr',
+            'subject_template' => 'CMR Maquilador - Pedido #{order_id}',
+            'body_template' => 'emails.orders.maquilador',
+        ],
+        'maquilador-signs' => [
+            'document_name' => 'Letreros Maquilador',
+            'view_path' => 'pdf.v2.orders.maquilador_order_signs',
+            'subject_template' => 'Letreros de Expedición - Pedido #{order_id}',
+            'body_template' => 'emails.orders.maquilador',
         ],
     ],
 

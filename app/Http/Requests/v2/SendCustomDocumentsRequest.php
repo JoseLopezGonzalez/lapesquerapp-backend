@@ -14,12 +14,15 @@ class SendCustomDocumentsRequest extends FormRequest
         'valued-loading-note',
         'order-confirmation',
         'transport-pickup-request',
+        'maquilador-cmr',
+        'maquilador-signs',
     ];
 
     protected static array $validRecipientKeys = [
         'customer',
         'transport',
         'salesperson',
+        'external_processor',
     ];
 
     public function authorize(): bool

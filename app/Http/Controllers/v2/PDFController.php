@@ -193,6 +193,34 @@ class PDFController extends Controller
         return $this->generatePdf($order, 'pdf.v2.orders.incident', 'Incidencia_'.$order->formattedId);
     }
 
+    public function generateMaquiladorCMR(int|string $orderId): StreamedResponse
+    {
+        $order = $this->getAuthorizedOrder($orderId);
+        if (auth()->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
+
+        if (! $order->external_processor_id) {
+            abort(422, 'El pedido no tiene un transformador externo asignado.');
+        }
+
+        return $this->generatePdf($order, 'pdf.v2.orders.maquilador_cmr', 'CMR_maquilador_'.$order->formattedId);
+    }
+
+    public function generateMaquiladorOrderSigns(int|string $orderId): StreamedResponse
+    {
+        $order = $this->getAuthorizedOrder($orderId);
+        if (auth()->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
+
+        if (! $order->external_processor_id) {
+            abort(422, 'El pedido no tiene un transformador externo asignado.');
+        }
+
+        return $this->generatePdf($order, 'pdf.v2.orders.maquilador_order_signs', 'Letreros_maquilador_'.$order->formattedId);
+    }
+
     public function generateOrderSheetsWithFilters(OrderFilteredExportRequest $request): StreamedResponse|\Illuminate\Http\JsonResponse
     {
         ini_set('memory_limit', '512M');

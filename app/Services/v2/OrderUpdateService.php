@@ -68,6 +68,12 @@ class OrderUpdateService
         if (array_key_exists('externalProcessor', $validated)) {
             $order->external_processor_id = $validated['externalProcessor'];
         }
+        if (array_key_exists('maquiladorDestination', $validated)) {
+            $order->maquilador_destination = $validated['maquiladorDestination'];
+        }
+        if (array_key_exists('loadingAddress', $validated)) {
+            $order->loading_address = $validated['loadingAddress'];
+        }
         if (array_key_exists('entryDate', $validated)) {
             $order->entry_date = normalizeDateToBusiness($validated['entryDate']);
         }

@@ -81,6 +81,8 @@ class Order extends Model
         'emails',
         'transport_id',
         'external_processor_id',
+        'maquilador_destination',
+        'loading_address',
         'entry_date',
         'load_date',
         'status',

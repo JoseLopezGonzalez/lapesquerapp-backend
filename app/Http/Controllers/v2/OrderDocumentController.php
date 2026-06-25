@@ -42,4 +42,33 @@ class OrderDocumentController extends Controller
 
         return response()->json(['message' => 'Documentación estándar enviada correctamente.']);
     }
+
+    public function sendMaquiladorDocumentation(\Illuminate\Http\Request $request, int $orderId): JsonResponse
+    {
+        if ($request->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
+
+        $order = Order::with('externalProcessor')->findOrFail($orderId);
+
+        $this->authorize('view', $order);
+
+        if (! $order->external_processor_id) {
+            return response()->json([
+                'message' => 'El pedido no tiene un transformador externo asignado.',
+                'userMessage' => 'Asigna un maquilador al pedido antes de enviar su documentación.',
+            ], 422);
+        }
+
+        if (empty($order->externalProcessor->emailsArray)) {
+            return response()->json([
+                'message' => 'El maquilador no tiene emails configurados.',
+                'userMessage' => 'El transformador externo asignado no tiene ninguna dirección de email. Añade emails en su ficha antes de enviar.',
+            ], 422);
+        }
+
+        $this->mailerService->sendMaquiladorDocuments($order);
+
+        return response()->json(['message' => 'Documentación enviada al maquilador correctamente.']);
+    }
 }

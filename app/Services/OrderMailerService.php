@@ -185,8 +185,73 @@ class OrderMailerService
                     $ccEmails = $order->comercial->ccEmailsArray ?? [];
                 }
                 break;
+
+            case 'external_processor':
+                if ($order->externalProcessor) {
+                    $mainEmails = $order->externalProcessor->emailsArray ?? [];
+                    $ccEmails = $order->externalProcessor->ccEmailsArray ?? [];
+                }
+                break;
         }
 
         return [$mainEmails, $ccEmails];
+    }
+
+    /**
+     * Envío de documentación al maquilador (CMR + letreros con datos anonimizados).
+     */
+    public function sendMaquiladorDocuments(Order $order): void
+    {
+        $externalProcessor = $order->externalProcessor;
+
+        if (! $externalProcessor) {
+            Log::warning("sendMaquiladorDocuments: pedido #{$order->id} no tiene maquilador asignado.");
+            return;
+        }
+
+        $mainEmails = $externalProcessor->emailsArray;
+        $ccEmails = $externalProcessor->ccEmailsArray;
+
+        if (empty($mainEmails)) {
+            Log::warning("sendMaquiladorDocuments: el maquilador {$externalProcessor->id} no tiene emails configurados.");
+            return;
+        }
+
+        $docTypes = ['maquilador-cmr', 'maquilador-signs'];
+        $documentsToAttach = [];
+
+        foreach ($docTypes as $docType) {
+            $viewPath = config("order_documents.documents.{$docType}.view_path");
+            $documentName = config("order_documents.documents.{$docType}.document_name");
+            $pdfPath = $this->pdfService->generateDocument($order, $docType, $viewPath);
+
+            if (! file_exists($pdfPath)) {
+                Log::error("sendMaquiladorDocuments: no se pudo generar el documento {$docType} para pedido #{$order->id}");
+                continue;
+            }
+
+            $documentsToAttach[] = [
+                'path' => $pdfPath,
+                'name' => $documentName.'_pedido_'.$order->id.'.pdf',
+            ];
+        }
+
+        if (empty($documentsToAttach)) {
+            return;
+        }
+
+        $this->mailConfigService->configureTenantMailer();
+
+        $mailable = new \App\Mail\StandardOrderDocuments(
+            $order,
+            "Documentación de Expedición - Pedido #{$order->id}",
+            'emails.orders.maquilador',
+            $documentsToAttach
+        );
+
+        Mail::to($mainEmails)
+            ->cc($ccEmails)
+            ->bcc(tenantSetting('company.bcc_email'))
+            ->send($mailable);
     }
 }

@@ -596,9 +596,14 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         /* transport pickup request */
         Route::get('orders/{orderId}/pdf/transport-pickup-request', [\App\Http\Controllers\v2\PDFController::class, 'generateTransportPickupRequest'])->name('generate_transport_pickup_request');
 
+        /* PDFs maquilador */
+        Route::get('orders/{orderId}/pdf/maquilador-cmr', [\App\Http\Controllers\v2\PDFController::class, 'generateMaquiladorCMR'])->name('generate_maquilador_cmr');
+        Route::get('orders/{orderId}/pdf/maquilador-signs', [\App\Http\Controllers\v2\PDFController::class, 'generateMaquiladorOrderSigns'])->name('generate_maquilador_signs');
+
         /* Envio de documentos */
         Route::post('orders/{orderId}/send-custom-documents', [OrderDocumentController::class, 'sendCustomDocumentation']);
         Route::post('orders/{orderId}/send-standard-documents', [OrderDocumentController::class, 'sendStandardDocumentation']);
+        Route::post('orders/{orderId}/send-maquilador-documents', [OrderDocumentController::class, 'sendMaquiladorDocumentation']);
     });
 
     Route::middleware(['auth:sanctum', 'external.active', 'role:repartidor_autoventa', 'blocklist.email'])->prefix('field')->group(function () {

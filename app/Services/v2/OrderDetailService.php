@@ -17,7 +17,7 @@ class OrderDetailService
         return Order::select([
             'id', 'buyer_reference', 'customer_id', 'payment_term_id', 'billing_address', 'shipping_address',
             'transportation_notes', 'production_notes', 'accounting_notes', 'salesperson_id', 'field_operator_id', 'created_by_user_id', 'emails',
-            'transport_id', 'external_processor_id', 'entry_date', 'load_date', 'status', 'order_type', 'incoterm_id', 'created_at', 'updated_at',
+            'transport_id', 'external_processor_id', 'maquilador_destination', 'loading_address', 'entry_date', 'load_date', 'status', 'order_type', 'incoterm_id', 'created_at', 'updated_at',
             'truck_plate', 'trailer_plate', 'temperature', 'route_id', 'route_stop_id',
         ])->with([
             'customer' => fn ($q) => $q->select([

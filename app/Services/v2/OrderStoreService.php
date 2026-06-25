@@ -62,6 +62,8 @@ class OrderStoreService
                 'buyer_reference' => $validated['buyerReference'] ?? null,
                 'transport_id' => $validated['transport'] ?? null,
                 'external_processor_id' => $validated['externalProcessor'] ?? null,
+                'maquilador_destination' => $validated['maquiladorDestination'] ?? null,
+                'loading_address' => $validated['loadingAddress'] ?? null,
                 'truck_plate' => $validated['truckPlate'] ?? null,
                 'trailer_plate' => $validated['trailerPlate'] ?? null,
                 'temperature' => $validated['temperature'] ?? null,
