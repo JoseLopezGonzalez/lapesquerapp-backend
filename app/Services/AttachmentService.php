@@ -352,17 +352,35 @@ class AttachmentService
         }
 
         $outDir = sys_get_temp_dir();
-        $process = new Process([$bin, '--headless', '--convert-to', 'pdf', '--outdir', $outDir, $filePath]);
-        $process->setTimeout(30);
+        $process = new Process([
+            $bin,
+            '--headless',
+            '--norestore',
+            '--nofirststartwizard',
+            '--convert-to', 'pdf',
+            '--outdir', $outDir,
+            $filePath,
+        ]);
+        $process->setTimeout(60);
         $process->run();
 
         if (! $process->isSuccessful()) {
+            Log::error('AttachmentService: LibreOffice conversion failed.', [
+                'file' => $filePath,
+                'exit_code' => $process->getExitCode(),
+                'stdout' => $process->getOutput(),
+                'stderr' => $process->getErrorOutput(),
+            ]);
             abort(422, 'No se pudo convertir el documento Office a PDF.');
         }
 
         $pdfPath = $outDir . DIRECTORY_SEPARATOR . pathinfo($filePath, PATHINFO_FILENAME) . '.pdf';
 
         if (! file_exists($pdfPath)) {
+            Log::error('AttachmentService: LibreOffice produced no output PDF.', [
+                'expected_path' => $pdfPath,
+                'stdout' => $process->getOutput(),
+            ]);
             abort(422, 'La conversión a PDF no generó el archivo esperado.');
         }
 
