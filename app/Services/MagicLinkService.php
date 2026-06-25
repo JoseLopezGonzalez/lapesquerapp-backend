@@ -36,6 +36,8 @@ class MagicLinkService
         $code = (string) random_int(100000, 999999);
         $expiresAt = now('UTC')->addMinutes($this->expiresMinutes());
 
+        MagicLinkToken::where('email', $user->email)->delete();
+
         MagicLinkToken::create([
             'email' => $user->email,
             'token' => hash('sha256', $token),
@@ -50,8 +52,6 @@ class MagicLinkService
             'otp_code' => $code,
             'expires_at' => $expiresAt,
         ]);
-
-        MagicLinkToken::where('email', $user->email)->delete();
 
         $magicLinkUrl = $frontendUrl.'/auth/verify?token='.$token;
 
