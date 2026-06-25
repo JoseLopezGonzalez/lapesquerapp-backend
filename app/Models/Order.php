@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\HasAttachments;
 use App\Traits\UsesTenantConnection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 
 class Order extends Model
 {
+    use HasAttachments;
     use HasFactory;
     use UsesTenantConnection;
 

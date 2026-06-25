@@ -32,7 +32,20 @@ class StoreUserRequest extends FormRequest
                     }
                 },
             ],
-            'role' => ['required', 'string', Rule::in(Role::values())],
+            'role' => [
+                'required',
+                'string',
+                Rule::in(Role::values()),
+                function (string $_attribute, mixed $value, \Closure $fail) {
+                    $elevatedRoles = [Role::Administrador->value, Role::Tecnico->value];
+                    if (
+                        ! $this->user()->hasAnyRole($elevatedRoles)
+                        && in_array($value, $elevatedRoles, true)
+                    ) {
+                        $fail('No tienes permisos para asignar el rol de administrador o técnico.');
+                    }
+                },
+            ],
             'active' => 'sometimes|boolean',
         ];
     }

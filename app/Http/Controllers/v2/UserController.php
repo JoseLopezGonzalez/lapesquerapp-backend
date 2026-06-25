@@ -10,7 +10,6 @@ use App\Http\Resources\v2\UserResource;
 use App\Models\User;
 use App\Services\MagicLinkService;
 use App\Services\v2\UserListService;
-use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
@@ -132,7 +131,7 @@ class UserController extends Controller
     {
         $this->authorize('viewOptions', User::class);
 
-        $users = User::select('id', 'name')->get();
+        $users = User::where('active', true)->select('id', 'name')->get();
         return response()->json($users);
     }
 }

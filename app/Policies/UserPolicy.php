@@ -10,17 +10,17 @@ class UserPolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * Roles que pueden ver y gestionar usuarios (listar, ver, crear, actualizar).
-     */
-    protected function allowedRoles(): array
+    protected function managementRoles(): array
     {
-        return Role::values();
+        return [
+            Role::Administrador->value,
+            Role::Tecnico->value,
+            Role::Direccion->value,
+            Role::Administracion->value,
+            Role::Supervisor->value,
+        ];
     }
 
-    /**
-     * Roles que pueden eliminar usuarios (solo administrador y técnico).
-     */
     protected function rolesCanDelete(): array
     {
         return [
@@ -29,86 +29,47 @@ class UserPolicy
         ];
     }
 
-    /**
-     * Determine if the user can view any users.
-     */
     public function viewAny(User $user): bool
     {
-        if ($user->hasRole(Role::Comercial->value) || $user->hasRole(Role::RepartidorAutoventa->value)) {
-            return false;
-        }
-        return $user->hasAnyRole($this->allowedRoles());
+        return $user->hasAnyRole($this->managementRoles());
     }
 
-    /**
-     * Determine if the user can view the user model.
-     */
     public function view(User $user, User $model): bool
     {
-        if ($user->hasRole(Role::Comercial->value) || $user->hasRole(Role::RepartidorAutoventa->value)) {
-            return false;
-        }
-        return $user->hasAnyRole($this->allowedRoles());
+        return $user->hasAnyRole($this->managementRoles());
     }
 
     public function viewOptions(User $user): bool
     {
-        return ! $user->hasRole(Role::RepartidorAutoventa->value);
+        return $user->hasAnyRole($this->managementRoles());
     }
 
-    /**
-     * Determine if the user can create users.
-     */
     public function create(User $user): bool
     {
-        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
-            return false;
-        }
-        return $user->hasAnyRole($this->allowedRoles());
+        return $user->hasAnyRole($this->managementRoles());
     }
 
-    /**
-     * Determine if the user can update the user model.
-     */
     public function update(User $user, User $model): bool
     {
-        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
-            return false;
-        }
-        return $user->hasAnyRole($this->allowedRoles());
+        return $user->hasAnyRole($this->managementRoles());
     }
 
-    /**
-     * Determine if the user can delete the user model.
-     * Only administrador and tecnico can delete; user cannot delete themselves.
-     */
     public function delete(User $user, User $model): bool
     {
         if ($user->id === $model->id) {
             return false;
         }
+
         return $user->hasAnyRole($this->rolesCanDelete());
     }
 
-    /**
-     * Determine if the user can restore the user model.
-     */
     public function restore(User $user, User $model): bool
     {
-        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
-            return false;
-        }
-        return $user->hasAnyRole($this->allowedRoles());
+        return $user->hasAnyRole($this->managementRoles());
     }
 
-    /**
-     * Determine if the user can permanently delete the user model.
-     */
     public function forceDelete(User $user, User $model): bool
     {
-        if ($user->hasRole(Role::RepartidorAutoventa->value)) {
-            return false;
-        }
-        return $user->hasAnyRole($this->allowedRoles());
+        return $user->hasAnyRole($this->managementRoles());
     }
 }

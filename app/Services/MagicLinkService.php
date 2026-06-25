@@ -51,6 +51,8 @@ class MagicLinkService
             'expires_at' => $expiresAt,
         ]);
 
+        MagicLinkToken::where('email', $user->email)->delete();
+
         $magicLinkUrl = $frontendUrl.'/auth/verify?token='.$token;
 
         $this->mailConfig->configureTenantMailer();

@@ -34,6 +34,7 @@ use App\Http\Controllers\v2\OrdersReportController;
 use App\Http\Controllers\v2\OrderStatisticsController;
 use App\Http\Controllers\v2\OrphanBoxesController;
 use App\Http\Controllers\v2\OrphanStockController;
+use App\Http\Controllers\v2\OrderAttachmentController;
 use App\Http\Controllers\v2\PalletAttachmentController;
 use App\Http\Controllers\v2\PalletController as V2PalletController;
 use App\Http\Controllers\v2\PalletExpeditionLabelController;
@@ -249,6 +250,15 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('pallets/{pallet}/attachments/{attachment}/download', [PalletAttachmentController::class, 'download']);
         Route::get('pallets/{pallet}/attachments/{attachment}/thumbnail', [PalletAttachmentController::class, 'thumbnail']);
         Route::delete('pallets/{pallet}/attachments/{attachment}', [PalletAttachmentController::class, 'destroy']);
+
+        // Adjuntos de pedidos
+        Route::get('orders/{order}/attachments', [OrderAttachmentController::class, 'index']);
+        Route::post('orders/{order}/attachments', [OrderAttachmentController::class, 'store']);
+        Route::get('orders/{order}/attachments/{attachment}', [OrderAttachmentController::class, 'show']);
+        Route::patch('orders/{order}/attachments/{attachment}', [OrderAttachmentController::class, 'update']);
+        Route::get('orders/{order}/attachments/{attachment}/download', [OrderAttachmentController::class, 'download']);
+        Route::get('orders/{order}/attachments/{attachment}/thumbnail', [OrderAttachmentController::class, 'thumbnail']);
+        Route::delete('orders/{order}/attachments/{attachment}', [OrderAttachmentController::class, 'destroy']);
     });
 
     // Rutas protegidas por Sanctum — por ahora todas accesibles para todos los roles (luego: policies y restricciones)

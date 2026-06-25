@@ -30,7 +30,25 @@ return [
             ],
         ],
 
-        // 'order' => [...],       // se define en Fase 3
+        'order' => [
+            'order_document' => [
+                'mimes' => [
+                    'application/pdf',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.ms-excel',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ],
+                'max_size' => 20 * 1024 * 1024, // 20 MB
+                'max_count' => 50,
+            ],
+            'order_image' => [
+                'mimes' => ['image/jpeg', 'image/png', 'image/webp'],
+                'max_size' => 10 * 1024 * 1024, // 10 MB
+                'max_count' => 20,
+            ],
+        ],
+
         // 'reception' => [...],   // se define en Fase 4
 
     ],
