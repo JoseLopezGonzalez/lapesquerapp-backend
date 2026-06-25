@@ -71,9 +71,9 @@ RUN apt-get update && apt-get install -y \
         ghostscript \
     && pecl install imagick \
     && docker-php-ext-enable imagick \
-    && sed -i \
+    && find /etc/ImageMagick-* -name policy.xml -exec sed -i \
         's/<policy domain="coder" rights="none" pattern="PDF"/<policy domain="coder" rights="read|write" pattern="PDF"/' \
-        /etc/ImageMagick-6/policy.xml \
+        {} \; \
     && rm -rf /var/lib/apt/lists/*
 
 # (Opcional) Establecer permisos correctos

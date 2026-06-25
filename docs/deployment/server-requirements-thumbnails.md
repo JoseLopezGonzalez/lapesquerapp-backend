@@ -29,13 +29,13 @@ RUN apt-get update && apt-get install -y \
         ghostscript \
     && pecl install imagick \
     && docker-php-ext-enable imagick \
-    && sed -i \
+    && find /etc/ImageMagick-* -name policy.xml -exec sed -i \
         's/<policy domain="coder" rights="none" pattern="PDF"/<policy domain="coder" rights="read|write" pattern="PDF"/' \
-        /etc/ImageMagick-6/policy.xml \
+        {} \; \
     && rm -rf /var/lib/apt/lists/*
 ```
 
-El `sed` es imprescindible: la política por defecto de ImageMagick bloquea la lectura de PDFs y el thumbnail fallaría con "not authorized" aunque Imagick esté instalado.
+El `sed` es imprescindible: la política por defecto de ImageMagick bloquea la lectura de PDFs y el thumbnail fallaría con "not authorized" aunque Imagick esté instalado. Se usa `find /etc/ImageMagick-*` en lugar de una ruta fija porque Debian Trixie instala ImageMagick 7 en `/etc/ImageMagick-7/`, no en `/etc/ImageMagick-6/`.
 
 ### Bloque completo (PDF + Word + Excel)
 
