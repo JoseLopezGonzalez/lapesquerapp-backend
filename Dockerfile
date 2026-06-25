@@ -65,16 +65,21 @@ RUN apt-get update && apt-get install -y wget gnupg ca-certificates \
 # ✅ Instalar fuentes comunes para mejorar tipografía en PDFs
 RUN apt-get update && apt-get install -y fonts-dejavu fonts-liberation fonts-freefont-ttf
 
-# Thumbnails de PDF: Imagick + GhostScript
+# Thumbnails de PDF y Office: Imagick + GhostScript + LibreOffice headless
 RUN apt-get update && apt-get install -y \
         libmagickwand-dev \
         ghostscript \
+        libreoffice \
+        --no-install-recommends \
     && pecl install imagick \
     && docker-php-ext-enable imagick \
     && find /etc/ImageMagick-* -name policy.xml -exec sed -i \
         's/<policy domain="coder" rights="none" pattern="PDF"/<policy domain="coder" rights="read|write" pattern="PDF"/' \
         {} \; \
     && rm -rf /var/lib/apt/lists/*
+
+# LibreOffice necesita un HOME escribible (www-data no tiene uno por defecto)
+ENV HOME=/tmp
 
 # (Opcional) Establecer permisos correctos
 # RUN chown -R www-data:www-data /var/www/html
