@@ -19,9 +19,10 @@ class OrderStoreService
      * Crea un pedido y sus líneas planificadas. Transacción única.
      * Si orderType es 'autoventa', delega en AutoventaStoreService.
      *
-     * @param array<string, mixed> $validated Datos validados (StoreOrderRequest)
-     * @param User|null $user Usuario actual (para forzar salesperson_id si es comercial)
+     * @param  array<string, mixed>  $validated  Datos validados (StoreOrderRequest)
+     * @param  User|null  $user  Usuario actual (para forzar salesperson_id si es comercial)
      * @return Order Pedido creado con relaciones cargadas para OrderDetailsResource
+     *
      * @throws \Exception
      */
     public static function store(array $validated, ?User $user = null): Order
@@ -60,6 +61,7 @@ class OrderStoreService
                 'route_stop_id' => $validated['routeStopId'] ?? null,
                 'buyer_reference' => $validated['buyerReference'] ?? null,
                 'transport_id' => $validated['transport'] ?? null,
+                'external_processor_id' => $validated['externalProcessor'] ?? null,
                 'truck_plate' => $validated['truckPlate'] ?? null,
                 'trailer_plate' => $validated['trailerPlate'] ?? null,
                 'temperature' => $validated['temperature'] ?? null,
@@ -73,7 +75,7 @@ class OrderStoreService
                 'order_type' => $validated['orderType'] ?? Order::ORDER_TYPE_STANDARD,
             ]);
 
-            if (!empty($validated['plannedProducts'])) {
+            if (! empty($validated['plannedProducts'])) {
                 foreach ($validated['plannedProducts'] as $line) {
                     OrderPlannedProductDetail::create([
                         'order_id' => $order->id,
@@ -107,9 +109,10 @@ class OrderStoreService
             $all[] = trim($email);
         }
         foreach ($ccEmails as $email) {
-            $all[] = 'CC:' . trim($email);
+            $all[] = 'CC:'.trim($email);
         }
-        return count($all) > 0 ? implode(";\n", $all) . ';' : null;
+
+        return count($all) > 0 ? implode(";\n", $all).';' : null;
     }
 
     private static function validateRouteContext(?int $routeId, ?int $routeStopId): void

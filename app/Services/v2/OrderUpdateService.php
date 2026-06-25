@@ -15,8 +15,9 @@ class OrderUpdateService
     /**
      * Actualiza un pedido con los datos validados. Si status pasa a 'finished', marca palets como shipped.
      *
-     * @param array<string, mixed> $validated Datos validados (UpdateOrderRequest)
+     * @param  array<string, mixed>  $validated  Datos validados (UpdateOrderRequest)
      * @return Order Pedido actualizado con relaciones cargadas
+     *
      * @throws ValidationException Si entry_date > load_date
      */
     public static function update(Order $order, array $validated): Order
@@ -63,6 +64,9 @@ class OrderUpdateService
         }
         if (array_key_exists('transport', $validated)) {
             $order->transport_id = $validated['transport'];
+        }
+        if (array_key_exists('externalProcessor', $validated)) {
+            $order->external_processor_id = $validated['externalProcessor'];
         }
         if (array_key_exists('entryDate', $validated)) {
             $order->entry_date = normalizeDateToBusiness($validated['entryDate']);
@@ -129,9 +133,10 @@ class OrderUpdateService
             $all[] = trim($email);
         }
         foreach ($ccEmails as $email) {
-            $all[] = 'CC:' . trim($email);
+            $all[] = 'CC:'.trim($email);
         }
-        return count($all) > 0 ? implode(";\n", $all) . ';' : null;
+
+        return count($all) > 0 ? implode(";\n", $all).';' : null;
     }
 
     private static function validateRouteContext(?int $routeId, ?int $routeStopId): void

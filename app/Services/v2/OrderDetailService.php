@@ -17,7 +17,7 @@ class OrderDetailService
         return Order::select([
             'id', 'buyer_reference', 'customer_id', 'payment_term_id', 'billing_address', 'shipping_address',
             'transportation_notes', 'production_notes', 'accounting_notes', 'salesperson_id', 'field_operator_id', 'created_by_user_id', 'emails',
-            'transport_id', 'entry_date', 'load_date', 'status', 'order_type', 'incoterm_id', 'created_at', 'updated_at',
+            'transport_id', 'external_processor_id', 'entry_date', 'load_date', 'status', 'order_type', 'incoterm_id', 'created_at', 'updated_at',
             'truck_plate', 'trailer_plate', 'temperature', 'route_id', 'route_stop_id',
         ])->with([
             'customer' => fn ($q) => $q->select([
@@ -34,6 +34,12 @@ class OrderDetailService
             'salesperson' => fn ($q) => $q->select(['id', 'name', 'emails', 'created_at', 'updated_at']),
             'fieldOperator' => fn ($q) => $q->select(['id', 'name', 'emails', 'user_id', 'created_at', 'updated_at']),
             'transport' => fn ($q) => $q->select(['id', 'name', 'vat_number', 'address', 'emails', 'created_at', 'updated_at']),
+            'externalProcessor' => fn ($q) => $q->select([
+                'id', 'name', 'legal_name', 'vat_number', 'sanitary_registration_number',
+                'contact_person', 'phone', 'emails', 'address', 'city', 'postal_code',
+                'province', 'country_id', 'is_active', 'created_at', 'updated_at',
+            ]),
+            'externalProcessor.country' => fn ($q) => $q->select(['id', 'name', 'created_at', 'updated_at']),
             'incoterm' => fn ($q) => $q->select(['id', 'code', 'description', 'created_at', 'updated_at']),
             'plannedProductDetails' => fn ($q) => $q->select(['id', 'order_id', 'product_id', 'tax_id', 'quantity', 'boxes', 'unit_price', 'created_at', 'updated_at']),
             'plannedProductDetails.product' => fn ($q) => $q->select([

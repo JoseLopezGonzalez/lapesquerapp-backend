@@ -25,6 +25,8 @@ class OrderResource extends JsonResource
             'fieldOperator' => $this->relationLoaded('fieldOperator') ? $this->fieldOperator?->toArrayAssoc() : null,
             'fieldOperatorId' => $this->field_operator_id,
             'transport' => $this->relationLoaded('transport') ? $this->transport?->toArrayAssoc() : null,
+            'externalProcessor' => $this->relationLoaded('externalProcessor') ? $this->externalProcessor?->toArrayAssoc() : null,
+            'externalProcessorId' => $this->external_processor_id,
             'pallets' => $this->numberOfPallets,
             'totalBoxes' => $this->totalBoxes,
             'incoterm' => $this->relationLoaded('incoterm') ? $this->incoterm?->toArrayAssoc() : null,

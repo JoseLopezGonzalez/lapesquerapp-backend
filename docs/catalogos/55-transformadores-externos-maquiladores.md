@@ -332,15 +332,21 @@ Añadir `external_users.external_processor_id`.
 
 Permite que varios usuarios externos pertenezcan a la misma empresa y que el tenant pueda auditar quién opera en nombre de qué maquilador.
 
-### Fase futura C: pedidos / órdenes de transformación
+### Fase implementada A: pedidos
 
-Cuando el negocio lo pida, añadir una relación desde pedidos o subpedidos:
+Se ha añadido una relación opcional desde pedidos:
 
-- `orders.external_processor_id` si el pedido completo depende de un maquilador.
-- Una tabla intermedia si solo parte del pedido/líneas se transforman fuera.
-- Una entidad específica `external_processing_orders` si se necesita controlar envío, recepción, mermas, outputs y costes.
+- `orders.external_processor_id` nullable.
+- Un pedido puede tener 0 o 1 transformador externo.
+- Un transformador externo puede estar vinculado a muchos pedidos.
+- La API de pedidos acepta `externalProcessor` en creación/edición.
+- La API de pedidos permite filtrar por `externalProcessors[]`.
 
-No conviene añadir este vínculo sin definir antes el flujo real.
+Esto cubre el caso en el que el pedido sale directamente desde la fábrica del maquilador. Todavía no implica permisos externos, documentos automáticos ni flujos de producción externa.
+
+### Fase futura C: órdenes de transformación
+
+Si solo parte de un pedido/líneas se transforman fuera o si hay que controlar envío, recepción, mermas, outputs y costes, convendrá diseñar una entidad específica como `external_processing_orders` antes de ampliar el modelo.
 
 ### Fase futura D: palets y trazabilidad
 

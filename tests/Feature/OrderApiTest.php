@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Box;
 use App\Models\CaptureZone;
+use App\Models\ExternalProcessor;
 use App\Models\FishingGear;
 use App\Models\Order;
 use App\Models\Pallet;
@@ -90,6 +91,10 @@ class OrderApiTest extends TestCase
     public function test_can_create_order(): void
     {
         $deps = $this->createOrderDependencies();
+        $externalProcessor = ExternalProcessor::factory()->create([
+            'name' => 'Maquilador Pedido Test',
+            'vat_number' => 'B90000001',
+        ]);
 
         $response = $this->withHeaders($this->authHeaders())
             ->postJson('/api/v2/orders', [
@@ -99,13 +104,19 @@ class OrderApiTest extends TestCase
                 'payment' => $deps['paymentTerm']->id,
                 'salesperson' => $deps['salesperson']->id,
                 'transport' => $deps['transport']->id,
+                'externalProcessor' => $externalProcessor->id,
                 'billingAddress' => 'B',
                 'shippingAddress' => 'S',
             ]);
 
         $response->assertStatus(201);
-        $response->assertJsonStructure(['message', 'data' => ['id', 'status']]);
-        $this->assertDatabaseHas('orders', ['status' => 'pending'], 'tenant');
+        $response->assertJsonStructure(['message', 'data' => ['id', 'status', 'externalProcessor', 'externalProcessorId']]);
+        $response->assertJsonPath('data.externalProcessor.id', $externalProcessor->id);
+        $response->assertJsonPath('data.externalProcessorId', $externalProcessor->id);
+        $this->assertDatabaseHas('orders', [
+            'status' => 'pending',
+            'external_processor_id' => $externalProcessor->id,
+        ], 'tenant');
     }
 
     public function test_create_order_returns_422_with_invalid_payload(): void
@@ -122,6 +133,8 @@ class OrderApiTest extends TestCase
     {
         $deps = $this->createOrderDependencies();
         $order = $this->createOrder($deps);
+        $externalProcessor = ExternalProcessor::factory()->create(['name' => 'Maquilador Show']);
+        $order->update(['external_processor_id' => $externalProcessor->id]);
 
         $response = $this->withHeaders($this->authHeaders())
             ->getJson('/api/v2/orders/'.$order->id);
@@ -129,6 +142,8 @@ class OrderApiTest extends TestCase
         $response->assertStatus(200);
         $response->assertJsonPath('data.id', $order->id);
         $response->assertJsonPath('data.status', 'pending');
+        $response->assertJsonPath('data.externalProcessor.id', $externalProcessor->id);
+        $response->assertJsonPath('data.externalProcessor.name', 'Maquilador Show');
     }
 
     public function test_show_order_uses_manual_box_cost_as_fallback(): void
@@ -183,14 +198,58 @@ class OrderApiTest extends TestCase
     {
         $deps = $this->createOrderDependencies();
         $order = $this->createOrder($deps);
+        $externalProcessor = ExternalProcessor::factory()->create([
+            'name' => 'Maquilador Update',
+            'vat_number' => 'B90000002',
+        ]);
 
         $response = $this->withHeaders($this->authHeaders())
             ->putJson('/api/v2/orders/'.$order->id, [
                 'buyerReference' => 'REF-TEST-123',
+                'externalProcessor' => $externalProcessor->id,
             ]);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.buyerReference', 'REF-TEST-123');
+        $response->assertJsonPath('data.externalProcessor.id', $externalProcessor->id);
+
+        $clearResponse = $this->withHeaders($this->authHeaders())
+            ->putJson('/api/v2/orders/'.$order->id, [
+                'externalProcessor' => null,
+            ]);
+
+        $clearResponse->assertStatus(200);
+        $clearResponse->assertJsonPath('data.externalProcessor', null);
+        $clearResponse->assertJsonPath('data.externalProcessorId', null);
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'external_processor_id' => null,
+        ], 'tenant');
+    }
+
+    public function test_can_filter_orders_by_external_processor(): void
+    {
+        $deps = $this->createOrderDependencies();
+        $externalProcessor = ExternalProcessor::factory()->create([
+            'name' => 'Maquilador Filtro',
+            'vat_number' => 'B90000003',
+        ]);
+        $matchingOrder = $this->createOrder($deps);
+        $matchingOrder->update(['external_processor_id' => $externalProcessor->id]);
+        $otherOrder = $this->createOrder($deps);
+        $otherProcessor = ExternalProcessor::factory()->create([
+            'name' => 'Maquilador Otro',
+            'vat_number' => 'B90000004',
+        ]);
+        $otherOrder->update(['external_processor_id' => $otherProcessor->id]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/orders?externalProcessors[]='.$externalProcessor->id);
+
+        $response->assertStatus(200);
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.id', $matchingOrder->id);
+        $response->assertJsonPath('data.0.externalProcessor.id', $externalProcessor->id);
     }
 
     // ---- DESTROY ----

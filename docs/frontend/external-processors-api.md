@@ -11,11 +11,14 @@
 
 El backend ya expone un CRUD completo para gestionar **transformadores externos** o **maquiladores**. Esta entidad representa empresas externas que transforman producto del tenant, pero en esta primera entrega funciona solo como **maestro independiente**.
 
+Actualmente ya existe vínculo con:
+
+- pedidos.
+
 No hay todavía vínculos con:
 
 - usuarios externos;
 - almacenes;
-- pedidos;
 - palets;
 - procesos de producción;
 - costes de maquila.
@@ -731,7 +734,6 @@ No construir todavía UI para:
 
 - asociar maquilador a usuarios externos;
 - asociar maquilador a almacenes;
-- vincular con pedidos;
 - vincular con palets;
 - gestionar tarifas/costes;
 - gestionar contratos o certificaciones;

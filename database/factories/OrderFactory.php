@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Customer;
+use App\Models\ExternalProcessor;
 use App\Models\FieldOperator;
 use App\Models\Incoterm;
 use App\Models\Order;
@@ -20,7 +21,7 @@ class OrderFactory extends Factory
     public function definition(): array
     {
         $entryDate = $this->faker->dateTimeBetween('-30 days', '-2 days');
-        $loadDate = (clone $entryDate)->modify('+' . $this->faker->numberBetween(1, 5) . ' days');
+        $loadDate = (clone $entryDate)->modify('+'.$this->faker->numberBetween(1, 5).' days');
 
         return [
             'customer_id' => Customer::query()->value('id') ?? Customer::factory(),
@@ -33,13 +34,14 @@ class OrderFactory extends Factory
             'salesperson_id' => Salesperson::query()->value('id') ?? Salesperson::factory(),
             'field_operator_id' => $this->faker->optional(0.35)->passthrough(FieldOperator::query()->value('id') ?? FieldOperator::factory()),
             'created_by_user_id' => User::query()->value('id') ?? User::factory(),
-            'emails' => $this->faker->companyEmail() . ';',
+            'emails' => $this->faker->companyEmail().';',
             'transport_id' => Transport::query()->value('id') ?? Transport::factory(),
+            'external_processor_id' => $this->faker->optional(0.25)->passthrough(ExternalProcessor::query()->value('id') ?? ExternalProcessor::factory()),
             'entry_date' => $entryDate->format('Y-m-d'),
             'load_date' => $loadDate->format('Y-m-d'),
             'status' => Order::STATUS_PENDING,
             'order_type' => $this->faker->randomElement(Order::getValidOrderTypes()),
-            'buyer_reference' => 'REF-' . $this->faker->unique()->bothify('#####'),
+            'buyer_reference' => 'REF-'.$this->faker->unique()->bothify('#####'),
             'incoterm_id' => $this->faker->optional(0.6)->passthrough(Incoterm::query()->value('id') ?? Incoterm::factory()),
             'route_id' => null,
             'route_stop_id' => null,

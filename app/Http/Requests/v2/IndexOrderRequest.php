@@ -32,6 +32,8 @@ class IndexOrderRequest extends FormRequest
             'entryDate.end' => 'sometimes|date',
             'transports' => 'sometimes|array',
             'transports.*' => 'integer',
+            'externalProcessors' => 'sometimes|array',
+            'externalProcessors.*' => 'integer',
             'salespeople' => 'sometimes|array',
             'salespeople.*' => 'integer',
             'fieldOperators' => 'sometimes|array',

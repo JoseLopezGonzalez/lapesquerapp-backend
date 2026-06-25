@@ -30,6 +30,8 @@ class OrderDetailsResource extends JsonResource
             'fieldOperator' => $this->relationLoaded('fieldOperator') ? $this->fieldOperator?->toArrayAssoc() : null,
             'fieldOperatorId' => $this->field_operator_id,
             'transport' => $this->relationLoaded('transport') ? $this->transport?->toArrayAssoc() : null,
+            'externalProcessor' => $this->relationLoaded('externalProcessor') ? $this->externalProcessor?->toArrayAssoc() : null,
+            'externalProcessorId' => $this->external_processor_id,
             'entryDate' => $this->entry_date,
             'loadDate' => $this->load_date,
             'status' => $this->status,

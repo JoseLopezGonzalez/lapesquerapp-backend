@@ -47,6 +47,27 @@ class ExternalProcessor extends Model
         return $this->extractEmails('cc');
     }
 
+    public function toArrayAssoc(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'legalName' => $this->legal_name,
+            'vatNumber' => $this->vat_number,
+            'sanitaryRegistrationNumber' => $this->sanitary_registration_number,
+            'contactPerson' => $this->contact_person,
+            'phone' => $this->phone,
+            'emails' => $this->emailsArray,
+            'ccEmails' => $this->ccEmailsArray,
+            'address' => $this->address,
+            'city' => $this->city,
+            'postalCode' => $this->postal_code,
+            'province' => $this->province,
+            'country' => $this->relationLoaded('country') && $this->country ? $this->country->toArrayAssoc() : null,
+            'isActive' => $this->is_active,
+        ];
+    }
+
     protected function extractEmails(string $type): array
     {
         $emails = explode(';', (string) $this->emails);

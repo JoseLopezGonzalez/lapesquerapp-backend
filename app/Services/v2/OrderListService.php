@@ -44,6 +44,8 @@ class OrderListService
                         'salesperson',
                         'fieldOperator',
                         'transport',
+                        'externalProcessor',
+                        'externalProcessor.country',
                         'incoterm',
                         'offer',
                         'plannedProductDetails',
@@ -63,6 +65,8 @@ class OrderListService
                     'salesperson',
                     'fieldOperator',
                     'transport',
+                    'externalProcessor',
+                    'externalProcessor.country',
                     'incoterm',
                     'offer',
                     'plannedProductDetails',
@@ -80,6 +84,8 @@ class OrderListService
             'salesperson',
             'fieldOperator',
             'transport',
+            'externalProcessor',
+            'externalProcessor.country',
             'incoterm',
             'offer',
             'plannedProductDetails',
@@ -135,6 +141,10 @@ class OrderListService
 
         if ($request->has('transports')) {
             $query->whereIn('transport_id', $request->transports);
+        }
+
+        if ($request->has('externalProcessors')) {
+            $query->whereIn('external_processor_id', $request->externalProcessors);
         }
 
         if ($request->has('salespeople')) {

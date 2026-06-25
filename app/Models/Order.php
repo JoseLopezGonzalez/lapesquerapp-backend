@@ -80,6 +80,7 @@ class Order extends Model
         'created_by_user_id',
         'emails',
         'transport_id',
+        'external_processor_id',
         'entry_date',
         'load_date',
         'status',
@@ -130,6 +131,11 @@ class Order extends Model
     public function transport()
     {
         return $this->belongsTo(Transport::class);
+    }
+
+    public function externalProcessor()
+    {
+        return $this->belongsTo(ExternalProcessor::class);
     }
 
     public function pallets()
