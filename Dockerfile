@@ -65,6 +65,17 @@ RUN apt-get update && apt-get install -y wget gnupg ca-certificates \
 # ✅ Instalar fuentes comunes para mejorar tipografía en PDFs
 RUN apt-get update && apt-get install -y fonts-dejavu fonts-liberation fonts-freefont-ttf
 
+# Thumbnails de PDF: Imagick + GhostScript
+RUN apt-get update && apt-get install -y \
+        libmagickwand-dev \
+        ghostscript \
+    && pecl install imagick \
+    && docker-php-ext-enable imagick \
+    && sed -i \
+        's/<policy domain="coder" rights="none" pattern="PDF"/<policy domain="coder" rights="read|write" pattern="PDF"/' \
+        /etc/ImageMagick-6/policy.xml \
+    && rm -rf /var/lib/apt/lists/*
+
 # (Opcional) Establecer permisos correctos
 # RUN chown -R www-data:www-data /var/www/html
 

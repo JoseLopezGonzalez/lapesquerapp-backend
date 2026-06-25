@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\Process\Process;
 
 class AttachmentService
 {
@@ -116,20 +117,25 @@ class AttachmentService
     }
 
     /**
-     * Devuelve la imagen redimensionada a ≤300px como JPEG inline.
-     * El thumbnail se genera una sola vez y se cachea en disco bajo thumbs/.
+     * Devuelve un thumbnail JPEG inline del adjunto.
+     * Soporta imágenes (GD), PDFs e Office (Imagick + GhostScript/LibreOffice).
+     * El resultado se genera una sola vez y se cachea en disco bajo thumbs/.
      */
     public function thumbnail(Attachment $attachment, int $maxDim = 300): StreamedResponse
     {
-        if (! str_starts_with($attachment->mime_type, 'image/')) {
-            abort(415, 'El adjunto no es una imagen.');
+        if (! $this->mimeSupportsThumb($attachment->mime_type)) {
+            abort(415, 'El adjunto no tiene vista previa disponible.');
         }
 
         $disk = Storage::disk($attachment->disk);
         $thumbPath = 'thumbs/' . $attachment->path;
 
         if (! $disk->exists($thumbPath)) {
-            $this->generateThumbnail($disk, $attachment->path, $thumbPath, $maxDim);
+            if (str_starts_with($attachment->mime_type, 'image/')) {
+                $this->generateThumbnail($disk, $attachment->path, $thumbPath, $maxDim);
+            } else {
+                $this->generateDocumentThumbnail($disk, $attachment, $thumbPath, $maxDim);
+            }
         }
 
         return response()->stream(function () use ($disk, $thumbPath) {
@@ -220,6 +226,10 @@ class AttachmentService
             'image/png' => 'png',
             'image/webp' => 'webp',
             'application/pdf' => 'pdf',
+            'application/msword' => 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+            'application/vnd.ms-excel' => 'xls',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
             default => 'bin',
         };
     }
@@ -264,6 +274,131 @@ class AttachmentService
         imagedestroy($thumb);
 
         $disk->put($thumbPath, $data);
+    }
+
+    private function mimeSupportsThumb(string $mime): bool
+    {
+        return str_starts_with($mime, 'image/')
+            || in_array($mime, [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ], true);
+    }
+
+    /**
+     * Genera un thumbnail JPEG para un PDF o documento Office.
+     * PDF → primera página via Imagick.
+     * Office → LibreOffice headless → PDF → primera página via Imagick.
+     * Requiere la extensión Imagick y GhostScript instalados en el servidor.
+     */
+    private function generateDocumentThumbnail(
+        Filesystem $disk,
+        Attachment $attachment,
+        string $thumbPath,
+        int $maxDim
+    ): void {
+        if (! extension_loaded('imagick')) {
+            abort(415, 'El servidor no tiene soporte para vistas previas de documentos (requiere Imagick).');
+        }
+
+        $tmpOriginal = sys_get_temp_dir() . '/att_' . uniqid('', true) . '.' . $attachment->extension;
+        file_put_contents($tmpOriginal, $disk->get($attachment->path));
+
+        $tmpPdf = null;
+
+        try {
+            if ($attachment->mime_type === 'application/pdf') {
+                $pdfPath = $tmpOriginal;
+            } else {
+                $pdfPath = $tmpPdf = $this->convertOfficeToPdf($tmpOriginal);
+            }
+
+            $jpegData = $this->pdfFirstPageToJpeg($pdfPath, $maxDim);
+            $disk->put($thumbPath, $jpegData);
+        } finally {
+            @unlink($tmpOriginal);
+            if ($tmpPdf !== null && file_exists($tmpPdf)) {
+                @unlink($tmpPdf);
+            }
+        }
+    }
+
+    private function pdfFirstPageToJpeg(string $pdfPath, int $maxDim): string
+    {
+        $imagick = new \Imagick();
+        $imagick->setResolution(150, 150);
+        $imagick->readImage($pdfPath . '[0]');
+        $imagick->setImageBackgroundColor(new \ImagickPixel('white'));
+        $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
+        $imagick->setImageFormat('jpeg');
+        $imagick->thumbnailImage($maxDim, $maxDim, true);
+
+        $jpeg = $imagick->getImageBlob();
+        $imagick->clear();
+        $imagick->destroy();
+
+        return $jpeg;
+    }
+
+    private function convertOfficeToPdf(string $filePath): string
+    {
+        $bin = $this->findLibreOfficeBin();
+
+        if ($bin === null) {
+            abort(415, 'El servidor no tiene LibreOffice para convertir documentos Office a PDF.');
+        }
+
+        $outDir = sys_get_temp_dir();
+        $process = new Process([$bin, '--headless', '--convert-to', 'pdf', '--outdir', $outDir, $filePath]);
+        $process->setTimeout(30);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            abort(422, 'No se pudo convertir el documento Office a PDF.');
+        }
+
+        $pdfPath = $outDir . DIRECTORY_SEPARATOR . pathinfo($filePath, PATHINFO_FILENAME) . '.pdf';
+
+        if (! file_exists($pdfPath)) {
+            abort(422, 'La conversión a PDF no generó el archivo esperado.');
+        }
+
+        return $pdfPath;
+    }
+
+    private function findLibreOfficeBin(): ?string
+    {
+        $candidates = [
+            '/usr/bin/libreoffice',
+            '/usr/local/bin/libreoffice',
+            '/usr/bin/soffice',
+            '/usr/local/bin/soffice',
+        ];
+
+        foreach ($candidates as $bin) {
+            if (is_executable($bin)) {
+                return $bin;
+            }
+        }
+
+        foreach (['libreoffice', 'soffice'] as $name) {
+            try {
+                $process = new Process(['which', $name]);
+                $process->run();
+                if ($process->isSuccessful()) {
+                    $path = trim($process->getOutput());
+                    if ($path !== '' && is_executable($path)) {
+                        return $path;
+                    }
+                }
+            } catch (\Throwable) {
+            }
+        }
+
+        return null;
     }
 
     private function morphKey(Model $model): string
