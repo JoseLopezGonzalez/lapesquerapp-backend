@@ -304,7 +304,9 @@ class AttachmentService
             abort(415, 'El servidor no tiene soporte para vistas previas de documentos (requiere Imagick).');
         }
 
-        $tmpOriginal = sys_get_temp_dir() . '/att_' . uniqid('', true) . '.' . $attachment->extension;
+        // Usar la extensión derivada del MIME, no la almacenada en BD (puede ser 'bin' en archivos antiguos)
+        $ext = $this->extensionFromMime($attachment->mime_type);
+        $tmpOriginal = sys_get_temp_dir() . '/att_' . uniqid('', true) . '.' . $ext;
         file_put_contents($tmpOriginal, $disk->get($attachment->path));
 
         $tmpPdf = null;
@@ -362,6 +364,9 @@ class AttachmentService
             $filePath,
         ]);
         $process->setTimeout(60);
+        // HOME=/tmp garantiza que LibreOffice pueda escribir su perfil de usuario.
+        // Sin esto falla en Docker porque www-data no tiene un HOME escribible.
+        $process->setEnv(['HOME' => '/tmp', 'DCONF_PROFILE' => '/dev/null']);
         $process->run();
 
         if (! $process->isSuccessful()) {
