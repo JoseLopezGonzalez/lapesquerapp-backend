@@ -37,6 +37,11 @@ class ExternalProcessor extends Model
         return $this->belongsTo(Country::class);
     }
 
+    public function orders()
+    {
+        return $this->hasMany(\App\Models\Order::class);
+    }
+
     public function getEmailsArrayAttribute(): array
     {
         return $this->extractEmails('regular');
