@@ -71,7 +71,7 @@ Módulo de producción pesquera (el más complejo):
 
 ### Catálogos ([./catalogos/](./catalogos/))
 
-40-Productos, 41-Categorias-Familias, 42-Especies, 43-Zonas-Captura, 44-Clientes, 45-Proveedores, 46-Transportes, 47-Vendedores, 48-Terminos-Pago, 49-Paises, 50-Incoterms, 51-Arte-Pesquera, 52-Impuestos, 53-Procesos, 54-Productos-Variantes-GS1-Resumen.
+40-Productos, 41-Categorias-Familias, 42-Especies, 43-Zonas-Captura, 44-Clientes, 45-Proveedores, 46-Transportes, 47-Vendedores, 48-Terminos-Pago, 49-Paises, 50-Incoterms, 51-Arte-Pesquera, 52-Impuestos, 53-Procesos, 54-Productos-Variantes-GS1-Resumen, 55-Transformadores-Externos-Maquiladores.
 
 ### Recepciones y Despachos ([./recepciones-despachos/](./recepciones-despachos/))
 

@@ -13,6 +13,7 @@ use App\Http\Controllers\v2\CrmDashboardController;
 use App\Http\Controllers\v2\CustomerController as V2CustomerController;
 use App\Http\Controllers\v2\DeliveryRouteController;
 use App\Http\Controllers\v2\EmployeeController;
+use App\Http\Controllers\v2\ExternalProcessorController;
 use App\Http\Controllers\v2\ExternalUserController;
 use App\Http\Controllers\v2\FieldCustomerController;
 use App\Http\Controllers\v2\FieldOperatorController;
@@ -25,8 +26,9 @@ use App\Http\Controllers\v2\IncidentController;
 use App\Http\Controllers\v2\IncotermController as V2IncotermController;
 use App\Http\Controllers\v2\LabelController;
 use App\Http\Controllers\v2\OfferController;
-use App\Http\Controllers\v2\OrderController as V2OrderController;
+use App\Http\Controllers\v2\OrderAttachmentController;
 /* API V2 */
+use App\Http\Controllers\v2\OrderController as V2OrderController;
 use App\Http\Controllers\v2\OrderDocumentController;
 use App\Http\Controllers\v2\OrderPlannedProductDetailController;
 use App\Http\Controllers\v2\OrderProfitabilityStatsController;
@@ -34,7 +36,6 @@ use App\Http\Controllers\v2\OrdersReportController;
 use App\Http\Controllers\v2\OrderStatisticsController;
 use App\Http\Controllers\v2\OrphanBoxesController;
 use App\Http\Controllers\v2\OrphanStockController;
-use App\Http\Controllers\v2\OrderAttachmentController;
 use App\Http\Controllers\v2\PalletAttachmentController;
 use App\Http\Controllers\v2\PalletController as V2PalletController;
 use App\Http\Controllers\v2\PalletExpeditionLabelController;
@@ -50,6 +51,7 @@ use App\Http\Controllers\v2\ProductionInputController;
 use App\Http\Controllers\v2\ProductionOutputConsumptionController;
 use App\Http\Controllers\v2\ProductionOutputController;
 use App\Http\Controllers\v2\ProductionRecordController;
+use App\Http\Controllers\v2\ProfileController;
 use App\Http\Controllers\v2\ProspectCategoryController;
 use App\Http\Controllers\v2\ProspectController;
 use App\Http\Controllers\v2\PunchController;
@@ -67,7 +69,6 @@ use App\Http\Controllers\v2\SupplierController as V2SupplierController;
 use App\Http\Controllers\v2\SupplierLiquidationController;
 use App\Http\Controllers\v2\TaxController;
 use App\Http\Controllers\v2\TransportController as V2TransportController;
-use App\Http\Controllers\v2\ProfileController;
 use App\Http\Controllers\v2\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -290,6 +291,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('/salespeople/options', [V2SalespersonController::class, 'options']);
         Route::get('/employees/options', [EmployeeController::class, 'options']);
         Route::get('/transports/options', [V2TransportController::class, 'options']);
+        Route::get('/external-processors/options', [ExternalProcessorController::class, 'options']);
         Route::get('/incoterms/options', [V2IncotermController::class, 'options']);
         Route::get('/suppliers/options', [V2SupplierController::class, 'options']);
         Route::get('/species/options', [V2SpeciesController::class, 'options']);
@@ -457,6 +459,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
         Route::apiResource('suppliers', V2SupplierController::class);
         Route::delete('suppliers', [V2SupplierController::class, 'destroyMultiple']);
+        Route::apiResource('external-processors', ExternalProcessorController::class)->parameters(['external-processors' => 'externalProcessor']);
+        Route::delete('external-processors', [ExternalProcessorController::class, 'destroyMultiple']);
 
         /* Supplier Liquidations */
         Route::get('supplier-liquidations', [SupplierLiquidationController::class, 'index'])->name('supplier-liquidations.index');
