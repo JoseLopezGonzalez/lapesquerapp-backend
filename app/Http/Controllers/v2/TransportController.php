@@ -44,6 +44,7 @@ class TransportController extends Controller
             'vat_number' => $validated['vatNumber'],
             'address' => $validated['address'],
             'emails' => $emailsText,
+            'contactos' => $validated['contactos'] ?? null,
         ]);
 
         return response()->json([
@@ -79,6 +80,7 @@ class TransportController extends Controller
             'vat_number' => $validated['vatNumber'],
             'address' => $validated['address'],
             'emails' => $emailsText,
+            'contactos' => $validated['contactos'] ?? null,
         ]);
 
         return response()->json([

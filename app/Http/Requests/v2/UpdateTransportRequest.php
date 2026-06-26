@@ -35,6 +35,7 @@ class UpdateTransportRequest extends FormRequest
             'emails.*' => 'email',
             'ccEmails' => 'nullable|array',
             'ccEmails.*' => 'email',
+            'contactos' => 'nullable|string|max:5000',
         ];
     }
 

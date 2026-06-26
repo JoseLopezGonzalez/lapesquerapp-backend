@@ -21,6 +21,7 @@ class TransportResource extends JsonResource
             'address' => $this->address,
             'emails' => $this->emailsArray,
             'ccEmails' => $this->ccEmailsArray,
+            'contactos' => $this->contactos,
             'createdAt' => $this->created_at,
             'updatedAt' => $this->updated_at,
         ];

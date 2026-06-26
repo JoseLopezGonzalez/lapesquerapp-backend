@@ -19,6 +19,7 @@ class Transport extends Model
         'vat_number',
         'address',
         'emails',
+        'contactos',
     ];
 
     public function orders()
@@ -40,6 +41,7 @@ class Transport extends Model
             'address' => $this->address,
             'emails' => $this->emailsArray, // OJO DIFERENTE A RESOURCE V2
             'ccEmails' => $this->ccEmailsArray, //OJO DIFERENTE A RESOURCE V2
+            'contactos' => $this->contactos,
             'createdAt' => $this->created_at,
             'updatedAt' => $this->updated_at,
         ];
