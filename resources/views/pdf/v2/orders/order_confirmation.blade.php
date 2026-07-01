@@ -158,9 +158,6 @@
                     @endforeach
 
                     @if ($entity->auxiliaryLines->isNotEmpty())
-                        <tr class="bg-gray-200">
-                            <td colspan="7" class="p-1 text-[10px] font-semibold text-gray-600">Otros artículos</td>
-                        </tr>
                         @foreach ($entity->auxiliaryLines as $line)
                             @php
                                 $auxRate = $line->tax?->rate ?? 0;

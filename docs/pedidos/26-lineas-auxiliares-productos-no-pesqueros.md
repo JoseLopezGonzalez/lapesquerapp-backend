@@ -407,7 +407,7 @@ Con `include_auxiliary=true` el response incluye:
 
 ### 7.1 Principio general
 
-Las líneas auxiliares aparecen en la **misma tabla principal de productos** de cada documento, a continuación de todas las líneas pesqueras. No hay segunda tabla ni sección separada. Un separador visual fino (fila con fondo gris claro) separa el bloque pesquero del auxiliar solo en pedidos mixtos; si el pedido tiene únicamente líneas auxiliares, la tabla empieza directamente con ellas.
+Las líneas auxiliares aparecen en la **misma tabla principal de productos** de cada documento, a continuación de todas las líneas pesqueras. No hay segunda tabla ni sección separada, y tampoco hay fila ni separador visual que anuncie el cambio de bloque: las líneas auxiliares se listan correlativas justo después de las pesqueras, como si fueran más filas de la misma tabla. Si el pedido tiene únicamente líneas auxiliares, la tabla empieza directamente con ellas.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -415,7 +415,6 @@ Las líneas auxiliares aparecen en la **misma tabla principal de productos** de 
 ├──────────────────────────────────────────────────────────────────────┤
 │ Pulpo cocido 1kg   │ kg  │ 820,500  │  4,20 €  │  3.446,10 €  (🐟)  │
 │ Sepia limpia 400g  │ kg  │ 310,200  │  3,80 €  │  1.178,76 €  (🐟)  │
-│────────────────────────────────────── Otros artículos ───────────────│ ← separador
 │ Nieve granulada    │ kg  │ 500,000  │  0,08 €  │     40,00 €  (📦)  │
 │ Tarrina 500g       │ ud  │  50,000  │  0,15 €  │      7,50 €  (📦)  │
 ├──────────────────────────────────────────────────────────────────────┤
@@ -424,6 +423,8 @@ Las líneas auxiliares aparecen en la **misma tabla principal de productos** de 
 │                                    TOTAL:                4.859,25 €  │
 └──────────────────────────────────────────────────────────────────────┘
 ```
+
+> 🔧 **Implementación real (revisada tras probar la primera versión)**: la primera versión implementada sí incluía una fila separadora con fondo gris y el texto "Otros artículos" antes de las líneas auxiliares, en las 7 plantillas PDF de §7.3. Se eliminó esa fila en todas ellas porque rompía la lectura de la tabla como un listado único y correlativo de artículos del pedido. Las plantillas de email (§8) mantienen su propio bloque separado con el encabezado "Otros artículos..." porque ahí sí es una tabla independiente, no una fila dentro de la tabla de productos.
 
 ### 7.2 Columnas en líneas auxiliares
 
