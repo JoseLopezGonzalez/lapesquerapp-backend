@@ -5,10 +5,9 @@ namespace App\Services;
 use App\Models\Order;
 use Beganovich\Snappdf\Snappdf;
 
-
 /**
  * Service especializado en generación de PDFs relacionados con Orders.
- * 
+ *
  * NOTA: Si se requiere para otras entidades, considerar crear un PDFService general.
  */
 class OrderPDFService
@@ -16,10 +15,7 @@ class OrderPDFService
     /**
      * Generar un documento PDF y devolver su ruta.
      *
-     * @param Order $order
-     * @param string $docType
-     * @param string $viewName
-     * @return string
+     * @param  string  $viewName
      */
     public function generateDocument(Order $order, string $docType, string $viewPath): string
     {
@@ -41,13 +37,18 @@ class OrderPDFService
             unlink($pdfPath);
         }
 
+        // Asegurar líneas auxiliares cargadas para evitar N+1 en las plantillas.
+        $order->loadMissing([
+            'auxiliaryLines.auxiliaryProduct',
+            'auxiliaryLines.tax',
+        ]);
 
         // ⚠️ Pasar la variable como 'entity', no como 'order'
         $html = view($viewPath, ['entity' => $order])->render();
 
         // Crear PDF con Snappdf
-        $snappdf = new Snappdf();
-        
+        $snappdf = new Snappdf;
+
         // Configure Chromium using centralized configuration
         $this->configureChromium($snappdf);
 
@@ -63,9 +64,7 @@ class OrderPDFService
     /**
      * Configure Chromium/Chrome path and arguments for PDF generation.
      *
-     * @param Snappdf $snappdf
-     * @param array $additionalArguments Additional arguments to add (optional)
-     * @return void
+     * @param  array  $additionalArguments  Additional arguments to add (optional)
      */
     private function configureChromium(Snappdf $snappdf, array $additionalArguments = []): void
     {
@@ -76,16 +75,16 @@ class OrderPDFService
         // Apply margins from configuration
         $margins = config('pdf.chromium.margins', []);
         if (isset($margins['top'])) {
-            $snappdf->addChromiumArguments('--margin-top=' . $margins['top']);
+            $snappdf->addChromiumArguments('--margin-top='.$margins['top']);
         }
         if (isset($margins['right'])) {
-            $snappdf->addChromiumArguments('--margin-right=' . $margins['right']);
+            $snappdf->addChromiumArguments('--margin-right='.$margins['right']);
         }
         if (isset($margins['bottom'])) {
-            $snappdf->addChromiumArguments('--margin-bottom=' . $margins['bottom']);
+            $snappdf->addChromiumArguments('--margin-bottom='.$margins['bottom']);
         }
         if (isset($margins['left'])) {
-            $snappdf->addChromiumArguments('--margin-left=' . $margins['left']);
+            $snappdf->addChromiumArguments('--margin-left='.$margins['left']);
         }
 
         // Apply default arguments from configuration

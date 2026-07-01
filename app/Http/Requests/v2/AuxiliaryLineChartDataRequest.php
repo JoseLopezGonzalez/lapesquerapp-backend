@@ -4,7 +4,7 @@ namespace App\Http\Requests\v2;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class OrderTotalAmountStatsRequest extends FormRequest
+class AuxiliaryLineChartDataRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -19,8 +19,7 @@ class OrderTotalAmountStatsRequest extends FormRequest
         return [
             'dateFrom' => 'required|date',
             'dateTo' => 'required|date',
-            'speciesId' => 'nullable|integer|exists:tenant.species,id',
-            'includeAuxiliary' => 'nullable|boolean',
+            'groupBy' => 'nullable|string|in:day,week,month',
         ];
     }
 }

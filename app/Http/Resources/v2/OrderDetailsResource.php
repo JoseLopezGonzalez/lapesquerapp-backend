@@ -58,6 +58,13 @@ class OrderDetailsResource extends JsonResource
                     return $detail->toArrayAssoc();
                 })
                 : null,
+            'auxiliaryLines' => $this->relationLoaded('auxiliaryLines')
+                ? $this->auxiliaryLines->map(function ($line) {
+                    return $line->toArrayAssoc();
+                })
+                : [],
+            'auxiliarySubtotal' => $this->relationLoaded('auxiliaryLines') ? $this->auxiliarySubtotal : 0,
+            'auxiliaryTotal' => $this->relationLoaded('auxiliaryLines') ? $this->auxiliaryTotal : 0,
             'productionProductDetails' => $this->productionProductDetails,
             'productDetails' => $this->productDetails,
             'subTotalAmount' => $this->subTotalAmount,

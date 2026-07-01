@@ -98,6 +98,14 @@ class Order extends Model
         return $this->hasMany(OrderPlannedProductDetail::class);
     }
 
+    /**
+     * Líneas auxiliares (productos no pesqueros) de venta directa.
+     */
+    public function auxiliaryLines()
+    {
+        return $this->hasMany(OrderAuxiliaryLine::class);
+    }
+
     /* Id formateado #00_ _ _ , rellenar con 0 a la izquierda si no tiene 5 digitos y añadir un # al principio */
     public function getFormattedIdAttribute()
     {
@@ -192,6 +200,45 @@ class Order extends Model
             'totalAmount' => $plannedProducts->sum(function ($detail) {
                 return ($detail->unit_price ?? 0) * ($detail->quantity ?? 0);
             }),
+        ];
+    }
+
+    /**
+     * Base imponible (sin IVA) de las líneas auxiliares.
+     */
+    public function getAuxiliarySubtotalAttribute(): float
+    {
+        return round((float) $this->auxiliaryLines->sum('subtotal'), 4);
+    }
+
+    /**
+     * Total (con IVA) de las líneas auxiliares.
+     */
+    public function getAuxiliaryTotalAttribute(): float
+    {
+        return round((float) $this->auxiliaryLines->sum('total'), 4);
+    }
+
+    /**
+     * Resumen completo del pedido: líneas pesqueras + auxiliares.
+     * El accessor `summary` se mantiene sin cambios (solo previsión pesquera).
+     */
+    public function getFullSummaryAttribute(): array
+    {
+        $seafood = $this->summary;
+        $auxiliarySubtotal = $this->auxiliarySubtotal;
+        $auxiliaryTotal = $this->auxiliaryTotal;
+
+        return [
+            'seafood' => $seafood,
+            'auxiliary' => [
+                'totalLines' => $this->auxiliaryLines->count(),
+                'subtotal' => $auxiliarySubtotal,
+                'total' => $auxiliaryTotal,
+            ],
+            'combined' => [
+                'subtotal' => round(($seafood['totalAmount'] ?? 0) + $auxiliarySubtotal, 4),
+            ],
         ];
     }
 

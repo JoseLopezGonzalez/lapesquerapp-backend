@@ -24,6 +24,8 @@ class OrderExportFilterService
             'transport',
             'payment_term',
             'incoterm',
+            'auxiliaryLines.auxiliaryProduct',
+            'auxiliaryLines.tax',
             'pallets.boxes.box.productionInputs',
             'pallets.boxes.box.product.species.fishingGear',
             'pallets.boxes.box.product.captureZone',
@@ -54,7 +56,7 @@ class OrderExportFilterService
         }
 
         if ($request->has('id')) {
-            $query->where('id', 'like', '%' . $request->id . '%');
+            $query->where('id', 'like', '%'.$request->id.'%');
         }
 
         if ($request->has('ids')) {
@@ -65,7 +67,7 @@ class OrderExportFilterService
         }
 
         if ($request->has('buyerReference')) {
-            $query->where('buyer_reference', 'like', '%' . $request->buyerReference . '%');
+            $query->where('buyer_reference', 'like', '%'.$request->buyerReference.'%');
         }
 
         if ($request->has('status')) {

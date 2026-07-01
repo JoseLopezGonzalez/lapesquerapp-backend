@@ -8,6 +8,7 @@ use App\Http\Requests\v2\OrderSalesChartDataRequest;
 use App\Http\Requests\v2\OrderTotalAmountStatsRequest;
 use App\Http\Requests\v2\OrderTotalNetWeightStatsRequest;
 use App\Models\Order;
+use App\Services\v2\AuxiliaryLineStatisticsService;
 use App\Services\v2\OrderStatisticsService;
 
 class OrderStatisticsController extends Controller
@@ -92,6 +93,43 @@ class OrderStatisticsController extends Controller
             $validated['speciesId'] ?? null,
             $request->user()
         );
+
+        // Vista combinada de negocio (pesquero + auxiliar) sin romper el shape por defecto.
+        if (! empty($validated['includeAuxiliary'])) {
+            $auxiliary = AuxiliaryLineStatisticsService::getAmountStatsComparedToLastYear(
+                $validated['dateFrom'],
+                $validated['dateTo'],
+                $request->user()
+            );
+
+            $combinedSubtotal = round($stats['subtotal'] + $auxiliary['subtotal'], 2);
+            $combinedTax = round($stats['tax'] + $auxiliary['tax'], 2);
+            $combinedTotal = round($stats['value'] + $auxiliary['value'], 2);
+            $combinedComparison = round($stats['comparisonValue'] + $auxiliary['comparisonValue'], 2);
+
+            return response()->json([
+                'seafood' => [
+                    'subtotal' => $stats['subtotal'],
+                    'tax' => $stats['tax'],
+                    'total' => $stats['value'],
+                ],
+                'auxiliary' => [
+                    'subtotal' => $auxiliary['subtotal'],
+                    'tax' => $auxiliary['tax'],
+                    'total' => $auxiliary['value'],
+                ],
+                'combined' => [
+                    'subtotal' => $combinedSubtotal,
+                    'tax' => $combinedTax,
+                    'total' => $combinedTotal,
+                    'comparisonValue' => $combinedComparison,
+                    'percentageChange' => OrderStatisticsService::compareTotals($combinedTotal, $combinedComparison) !== null
+                        ? round(OrderStatisticsService::compareTotals($combinedTotal, $combinedComparison), 2)
+                        : null,
+                ],
+                'range' => $stats['range'],
+            ]);
+        }
 
         return response()->json($stats);
     }

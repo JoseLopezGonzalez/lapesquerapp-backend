@@ -2,11 +2,12 @@
 
 namespace App\Exports\v2;
 
+use App\Support\OrderErpExportLines;
 use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\WithTitle;
 
 class A3ERPOrdersSalesDeliveryNotesExport implements FromCollection, WithHeadings, WithMapping, WithTitle
@@ -27,7 +28,7 @@ class A3ERPOrdersSalesDeliveryNotesExport implements FromCollection, WithHeading
         foreach ($this->orders as $order) {
             // Obtener año de 2 dígitos basado en la fecha del pedido
             $year = date('y', strtotime($order->load_date));
-            $serie = 'P' . $year;
+            $serie = 'P'.$year;
 
             foreach ($order->productDetails as $productDetail) {
                 $rows[] = [
@@ -44,6 +45,8 @@ class A3ERPOrdersSalesDeliveryNotesExport implements FromCollection, WithHeading
                     'LINTIPIVA' => $productDetail['tax']['name'] ?? '',
                 ];
             }
+
+            $rows = array_merge($rows, OrderErpExportLines::a3ErpRowsForOrder($order, $serie));
         }
 
         return collect($rows);
@@ -62,7 +65,7 @@ class A3ERPOrdersSalesDeliveryNotesExport implements FromCollection, WithHeading
             'LINBULTOS',
             'LINUNIDADES',
             'LINPRCMONEDA',
-            'LINTIPIVA'
+            'LINTIPIVA',
         ];
     }
 
@@ -79,7 +82,7 @@ class A3ERPOrdersSalesDeliveryNotesExport implements FromCollection, WithHeading
             $row['LINBULTOS'],
             $row['LINUNIDADES'],
             $row['LINPRCMONEDA'],
-            $row['LINTIPIVA']
+            $row['LINTIPIVA'],
         ];
     }
 

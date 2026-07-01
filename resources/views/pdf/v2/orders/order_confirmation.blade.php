@@ -156,6 +156,32 @@
                             <td class="p-2 text-center">{{ number_format($total, 2, ',', '.') }} €</td>
                         </tr>
                     @endforeach
+
+                    @if ($entity->auxiliaryLines->isNotEmpty())
+                        <tr class="bg-gray-200">
+                            <td colspan="7" class="p-1 text-[10px] font-semibold text-gray-600">Otros artículos</td>
+                        </tr>
+                        @foreach ($entity->auxiliaryLines as $line)
+                            @php
+                                $auxRate = $line->tax?->rate ?? 0;
+                                $auxSubtotal = $line->subtotal;
+                                $auxIva = $auxSubtotal * ($auxRate / 100);
+                                $totalSubtotal += $auxSubtotal;
+                                $totalTax += $auxIva;
+                                $totalAmount += $line->total;
+                            @endphp
+                            <tr>
+                                <td class="p-2 text-wrap">{{ $line->effective_description }}</td>
+                                <td class="p-2 text-center">—</td>
+                                <td class="p-2 text-center">{{ number_format($line->quantity, 3, ',', '.') }}
+                                    {{ $line->unit }}</td>
+                                <td class="p-2 text-center">{{ number_format($line->unit_price, 2, ',', '.') }} €</td>
+                                <td class="p-2 text-center">{{ number_format($auxSubtotal, 2, ',', '.') }} €</td>
+                                <td class="p-2 text-center">{{ number_format($auxRate, 2, ',', '.') }}%</td>
+                                <td class="p-2 text-center">{{ number_format($line->total, 2, ',', '.') }} €</td>
+                            </tr>
+                        @endforeach
+                    @endif
                 </tbody>
                 <tfoot class="border-t bg-gray-100 font-semibold">
                     <tr>

@@ -27,6 +27,22 @@ Por favor, revisen la documentación adjunta para asegurarse de que toda la info
 
 <br>
 
+@if ($order->auxiliaryLines->isNotEmpty())
+**Otros artículos (no pesqueros) de este pedido:**
+
+<x-mail::table>
+| Artículo | Cantidad | Ud. | Precio unit. | Importe |
+|:---------|:--------:|:---:|:------------:|--------:|
+@foreach ($order->auxiliaryLines as $line)
+| {{ $line->effective_description }} | {{ number_format($line->quantity, 3, ',', '.') }} | {{ $line->unit }} | {{ number_format($line->unit_price, 2, ',', '.') }} € | {{ number_format($line->subtotal, 2, ',', '.') }} € |
+@endforeach
+</x-mail::table>
+
+**Total artículos auxiliares (base):** {{ number_format($order->auxiliarySubtotal, 2, ',', '.') }} €
+
+<br>
+@endif
+
 Si necesitan más información, pueden contactar directamente con el equipo de operaciones a [{{ tenantSetting('company.contact.email_operations') }}](mailto:{{ tenantSetting('company.contact.email_operations') }}).
 
 <br>

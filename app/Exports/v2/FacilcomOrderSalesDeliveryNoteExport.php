@@ -3,18 +3,20 @@
 namespace App\Exports\v2;
 
 use App\Models\Order;
+use App\Support\OrderErpExportLines;
+use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithTitle;
-use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class FacilcomOrderSalesDeliveryNoteExport implements FromArray, WithHeadings, WithTitle, WithStyles
+class FacilcomOrderSalesDeliveryNoteExport implements FromArray, WithHeadings, WithStyles, WithTitle
 {
     use Exportable;
 
     protected $order;
+
     protected $index = 1;
 
     public function __construct(Order $order)
@@ -42,6 +44,8 @@ class FacilcomOrderSalesDeliveryNoteExport implements FromArray, WithHeadings, W
             ];
         }
 
+        $rows = array_merge($rows, OrderErpExportLines::facilcomArrayRowsForOrder($this->order, $this->index));
+
         // Línea adicional tipo "PEDIDO #123"
         $rows[] = [
             $this->index,
@@ -50,7 +54,7 @@ class FacilcomOrderSalesDeliveryNoteExport implements FromArray, WithHeadings, W
             ($this->order->customer['facilcom_code'] ?? null) ?: '-',
             ($this->order->customer['name'] ?? null) ?: '-',
             '106',
-            'PEDIDO #' . ($this->order->id ?? '-'),
+            'PEDIDO #'.($this->order->id ?? '-'),
             '0',
             '0',
             '-',
@@ -88,10 +92,10 @@ class FacilcomOrderSalesDeliveryNoteExport implements FromArray, WithHeadings, W
         $highestColumn = $sheet->getHighestColumn();
 
         // Solo negrita para encabezados
-        $sheet->getStyle('A1:' . $highestColumn . '1')->applyFromArray([
+        $sheet->getStyle('A1:'.$highestColumn.'1')->applyFromArray([
             'font' => [
-                'bold' => true
-            ]
+                'bold' => true,
+            ],
         ]);
 
         // Autoajuste básico de columnas
@@ -102,10 +106,10 @@ class FacilcomOrderSalesDeliveryNoteExport implements FromArray, WithHeadings, W
         // Colorear de amarillo las celdas con datos faltantes ("-")
         for ($row = 2; $row <= $highestRow; $row++) {
             for ($col = 'A'; $col <= $highestColumn; $col++) {
-                $cellValue = $sheet->getCell($col . $row)->getValue();
+                $cellValue = $sheet->getCell($col.$row)->getValue();
                 if ($cellValue === '-') {
-                    $sheet->getStyle($col . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-                    $sheet->getStyle($col . $row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
+                    $sheet->getStyle($col.$row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+                    $sheet->getStyle($col.$row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
                 }
             }
         }

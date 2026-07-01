@@ -109,6 +109,34 @@
                             <td class="p-2 py-1 text-center">{{ number_format($detail['total'], 2, ',', '.') }} €</td>
                         </tr>
                     @endforeach
+
+                    @if ($entity->auxiliaryLines->isNotEmpty())
+                        <tr class="bg-gray-200">
+                            <td colspan="7" class="p-1 text-xs font-semibold text-gray-600">Otros artículos</td>
+                        </tr>
+                        @foreach ($entity->auxiliaryLines as $line)
+                            @php
+                                $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                                $rowIndex++;
+                                $auxRate = $line->tax?->rate ?? 0;
+                                $auxSubtotal = $line->subtotal;
+                                $auxTax = $auxSubtotal * ($auxRate / 100);
+                                $totalSubtotal += $auxSubtotal;
+                                $totalTax += $auxTax;
+                                $totalAmount += $line->total;
+                            @endphp
+                            <tr class="{{ $rowClass }}">
+                                <td class="p-2 py-1">{{ $line->effective_description }}</td>
+                                <td class="p-2 py-1 text-center">—</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($line->quantity, 3, ',', '.') }}
+                                    {{ $line->unit }}</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($line->unit_price, 2, ',', '.') }} €</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($auxSubtotal, 2, ',', '.') }} €</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($auxRate, 2, ',', '.') }}%</td>
+                                <td class="p-2 py-1 text-center">{{ number_format($line->total, 2, ',', '.') }} €</td>
+                            </tr>
+                        @endforeach
+                    @endif
                 </tbody>
                 <!-- TOTALES -->
                 <tfoot class="border-t bg-gray-100 font-semibold">

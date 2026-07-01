@@ -42,6 +42,11 @@ class PDFController extends Controller
         $order = Order::findOrFail($orderId);
         $this->authorize('view', $order);
 
+        $order->loadMissing([
+            'auxiliaryLines.auxiliaryProduct',
+            'auxiliaryLines.tax',
+        ]);
+
         return $order;
     }
 

@@ -3,15 +3,16 @@
 namespace App\Exports\v2;
 
 use App\Models\Order;
+use App\Support\OrderErpExportLines;
+use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\Exportable;
-use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class A3ERP2OrderSalesDeliveryNoteExport implements FromCollection, WithHeadings, WithMapping, WithTitle, WithStyles
+class A3ERP2OrderSalesDeliveryNoteExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithTitle
 {
     use Exportable;
 
@@ -30,7 +31,7 @@ class A3ERP2OrderSalesDeliveryNoteExport implements FromCollection, WithHeadings
         // Los campos faltantes se mostrarán con "-" y se resaltarán en amarillo
         // Obtener año de 2 dígitos basado en la fecha del pedido
         $year = $this->order->load_date ? date('y', strtotime($this->order->load_date)) : date('y');
-        $serie = 'P' . $year;
+        $serie = 'P'.$year;
 
         foreach ($this->order->productDetails as $productDetail) {
             $rows[] = [
@@ -50,6 +51,11 @@ class A3ERP2OrderSalesDeliveryNoteExport implements FromCollection, WithHeadings
             ];
         }
 
+        $rows = array_merge(
+            $rows,
+            OrderErpExportLines::a3ErpRowsForOrder($this->order, $serie, useFacilcomClientCode: true, useMissingPlaceholder: true)
+        );
+
         return collect($rows);
     }
 
@@ -66,7 +72,7 @@ class A3ERP2OrderSalesDeliveryNoteExport implements FromCollection, WithHeadings
             'LINBULTOS',
             'LINUNIDADES',
             'LINPRCMONEDA',
-            'LINTIPIVA'
+            'LINTIPIVA',
         ];
     }
 
@@ -83,7 +89,7 @@ class A3ERP2OrderSalesDeliveryNoteExport implements FromCollection, WithHeadings
             $row['LINBULTOS'],
             $row['LINUNIDADES'],
             $row['LINPRCMONEDA'],
-            $row['LINTIPIVA']
+            $row['LINTIPIVA'],
         ];
     }
 
@@ -102,10 +108,10 @@ class A3ERP2OrderSalesDeliveryNoteExport implements FromCollection, WithHeadings
         $highestColumn = $sheet->getHighestColumn();
 
         // Solo negrita para encabezados
-        $sheet->getStyle('A1:' . $highestColumn . '1')->applyFromArray([
+        $sheet->getStyle('A1:'.$highestColumn.'1')->applyFromArray([
             'font' => [
-                'bold' => true
-            ]
+                'bold' => true,
+            ],
         ]);
 
         // Autoajuste básico de columnas
@@ -116,10 +122,10 @@ class A3ERP2OrderSalesDeliveryNoteExport implements FromCollection, WithHeadings
         // Colorear de amarillo las celdas con datos faltantes ("-")
         for ($row = 2; $row <= $highestRow; $row++) {
             for ($col = 'A'; $col <= $highestColumn; $col++) {
-                $cellValue = $sheet->getCell($col . $row)->getValue();
+                $cellValue = $sheet->getCell($col.$row)->getValue();
                 if ($cellValue === '-') {
-                    $sheet->getStyle($col . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-                    $sheet->getStyle($col . $row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
+                    $sheet->getStyle($col.$row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+                    $sheet->getStyle($col.$row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
                 }
             }
         }
@@ -127,4 +133,3 @@ class A3ERP2OrderSalesDeliveryNoteExport implements FromCollection, WithHeadings
         return [];
     }
 }
-

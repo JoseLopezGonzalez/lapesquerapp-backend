@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests\v2;
 
+use App\Models\AuxiliaryProduct;
 use Illuminate\Foundation\Http\FormRequest;
 
-class OrderTotalAmountStatsRequest extends FormRequest
+class DestroyMultipleAuxiliaryProductsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('viewAny', AuxiliaryProduct::class);
     }
 
     /**
@@ -17,10 +18,8 @@ class OrderTotalAmountStatsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'dateFrom' => 'required|date',
-            'dateTo' => 'required|date',
-            'speciesId' => 'nullable|integer|exists:tenant.species,id',
-            'includeAuxiliary' => 'nullable|boolean',
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:tenant.auxiliary_products,id',
         ];
     }
 }

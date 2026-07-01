@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Public\TenantController;
 use App\Http\Controllers\v2\AuthController as V2AuthController;
+use App\Http\Controllers\v2\AuxiliaryLineStatisticsController;
+use App\Http\Controllers\v2\AuxiliaryProductController;
 use App\Http\Controllers\v2\BoxesController;
 use App\Http\Controllers\v2\CaptureZoneController as V2CaptureZoneController;
 use App\Http\Controllers\v2\CeboDispatchController as V2CeboDispatchController;
@@ -27,6 +29,7 @@ use App\Http\Controllers\v2\IncotermController as V2IncotermController;
 use App\Http\Controllers\v2\LabelController;
 use App\Http\Controllers\v2\OfferController;
 use App\Http\Controllers\v2\OrderAttachmentController;
+use App\Http\Controllers\v2\OrderAuxiliaryLineController;
 /* API V2 */
 use App\Http\Controllers\v2\OrderController as V2OrderController;
 use App\Http\Controllers\v2\OrderDocumentController;
@@ -322,6 +325,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::get('/fishing-gears/options', [FishingGearController::class, 'options']);
         Route::get('/countries/options', [CountryController::class, 'options']);
         Route::get('/payment-terms/options', [V2PaymentTermController::class, 'options']);
+        Route::get('/auxiliary-products/options', [AuxiliaryProductController::class, 'options']);
         Route::get('/prospect-categories/options', [ProspectCategoryController::class, 'options']);
         // CRM / Comercial — supervisor no tiene acceso
         Route::middleware(['role:tecnico,administrador,direccion,administracion,comercial'])->group(function () {
@@ -366,6 +370,12 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         /* orderRankingStats */
         Route::get('statistics/orders/ranking', [OrderStatisticsController::class, 'orderRankingStats'])->name('v2.statistics.orders.ranking');
 
+        /* Estadísticas de líneas auxiliares (productos no pesqueros) — independientes de las pesqueras */
+        Route::get('statistics/auxiliary-lines/total-amount', [AuxiliaryLineStatisticsController::class, 'totalAmountStats'])->name('v2.statistics.auxiliary_lines.total_amount');
+        Route::get('statistics/auxiliary-lines/by-product', [AuxiliaryLineStatisticsController::class, 'byProduct'])->name('v2.statistics.auxiliary_lines.by_product');
+        Route::get('statistics/auxiliary-lines/by-customer', [AuxiliaryLineStatisticsController::class, 'byCustomer'])->name('v2.statistics.auxiliary_lines.by_customer');
+        Route::get('statistics/auxiliary-lines/chart-data', [AuxiliaryLineStatisticsController::class, 'chartData'])->name('v2.statistics.auxiliary_lines.chart_data');
+
         /* Rentabilidad: KPIs y desglose por producto */
         Route::get('statistics/orders/profitability-summary', [OrderProfitabilityStatsController::class, 'summary'])->name('v2.statistics.orders.profitability_summary');
         Route::get('statistics/orders/profitability-summary/export', [OrderProfitabilityStatsController::class, 'exportSummary'])->name('v2.statistics.orders.profitability_summary.export');
@@ -406,6 +416,17 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::apiResource('orders', V2OrderController::class);
         Route::delete('orders', [V2OrderController::class, 'destroyMultiple']);
         Route::apiResource('order-planned-product-details', OrderPlannedProductDetailController::class);
+
+        /* Líneas auxiliares (productos no pesqueros) anidadas al pedido */
+        Route::get('orders/{order}/auxiliary-lines', [OrderAuxiliaryLineController::class, 'index'])->whereNumber('order');
+        Route::post('orders/{order}/auxiliary-lines', [OrderAuxiliaryLineController::class, 'store'])->whereNumber('order');
+        Route::patch('orders/{order}/auxiliary-lines/{line}', [OrderAuxiliaryLineController::class, 'update'])->whereNumber('order')->whereNumber('line');
+        Route::put('orders/{order}/auxiliary-lines/{line}', [OrderAuxiliaryLineController::class, 'update'])->whereNumber('order')->whereNumber('line');
+        Route::delete('orders/{order}/auxiliary-lines/{line}', [OrderAuxiliaryLineController::class, 'destroy'])->whereNumber('order')->whereNumber('line');
+
+        /* Catálogo de artículos auxiliares */
+        Route::apiResource('auxiliary-products', AuxiliaryProductController::class);
+        Route::delete('auxiliary-products', [AuxiliaryProductController::class, 'destroyMultiple']);
 
         /* Raw Material Receptions - Export debe ir ANTES del apiResource */
         Route::get('raw-material-receptions/facilcom-xls', [\App\Http\Controllers\v2\ExcelController::class, 'exportRawMaterialReceptionFacilcom'])->name('export_raw_material_receptions_facilcom');

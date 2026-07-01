@@ -24,7 +24,19 @@
 
 <br>
 
+@if ($order->auxiliaryLines->isNotEmpty())
+**Otros artículos incluidos en este envío:**
 
+<x-mail::table>
+| Artículo | Cantidad | Ud. | Precio unit. | Importe |
+|:---------|:--------:|:---:|:------------:|--------:|
+@foreach ($order->auxiliaryLines as $line)
+| {{ $line->effective_description }} | {{ number_format($line->quantity, 3, ',', '.') }} | {{ $line->unit }} | {{ number_format($line->unit_price, 2, ',', '.') }} € | {{ number_format($line->subtotal, 2, ',', '.') }} € |
+@endforeach
+</x-mail::table>
+
+<br>
+@endif
 
 Saludos / Saluti / Best regards / Cordialement / Atenciosamente.
 </x-mail::message>

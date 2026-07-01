@@ -2,21 +2,20 @@
 
 namespace App\Exports\v2;
 
+use App\Support\OrderErpExportLines;
 use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-
 
 class FacilcomOrdersSalesDeliveryNotesExport implements FromArray, WithHeadings, WithStyles
 {
     use Exportable;
 
     protected $orders;
+
     protected $index = 1;
 
     public function __construct(Collection $orders)
@@ -45,6 +44,8 @@ class FacilcomOrdersSalesDeliveryNotesExport implements FromArray, WithHeadings,
                 ];
             }
 
+            $rows = array_merge($rows, OrderErpExportLines::facilcomArrayRowsForOrder($order, $this->index));
+
             // Línea resumen "PEDIDO #"
             $rows[] = [
                 $this->index,
@@ -53,7 +54,7 @@ class FacilcomOrdersSalesDeliveryNotesExport implements FromArray, WithHeadings,
                 ($order->customer['facilcom_code'] ?? null) ?: '-',
                 ($order->customer['name'] ?? null) ?: '-',
                 '106',
-                'PEDIDO #' . ($order->id ?? '-'),
+                'PEDIDO #'.($order->id ?? '-'),
                 '0',
                 '0',
                 '-',
@@ -87,10 +88,10 @@ class FacilcomOrdersSalesDeliveryNotesExport implements FromArray, WithHeadings,
         $highestColumn = $sheet->getHighestColumn();
 
         // Solo negrita para encabezados
-        $sheet->getStyle('A1:' . $highestColumn . '1')->applyFromArray([
+        $sheet->getStyle('A1:'.$highestColumn.'1')->applyFromArray([
             'font' => [
-                'bold' => true
-            ]
+                'bold' => true,
+            ],
         ]);
 
         // Autoajuste básico de columnas
@@ -101,10 +102,10 @@ class FacilcomOrdersSalesDeliveryNotesExport implements FromArray, WithHeadings,
         // Colorear de amarillo las celdas con datos faltantes ("-")
         for ($row = 2; $row <= $highestRow; $row++) {
             for ($col = 'A'; $col <= $highestColumn; $col++) {
-                $cellValue = $sheet->getCell($col . $row)->getValue();
+                $cellValue = $sheet->getCell($col.$row)->getValue();
                 if ($cellValue === '-') {
-                    $sheet->getStyle($col . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-                    $sheet->getStyle($col . $row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
+                    $sheet->getStyle($col.$row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+                    $sheet->getStyle($col.$row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
                 }
             }
         }

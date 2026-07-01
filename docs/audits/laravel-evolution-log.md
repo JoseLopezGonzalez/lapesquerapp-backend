@@ -5,6 +5,40 @@ Cada entrada sigue el formato definido en `docs/prompts/01_Laravel incremental e
 
 ---
 
+## [2026-07-01] A.2 Ventas — Líneas auxiliares en pedidos (productos no pesqueros)
+
+**Rating**: 9/10 → 9/10 (capacidad nueva sin deuda; bloque se mantiene en excelente)
+**Prioridad**: Media | **Complejidad**: Alta | **Estado**: ✅ Completado
+
+Feature descrito en `docs/pedidos/26-lineas-auxiliares-productos-no-pesqueros.md`, reconciliado con las convenciones reales del código (camelCase en API, `toArrayAssoc()`, Form Requests, scoping por rol Comercial). Permite añadir a un pedido artículos no pesqueros (hielo, nieve, cajas, palets, servicios) sin contaminar las estadísticas pesqueras.
+
+### Cambios
+- **Migraciones tenant** (`database/migrations/companies/`): `auxiliary_products` (name unique, reference, unit, default_price, notes, active) y `order_auxiliary_lines` (FK order cascade, auxiliary_product SET NULL, tax SET NULL; description, quantity, unit, unit_price). Ejecutadas con `tenants:dev-migrate`.
+- **Modelos**: `AuxiliaryProduct` (`UsesTenantConnection`, `toArrayAssoc()`, `orderLines()`, `isInUse()`) y `OrderAuxiliaryLine` (relaciones `order`/`auxiliaryProduct`/`tax`, accessors `effectiveDescription`/`subtotal`/`total`, `boot()` con validaciones producto-o-descripción, quantity>0, unit_price≥0). `Order` extendido con `auxiliaryLines()` y accessors `auxiliarySubtotal`/`auxiliaryTotal`/`fullSummary` (el accessor `summary` pesquero no cambia).
+- **CRUD catálogo** `auxiliary-products`: controller thin, `Store/Update/DestroyMultiple` Requests (`unique:tenant`), `AuxiliaryProductResource`, `AuxiliaryProductPolicy` (registrada en `AuthServiceProvider`), rutas `apiResource` + `options` + `destroyMultiple`. Borrado protegido si el artículo está en uso.
+- **CRUD anidado** `orders/{order}/auxiliary-lines` (index/store/update/destroy) con autorización sobre `Order` y verificación de pertenencia (404 si la línea no es del pedido). `Store/Update` Requests con `required_without` y `exists:tenant`.
+- **Detalle de pedido**: `OrderDetailsResource` devuelve `auxiliaryLines`, `auxiliarySubtotal`, `auxiliaryTotal`; `OrderDetailService::getOrderForDetail()` hace eager loading con selects explícitos.
+- **Estadísticas** (independientes de las pesqueras): `AuxiliaryLineStatisticsService` (métodos `public static`: `calculateTotalAmount`, `getAmountStatsComparedToLastYear`, `getByProduct`, `getByCustomer`, `getChartData`, `getTopAuxiliaryProducts`), `AuxiliaryLineStatisticsController`, Form Requests camelCase y rutas `statistics/auxiliary-lines/{total-amount,by-product,by-customer,chart-data}`. Filtro por `orders.load_date`, estados de venta cerrada y scoping por comercial. Se añadió `includeAuxiliary` (bool, default false) a `OrderStatisticsController::totalAmountStats`: cuando es true devuelve `seafood`/`auxiliary`/`combined` sin romper el shape por defecto.
+- **PDF**: `loadMissing(auxiliaryLines.auxiliaryProduct, .tax)` en `OrderPDFService::generateDocument`, `PDFController::getAuthorizedOrder` y `OrderExportFilterService`. 7 plantillas con bloque "Otros artículos": `loading_note`, `valued_loading_note`, `order_sheet`, `order_sheets_combined`, `restricted_loading_note`, `order_confirmation`, `transport_pickup_request` (en las valoradas se suman subtotal/IVA/total auxiliares al footer).
+- **Emails**: `loadMissing` en `OrderMailerService` (`sendStandardDocuments`/`sendDocument`). Plantillas `shipped`, `commercial`, `generic` con bloque condicional `@if($order->auxiliaryLines->isNotEmpty())` y `<x-mail::table>`. `transport_details` y `maquilador` sin cambios (decisión consciente).
+
+### Tests
+- `tests/Feature/AuxiliaryProductApiTest.php` (11): CRUD, validación, duplicados, `options` solo activos, borrado protegido por uso.
+- `tests/Feature/OrderAuxiliaryLineApiTest.php` (9): CRUD anidado, catálogo vs descripción libre, cálculo subtotal/total, cantidad>0, pertenencia al pedido, detalle con líneas auxiliares.
+- `tests/Feature/AuxiliaryLineStatisticsApiTest.php` (4): total-amount, by-product, `includeAuxiliary` combinado, chart-data.
+- Total: **22 tests, 77 assertions, todos en verde**. Factories `AuxiliaryProductFactory` y `OrderAuxiliaryLineFactory`. Pint aplicado.
+
+### Detalle técnico relevante
+- Los accessors `subtotal`/`total` del modelo colisionan con los alias de agregados SQL; los servicios de estadística usan `->toBase()` para leer los `SUM(...)` como `stdClass` sin invocar accessors.
+- La conexión `tenant` no participa en el rollback de `RefreshDatabase` (conexión aparte del default), por lo que el test de estadísticas limpia `order_auxiliary_lines` en `setUp` para aislar los `SUM`.
+
+### Gap to 10/10
+- No hay endpoint de estadística `by-salesperson` (solo scoping implícito); añadir si negocio lo pide.
+- La edición masiva de líneas auxiliares (bulk) no está incluida; hoy es CRUD unitario anidado.
+- `OrderStatisticsApiTest` presenta fallos de aislamiento preexistentes en el entorno local (la conexión tenant no revierte entre métodos); no es regresión de este feature (verificado con los cambios en stash) pero conviene abordarlo a nivel de suite (transaccionar la conexión `tenant` en `RefreshDatabase`).
+
+---
+
 ## [2026-06-04] A.NEW Sistema transversal de adjuntos — Fase 1+2 (piloto Pallet)
 
 **Rating**: N/A → 9/10

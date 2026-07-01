@@ -135,6 +135,20 @@
                             <td class="p-2 text-center">{{ number_format($detail->quantity, 2, ',', '.') }} kg</td>
                         </tr>
                     @endforeach
+
+                    @if ($entity->auxiliaryLines->isNotEmpty())
+                        <tr class="bg-gray-200">
+                            <td colspan="3" class="p-1 text-[10px] font-semibold text-gray-600">Otros artículos</td>
+                        </tr>
+                        @foreach ($entity->auxiliaryLines as $line)
+                            <tr>
+                                <td class="p-2">{{ $line->effective_description }}</td>
+                                <td class="p-2 text-center">—</td>
+                                <td class="p-2 text-center">{{ number_format($line->quantity, 3, ',', '.') }}
+                                    {{ $line->unit }}</td>
+                            </tr>
+                        @endforeach
+                    @endif
                 </tbody>
             </table>
         </div>

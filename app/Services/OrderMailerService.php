@@ -3,14 +3,13 @@
 namespace App\Services;
 
 use App\Models\Order;
-use App\Services\TenantMailConfigService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class OrderMailerService
 {
-
     protected $pdfService;
+
     protected $mailConfigService;
 
     public function __construct(OrderPDFService $pdfService, TenantMailConfigService $mailConfigService)
@@ -34,14 +33,20 @@ class OrderMailerService
      */
     public function sendStandardDocuments(Order $order): void
     {
+        $order->loadMissing([
+            'auxiliaryLines.auxiliaryProduct',
+            'auxiliaryLines.tax',
+        ]);
+
         $recipientsConfig = config('order_documents.standard_recipients');
 
         foreach ($recipientsConfig as $recipientKey => $docTypes) {
 
             // ✅ Obtenemos email desde las entidades dinámicamente
             [$mainEmails, $ccEmails] = $this->getEmailsFromEntities($order, $recipientKey);
-            if (empty($mainEmails))
-                continue; // Saltamos si no hay email
+            if (empty($mainEmails)) {
+                continue;
+            } // Saltamos si no hay email
 
             $subject = "Documentación del Pedido #{$order->id}";
 
@@ -52,25 +57,24 @@ class OrderMailerService
                 $pdfPath = $this->pdfService->generateDocument($order, $docType, $viewPath);
 
                 // Verificar existencia
-                if (!file_exists($pdfPath)) {
+                if (! file_exists($pdfPath)) {
                     Log::error("No se encuentra el documento: {$pdfPath}");
+
                     continue;
                 }
 
-                $documentName = ucfirst($docType) . "-pedido_#{$order->id}.pdf";
+                $documentName = ucfirst($docType)."-pedido_#{$order->id}.pdf";
 
                 $documentsToAttach[] = [
                     'path' => $pdfPath,
-                    'name' => $documentName
+                    'name' => $documentName,
                 ];
             }
 
-
-
-
             // Saltamos si no hay documentos
-            if (empty($documentsToAttach))
+            if (empty($documentsToAttach)) {
                 continue;
+            }
 
             // Definir Markdown según destinatario
             $markdownTemplates = [
@@ -103,11 +107,17 @@ class OrderMailerService
      */
     private function sendDocument(Order $order, string $docType, array $recipients): void
     {
+        $order->loadMissing([
+            'auxiliaryLines.auxiliaryProduct',
+            'auxiliaryLines.tax',
+        ]);
+
         $config = config('order_documents');
 
         $documentConfig = $config['documents'][$docType] ?? null;
-        if (!$documentConfig) {
+        if (! $documentConfig) {
             Log::error("No se encuentra configuración para el documento: {$docType}");
+
             return;
         }
 
@@ -123,8 +133,9 @@ class OrderMailerService
         $pdfPath = $this->pdfService->generateDocument($order, $docType, $viewPath);
 
         // ✅ Comprobar existencia
-        if (!file_exists($pdfPath)) {
+        if (! file_exists($pdfPath)) {
             Log::error("No se encuentra el documento generado: {$pdfPath}");
+
             return;
         }
 
@@ -132,6 +143,7 @@ class OrderMailerService
             [$mainEmails, $ccEmails] = $this->getEmailsFromEntities($order, $recipientKey);
             if (empty($mainEmails)) {
                 Log::warning("No se encontraron emails para el destinatario: {$recipientKey}");
+
                 continue;
             }
 
@@ -154,8 +166,6 @@ class OrderMailerService
                 ->send($mailable);
         }
     }
-
-
 
     /**
      * Obtener emails dinámicos desde las entidades.
@@ -206,6 +216,7 @@ class OrderMailerService
 
         if (! $externalProcessor) {
             Log::warning("sendMaquiladorDocuments: pedido #{$order->id} no tiene maquilador asignado.");
+
             return;
         }
 
@@ -214,6 +225,7 @@ class OrderMailerService
 
         if (empty($mainEmails)) {
             Log::warning("sendMaquiladorDocuments: el maquilador {$externalProcessor->id} no tiene emails configurados.");
+
             return;
         }
 
@@ -227,6 +239,7 @@ class OrderMailerService
 
             if (! file_exists($pdfPath)) {
                 Log::error("sendMaquiladorDocuments: no se pudo generar el documento {$docType} para pedido #{$order->id}");
+
                 continue;
             }
 

@@ -159,6 +159,26 @@
                             @endforeach
                         @endif
                     @endforeach
+
+                    @if ($entity->auxiliaryLines->isNotEmpty())
+                        <tr class="bg-gray-200">
+                            <td colspan="5" class="p-1 text-[10px] font-semibold text-gray-600">Otros artículos</td>
+                        </tr>
+                        @foreach ($entity->auxiliaryLines as $line)
+                            @php
+                                $rowClass = $rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                                $rowIndex++;
+                            @endphp
+                            <tr class="{{ $rowClass }}">
+                                <td class="p-2 py-1">{{ $line->effective_description }}</td>
+                                <td class="p-2 py-1 text-center">—</td>
+                                <td class="p-2 py-1 text-center">—</td>
+                                <td class="p-2 py-1 text-center">—</td>
+                                <td class="p-2 py-1">{{ number_format($line->quantity, 3, ',', '.') }} {{ $line->unit }}
+                                </td>
+                            </tr>
+                        @endforeach
+                    @endif
                 </tbody>
 
                 <!-- TOTALES -->

@@ -52,6 +52,9 @@ class OrderDetailService
             'plannedProductDetails.product.family' => fn ($q) => $q->select(['id', 'name', 'description', 'category_id', 'active']),
             'plannedProductDetails.product.family.category' => fn ($q) => $q->select(['id', 'name']),
             'plannedProductDetails.tax' => fn ($q) => $q->select(['id', 'name', 'rate']),
+            'auxiliaryLines' => fn ($q) => $q->select(['id', 'order_id', 'auxiliary_product_id', 'description', 'quantity', 'unit', 'unit_price', 'tax_id', 'created_at', 'updated_at']),
+            'auxiliaryLines.auxiliaryProduct' => fn ($q) => $q->select(['id', 'name', 'reference', 'unit', 'default_price', 'active']),
+            'auxiliaryLines.tax' => fn ($q) => $q->select(['id', 'name', 'rate']),
             'offer' => fn ($q) => $q->select(['id', 'order_id']),
             'route' => fn ($q) => $q->select(['id', 'name', 'route_date', 'field_operator_id']),
             'routeStop' => fn ($q) => $q->select([
