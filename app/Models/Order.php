@@ -571,6 +571,8 @@ class Order extends Model
 
     public function getProductDetailsAttribute()
     {
+        $this->ensurePlannedProductDetailsTaxLoaded();
+
         $productionProductDetails = $this->productionProductDetails;
         $plannedProductDetails = $this->plannedProductDetails;
 
@@ -860,7 +862,7 @@ class Order extends Model
 
     public function scopeWithPlannedProductDetails($query)
     {
-        return $query->with('plannedProductDetails.product');
+        return $query->with(['plannedProductDetails.product', 'plannedProductDetails.tax']);
     }
 
     public function scopeWherePlannedProductSpecies($query, ?int $speciesId)
@@ -887,7 +889,20 @@ class Order extends Model
 
     public function scopeWithPlannedProductDetailsAndSpecies($query)
     {
-        return $query->with(['plannedProductDetails.product.species']);
+        return $query->with(['plannedProductDetails.product.species', 'plannedProductDetails.tax']);
+    }
+
+    private function ensurePlannedProductDetailsTaxLoaded(): void
+    {
+        if (! $this->relationLoaded('plannedProductDetails')) {
+            $this->load('plannedProductDetails.tax');
+
+            return;
+        }
+
+        if ($this->plannedProductDetails->contains(fn ($detail) => ! $detail->relationLoaded('tax'))) {
+            $this->load('plannedProductDetails.tax');
+        }
     }
 
     /**

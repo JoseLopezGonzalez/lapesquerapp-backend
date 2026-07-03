@@ -56,6 +56,7 @@ class OrderPlannedProductDetailController extends Controller
             'line_base' => $validated['unitPrice'] * $validated['quantity'],
             'line_total' => $validated['unitPrice'] * $validated['quantity'],
         ]);
+        $orderPlannedProductDetail->load(['product', 'tax']);
 
         return response()->json([
             'message' => 'Detalle de producto planificado creado correctamente.',
@@ -94,6 +95,7 @@ class OrderPlannedProductDetailController extends Controller
             'line_base' => $validated['unitPrice'] * $validated['quantity'],
             'line_total' => $validated['unitPrice'] * $validated['quantity'],
         ]);
+        $orderPlannedProductDetail->load(['product', 'tax']);
 
         return response()->json([
             'message' => 'Detalle de producto planificado actualizado correctamente.',

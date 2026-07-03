@@ -43,6 +43,8 @@ class PDFController extends Controller
         $this->authorize('view', $order);
 
         $order->loadMissing([
+            'plannedProductDetails.product',
+            'plannedProductDetails.tax',
             'auxiliaryLines.auxiliaryProduct',
             'auxiliaryLines.tax',
         ]);

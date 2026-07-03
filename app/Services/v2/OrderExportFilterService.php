@@ -24,6 +24,8 @@ class OrderExportFilterService
             'transport',
             'payment_term',
             'incoterm',
+            'plannedProductDetails.product',
+            'plannedProductDetails.tax',
             'auxiliaryLines.auxiliaryProduct',
             'auxiliaryLines.tax',
             'pallets.boxes.box.productionInputs',

@@ -66,6 +66,7 @@ class CustomerOrderHistoryService
         $orders = $ordersQuery
             ->with([
                 'plannedProductDetails.product',
+                'plannedProductDetails.tax',
                 'pallets.boxes.box.product',
                 'pallets.boxes.box.productionInputs',
             ])
@@ -185,6 +186,7 @@ class CustomerOrderHistoryService
             ->whereBetween('load_date', [$previousPeriodDates['from'], $previousPeriodDates['to']])
             ->with([
                 'plannedProductDetails.product',
+                'plannedProductDetails.tax',
                 'pallets.boxes.box.product',
                 'pallets.boxes.box.productionInputs',
             ])

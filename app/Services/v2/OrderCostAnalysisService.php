@@ -54,7 +54,9 @@ class OrderCostAnalysisService
             $productId  = $detail->product_id;
             $product    = $detail->product;
             $unitPrice  = (float) ($detail->unit_price ?? 0);
-            $taxRate    = $detail->tax ? (float) $detail->tax->rate : 0;
+            $taxRate    = ($detail->relationLoaded('tax') && $detail->tax)
+                ? (float) $detail->tax->rate
+                : 0;
 
             $boxes = $boxesByProduct[$productId] ?? [];
             if (empty($boxes)) {
