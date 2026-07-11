@@ -5,13 +5,16 @@ namespace App\Models;
 use App\Traits\UsesTenantConnection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Store extends Model
 {
     use HasFactory;
     use UsesTenantConnection;
 
-    protected $fillable = ['name', 'temperature', 'capacity', 'map', 'store_type', 'external_user_id'];
+    public const DEFAULT_IMAGE_PATH = 'images/defaults/store-placeholder.svg';
+
+    protected $fillable = ['name', 'temperature', 'capacity', 'map', 'store_type', 'external_user_id', 'image'];
 
     protected $casts = [
         'external_user_id' => 'integer',
@@ -73,6 +76,16 @@ class Store extends Model
         return $this->netWeightPallets + $this->netWeightBigBoxes + $this->netWeightBoxes;
     }
 
+    //Accessor: URL de la imagen del almacén, o el mockup genérico si no tiene una propia
+    public function getImageUrlAttribute(): string
+    {
+        if ($this->image) {
+            return Storage::disk('public')->url($this->image);
+        }
+
+        return asset(self::DEFAULT_IMAGE_PATH);
+    }
+
     public function toArrayAssoc()
     {
         return [
@@ -95,6 +108,7 @@ class Store extends Model
                 'bigBoxes' => [],
             ],
             'map' => json_decode($this->map, true),
+            'image' => $this->imageUrl,
         ];
     }
 
@@ -114,6 +128,7 @@ class Store extends Model
             ] : null,
             'netWeightPallets' => $this->netWeightPallets,
             'totalNetWeight' => $this->totalNetWeight,
+            'image' => $this->imageUrl,
         ];
     }
 }

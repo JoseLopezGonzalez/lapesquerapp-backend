@@ -369,6 +369,101 @@ class StockBlockApiTest extends TestCase
         $response->assertJsonPath('data.name', $store->name);
     }
 
+    public function test_store_without_image_falls_back_to_default_placeholder(): void
+    {
+        $store = Store::create([
+            'name' => 'Almacén Sin Imagen '.uniqid(),
+            'temperature' => 2.5,
+            'capacity' => 100,
+            'map' => null,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/stores/'.$store->id);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.image', asset(Store::DEFAULT_IMAGE_PATH));
+    }
+
+    public function test_can_upload_and_replace_store_image(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $store = Store::create([
+            'name' => 'Almacén Imagen '.uniqid(),
+            'temperature' => 2.5,
+            'capacity' => 100,
+            'map' => null,
+        ]);
+
+        $firstImage = \Illuminate\Http\UploadedFile::fake()->image('almacen.jpg', 400, 300);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/stores/'.$store->id.'/image', ['image' => $firstImage]);
+
+        $response->assertStatus(200);
+        $firstPath = $store->fresh()->image;
+        $this->assertNotNull($firstPath);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($firstPath);
+        $this->assertStringContainsString($firstPath, $response->json('data.image'));
+
+        $secondImage = \Illuminate\Http\UploadedFile::fake()->image('almacen-2.jpg', 400, 300);
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/stores/'.$store->id.'/image', ['image' => $secondImage]);
+
+        $response->assertStatus(200);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($firstPath);
+        $this->assertNotEquals($firstPath, $store->fresh()->image);
+    }
+
+    public function test_can_delete_store_image_and_reverts_to_default(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $store = Store::create([
+            'name' => 'Almacén Imagen Borrar '.uniqid(),
+            'temperature' => 2.5,
+            'capacity' => 100,
+            'map' => null,
+        ]);
+
+        $image = \Illuminate\Http\UploadedFile::fake()->image('almacen.jpg', 400, 300);
+        $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/stores/'.$store->id.'/image', ['image' => $image])
+            ->assertStatus(200);
+
+        $storedPath = $store->fresh()->image;
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->deleteJson('/api/v2/stores/'.$store->id.'/image');
+
+        $response->assertStatus(200);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($storedPath);
+        $this->assertNull($store->fresh()->image);
+        $response->assertJsonPath('data.image', asset(Store::DEFAULT_IMAGE_PATH));
+    }
+
+    public function test_store_image_rejects_invalid_file_type(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $store = Store::create([
+            'name' => 'Almacén Imagen Inválida '.uniqid(),
+            'temperature' => 2.5,
+            'capacity' => 100,
+            'map' => null,
+        ]);
+
+        $file = \Illuminate\Http\UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf');
+
+        $response = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/stores/'.$store->id.'/image', ['image' => $file]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['image']);
+    }
+
     public function test_stock_endpoints_require_auth(): void
     {
         $response = $this->getJson('/api/v2/raw-material-receptions', [

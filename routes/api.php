@@ -452,6 +452,8 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
 
         Route::post('stores', [V2StoreController::class, 'store']);
         Route::put('stores/{store}', [V2StoreController::class, 'update'])->whereNumber('store');
+        Route::post('stores/{store}/image', [V2StoreController::class, 'updateImage'])->whereNumber('store');
+        Route::delete('stores/{store}/image', [V2StoreController::class, 'deleteImage'])->whereNumber('store');
         Route::delete('stores/{store}', [V2StoreController::class, 'destroy'])->whereNumber('store');
         Route::delete('stores', [V2StoreController::class, 'deleteMultiple']);
 
