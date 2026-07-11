@@ -42,6 +42,7 @@ class StoreDetailsResource extends JsonResource
                 'bigBoxes' => [],
             ],
             'map' => json_decode($this->map, true),
+            'image' => $this->imageUrl,
         ];
     }
 }

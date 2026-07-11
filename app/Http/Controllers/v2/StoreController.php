@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\DeleteMultipleStoresRequest;
 use App\Http\Requests\v2\IndexStoreRequest;
 use App\Http\Requests\v2\StoreStoreRequest;
+use App\Http\Requests\v2\UpdateStoreImageRequest;
 use App\Http\Requests\v2\UpdateStoreRequest;
 use App\Http\Resources\v2\StoreDetailsResource;
 use App\Http\Resources\v2\StoreResource;
 use App\Models\Store;
 use App\Services\ActorScopeService;
+use Illuminate\Support\Facades\Storage;
 
 class StoreController extends Controller
 {
@@ -160,6 +162,45 @@ class StoreController extends Controller
 
         return response()->json([
             'message' => 'Almacén actualizado correctamente',
+            'data' => new StoreResource($store),
+        ]);
+    }
+
+    /**
+     * Upload/replace the store's image.
+     */
+    public function updateImage(UpdateStoreImageRequest $request, string $id)
+    {
+        $store = Store::findOrFail($id);
+
+        if ($store->image) {
+            Storage::disk('public')->delete($store->image);
+        }
+
+        $path = $request->file('image')->store('stores/'.$store->id, 'public');
+        $store->update(['image' => $path]);
+
+        return response()->json([
+            'message' => 'Imagen del almacén actualizada correctamente',
+            'data' => new StoreResource($store),
+        ]);
+    }
+
+    /**
+     * Remove the store's image and revert to the default placeholder.
+     */
+    public function deleteImage(string $id)
+    {
+        $store = Store::findOrFail($id);
+        $this->authorize('update', $store);
+
+        if ($store->image) {
+            Storage::disk('public')->delete($store->image);
+            $store->update(['image' => null]);
+        }
+
+        return response()->json([
+            'message' => 'Imagen del almacén eliminada correctamente',
             'data' => new StoreResource($store),
         ]);
     }
