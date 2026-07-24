@@ -235,15 +235,12 @@
         <!-- RESUMEN FINAL -->
         @php
             // Calcular totales calculados (reales) de recepciones
-            $totalCalculatedWeight = 0;
             $totalCalculatedAmount = 0;
             foreach ($receptions as $reception) {
-                $totalCalculatedWeight += $reception['calculated_total_net_weight'];
                 $totalCalculatedAmount += $reception['calculated_total_amount'];
             }
-            
-            // Calcular diferencias (calculado - declarado)
-            $weightDifference = $totalCalculatedWeight - $summary['total_declared_weight'];
+
+            // Calcular diferencia de importe (calculado - declarado)
             $amountDifference = $totalCalculatedAmount - $summary['total_declared_amount'];
         @endphp
         <div class="mt-6 border rounded-lg overflow-hidden bg-gray-50 no-break">
@@ -267,12 +264,7 @@
                 <!-- 3. TOTAL DIFERENCIA -->
                 <div class="mb-4 pb-4 border-b">
                     <h4 class="font-bold mb-2 text-lg">TOTAL DIFERENCIA</h4>
-                    <p><strong>Diferencia de Peso:</strong> 
-                        <span class="{{ $weightDifference >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                            {{ number_format($weightDifference, 2, ',', '.') }} kg
-                        </span>
-                    </p>
-                    <p><strong>Diferencia de Importe:</strong> 
+                    <p><strong>Diferencia de Importe:</strong>
                         <span class="{{ $amountDifference >= 0 ? 'text-green-600' : 'text-red-600' }}">
                             {{ number_format($amountDifference, 2, ',', '.') }} €
                         </span>
