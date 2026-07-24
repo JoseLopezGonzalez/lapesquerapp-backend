@@ -91,6 +91,11 @@ class Order extends Model
         'incoterm_id',
         'route_id',
         'route_stop_id',
+        'invoiced',
+    ];
+
+    protected $casts = [
+        'invoiced' => 'boolean',
     ];
 
     public function plannedProductDetails()

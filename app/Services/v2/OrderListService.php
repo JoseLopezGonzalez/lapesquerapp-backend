@@ -119,6 +119,10 @@ class OrderListService
             $query->where('order_type', $request->orderType);
         }
 
+        if ($request->has('invoiced')) {
+            $query->where('invoiced', filter_var($request->invoiced, FILTER_VALIDATE_BOOLEAN));
+        }
+
         if ($request->has('loadDate')) {
             $loadDate = $request->input('loadDate');
             if (isset($loadDate['start'])) {

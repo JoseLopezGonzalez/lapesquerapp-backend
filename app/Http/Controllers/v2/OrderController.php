@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v2;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v2\BulkUpdateInvoicedOrdersRequest;
 use App\Http\Requests\v2\DestroyMultipleOrdersRequest;
 use App\Http\Requests\v2\IndexOrderRequest;
 use App\Http\Requests\v2\OrderTransportChartRequest;
@@ -171,6 +172,28 @@ class OrderController extends Controller
         Order::whereIn('id', $validated['ids'])->delete();
 
         return response()->json(['message' => 'Pedidos eliminados correctamente']);
+    }
+
+    /**
+     * Cambiar masivamente el estado de facturación de varios pedidos.
+     */
+    public function bulkUpdateInvoiced(BulkUpdateInvoicedOrdersRequest $request)
+    {
+        $validated = $request->validated();
+        $orders = Order::whereIn('id', $validated['ids'])->get();
+
+        foreach ($orders as $order) {
+            $this->authorize('update', $order);
+        }
+
+        $updatedCount = OrderUpdateService::bulkUpdateInvoiced($validated['ids'], $validated['invoiced']);
+
+        return response()->json([
+            'message' => $validated['invoiced']
+                ? 'Pedidos marcados como facturados correctamente.'
+                : 'Pedidos marcados como no facturados correctamente.',
+            'updated_count' => $updatedCount,
+        ]);
     }
 
     /**

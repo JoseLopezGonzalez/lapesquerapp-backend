@@ -20,6 +20,7 @@ class OrderResource extends JsonResource
             'customer' => $this->relationLoaded('customer') ? $this->customer?->toArrayAssoc() : null,
             'buyerReference' => $this->buyer_reference,
             'status' => $this->status,
+            'invoiced' => $this->invoiced,
             'loadDate' => $this->load_date,
             'salesperson' => $this->relationLoaded('salesperson') ? $this->salesperson?->toArrayAssoc() : null,
             'fieldOperator' => $this->relationLoaded('fieldOperator') ? $this->fieldOperator?->toArrayAssoc() : null,

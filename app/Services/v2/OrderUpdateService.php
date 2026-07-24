@@ -120,6 +120,9 @@ class OrderUpdateService
         if (array_key_exists('orderType', $validated)) {
             $order->order_type = $validated['orderType'];
         }
+        if (array_key_exists('invoiced', $validated)) {
+            $order->invoiced = $validated['invoiced'];
+        }
 
         $order->updated_at = now();
         $order->save();
@@ -130,6 +133,17 @@ class OrderUpdateService
         ]);
 
         return $order;
+    }
+
+    /**
+     * Cambia masivamente el estado de facturación de los pedidos indicados.
+     *
+     * @param  array<int, int>  $ids
+     * @return int Número de pedidos actualizados
+     */
+    public static function bulkUpdateInvoiced(array $ids, bool $invoiced): int
+    {
+        return Order::whereIn('id', $ids)->update(['invoiced' => $invoiced]);
     }
 
     private static function formatEmails(array $emails, array $ccEmails): ?string

@@ -415,6 +415,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         });
         Route::apiResource('orders', V2OrderController::class);
         Route::delete('orders', [V2OrderController::class, 'destroyMultiple']);
+        Route::post('orders/update-invoiced', [V2OrderController::class, 'bulkUpdateInvoiced'])->name('orders.bulk_update_invoiced');
         Route::apiResource('order-planned-product-details', OrderPlannedProductDetailController::class);
 
         /* Líneas auxiliares (productos no pesqueros) anidadas al pedido */

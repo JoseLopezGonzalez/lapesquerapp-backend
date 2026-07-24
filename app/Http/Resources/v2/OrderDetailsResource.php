@@ -37,6 +37,7 @@ class OrderDetailsResource extends JsonResource
             'entryDate' => $this->entry_date,
             'loadDate' => $this->load_date,
             'status' => $this->status,
+            'invoiced' => $this->invoiced,
             'pallets' => $this->relationLoaded('pallets')
                 ? $this->pallets->map(function ($pallet) use ($request) {
                     $assoc = $pallet->toArrayAssocV2();
