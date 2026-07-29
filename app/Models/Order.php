@@ -30,6 +30,8 @@ class Order extends Model
 
     const ORDER_TYPE_AUTOVENTA = 'autoventa';
 
+    const ORDER_TYPE_MARITIME_EXPORT = 'maritime_export';
+
     const OPERATIONAL_EDITABLE_STATUSES = [
         self::STATUS_PENDING,
         self::STATUS_INCIDENT,
@@ -64,6 +66,7 @@ class Order extends Model
         return [
             self::ORDER_TYPE_STANDARD,
             self::ORDER_TYPE_AUTOVENTA,
+            self::ORDER_TYPE_MARITIME_EXPORT,
         ];
     }
 
@@ -707,6 +710,23 @@ class Order extends Model
     public function incident()
     {
         return $this->hasOne(Incident::class);
+    }
+
+    /**
+     * Datos de envío marítimo (buque, viaje, factura de exportación, SWB, puertos).
+     * Aplica solo a pedidos de tipo maritime_export; relación 1:1 opcional.
+     */
+    public function maritimeShippingDetail()
+    {
+        return $this->hasOne(OrderMaritimeShippingDetail::class);
+    }
+
+    /**
+     * Contenedores de la exportación marítima (uno o varios por pedido).
+     */
+    public function maritimeContainers()
+    {
+        return $this->hasMany(OrderMaritimeContainer::class);
     }
 
     /**

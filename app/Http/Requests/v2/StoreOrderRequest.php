@@ -47,7 +47,7 @@ class StoreOrderRequest extends FormRequest
         $isAutoventa = $this->input('orderType') === Order::ORDER_TYPE_AUTOVENTA;
 
         $rules = [
-            'orderType' => 'nullable|string|in:standard,autoventa',
+            'orderType' => 'nullable|string|in:standard,autoventa,maritime_export',
             'customer' => 'required|integer|exists:tenant.customers,id',
             'entryDate' => 'required|date',
             'loadDate' => 'required|date',
@@ -165,7 +165,7 @@ class StoreOrderRequest extends FormRequest
             'plannedProducts.*.tax.required' => 'El impuesto es obligatorio en cada línea.',
             'plannedProducts.*.tax.integer' => 'El impuesto debe ser un número entero.',
             'plannedProducts.*.tax.exists' => 'Uno o más impuestos seleccionados no existen.',
-            'orderType.in' => 'El tipo de pedido debe ser standard o autoventa.',
+            'orderType.in' => 'El tipo de pedido debe ser standard, autoventa o maritime_export.',
             'invoiceRequired.required' => 'Debe indicar si la autoventa lleva factura.',
             'invoiceRequired.boolean' => 'El campo factura debe ser sí o no.',
             'items.required' => 'Debe incluir al menos una línea de producto en la autoventa.',

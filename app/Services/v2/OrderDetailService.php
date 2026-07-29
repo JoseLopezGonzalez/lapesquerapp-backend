@@ -64,6 +64,8 @@ class OrderDetailService
             'incident' => fn ($q) => $q->select([
                 'id', 'order_id', 'description', 'status', 'resolution_type', 'resolution_notes', 'resolved_at', 'created_at', 'updated_at',
             ]),
+            'maritimeShippingDetail',
+            'maritimeContainers' => fn ($q) => $q->orderBy('id', 'asc'),
             'pallets' => fn ($q) => $q->select(['id', 'observations', 'pallet_tare_weight_kg', 'status', 'order_id', 'reception_id']),
             'pallets.reception',
             'pallets.boxes' => fn ($q) => $q->select(['id', 'pallet_id', 'box_id', 'created_at', 'updated_at']),

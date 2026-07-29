@@ -5,6 +5,37 @@ Cada entrada sigue el formato definido en `docs/prompts/01_Laravel incremental e
 
 ---
 
+## [2026-07-29] A.2 Ventas — Exportación marítima en pedidos (buque, contenedores, documentación)
+
+**Rating**: 9/10 → 9/10 (capacidad nueva sin deuda; evita repetir el anti-patrón de columnas sueltas en `orders`)
+**Prioridad**: Media | **Complejidad**: Media | **Estado**: ✅ Completado
+
+Necesidad de negocio: algunos pedidos son exportaciones marítimas y requieren datos que el resto de pedidos no necesita (buque, nº de viaje, factura de exportación, Sea Waybill, puertos de carga/descarga, y uno o varios contenedores con su precinto). STEP 0 detectó que el patrón histórico para "campos condicionales" era añadir columnas nullable directamente a `orders` (`truck_plate`, `trailer_plate`, `temperature`, `maquilador_destination`, `loading_address` — 4 migraciones distintas), dejando la tabla con columnas vacías para la mayoría de pedidos. Se decidió romper ese patrón y replicar en su lugar el ya usado por `Incident`: entidades propias colgadas de `Order` vía `order_id`, con sus propios endpoints anidados, reutilizando `OrderPolicy` sin política nueva.
+
+### Cambios
+- **Migraciones tenant**: `order_maritime_shipping_details` (1:1 opcional, `order_id` FK única cascade; `vessel_name`, `voyage_number`, `export_invoice_number`, `swb_number`, `loading_port`, `discharge_port`, todos nullable) y `order_maritime_containers` (1:N, `order_id` FK cascade indexada; `container_number` requerido, `seal_number` nullable) — un pedido puede repartirse en varios contenedores, cada uno con su propio precinto.
+- **Modelos**: `OrderMaritimeShippingDetail` y `OrderMaritimeContainer` (`UsesTenantConnection`, `toArrayAssoc()`); `OrderMaritimeContainer::boot()` valida `container_number` no vacío. `Order` añade relaciones `maritimeShippingDetail()` (hasOne) y `maritimeContainers()` (hasMany), y un tercer valor de `order_type`: `ORDER_TYPE_MARITIME_EXPORT` (`maritime_export`), añadido a `getValidOrderTypes()` y a las reglas `in:` de `Store/UpdateOrderRequest`. No interfiere con el dispatch a `AutoventaStoreService` (solo comprueba `=== 'autoventa'`).
+- **Endpoints anidados** (mismo patrón que `orders/{order}/incident` y `orders/{order}/auxiliary-lines`, autorizados con `OrderPolicy::view`/`update`, sin política nueva):
+  - `GET/PUT orders/{order}/maritime-shipping-details` — recurso singleton con upsert (`updateOrCreate`), reemplazo completo (no merge parcial).
+  - `GET/POST orders/{order}/maritime-containers`, `PATCH/PUT/DELETE orders/{order}/maritime-containers/{container}` — CRUD con verificación de pertenencia al pedido (404 si el contenedor es de otro pedido).
+- **Detalle de pedido**: `OrderDetailsResource` expone `maritimeShippingDetail` (objeto o `null`) y `maritimeContainers` (array); `OrderDetailService::getOrderForDetail()` hace eager loading de ambas relaciones para evitar N+1.
+- **Fuera de alcance (explícito)**: transporte terrestre/aéreo, aduanas, carta de crédito u otros "tipos" de pedido quedan para cuando aparezca la necesidad real; no se construyó infraestructura genérica de "tipos de extensión".
+
+### Tests
+- `tests/Feature/OrderMaritimeShippingApiTest.php` (10): creación de pedido con `order_type=maritime_export`, 404 cuando no hay datos de envío, upsert de datos de envío (crea y reemplaza sin duplicar fila), listado/creación/actualización/borrado de contenedores, validación `containerNumber` requerido, aislamiento entre pedidos (404 al tocar contenedor de otro pedido), inclusión en el detalle del pedido.
+- Regresión verificada en `OrderApiTest` (`can_create_order`, `can_show_order`, `can_update_order`, `create_order_returns_422_with_invalid_payload`): sin cambios de comportamiento en el flujo estándar de pedidos.
+- Total nuevo: **10 tests, 31 assertions, todos en verde**. Factories `OrderMaritimeShippingDetailFactory` y `OrderMaritimeContainerFactory`.
+
+### Detalle técnico relevante
+- Entorno de test local: `ensureDatabaseReachable()` (`tests/Concerns/ConfiguresTenantConnection.php`) se invoca antes de `parent::setUp()`, por lo que `$this->app` aún no está enlazado y la comprobación `app.env === 'testing'` no aplica; a partir del segundo test ejecutado en el mismo proceso PHP, el host de conexión queda en `mysql` (valor crudo de `.env`) en lugar de `127.0.0.1`, y falla por resolución DNS fuera de un contenedor Sail. Reproducido también en `OrderAuxiliaryLineApiTest` sin tocar nada de este cambio — es un problema preexistente del arnés de tests, no de este feature. Workaround usado para validar: ejecutar cada test con `--filter` de forma aislada (un test por proceso).
+
+### Gap to 10/10
+- No aplica — bloque se mantiene en 9/10, capacidad añadida sin deuda nueva.
+- Pendiente de negocio (fuera de esta iteración): repetir el mismo patrón para transporte terrestre/aéreo y aduanas cuando haya un caso real que lo requiera.
+- Recomendado a nivel de suite (no de este feature): corregir el orden de `ensureDatabaseReachable()`/`parent::setUp()` en `ConfiguresTenantConnection` para que la suite completa sea fiable en `php artisan test` sin aislar test a test.
+
+---
+
 ## [2026-07-01] A.2 Ventas — Líneas auxiliares en pedidos (productos no pesqueros)
 
 **Rating**: 9/10 → 9/10 (capacidad nueva sin deuda; bloque se mantiene en excelente)

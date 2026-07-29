@@ -33,6 +33,8 @@ use App\Http\Controllers\v2\OrderAuxiliaryLineController;
 /* API V2 */
 use App\Http\Controllers\v2\OrderController as V2OrderController;
 use App\Http\Controllers\v2\OrderDocumentController;
+use App\Http\Controllers\v2\OrderMaritimeContainerController;
+use App\Http\Controllers\v2\OrderMaritimeShippingDetailController;
 use App\Http\Controllers\v2\OrderPlannedProductDetailController;
 use App\Http\Controllers\v2\OrderProfitabilityStatsController;
 use App\Http\Controllers\v2\OrdersReportController;
@@ -424,6 +426,15 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::patch('orders/{order}/auxiliary-lines/{line}', [OrderAuxiliaryLineController::class, 'update'])->whereNumber('order')->whereNumber('line');
         Route::put('orders/{order}/auxiliary-lines/{line}', [OrderAuxiliaryLineController::class, 'update'])->whereNumber('order')->whereNumber('line');
         Route::delete('orders/{order}/auxiliary-lines/{line}', [OrderAuxiliaryLineController::class, 'destroy'])->whereNumber('order')->whereNumber('line');
+
+        /* Exportación marítima anidada al pedido (order_type = maritime_export) */
+        Route::get('orders/{order}/maritime-shipping-details', [OrderMaritimeShippingDetailController::class, 'show'])->whereNumber('order');
+        Route::put('orders/{order}/maritime-shipping-details', [OrderMaritimeShippingDetailController::class, 'update'])->whereNumber('order');
+        Route::get('orders/{order}/maritime-containers', [OrderMaritimeContainerController::class, 'index'])->whereNumber('order');
+        Route::post('orders/{order}/maritime-containers', [OrderMaritimeContainerController::class, 'store'])->whereNumber('order');
+        Route::patch('orders/{order}/maritime-containers/{container}', [OrderMaritimeContainerController::class, 'update'])->whereNumber('order')->whereNumber('container');
+        Route::put('orders/{order}/maritime-containers/{container}', [OrderMaritimeContainerController::class, 'update'])->whereNumber('order')->whereNumber('container');
+        Route::delete('orders/{order}/maritime-containers/{container}', [OrderMaritimeContainerController::class, 'destroy'])->whereNumber('order')->whereNumber('container');
 
         /* Catálogo de artículos auxiliares */
         Route::apiResource('auxiliary-products', AuxiliaryProductController::class);

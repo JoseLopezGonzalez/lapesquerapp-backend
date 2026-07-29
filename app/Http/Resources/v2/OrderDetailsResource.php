@@ -82,6 +82,10 @@ class OrderDetailsResource extends JsonResource
             'trailerPlate' => $this->trailer_plate,
             'temperature' => $this->temperature,
             'incident' => $this->relationLoaded('incident') ? $this->incident?->toArrayAssoc() : null,
+            'maritimeShippingDetail' => $this->relationLoaded('maritimeShippingDetail') ? $this->maritimeShippingDetail?->toArrayAssoc() : null,
+            'maritimeContainers' => $this->relationLoaded('maritimeContainers')
+                ? $this->maritimeContainers->map(fn ($container) => $container->toArrayAssoc())
+                : [],
             'offerId' => $this->relationLoaded('offer') ? $this->offer?->id : null,
             'routeId' => $this->route_id,
             'routeStopId' => $this->route_stop_id,

@@ -24,7 +24,7 @@ class UpdateOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'orderType' => 'sometimes|string|in:standard,autoventa',
+            'orderType' => 'sometimes|string|in:standard,autoventa,maritime_export',
             'buyerReference' => 'sometimes|nullable|string',
             'payment' => 'sometimes|integer|exists:tenant.payment_terms,id',
             'billingAddress' => 'sometimes|string',
@@ -63,7 +63,7 @@ class UpdateOrderRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'orderType.in' => 'El tipo de pedido debe ser standard o autoventa.',
+            'orderType.in' => 'El tipo de pedido debe ser standard, autoventa o maritime_export.',
             'buyerReference.string' => 'La referencia del comprador debe ser texto.',
             'payment.integer' => 'El término de pago debe ser un número entero.',
             'payment.exists' => 'El término de pago seleccionado no existe.',
