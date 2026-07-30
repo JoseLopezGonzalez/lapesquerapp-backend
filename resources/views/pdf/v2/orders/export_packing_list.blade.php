@@ -26,6 +26,9 @@
         $ultimateConsigneeName = $shippingDetail?->ultimate_consignee_name ?: $customer?->name;
         $ultimateConsigneeAddress = $shippingDetail?->ultimate_consignee_address ?: $entity->shipping_address;
 
+        $originCountry = $shippingDetail?->origin_country ?: tenantSetting('company.address.country');
+        $destinationCountry = $shippingDetail?->destination_country ?: $customer?->country?->name;
+
         $packingListSummary = $container->packingListSummary;
         $packingListTotals = $container->packingListTotals;
     @endphp
@@ -63,10 +66,10 @@
         </div>
 
         {{-- Shipper / Intermediate Consignee / Ultimate Consignee --}}
-        <div class="grid grid-cols-3 gap-3 mb-4">
-            <div class="border border-gray-300 rounded-lg overflow-hidden">
+        <div class="grid grid-cols-3 gap-3 mb-4 items-stretch">
+            <div class="border border-gray-300 rounded-lg overflow-hidden flex flex-col">
                 <div class="bg-gray-800 text-white p-2 font-bold">Shipper / Exporter</div>
-                <div class="p-2 bg-gray-50 min-h-[70px]">
+                <div class="p-2 bg-gray-50 flex-1">
                     <p class="font-semibold">{{ tenantSetting('company.name') }}</p>
                     <p>{{ tenantSetting('company.address.street') }}</p>
                     <p>{{ tenantSetting('company.address.postal_code') }} {{ tenantSetting('company.address.city') }}
@@ -74,9 +77,9 @@
                     <p>{{ tenantSetting('company.address.country') }}</p>
                 </div>
             </div>
-            <div class="border border-gray-300 rounded-lg overflow-hidden">
+            <div class="border border-gray-300 rounded-lg overflow-hidden flex flex-col">
                 <div class="bg-gray-800 text-white p-2 font-bold">Intermediate Consignee</div>
-                <div class="p-2 bg-gray-50 min-h-[70px]">
+                <div class="p-2 bg-gray-50 flex-1">
                     @if ($customsBroker)
                         <p class="font-semibold">{{ $customsBroker->name }}</p>
                         <p>{!! nl2br(e($customsBroker->address)) !!}</p>
@@ -91,9 +94,9 @@
                     @endif
                 </div>
             </div>
-            <div class="border border-gray-300 rounded-lg overflow-hidden">
+            <div class="border border-gray-300 rounded-lg overflow-hidden flex flex-col">
                 <div class="bg-gray-800 text-white p-2 font-bold">Ultimate Consignee</div>
-                <div class="p-2 bg-gray-50 min-h-[70px]">
+                <div class="p-2 bg-gray-50 flex-1">
                     <p class="font-semibold">{{ $ultimateConsigneeName }}</p>
                     <p>{!! nl2br(e($ultimateConsigneeAddress)) !!}</p>
                     @if ($customer?->country)
@@ -104,42 +107,41 @@
         </div>
 
         {{-- Metadatos de envío --}}
-        <div class="grid grid-cols-3 gap-3 mb-4 text-xs">
-            <div class="border border-gray-300 rounded-lg p-2 bg-white">
-                <p class="text-[10px] uppercase text-gray-500">Commercial Invoice No.</p>
-                <p class="font-semibold">{{ $shippingDetail?->export_invoice_number ?? '-' }}</p>
+        <div class="grid grid-cols-3 gap-3 mb-4 text-xs items-stretch">
+            <div class="border border-gray-300 rounded-lg overflow-hidden flex flex-col">
+                <div class="bg-gray-800 text-white p-2 font-bold">Shipment References</div>
+                <div class="p-2 bg-white flex-1 space-y-1.5">
+                    <p><span class="text-[10px] uppercase text-gray-500 block">Commercial Invoice No.</span>
+                        <span class="font-semibold">{{ $shippingDetail?->export_invoice_number ?? '-' }}</span></p>
+                    <p><span class="text-[10px] uppercase text-gray-500 block">Booking No.</span>
+                        <span class="font-semibold">{{ $shippingDetail?->booking_number ?? '-' }}</span></p>
+                    <p><span class="text-[10px] uppercase text-gray-500 block">Vessel Name</span>
+                        <span class="font-semibold">{{ $shippingDetail?->vessel_name ?? '-' }}</span></p>
+                    <p><span class="text-[10px] uppercase text-gray-500 block">Voyage Number</span>
+                        <span class="font-semibold">{{ $shippingDetail?->voyage_number ?? '-' }}</span></p>
+                </div>
             </div>
-            <div class="border border-gray-300 rounded-lg p-2 bg-white">
-                <p class="text-[10px] uppercase text-gray-500">Vessel Name</p>
-                <p class="font-semibold">{{ $shippingDetail?->vessel_name ?? '-' }}</p>
+            <div class="border border-gray-300 rounded-lg overflow-hidden flex flex-col">
+                <div class="bg-gray-800 text-white p-2 font-bold">Container</div>
+                <div class="p-2 bg-white flex-1 space-y-1.5">
+                    <p><span class="text-[10px] uppercase text-gray-500 block">Container No.</span>
+                        <span class="font-semibold">{{ $container->container_number }}</span></p>
+                    <p><span class="text-[10px] uppercase text-gray-500 block">Seal No.</span>
+                        <span class="font-semibold">{{ $container->seal_number ?? '-' }}</span></p>
+                    <p><span class="text-[10px] uppercase text-gray-500 block">Sea Waybill No. (SWB)</span>
+                        <span class="font-semibold">{{ $shippingDetail?->swb_number ?? '-' }}</span></p>
+                </div>
             </div>
-            <div class="border border-gray-300 rounded-lg p-2 bg-white">
-                <p class="text-[10px] uppercase text-gray-500">Voyage Number</p>
-                <p class="font-semibold">{{ $shippingDetail?->voyage_number ?? '-' }}</p>
-            </div>
-            <div class="border border-gray-300 rounded-lg p-2 bg-white">
-                <p class="text-[10px] uppercase text-gray-500">Container No.</p>
-                <p class="font-semibold">{{ $container->container_number }}</p>
-            </div>
-            <div class="border border-gray-300 rounded-lg p-2 bg-white">
-                <p class="text-[10px] uppercase text-gray-500">Seal No.</p>
-                <p class="font-semibold">{{ $container->seal_number ?? '-' }}</p>
-            </div>
-            <div class="border border-gray-300 rounded-lg p-2 bg-white">
-                <p class="text-[10px] uppercase text-gray-500">Sea Waybill No. (SWB)</p>
-                <p class="font-semibold">{{ $shippingDetail?->swb_number ?? '-' }}</p>
-            </div>
-            <div class="border border-gray-300 rounded-lg p-2 bg-white">
-                <p class="text-[10px] uppercase text-gray-500">Country of Origin</p>
-                <p class="font-semibold">{{ tenantSetting('company.address.country') }}</p>
-            </div>
-            <div class="border border-gray-300 rounded-lg p-2 bg-white">
-                <p class="text-[10px] uppercase text-gray-500">Country of Final Destination</p>
-                <p class="font-semibold">{{ $customer?->country?->name ?? '-' }}</p>
-            </div>
-            <div class="border border-gray-300 rounded-lg p-2 bg-white">
-                <p class="text-[10px] uppercase text-gray-500">Incoterm</p>
-                <p class="font-semibold">{{ $entity->incoterm?->code ?? '-' }}</p>
+            <div class="border border-gray-300 rounded-lg overflow-hidden flex flex-col">
+                <div class="bg-gray-800 text-white p-2 font-bold">Trade</div>
+                <div class="p-2 bg-white flex-1 space-y-1.5">
+                    <p><span class="text-[10px] uppercase text-gray-500 block">Country of Origin</span>
+                        <span class="font-semibold">{{ $originCountry ?? '-' }}</span></p>
+                    <p><span class="text-[10px] uppercase text-gray-500 block">Country of Final Destination</span>
+                        <span class="font-semibold">{{ $destinationCountry ?? '-' }}</span></p>
+                    <p><span class="text-[10px] uppercase text-gray-500 block">Incoterm</span>
+                        <span class="font-semibold">{{ $entity->incoterm?->code ?? '-' }}</span></p>
+                </div>
             </div>
         </div>
 
@@ -158,22 +160,27 @@
                 </thead>
                 <tbody>
                     @foreach ($packingListSummary as $speciesGroup)
+                        @php
+                            $hsCodes = collect($speciesGroup['products'])
+                                ->pluck('product.hs_code')
+                                ->filter()
+                                ->unique()
+                                ->values();
+                        @endphp
                         <tr class="bg-gray-200">
                             <td colspan="6" class="p-2">
                                 <span class="font-bold">{{ $speciesGroup['species']->name }}</span>
                                 <span class="italic">
                                     ({{ $speciesGroup['species']->scientific_name }} - {{ $speciesGroup['species']->fao }})
                                 </span>
+                                @if ($hsCodes->isNotEmpty())
+                                    <span class="block text-[10px] text-gray-600">HTSUS: {{ $hsCodes->implode(', ') }}</span>
+                                @endif
                             </td>
                         </tr>
                         @foreach ($speciesGroup['products'] as $productGroup)
                             <tr class="{{ $loop->even ? 'bg-white' : 'bg-gray-50' }}">
-                                <td class="p-2">
-                                    {{ $productGroup['product']->name }}
-                                    @if ($productGroup['product']->hs_code)
-                                        <span class="block text-[10px] text-gray-500">HTSUS: {{ $productGroup['product']->hs_code }}</span>
-                                    @endif
-                                </td>
+                                <td class="p-2">{{ $productGroup['product']->name }}</td>
                                 <td class="p-2 text-center">{{ $productGroup['boxes'] }}</td>
                                 <td class="p-2 text-center">{{ number_format($productGroup['netWeightKg'], 2, ',', '.') }}</td>
                                 <td class="p-2 text-center">{{ number_format($productGroup['netWeightLb'], 2, ',', '.') }}</td>
@@ -196,7 +203,7 @@
             </table>
         </div>
 
-        <p class="text-[10px] text-gray-500 mt-2">Country of Origin of Goods: {{ tenantSetting('company.address.country') }} · Country of Final Destination: {{ $customer?->country?->name ?? '-' }}</p>
+        <p class="text-[10px] text-gray-500 mt-2">Country of Origin of Goods: {{ $originCountry ?? '-' }} · Country of Final Destination: {{ $destinationCountry ?? '-' }}</p>
 
     </div>
 </body>

@@ -109,6 +109,9 @@ class ExportPackingListApiTest extends TestCase
         $response = $this->withHeaders($this->authHeaders())
             ->putJson("/api/v2/orders/{$this->order->id}/maritime-shipping-details", [
                 'vesselName' => 'Mando 631S',
+                'bookingNumber' => 'BK-2026-0042',
+                'originCountry' => 'España',
+                'destinationCountry' => 'Puerto Rico',
                 'customsBrokerId' => $broker->id,
                 'ultimateConsigneeName' => 'Jose Santiago, Inc',
                 'ultimateConsigneeAddress' => "P.O. BOX 191795\nSan Juan, Puerto Rico 00919-1795",
@@ -117,6 +120,9 @@ class ExportPackingListApiTest extends TestCase
         $response->assertStatus(200);
         $response->assertJsonPath('data.customsBrokerId', $broker->id);
         $response->assertJsonPath('data.customsBroker.name', $broker->name);
+        $response->assertJsonPath('data.bookingNumber', 'BK-2026-0042');
+        $response->assertJsonPath('data.originCountry', 'España');
+        $response->assertJsonPath('data.destinationCountry', 'Puerto Rico');
         $response->assertJsonPath('data.ultimateConsigneeName', 'Jose Santiago, Inc');
     }
 
@@ -241,6 +247,9 @@ class ExportPackingListApiTest extends TestCase
         OrderMaritimeShippingDetail::factory()->create([
             'order_id' => $this->order->id,
             'vessel_name' => 'Mando 631S',
+            'booking_number' => 'BK-2026-0042',
+            'origin_country' => 'España',
+            'destination_country' => 'Puerto Rico',
             'customs_broker_id' => $broker->id,
             'ultimate_consignee_name' => 'Jose Santiago, Inc',
         ]);
@@ -256,7 +265,11 @@ class ExportPackingListApiTest extends TestCase
         $this->assertStringContainsString('Export Packing List', $html);
         $this->assertStringContainsString('MNBU4374888', $html);
         $this->assertStringContainsString('Mando 631S', $html);
+        $this->assertStringContainsString('BK-2026-0042', $html);
+        $this->assertStringContainsString('España', $html);
+        $this->assertStringContainsString('Puerto Rico', $html);
         $this->assertStringContainsString('NDC Customs Brokers', $html);
         $this->assertStringContainsString('Jose Santiago, Inc', $html);
+        $this->assertStringContainsString('HTSUS: 0307520000', $html);
     }
 }
