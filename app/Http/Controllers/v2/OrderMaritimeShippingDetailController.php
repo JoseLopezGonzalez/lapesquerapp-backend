@@ -14,7 +14,7 @@ class OrderMaritimeShippingDetailController extends Controller
     {
         $this->authorize('view', $order);
 
-        $detail = $order->maritimeShippingDetail;
+        $detail = $order->maritimeShippingDetail()->with('customsBroker')->first();
 
         if (! $detail) {
             return response()->json([
@@ -44,12 +44,15 @@ class OrderMaritimeShippingDetailController extends Controller
                 'swb_number' => $validated['swbNumber'] ?? null,
                 'loading_port' => $validated['loadingPort'] ?? null,
                 'discharge_port' => $validated['dischargePort'] ?? null,
+                'customs_broker_id' => $validated['customsBrokerId'] ?? null,
+                'ultimate_consignee_name' => $validated['ultimateConsigneeName'] ?? null,
+                'ultimate_consignee_address' => $validated['ultimateConsigneeAddress'] ?? null,
             ]
         );
 
         return response()->json([
             'message' => 'Datos de envío marítimo guardados correctamente.',
-            'data' => new OrderMaritimeShippingDetailResource($detail),
+            'data' => new OrderMaritimeShippingDetailResource($detail->load('customsBroker')),
         ]);
     }
 }

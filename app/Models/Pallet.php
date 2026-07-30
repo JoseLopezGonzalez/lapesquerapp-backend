@@ -64,7 +64,7 @@ class Pallet extends Model
         ];
     }
 
-    protected $fillable = ['observations', 'pallet_tare_weight_kg', 'status', 'order_id', 'reception_id', 'timeline'];
+    protected $fillable = ['observations', 'pallet_tare_weight_kg', 'status', 'order_id', 'order_maritime_container_id', 'reception_id', 'timeline'];
 
     protected $casts = [
         'pallet_tare_weight_kg' => 'decimal:3',
@@ -257,6 +257,11 @@ class Pallet extends Model
     public function order()
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function maritimeContainer()
+    {
+        return $this->belongsTo(OrderMaritimeContainer::class, 'order_maritime_container_id');
     }
 
     /**
@@ -761,6 +766,7 @@ class Pallet extends Model
             'numberOfBoxes' => $this->relationLoaded('boxes') ? $this->numberOfBoxes : 0,
             'position' => $this->positionV2,
             'orderId' => $this->order_id,
+            'orderMaritimeContainerId' => $this->order_maritime_container_id,
             // Campos calculados para cajas disponibles y usadas
             'availableBoxesCount' => $this->relationLoaded('boxes') ? $this->availableBoxesCount : 0,
             'usedBoxesCount' => $this->relationLoaded('boxes') ? $this->usedBoxesCount : 0,

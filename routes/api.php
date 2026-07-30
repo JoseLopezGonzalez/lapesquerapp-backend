@@ -33,8 +33,10 @@ use App\Http\Controllers\v2\OrderAuxiliaryLineController;
 /* API V2 */
 use App\Http\Controllers\v2\OrderController as V2OrderController;
 use App\Http\Controllers\v2\OrderDocumentController;
+use App\Http\Controllers\v2\CustomsBrokerController;
 use App\Http\Controllers\v2\OrderMaritimeContainerController;
 use App\Http\Controllers\v2\OrderMaritimeShippingDetailController;
+use App\Http\Controllers\v2\PalletMaritimeContainerController;
 use App\Http\Controllers\v2\OrderPlannedProductDetailController;
 use App\Http\Controllers\v2\OrderProfitabilityStatsController;
 use App\Http\Controllers\v2\OrdersReportController;
@@ -435,6 +437,15 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::patch('orders/{order}/maritime-containers/{container}', [OrderMaritimeContainerController::class, 'update'])->whereNumber('order')->whereNumber('container');
         Route::put('orders/{order}/maritime-containers/{container}', [OrderMaritimeContainerController::class, 'update'])->whereNumber('order')->whereNumber('container');
         Route::delete('orders/{order}/maritime-containers/{container}', [OrderMaritimeContainerController::class, 'destroy'])->whereNumber('order')->whereNumber('container');
+        Route::get('orders/{order}/maritime-containers/{container}/pallets', [OrderMaritimeContainerController::class, 'pallets'])->whereNumber('order')->whereNumber('container');
+        Route::post('orders/{order}/maritime-containers/{container}/pallets', [OrderMaritimeContainerController::class, 'assignPallets'])->whereNumber('order')->whereNumber('container');
+        Route::delete('orders/{order}/maritime-containers/{container}/pallets', [OrderMaritimeContainerController::class, 'unassignPallets'])->whereNumber('order')->whereNumber('container');
+        Route::patch('orders/{order}/pallets/{pallet}/maritime-container', [PalletMaritimeContainerController::class, 'update'])->whereNumber('order')->whereNumber('pallet');
+        Route::get('orders/{order}/maritime-containers/{container}/pdf/export-packing-list', [\App\Http\Controllers\v2\PDFController::class, 'generateExportPackingList'])->whereNumber('order')->whereNumber('container');
+
+        /* Catálogo de agentes de aduanas (customs brokers) para exportación marítima */
+        Route::get('customs-brokers/options', [CustomsBrokerController::class, 'options']);
+        Route::apiResource('customs-brokers', CustomsBrokerController::class)->parameters(['customs-brokers' => 'customsBroker']);
 
         /* Catálogo de artículos auxiliares */
         Route::apiResource('auxiliary-products', AuxiliaryProductController::class);

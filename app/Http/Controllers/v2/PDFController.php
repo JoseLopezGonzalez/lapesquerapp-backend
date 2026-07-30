@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\v2\Traits\HandlesChromiumConfig;
 use App\Http\Requests\v2\OrderFilteredExportRequest;
 use App\Models\Order;
+use App\Models\OrderMaritimeContainer;
 use App\Services\v2\OrderExportFilterService;
 use App\Services\v2\PalletExpeditionLabelService;
 use Beganovich\Snappdf\Snappdf;
@@ -114,6 +115,28 @@ class PDFController extends Controller
         }
 
         return $this->generatePdf($order, 'pdf.v2.orders.order_packing_list', 'Packing_list_'.$order->formattedId);
+    }
+
+    public function generateExportPackingList(int|string $orderId, int|string $containerId): StreamedResponse
+    {
+        $order = $this->getAuthorizedOrder($orderId);
+        if (auth()->user()->hasRole(Role::Comercial->value)) {
+            abort(403);
+        }
+
+        $container = OrderMaritimeContainer::where('order_id', $order->id)->findOrFail($containerId);
+        $container->load([
+            'pallets.boxes.box.product.species.fishingGear',
+            'pallets.boxes.box.product.captureZone',
+        ]);
+        $order->loadMissing(['maritimeShippingDetail.customsBroker', 'customer.country', 'incoterm']);
+
+        return $this->generatePdf(
+            $order,
+            'pdf.v2.orders.export_packing_list',
+            'Export_Packing_List_'.$order->formattedId.'_'.$container->container_number,
+            ['container' => $container]
+        );
     }
 
     public function generateLoadingNote(int|string $orderId): StreamedResponse

@@ -26,6 +26,9 @@ class UpdateOrderMaritimeShippingDetailRequest extends FormRequest
             'swbNumber' => 'nullable|string|max:100',
             'loadingPort' => 'nullable|string|max:255',
             'dischargePort' => 'nullable|string|max:255',
+            'customsBrokerId' => 'nullable|exists:tenant.customs_brokers,id',
+            'ultimateConsigneeName' => 'nullable|string|max:255',
+            'ultimateConsigneeAddress' => 'nullable|string|max:1000',
         ];
     }
 }

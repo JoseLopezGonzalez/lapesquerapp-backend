@@ -34,6 +34,7 @@ class Product extends Model
         'pallet_gtin',
         'a3erp_code',
         'facil_com_code',
+        'hs_code',
     ];
 
     public function species()
@@ -69,6 +70,7 @@ class Product extends Model
             'palletGtin' => $this->pallet_gtin,
             'a3erpCode' => $this->a3erp_code,
             'facilcomCode' => $this->facil_com_code,
+            'hsCode' => $this->hs_code,
         ];
     }
 

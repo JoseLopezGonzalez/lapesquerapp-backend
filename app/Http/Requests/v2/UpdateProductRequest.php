@@ -66,6 +66,7 @@ class UpdateProductRequest extends FormRequest
             'palletGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/|max:14|unique:tenant.products,pallet_gtin,' . $id,
             'a3erp_code' => 'nullable|string|max:255',
             'facil_com_code' => 'nullable|string|max:255',
+            'hs_code' => 'nullable|string|max:255',
         ];
     }
 
@@ -103,6 +104,7 @@ class UpdateProductRequest extends FormRequest
             'palletGtin' => 'pallet_gtin',
             'a3erp_code' => 'a3erp_code',
             'facil_com_code' => 'facil_com_code',
+            'hs_code' => 'hs_code',
         ];
         $out = [];
         foreach ($map as $key => $dbKey) {

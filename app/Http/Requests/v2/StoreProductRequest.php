@@ -56,6 +56,7 @@ class StoreProductRequest extends FormRequest
             'palletGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/|max:14|unique:tenant.products,pallet_gtin',
             'a3erp_code' => 'nullable|string|max:255',
             'facil_com_code' => 'nullable|string|max:255',
+            'hs_code' => 'nullable|string|max:255',
         ];
     }
 
