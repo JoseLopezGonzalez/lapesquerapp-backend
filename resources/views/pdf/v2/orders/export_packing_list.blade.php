@@ -109,7 +109,6 @@
         {{-- Metadatos de envío --}}
         <div class="grid grid-cols-3 gap-3 mb-4 text-xs items-stretch">
             <div class="border border-gray-300 rounded-lg overflow-hidden flex flex-col">
-                <div class="bg-gray-800 text-white p-2 font-bold">Shipment References</div>
                 <div class="p-2 bg-white flex-1 space-y-1.5">
                     <p><span class="text-[10px] uppercase text-gray-500 block">Commercial Invoice No.</span>
                         <span class="font-semibold">{{ $shippingDetail?->export_invoice_number ?? '-' }}</span></p>
@@ -122,7 +121,6 @@
                 </div>
             </div>
             <div class="border border-gray-300 rounded-lg overflow-hidden flex flex-col">
-                <div class="bg-gray-800 text-white p-2 font-bold">Container</div>
                 <div class="p-2 bg-white flex-1 space-y-1.5">
                     <p><span class="text-[10px] uppercase text-gray-500 block">Container No.</span>
                         <span class="font-semibold">{{ $container->container_number }}</span></p>
@@ -133,7 +131,6 @@
                 </div>
             </div>
             <div class="border border-gray-300 rounded-lg overflow-hidden flex flex-col">
-                <div class="bg-gray-800 text-white p-2 font-bold">Trade</div>
                 <div class="p-2 bg-white flex-1 space-y-1.5">
                     <p><span class="text-[10px] uppercase text-gray-500 block">Country of Origin</span>
                         <span class="font-semibold">{{ $originCountry ?? '-' }}</span></p>

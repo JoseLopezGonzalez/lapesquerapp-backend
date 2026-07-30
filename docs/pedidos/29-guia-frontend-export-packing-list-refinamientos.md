@@ -68,9 +68,11 @@ Con este refino, además, cambia **dónde** se muestra: antes aparecía como una
 Puramente informativo — no requiere ningún cambio en frontend, pero documentado por si se compara visualmente con capturas anteriores:
 
 - El bloque de 9 tarjetas sueltas de metadatos (Commercial Invoice No., Vessel Name, Voyage Number, Container No., Seal No., SWB, Country of Origin, Country of Final Destination, Incoterm) se compactó en **3 tarjetas** de una columna cada una:
-  - **Shipment References**: Commercial Invoice No., Booking No., Vessel Name, Voyage Number.
-  - **Container**: Container No., Seal No., Sea Waybill No. (SWB).
-  - **Trade**: Country of Origin, Country of Final Destination, Incoterm.
+  - Tarjeta 1: Commercial Invoice No., Booking No., Vessel Name, Voyage Number.
+  - Tarjeta 2: Container No., Seal No., Sea Waybill No. (SWB).
+  - Tarjeta 3: Country of Origin, Country of Final Destination, Incoterm.
+
+  Las 3 tarjetas ya no llevan cabecera de título (se quitaron los rótulos "Shipment References"/"Container"/"Trade") — quedan solo como bloques de pares etiqueta/valor, sin encabezado.
 - Corregido un problema visual en las tarjetas Shipper/Intermediate Consignee/Ultimate Consignee: cuando una de las tres tenía más contenido (más líneas de dirección), las otras dos estiraban su borde para igualar la altura pero el fondo gris no llegaba a cubrir todo el espacio, dejando una franja blanca al final. Ahora el fondo se ajusta correctamente a toda la altura de la tarjeta en los tres casos.
 
 ---
