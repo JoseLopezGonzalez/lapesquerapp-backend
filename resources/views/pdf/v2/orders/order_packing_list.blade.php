@@ -113,10 +113,10 @@
             </div>
 
             <div class="mt-6 border border-gray-300 rounded-lg bg-white p-3">
-                <p class="text-gray-700 font-semibold text-[10px] mb-1">
-                    Palets incluidos ({{ $entity->numberOfPallets }}):
+                <p class="text-gray-700 font-semibold mb-1">
+                    Palets ({{ $entity->numberOfPallets }})
                 </p>
-                <ul class="grid grid-cols-8 gap-1 list-disc pl-4 text-gray-700 text-[10px]">
+                <ul class="grid grid-cols-8 gap-1 list-disc pl-4 text-gray-700">
                     @foreach ($entity->pallets as $pallet)
                         <li>#{{ $pallet->id }}</li>
                     @endforeach
