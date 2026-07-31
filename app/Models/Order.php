@@ -32,6 +32,8 @@ class Order extends Model
 
     const ORDER_TYPE_MARITIME_EXPORT = 'maritime_export';
 
+    private const KG_TO_LB = 2.20462;
+
     const OPERATIONAL_EDITABLE_STATUSES = [
         self::STATUS_PENDING,
         self::STATUS_INCIDENT,
@@ -472,6 +474,29 @@ class Order extends Model
         });
     }
 
+    public function getTotalNetWeightLbAttribute()
+    {
+        return $this->totalNetWeight * self::KG_TO_LB;
+    }
+
+    /**
+     * True si al menos una caja del pedido fue pesada en origen en libras
+     * (Box::is_weighed_in_pounds, detectado por el AI 320n del GS1-128), no si el
+     * peso simplemente se puede convertir de kg a lb (eso siempre es posible).
+     */
+    public function getHasNetWeightInPoundsAttribute(): bool
+    {
+        foreach ($this->pallets as $pallet) {
+            foreach ($pallet->boxes as $palletBox) {
+                if ($palletBox->box?->is_weighed_in_pounds) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     public function getProductsWithLotsDetailsAttribute()
     {
         $summary = [];
@@ -530,6 +555,10 @@ class Order extends Model
                 $summary[$productKey]['product']['netWeight'] += $netWeight;
             });
         });
+
+        foreach ($summary as &$productLine) {
+            $productLine['product']['netWeightLb'] = $productLine['product']['netWeight'] * self::KG_TO_LB;
+        }
 
         return array_values($summary);
     }

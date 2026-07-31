@@ -59,20 +59,20 @@
         </div>
 
         <!-- RESUMEN DE MERCANCÍA (todo el pedido) -->
-        <div class="mb-6">
-            <h3 class="font-bold mb-1">Resumen de Mercancía
+        <div class="mb-6 break-after-page">
+            <h3 class="font-bold mb-2">Resumen de Mercancía
                 <span class="font-normal text-gray-500">({{ $entity->numberOfPallets }} palets)</span>
             </h3>
-            <p class="text-gray-400 text-[10px] mb-2">
-                Palets: {{ $entity->pallets->pluck('id')->map(fn($id) => '#' . $id)->implode(', ') }}
-            </p>
             <div class="w-full rounded-lg overflow-hidden border border-gray-300">
                 <table class="w-full">
                     <thead class="border-b">
                         <tr class="bg-gray-100">
                             <th class="p-2 text-left">Producto</th>
                             <th class="p-2 text-center">Cajas</th>
-                            <th class="p-2 text-center">Peso Neto</th>
+                            <th class="p-2 text-center">Peso Neto (kg)</th>
+                            @if ($entity->hasNetWeightInPounds)
+                                <th class="p-2 text-center">Peso Neto (lb)</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
@@ -92,6 +92,11 @@
                                 <td class=" p-2 text-center">
                                     {{ number_format($productLine['product']['netWeight'], 2, ',', '.') }} kg
                                 </td>
+                                @if ($entity->hasNetWeightInPounds)
+                                    <td class=" p-2 text-center">
+                                        {{ number_format($productLine['product']['netWeightLb'], 2, ',', '.') }} lb
+                                    </td>
+                                @endif
                             </tr>
                         @endforeach
                     </tbody>
@@ -100,9 +105,23 @@
                             <td class=" p-2 font-semibold">Total</td>
                             <td class=" p-2 text-center">{{ $entity->totalBoxes }}</td>
                             <td class=" p-2 text-center">{{ number_format($entity->totalNetWeight, 2, ',', '.') }} kg</td>
+                            @if ($entity->hasNetWeightInPounds)
+                                <td class=" p-2 text-center">
+                                    {{ number_format($entity->totalNetWeightLb, 2, ',', '.') }} lb
+                                </td>
+                            @endif
                         </tr>
                     </tfoot>
                 </table>
+            </div>
+
+            <div class="mt-2">
+                <p class="text-gray-500 font-semibold text-[10px] mb-1">Palets incluidos:</p>
+                <div class="grid grid-cols-8 gap-1 text-gray-400 text-[10px]">
+                    @foreach ($entity->pallets as $pallet)
+                        <div>#{{ $pallet->id }}</div>
+                    @endforeach
+                </div>
             </div>
         </div>
 
