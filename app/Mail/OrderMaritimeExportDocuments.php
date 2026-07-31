@@ -19,7 +19,7 @@ class OrderMaritimeExportDocuments extends Mailable
     public function __construct(
         public Order $order,
         public string $subjectText,
-        public string $body,
+        public ?string $body,
         public array $documents,
         public array $trackingLinks = [],
         public ?string $carrierLabel = null,

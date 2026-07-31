@@ -23,8 +23,8 @@ class SendMaritimeExportDocumentsRequest extends FormRequest
         $orderId = $this->route('orderId');
 
         return [
-            'subject' => 'required|string|max:255',
-            'body' => 'required|string|max:5000',
+            'subject' => 'nullable|string|max:255',
+            'body' => 'nullable|string|max:5000',
             'attachmentIds' => 'nullable|array',
             'attachmentIds.*' => [
                 'integer',
@@ -43,8 +43,6 @@ class SendMaritimeExportDocumentsRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'subject.required' => 'El asunto del mensaje es obligatorio.',
-            'body.required' => 'El cuerpo del mensaje es obligatorio.',
             'attachmentIds.*.exists' => 'Uno de los adjuntos seleccionados no existe o no pertenece a este pedido.',
         ];
     }

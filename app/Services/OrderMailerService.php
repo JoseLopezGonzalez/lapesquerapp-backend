@@ -214,14 +214,18 @@ class OrderMailerService
     }
 
     /**
-     * Envío de documentación de exportación marítima al cliente: mensaje personalizado
-     * (asunto + cuerpo libres) + Export Packing List de todos los contenedores del pedido
-     * + los adjuntos del pedido (BL, documentación sanitaria, facturas...) que el usuario elija.
+     * Envío de documentación de exportación marítima al cliente: mensaje fijo (con datos del
+     * envío) + notas opcionales del usuario + Export Packing List de todos los contenedores
+     * del pedido + los adjuntos del pedido (BL, documentación sanitaria, facturas...) que el
+     * usuario elija. `subject`/`body` son opcionales: si no se indican, se usa un asunto por
+     * defecto y no se añade ninguna nota adicional al cuerpo fijo del email.
      *
      * @param  array<int>  $attachmentIds
      */
-    public function sendMaritimeExportDocuments(Order $order, string $subject, string $body, array $attachmentIds = []): void
+    public function sendMaritimeExportDocuments(Order $order, ?string $subject, ?string $body, array $attachmentIds = []): void
     {
+        $subject = $subject ?: "Pedido {$order->formattedId} despachado - Documentación adjunta";
+
         $order->loadMissing([
             'customer.country',
             'maritimeShippingDetail.customsBroker',
