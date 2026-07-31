@@ -51,7 +51,7 @@ class ProductController extends Controller
                 'pallet_gtin' => $validated['palletGtin'] ?? null,
                 'a3erp_code' => $validated['a3erp_code'] ?? null,
                 'facil_com_code' => $validated['facil_com_code'] ?? null,
-                'hs_code' => $validated['hs_code'] ?? null,
+                'hs_code' => $validated['hsCode'] ?? null,
             ]);
             $productId = $product->id;
         });
