@@ -15,6 +15,7 @@ class OrderMaritimeShippingDetail extends Model
     protected $fillable = [
         'order_id',
         'customs_broker_id',
+        'shipping_line',
         'vessel_name',
         'voyage_number',
         'export_invoice_number',
@@ -45,6 +46,7 @@ class OrderMaritimeShippingDetail extends Model
             'orderId' => $this->order_id,
             'customsBrokerId' => $this->customs_broker_id,
             'customsBroker' => $this->relationLoaded('customsBroker') ? $this->customsBroker?->toArrayAssoc() : null,
+            'shippingLine' => $this->shipping_line,
             'vesselName' => $this->vessel_name,
             'voyageNumber' => $this->voyage_number,
             'exportInvoiceNumber' => $this->export_invoice_number,

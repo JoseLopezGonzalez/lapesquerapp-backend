@@ -67,14 +67,14 @@ para listar los adjuntos del pedido (nombre original, tipo MIME, tamaño, fecha 
   "userMessage": "Este envío solo está disponible para pedidos de exportación marítima."
 }
 ```
-- El cliente del pedido debe tener al menos un email configurado — si no, **422**:
+- El pedido debe tener al menos un email configurado en su propio campo `emails` — si no, **422**:
 ```json
 {
   "message": "El cliente del pedido no tiene emails configurados.",
   "userMessage": "El cliente de este pedido no tiene ninguna dirección de email. Añade un email antes de enviar."
 }
 ```
-Recomendable comprobar esto en frontend **antes** de mostrar el botón de envío (el dato `customer.email`/`emails` ya está disponible en el detalle del pedido), para no hacer descubrir el error al usuario recién al enviar.
+  > ⚠️ **No es el email de la ficha del cliente (`Customer`)**, sino el campo `emails`/`ccEmails` del propio **pedido** (mismo campo que ya se edita en el formulario de pedido y que usan `send-custom-documents`/`send-standard-documents` para el destinatario `customer`). Se suele rellenar por defecto al crear el pedido a partir del email del cliente, pero queda desacoplado a partir de ahí: editar el email del cliente no actualiza pedidos ya creados, y se puede editar el email de un pedido puntual sin tocar la ficha del cliente. Comprueba `order.emailsArray` (no `order.customer.email`) en frontend **antes** de mostrar el botón de envío, para no hacer descubrir el error al usuario recién al enviar.
 - El pedido debe tener al menos un contenedor (`OrderMaritimeContainer`) — si no hay ninguno, no hay Export Packing List que generar. No es un caso bloqueante documentado aparte porque en la práctica un pedido `maritime_export` sin contenedores no debería llegar a esta pantalla; si ocurre, el email se envía igualmente solo con los adjuntos seleccionados (sin Packing List).
 
 ### Respuesta OK
@@ -97,6 +97,8 @@ Un único email, al `email` (+ `ccEmails` si los tiene) configurados en el pedid
   - Cada adjunto de `attachmentIds`, con su nombre de archivo original (`original_name`).
 
 No hay forma de excluir el Export Packing List del envío ni de elegir solo algunos contenedores — se adjuntan siempre todos los del pedido. Si en el futuro hace falta seleccionar contenedores concretos, hay que pedirlo explícitamente (no está contemplado en esta versión).
+
+Si el pedido tiene una naviera (`shippingLine`) guardada en sus datos de envío marítimo, el cuerpo del email incluye además un enlace de seguimiento por contenedor — ver [31-guia-frontend-naviera-y-seguimiento.md](./31-guia-frontend-naviera-y-seguimiento.md). No requiere ninguna acción adicional al enviar.
 
 ---
 

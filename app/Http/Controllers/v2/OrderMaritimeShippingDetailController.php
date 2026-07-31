@@ -38,6 +38,7 @@ class OrderMaritimeShippingDetailController extends Controller
         $detail = $order->maritimeShippingDetail()->updateOrCreate(
             ['order_id' => $order->id],
             [
+                'shipping_line' => $validated['shippingLine'] ?? null,
                 'vessel_name' => $validated['vesselName'] ?? null,
                 'voyage_number' => $validated['voyageNumber'] ?? null,
                 'export_invoice_number' => $validated['exportInvoiceNumber'] ?? null,

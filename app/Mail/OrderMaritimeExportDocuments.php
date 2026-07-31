@@ -14,12 +14,15 @@ class OrderMaritimeExportDocuments extends Mailable
 
     /**
      * @param  array<int, array{path: string, name: string, disk?: ?string, mime?: ?string}>  $documents
+     * @param  array<int, array{containerNumber: string, url: string}>  $trackingLinks
      */
     public function __construct(
         public Order $order,
         public string $subjectText,
         public string $body,
         public array $documents,
+        public array $trackingLinks = [],
+        public ?string $carrierLabel = null,
     ) {}
 
     public function build(): self
@@ -31,6 +34,8 @@ class OrderMaritimeExportDocuments extends Mailable
             ->markdown('emails.orders.maritime_export', [
                 'order' => $this->order,
                 'body' => $this->body,
+                'trackingLinks' => $this->trackingLinks,
+                'carrierLabel' => $this->carrierLabel,
             ]);
 
         foreach ($this->documents as $document) {

@@ -20,6 +20,7 @@ class UpdateOrderMaritimeShippingDetailRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'shippingLine' => 'nullable|string|in:maersk,msc,other',
             'vesselName' => 'nullable|string|max:255',
             'voyageNumber' => 'nullable|string|max:100',
             'exportInvoiceNumber' => 'nullable|string|max:100',

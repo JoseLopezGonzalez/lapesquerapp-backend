@@ -12,10 +12,16 @@ class OrderMailerService
 
     protected $mailConfigService;
 
-    public function __construct(OrderPDFService $pdfService, TenantMailConfigService $mailConfigService)
-    {
+    protected $trackingLinkService;
+
+    public function __construct(
+        OrderPDFService $pdfService,
+        TenantMailConfigService $mailConfigService,
+        CarrierTrackingLinkService $trackingLinkService
+    ) {
         $this->pdfService = $pdfService;
         $this->mailConfigService = $mailConfigService;
+        $this->trackingLinkService = $trackingLinkService;
     }
 
     /**
@@ -239,7 +245,10 @@ class OrderMailerService
             ])
             ->get();
 
+        $shippingLine = $order->maritimeShippingDetail?->shipping_line;
+
         $documentsToAttach = [];
+        $trackingLinks = [];
 
         foreach ($containers as $container) {
             $pdfPath = $this->pdfService->generateExportPackingList($order, $container);
@@ -254,6 +263,14 @@ class OrderMailerService
                 'path' => $pdfPath,
                 'name' => "Export_Packing_List_{$order->formattedId}_{$container->container_number}.pdf",
             ];
+
+            $trackingUrl = $this->trackingLinkService->urlFor($shippingLine, $container->container_number);
+            if ($trackingUrl) {
+                $trackingLinks[] = [
+                    'containerNumber' => $container->container_number,
+                    'url' => $trackingUrl,
+                ];
+            }
         }
 
         if (! empty($attachmentIds)) {
@@ -271,7 +288,14 @@ class OrderMailerService
 
         $this->mailConfigService->configureTenantMailer();
 
-        $mailable = new \App\Mail\OrderMaritimeExportDocuments($order, $subject, $body, $documentsToAttach);
+        $mailable = new \App\Mail\OrderMaritimeExportDocuments(
+            $order,
+            $subject,
+            $body,
+            $documentsToAttach,
+            $trackingLinks,
+            $this->trackingLinkService->label($shippingLine)
+        );
 
         Mail::to((array) $mainEmails)
             ->cc((array) $ccEmails)
