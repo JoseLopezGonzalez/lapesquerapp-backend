@@ -8,6 +8,7 @@ use App\Http\Requests\v2\StoreProductionCostRequest;
 use App\Http\Requests\v2\UpdateProductionCostRequest;
 use App\Models\Production;
 use App\Models\ProductionCost;
+use App\Models\ProductionRecord;
 use App\Services\Production\ProductionLotLockService;
 use Illuminate\Http\JsonResponse;
 
@@ -52,7 +53,12 @@ class ProductionCostController extends Controller
     {
         $validated = $request->validated();
 
-        $production = Production::findOrFail($validated['production_id']);
+        if (! empty($validated['production_id'])) {
+            $production = Production::findOrFail($validated['production_id']);
+        } else {
+            $record = ProductionRecord::with('production')->findOrFail($validated['production_record_id']);
+            $production = $record->production;
+        }
         $this->lotLock->assertLotIsMutable($production->lot, 'crear coste de producción');
 
         if (isset($validated['cost_date'])) {
