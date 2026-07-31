@@ -58,29 +58,51 @@
             </div>
         </div>
 
-        <!-- RESUMEN DEL PEDIDO -->
-        <div class="border p-4 py-2 rounded-lg bg-gray-50 mb-6 text-[10px]">
-            <div class="grid grid-cols-5 gap-4">
-                <div>
-                    <p class="font-bold">PALETS</p>
-                    <p>{{ $entity->numberOfPallets }}</p>
-                </div>
-                <div>
-                    <p class="font-bold">CAJAS</p>
-                    <p>{{ $entity->totalBoxes }}</p>
-                </div>
-                <div>
-                    <p class="font-bold">PESO NETO TOTAL</p>
-                    <p>{{ number_format($entity->totalNetWeight, 2, ',', '.') }} kg</p>
-                </div>
-                <div>
-                    <p class="font-bold">PRODUCTOS DISTINTOS</p>
-                    <p>{{ count($entity->productsWithLotsDetails) }}</p>
-                </div>
-                <div>
-                    <p class="font-bold">LOTES DISTINTOS</p>
-                    <p>{{ count($entity->lots) }}</p>
-                </div>
+        <!-- RESUMEN DE MERCANCÍA (todo el pedido) -->
+        <div class="mb-6">
+            <h3 class="font-bold mb-1">Resumen de Mercancía
+                <span class="font-normal text-gray-500">({{ $entity->numberOfPallets }} palets)</span>
+            </h3>
+            <p class="text-gray-400 text-[10px] mb-2">
+                Palets: {{ $entity->pallets->pluck('id')->map(fn($id) => '#' . $id)->implode(', ') }}
+            </p>
+            <div class="w-full rounded-lg overflow-hidden border border-gray-300">
+                <table class="w-full">
+                    <thead class="border-b">
+                        <tr class="bg-gray-100">
+                            <th class="p-2 text-left">Producto</th>
+                            <th class="p-2 text-center">Cajas</th>
+                            <th class="p-2 text-center">Peso Neto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($entity->productsWithLotsDetails as $productLine)
+                            <tr class="{{ $loop->even ? 'bg-white' : 'bg-gray-50' }}">
+                                <td class=" p-2 font-semibold">
+                                    {{ $productLine['product']['name'] }}
+                                    @if (! empty($productLine['lots']))
+                                        <div class="font-normal text-gray-400 text-[10px]">
+                                            {{ implode(', ', array_column($productLine['lots'], 'lot')) }}
+                                        </div>
+                                    @endif
+                                </td>
+                                <td class=" p-2 text-center">
+                                    {{ $productLine['product']['boxes'] }}
+                                </td>
+                                <td class=" p-2 text-center">
+                                    {{ number_format($productLine['product']['netWeight'], 2, ',', '.') }} kg
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot class="border-t">
+                        <tr class="bg-gray-100">
+                            <td class=" p-2 font-semibold">Total</td>
+                            <td class=" p-2 text-center">{{ $entity->totalBoxes }}</td>
+                            <td class=" p-2 text-center">{{ number_format($entity->totalNetWeight, 2, ',', '.') }} kg</td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
         </div>
 
@@ -105,7 +127,7 @@
                                             {{ $productDetail['product']->name }}
                                             @if (! empty($productDetail['lots']))
                                                 <div class="font-normal text-gray-400 text-[10px]">
-                                                    Lotes: {{ implode(', ', $productDetail['lots']) }}
+                                                    {{ implode(', ', $productDetail['lots']) }}
                                                 </div>
                                             @endif
                                         </td>
