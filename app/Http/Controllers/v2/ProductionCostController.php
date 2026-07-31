@@ -92,9 +92,9 @@ class ProductionCostController extends Controller
      */
     public function update(UpdateProductionCostRequest $request, string $id): JsonResponse
     {
-        $cost = ProductionCost::with('production')->findOrFail($id);
+        $cost = ProductionCost::with('production', 'productionRecord.production')->findOrFail($id);
         $this->authorize('update', $cost);
-        $this->lotLock->assertLotIsMutable($cost->production->lot, 'editar coste de producción');
+        $this->lotLock->assertLotIsMutable($this->resolveProduction($cost)->lot, 'editar coste de producción');
         $validated = $request->validated();
         if (isset($validated['cost_date'])) {
             $validated['cost_date'] = normalizeDateToBusiness($validated['cost_date']);
@@ -112,13 +112,18 @@ class ProductionCostController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $cost = ProductionCost::with('production')->findOrFail($id);
+        $cost = ProductionCost::with('production', 'productionRecord.production')->findOrFail($id);
         $this->authorize('delete', $cost);
-        $this->lotLock->assertLotIsMutable($cost->production->lot, 'eliminar coste de producción');
+        $this->lotLock->assertLotIsMutable($this->resolveProduction($cost)->lot, 'eliminar coste de producción');
         $cost->delete();
 
         return response()->json([
             'message' => 'Coste eliminado correctamente.',
         ], 200);
+    }
+
+    private function resolveProduction(ProductionCost $cost): Production
+    {
+        return $cost->production ?? $cost->productionRecord->production;
     }
 }
