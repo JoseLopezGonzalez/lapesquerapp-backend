@@ -20,6 +20,7 @@ class StoreProductionCostRequest extends FormRequest
             'production_id' => 'nullable|exists:tenant.productions,id',
             'cost_catalog_id' => 'nullable|exists:tenant.cost_catalog,id',
             'cost_type' => [
+                'nullable',
                 'required_without:cost_catalog_id',
                 Rule::in([
                     ProductionCost::COST_TYPE_PRODUCTION,

@@ -19,6 +19,7 @@ class UpdateProductionCostRequest extends FormRequest
             'cost_catalog_id' => 'nullable|exists:tenant.cost_catalog,id',
             'cost_type' => [
                 'sometimes',
+                'nullable',
                 Rule::in([
                     ProductionCost::COST_TYPE_PRODUCTION,
                     ProductionCost::COST_TYPE_LABOR,
