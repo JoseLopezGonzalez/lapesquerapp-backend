@@ -60,9 +60,6 @@
 
         <!-- RESUMEN DE MERCANCÍA (todo el pedido) -->
         <div class="mb-6 break-after-page">
-            <h3 class="font-bold mb-2">Resumen de Mercancía
-                <span class="font-normal text-gray-500">({{ $entity->numberOfPallets }} palets)</span>
-            </h3>
             <div class="w-full rounded-lg overflow-hidden border border-gray-300">
                 <table class="w-full">
                     <thead class="border-b">
@@ -115,13 +112,15 @@
                 </table>
             </div>
 
-            <div class="mt-2">
-                <p class="text-gray-500 font-semibold text-[10px] mb-1">Palets incluidos:</p>
-                <div class="grid grid-cols-8 gap-1 text-gray-400 text-[10px]">
+            <div class="mt-6 border border-gray-300 rounded-lg bg-white p-3">
+                <p class="text-gray-700 font-semibold text-[10px] mb-1">
+                    Palets incluidos ({{ $entity->numberOfPallets }}):
+                </p>
+                <ul class="grid grid-cols-8 gap-1 list-disc pl-4 text-gray-700 text-[10px]">
                     @foreach ($entity->pallets as $pallet)
-                        <div>#{{ $pallet->id }}</div>
+                        <li>#{{ $pallet->id }}</li>
                     @endforeach
-                </div>
+                </ul>
             </div>
         </div>
 
