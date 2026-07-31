@@ -98,6 +98,25 @@ class OrderMaritimeContainer extends Model
         return array_values($bySpecies);
     }
 
+    /**
+     * True si al menos una caja del contenedor fue pesada en origen en libras
+     * (Box::is_weighed_in_pounds, detectado por el AI 320n del GS1-128), no si el
+     * peso simplemente se puede convertir de kg a lb (eso siempre es posible).
+     * Requiere pallets.boxes.box precargado.
+     */
+    public function getHasNetWeightInPoundsAttribute(): bool
+    {
+        foreach ($this->pallets as $pallet) {
+            foreach ($pallet->boxes as $palletBox) {
+                if ($palletBox->box?->is_weighed_in_pounds) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     public function getPackingListTotalsAttribute(): array
     {
         $summary = $this->packingListSummary;

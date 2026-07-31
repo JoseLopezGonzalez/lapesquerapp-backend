@@ -58,30 +58,38 @@
             </div>
         </div>
 
+        <!-- RESUMEN DEL PEDIDO -->
+        <div class="border p-4 py-2 rounded-lg bg-gray-50 mb-6 text-[10px]">
+            <div class="grid grid-cols-5 gap-4">
+                <div>
+                    <p class="font-bold">PALETS</p>
+                    <p>{{ $entity->numberOfPallets }}</p>
+                </div>
+                <div>
+                    <p class="font-bold">CAJAS</p>
+                    <p>{{ $entity->totalBoxes }}</p>
+                </div>
+                <div>
+                    <p class="font-bold">PESO NETO TOTAL</p>
+                    <p>{{ number_format($entity->totalNetWeight, 2, ',', '.') }} kg</p>
+                </div>
+                <div>
+                    <p class="font-bold">PRODUCTOS DISTINTOS</p>
+                    <p>{{ count($entity->productsWithLotsDetails) }}</p>
+                </div>
+                <div>
+                    <p class="font-bold">LOTES DISTINTOS</p>
+                    <p>{{ count($entity->lots) }}</p>
+                </div>
+            </div>
+        </div>
+
         <div class="mb-6">
             @foreach ($entity->pallets as $pallet)
                 <div class="mb-8 break-after-page">
                     <h2 class="text-lg font-bold border-b-2 border-gray-800 pb-1 mb-3">Palet #{{ $pallet->id }}</h2>
 
                     <div class="w-full mb-2 rounded-lg overflow-hidden border border-gray-300">
-                        <div class="p-2 bg-gray-50 border-b border-gray-300 space-y-1">
-                            <p>
-                                <span class="font-semibold">Lotes en este palet: </span>
-                                @foreach ($pallet->lots as $lot)
-                                    <span class="inline-block bg-gray-200 px-2 py-1 mr-2 mb-1 rounded-full text-xs">
-                                        {{ $lot }}
-                                    </span>
-                                @endforeach
-                            </p>
-                            <p>
-                                <span class="font-semibold">Productos en este palet: </span>
-                                @foreach ($pallet->summary as $productDetail)
-                                    <span class="inline-block bg-gray-200 px-2 py-1 mr-2 mb-1 rounded-full text-xs">
-                                        {{ $productDetail['product']->name }}
-                                    </span>
-                                @endforeach
-                            </p>
-                        </div>
                         <table class="w-full ">
                             <thead class="border-b">
                                 <tr class="bg-gray-100">
@@ -94,7 +102,13 @@
                                 @foreach ($pallet->summary as $productDetail)
                                     <tr class="{{ $loop->even ? 'bg-white' : 'bg-gray-50' }}">
                                         <td class=" p-2 font-semibold">
-                                            {{ $productDetail['product']->name }}</td>
+                                            {{ $productDetail['product']->name }}
+                                            @if (! empty($productDetail['lots']))
+                                                <div class="font-normal text-gray-400 text-[10px]">
+                                                    Lotes: {{ implode(', ', $productDetail['lots']) }}
+                                                </div>
+                                            @endif
+                                        </td>
                                         <td class=" p-2 text-center">
                                             {{ $productDetail['boxes'] }}
                                         </td>

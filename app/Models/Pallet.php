@@ -294,10 +294,16 @@ class Pallet extends Model
                             'species' => $product->species,
                             'boxes' => 0,
                             'netWeight' => 0,
+                            'lots' => [],
                         ];
                     }
                     $summary[$product->id]['boxes']++;
                     $summary[$product->id]['netWeight'] += $box->box->net_weight ?? 0;
+
+                    $lot = $box->box->lot;
+                    if ($lot && ! in_array($lot, $summary[$product->id]['lots'], true)) {
+                        $summary[$product->id]['lots'][] = $lot;
+                    }
                 }
             });
         }

@@ -31,6 +31,8 @@
 
         $packingListSummary = $container->packingListSummary;
         $packingListTotals = $container->packingListTotals;
+        $hasNetWeightInPounds = $container->hasNetWeightInPounds;
+        $goodsColumns = $hasNetWeightInPounds ? 6 : 5;
     @endphp
 
     <div class="flex flex-col max-w-[210mm] mx-auto p-6 bg-white rounded text-black text-xs min-h-screen">
@@ -150,7 +152,9 @@
                         <th class="p-2 text-left">Description of Goods</th>
                         <th class="p-2 text-center">Boxes</th>
                         <th class="p-2 text-center">Net Weight (kg)</th>
-                        <th class="p-2 text-center">Net Weight (lb)</th>
+                        @if ($hasNetWeightInPounds)
+                            <th class="p-2 text-center">Net Weight (lb)</th>
+                        @endif
                         <th class="p-2 text-center">Gross Weight (kg)</th>
                         <th class="p-2 text-center">Gross Weight (lb)</th>
                     </tr>
@@ -165,7 +169,7 @@
                                 ->values();
                         @endphp
                         <tr class="bg-gray-200">
-                            <td colspan="6" class="p-2">
+                            <td colspan="{{ $goodsColumns }}" class="p-2">
                                 <span class="font-bold">{{ $speciesGroup['species']->name }}</span>
                                 <span class="italic">
                                     ({{ $speciesGroup['species']->scientific_name }} - {{ $speciesGroup['species']->fao }})
@@ -180,7 +184,9 @@
                                 <td class="p-2">{{ $productGroup['product']->name }}</td>
                                 <td class="p-2 text-center">{{ $productGroup['boxes'] }}</td>
                                 <td class="p-2 text-center">{{ number_format($productGroup['netWeightKg'], 2, ',', '.') }} kg</td>
-                                <td class="p-2 text-center">{{ number_format($productGroup['netWeightLb'], 2, ',', '.') }} lb</td>
+                                @if ($hasNetWeightInPounds)
+                                    <td class="p-2 text-center">{{ number_format($productGroup['netWeightLb'], 2, ',', '.') }} lb</td>
+                                @endif
                                 <td class="p-2 text-center">{{ number_format($productGroup['grossWeightKg'], 2, ',', '.') }} kg</td>
                                 <td class="p-2 text-center">{{ number_format($productGroup['grossWeightLb'], 2, ',', '.') }} lb</td>
                             </tr>
@@ -192,7 +198,9 @@
                         <td class="p-2 font-bold">TOTAL</td>
                         <td class="p-2 text-center font-bold">{{ $packingListTotals['boxes'] }}</td>
                         <td class="p-2 text-center font-bold">{{ number_format($packingListTotals['netWeightKg'], 2, ',', '.') }} kg</td>
-                        <td class="p-2 text-center font-bold">{{ number_format($packingListTotals['netWeightLb'], 2, ',', '.') }} lb</td>
+                        @if ($hasNetWeightInPounds)
+                            <td class="p-2 text-center font-bold">{{ number_format($packingListTotals['netWeightLb'], 2, ',', '.') }} lb</td>
+                        @endif
                         <td class="p-2 text-center font-bold">{{ number_format($packingListTotals['grossWeightKg'], 2, ',', '.') }} kg</td>
                         <td class="p-2 text-center font-bold">{{ number_format($packingListTotals['grossWeightLb'], 2, ',', '.') }} lb</td>
                     </tr>
