@@ -24,7 +24,7 @@ Ese payload ya es válido por sí solo — `subject` y `body` pueden omitirse po
 
 | Campo | Antes | Ahora |
 |-------|-------|-------|
-| `subject` | Obligatorio | Opcional. Si se omite, el backend usa por defecto: **"Pedido `{referencia}` despachado - Documentación adjunta"**. |
+| `subject` | Obligatorio | Opcional. Si se omite, el backend usa por defecto: **"Pedido `{referencia}` expedido - Documentación adjunta - `{buyerReference}` (el tramo final solo aparece si el pedido tiene buyer reference)"**. |
 | `body` | Obligatorio | Opcional. Si se omite, el email no incluye ninguna nota adicional (el resto del contenido, ver punto 3, se muestra igual). |
 
 **Acción frontend**: quitar la validación de "obligatorio" en los campos Asunto y Mensaje del formulario de envío. Pueden quedar vacíos y el botón de enviar debe seguir habilitado. Sugerencia de placeholder para el campo Asunto: mostrar como placeholder (no como valor) el asunto por defecto, para que el usuario sepa qué se usará si lo deja en blanco.
@@ -65,10 +65,10 @@ La sección "Detalles del Pedido" del email ahora puede incluir, además de Clie
 ## 4. Cambios de redacción del mensaje fijo
 
 - Antes: *"Su pedido de exportación con número **X** ha sido..."* / *"Your export order with number **X**..."*
-  Ahora: *"Su pedido n.º **X**..."* / *"Your order No. **X**..."* — se elimina "de exportación"/"export" al referirse al pedido, y el número ya no lleva el `#` de `formattedId` (se usa el prefijo "n.º"/"No." en su lugar).
-- Texto final del mensaje fijo:
-  > **ES** — "Su pedido n.º **X** ha sido cargado y expedido. Adjuntamos la documentación disponible en este momento. Cualquier documentación adicional que esté disponible posteriormente le será remitida por este mismo medio."
-  > **EN** — "Your order No. **X** has been loaded and shipped. Please find the documentation currently available attached. Any additional documentation that becomes available will be sent to you through this same channel."
+  Ahora: *"Su pedido **#X** (referencia)..."* / *"Your order **#X** (reference)..."* — se elimina "de exportación"/"export" al referirse al pedido, y justo después del número (`formattedId`, que ya incluye el `#`) se añade, entre paréntesis y sin ninguna etiqueta tipo "Buyer Ref:", el `buyerReference` del pedido — solo si el pedido lo tiene relleno; si no, no aparece el paréntesis.
+- Texto final del mensaje fijo (ejemplo con buyer reference `PO-4471`):
+  > **ES** — "Su pedido **#02767** (PO-4471) ha sido cargado y expedido. Adjuntamos la documentación disponible en este momento. Cualquier documentación adicional que esté disponible posteriormente le será remitida por este mismo medio."
+  > **EN** — "Your order **#02767** (PO-4471) has been loaded and shipped. Please find the documentation currently available attached. Any additional documentation that becomes available will be sent to you through this same channel."
 
 Esto es contenido fijo del email (no configurable desde el request) — no requiere ningún cambio de payload, solo se documenta aquí para que el texto mostrado en cualquier vista previa del frontend (si existe) se mantenga alineado con lo que realmente se envía.
 
@@ -90,6 +90,6 @@ Además del Export Packing List por contenedor (ya documentado en doc 30), el em
 
 - [ ] Quitar validación "obligatorio" de los campos Asunto y Notas en el formulario de envío.
 - [ ] Renombrar la etiqueta del campo `body` a algo tipo "Notas adicionales (opcional)" para reflejar que ahora aparece al final, no como cuerpo principal.
-- [ ] (Opcional) Mostrar como placeholder del campo Asunto el valor por defecto: `Pedido {referencia} despachado - Documentación adjunta`.
+- [ ] (Opcional) Mostrar como placeholder del campo Asunto el valor por defecto: `Pedido {referencia} expedido - Documentación adjunta - {buyerReference} (si aplica)`.
 - [ ] (Opcional) Recordar visualmente si faltan `buyerReference`, `bookingNumber`, puertos o `exportInvoiceNumber` antes de enviar, ya que ahora se muestran en el email si están rellenos.
 - [ ] (Opcional) Si hay un resumen de adjuntos antes de enviar, incluir el Packing List del pedido junto al Export Packing List por contenedor.

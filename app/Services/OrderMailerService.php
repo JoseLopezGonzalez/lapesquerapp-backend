@@ -224,7 +224,8 @@ class OrderMailerService
      */
     public function sendMaritimeExportDocuments(Order $order, ?string $subject, ?string $body, array $attachmentIds = []): void
     {
-        $subject = $subject ?: "Pedido {$order->formattedId} despachado - Documentación adjunta";
+        $subject = $subject ?: "Pedido {$order->formattedId} expedido - Documentación adjunta"
+            .($order->buyer_reference ? " - {$order->buyer_reference}" : '');
 
         $order->loadMissing([
             'customer.country',

@@ -4,11 +4,11 @@
 
 <br>
 
-**ES -** Su pedido n.º **{{ substr($order->formattedId, 1) }}** ha sido cargado y expedido. Adjuntamos la documentación disponible en este momento. Cualquier documentación adicional que esté disponible posteriormente le será remitida por este mismo medio.
+**ES -** Su pedido **{{ $order->formattedId }}**{{ $order->buyer_reference ? " ({$order->buyer_reference})" : '' }} ha sido cargado y expedido. Adjuntamos la documentación disponible en este momento. Cualquier documentación adicional que esté disponible posteriormente le será remitida por este mismo medio.
 
 
 
-**EN -** Your order No. **{{ substr($order->formattedId, 1) }}** has been loaded and shipped. Please find the documentation currently available attached. Any additional documentation that becomes available will be sent to you through this same channel.
+**EN -** Your order **{{ $order->formattedId }}**{{ $order->buyer_reference ? " ({$order->buyer_reference})" : '' }} has been loaded and shipped. Please find the documentation currently available attached. Any additional documentation that becomes available will be sent to you through this same channel.
 
 <br>
 
