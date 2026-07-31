@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\OrderMaritimeContainer;
 use Beganovich\Snappdf\Snappdf;
 
 /**
@@ -56,6 +57,48 @@ class OrderPDFService
         $pdfContent = $snappdf->setHtml($html)->generate();
 
         // Guardar el archivo
+        file_put_contents($pdfPath, $pdfContent);
+
+        return $pdfPath;
+    }
+
+    /**
+     * Generar el Export Packing List de un contenedor marítimo y devolver su ruta.
+     * A diferencia de generateDocument(), la caché se indexa por contenedor (no hay
+     * "un documento por pedido" para este tipo, es "un documento por contenedor").
+     */
+    public function generateExportPackingList(Order $order, OrderMaritimeContainer $container): string
+    {
+        $formattedId = str_replace('#', '', $order->formattedId);
+        // El número de contenedor es texto libre introducido por el usuario: se sanea
+        // antes de usarlo en la ruta de fichero para evitar path traversal.
+        $safeContainerNumber = preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $container->container_number);
+        $pdfPath = storage_path("app/public/export-packing-list-{$formattedId}-{$safeContainerNumber}-{$container->id}.pdf");
+
+        if (file_exists($pdfPath)) {
+            $ageInSeconds = time() - filemtime($pdfPath);
+
+            if ($ageInSeconds < 30) {
+                return $pdfPath;
+            }
+
+            unlink($pdfPath);
+        }
+
+        $order->loadMissing([
+            'auxiliaryLines.auxiliaryProduct',
+            'auxiliaryLines.tax',
+        ]);
+
+        $html = view('pdf.v2.orders.export_packing_list', [
+            'entity' => $order,
+            'container' => $container,
+        ])->render();
+
+        $snappdf = new Snappdf;
+        $this->configureChromium($snappdf);
+        $pdfContent = $snappdf->setHtml($html)->generate();
+
         file_put_contents($pdfPath, $pdfContent);
 
         return $pdfPath;

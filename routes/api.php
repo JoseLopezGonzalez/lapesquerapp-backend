@@ -650,6 +650,7 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::post('orders/{orderId}/send-custom-documents', [OrderDocumentController::class, 'sendCustomDocumentation']);
         Route::post('orders/{orderId}/send-standard-documents', [OrderDocumentController::class, 'sendStandardDocumentation']);
         Route::post('orders/{orderId}/send-maquilador-documents', [OrderDocumentController::class, 'sendMaquiladorDocumentation']);
+        Route::post('orders/{orderId}/send-maritime-export-documents', [OrderDocumentController::class, 'sendMaritimeExportDocumentation']);
     });
 
     Route::middleware(['auth:sanctum', 'external.active', 'role:repartidor_autoventa', 'blocklist.email'])->prefix('field')->group(function () {

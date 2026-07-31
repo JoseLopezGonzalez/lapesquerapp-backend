@@ -208,6 +208,78 @@ class OrderMailerService
     }
 
     /**
+     * Envío de documentación de exportación marítima al cliente: mensaje personalizado
+     * (asunto + cuerpo libres) + Export Packing List de todos los contenedores del pedido
+     * + los adjuntos del pedido (BL, documentación sanitaria, facturas...) que el usuario elija.
+     *
+     * @param  array<int>  $attachmentIds
+     */
+    public function sendMaritimeExportDocuments(Order $order, string $subject, string $body, array $attachmentIds = []): void
+    {
+        $order->loadMissing([
+            'customer.country',
+            'maritimeShippingDetail.customsBroker',
+            'incoterm',
+            'auxiliaryLines.auxiliaryProduct',
+            'auxiliaryLines.tax',
+        ]);
+
+        [$mainEmails, $ccEmails] = $this->getEmailsFromEntities($order, 'customer');
+
+        if (empty($mainEmails)) {
+            Log::warning("sendMaritimeExportDocuments: el pedido #{$order->id} no tiene emails de cliente configurados.");
+
+            return;
+        }
+
+        $containers = $order->maritimeContainers()
+            ->with([
+                'pallets.boxes.box.product.species.fishingGear',
+                'pallets.boxes.box.product.captureZone',
+            ])
+            ->get();
+
+        $documentsToAttach = [];
+
+        foreach ($containers as $container) {
+            $pdfPath = $this->pdfService->generateExportPackingList($order, $container);
+
+            if (! file_exists($pdfPath)) {
+                Log::error("sendMaritimeExportDocuments: no se pudo generar el Export Packing List del contenedor {$container->id} (pedido #{$order->id}).");
+
+                continue;
+            }
+
+            $documentsToAttach[] = [
+                'path' => $pdfPath,
+                'name' => "Export_Packing_List_{$order->formattedId}_{$container->container_number}.pdf",
+            ];
+        }
+
+        if (! empty($attachmentIds)) {
+            $attachments = $order->attachments()->whereIn('id', $attachmentIds)->get();
+
+            foreach ($attachments as $attachment) {
+                $documentsToAttach[] = [
+                    'path' => $attachment->path,
+                    'name' => $attachment->original_name,
+                    'disk' => $attachment->disk,
+                    'mime' => $attachment->mime_type,
+                ];
+            }
+        }
+
+        $this->mailConfigService->configureTenantMailer();
+
+        $mailable = new \App\Mail\OrderMaritimeExportDocuments($order, $subject, $body, $documentsToAttach);
+
+        Mail::to((array) $mainEmails)
+            ->cc((array) $ccEmails)
+            ->bcc(tenantSetting('company.bcc_email'))
+            ->send($mailable);
+    }
+
+    /**
      * Envío de documentación al maquilador (CMR + letreros con datos anonimizados).
      */
     public function sendMaquiladorDocuments(Order $order): void
