@@ -148,11 +148,9 @@
                 <thead class="border-b">
                     <tr class="bg-gray-100">
                         <th class="p-2 text-left">Description of Goods</th>
-                        <th class="p-2 text-center">Boxes</th>
-                        <th class="p-2 text-center">Net Weight (kg)</th>
-                        <th class="p-2 text-center">Net Weight (lb)</th>
-                        <th class="p-2 text-center">Gross Weight (kg)</th>
-                        <th class="p-2 text-center">Gross Weight (lb)</th>
+                        <th class="p-2 text-center">Quantity</th>
+                        <th class="p-2 text-center">Net Weight</th>
+                        <th class="p-2 text-center">Gross Weight</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -178,11 +176,15 @@
                         @foreach ($speciesGroup['products'] as $productGroup)
                             <tr class="{{ $loop->even ? 'bg-white' : 'bg-gray-50' }}">
                                 <td class="p-2">{{ $productGroup['product']->name }}</td>
-                                <td class="p-2 text-center">{{ $productGroup['boxes'] }}</td>
-                                <td class="p-2 text-center">{{ number_format($productGroup['netWeightKg'], 2, ',', '.') }}</td>
-                                <td class="p-2 text-center">{{ number_format($productGroup['netWeightLb'], 2, ',', '.') }}</td>
-                                <td class="p-2 text-center">{{ number_format($productGroup['grossWeightKg'], 2, ',', '.') }}</td>
-                                <td class="p-2 text-center">{{ number_format($productGroup['grossWeightLb'], 2, ',', '.') }}</td>
+                                <td class="p-2 text-center">{{ $productGroup['boxes'] }} uds</td>
+                                <td class="p-2 text-center">
+                                    {{ number_format($productGroup['netWeightKg'], 2, ',', '.') }} kg /
+                                    {{ number_format($productGroup['netWeightLb'], 2, ',', '.') }} lb
+                                </td>
+                                <td class="p-2 text-center">
+                                    {{ number_format($productGroup['grossWeightKg'], 2, ',', '.') }} kg /
+                                    {{ number_format($productGroup['grossWeightLb'], 2, ',', '.') }} lb
+                                </td>
                             </tr>
                         @endforeach
                     @endforeach
@@ -190,11 +192,15 @@
                 <tfoot class="border-t">
                     <tr class="bg-gray-100">
                         <td class="p-2 font-bold">TOTAL</td>
-                        <td class="p-2 text-center font-bold">{{ $packingListTotals['boxes'] }}</td>
-                        <td class="p-2 text-center font-bold">{{ number_format($packingListTotals['netWeightKg'], 2, ',', '.') }}</td>
-                        <td class="p-2 text-center font-bold">{{ number_format($packingListTotals['netWeightLb'], 2, ',', '.') }}</td>
-                        <td class="p-2 text-center font-bold">{{ number_format($packingListTotals['grossWeightKg'], 2, ',', '.') }}</td>
-                        <td class="p-2 text-center font-bold">{{ number_format($packingListTotals['grossWeightLb'], 2, ',', '.') }}</td>
+                        <td class="p-2 text-center font-bold">{{ $packingListTotals['boxes'] }} uds</td>
+                        <td class="p-2 text-center font-bold">
+                            {{ number_format($packingListTotals['netWeightKg'], 2, ',', '.') }} kg /
+                            {{ number_format($packingListTotals['netWeightLb'], 2, ',', '.') }} lb
+                        </td>
+                        <td class="p-2 text-center font-bold">
+                            {{ number_format($packingListTotals['grossWeightKg'], 2, ',', '.') }} kg /
+                            {{ number_format($packingListTotals['grossWeightLb'], 2, ',', '.') }} lb
+                        </td>
                     </tr>
                 </tfoot>
             </table>
