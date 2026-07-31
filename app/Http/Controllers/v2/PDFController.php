@@ -114,6 +114,8 @@ class PDFController extends Controller
             abort(403);
         }
 
+        $order->loadMissing(['pallets.boxes.box.product.species']);
+
         return $this->generatePdf($order, 'pdf.v2.orders.order_packing_list', 'Packing_list_'.$order->formattedId);
     }
 

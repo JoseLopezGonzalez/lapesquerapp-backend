@@ -254,6 +254,21 @@ class OrderMailerService
         $documentsToAttach = [];
         $trackingLinks = [];
 
+        $packingListPath = $this->pdfService->generateDocument(
+            $order,
+            'packing-list',
+            config('order_documents.documents.packing-list.view_path')
+        );
+
+        if (file_exists($packingListPath)) {
+            $documentsToAttach[] = [
+                'path' => $packingListPath,
+                'name' => "Packing_List_{$order->formattedId}.pdf",
+            ];
+        } else {
+            Log::error("sendMaritimeExportDocuments: no se pudo generar el Packing List del pedido #{$order->id}.");
+        }
+
         foreach ($containers as $container) {
             $pdfPath = $this->pdfService->generateExportPackingList($order, $container);
 

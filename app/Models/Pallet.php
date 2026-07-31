@@ -286,12 +286,12 @@ class Pallet extends Model
         $summary = [];
         if ($this->boxes) {
             $this->boxes->map(function ($box) use (&$summary) {
-                if ($box && $box->box && $box->box->relationLoaded('product') && $box->box->product) {
+                if ($box && $box->box && $box->box->product) {
                     $product = $box->box->product;
                     if (! isset($summary[$product->id])) {
                         $summary[$product->id] = [
                             'product' => $product,
-                            'species' => $product->relationLoaded('species') ? ($product->species ?? null) : null,
+                            'species' => $product->species,
                             'boxes' => 0,
                             'netWeight' => 0,
                         ];

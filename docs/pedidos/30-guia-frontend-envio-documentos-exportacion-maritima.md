@@ -90,9 +90,10 @@ para listar los adjuntos del pedido (nombre original, tipo MIME, tamaño, fecha 
 
 Un único email, al `email` (+ `ccEmails` si los tiene) configurados en el pedido, con:
 
-- Asunto: el `subject` enviado, literal.
-- Cuerpo: cabecera fija con nombre del pedido/cliente/buque/viaje (si hay datos de envío marítimo cargados) + el `body` libre insertado debajo, tal cual lo escribió el usuario.
+- Asunto: el `subject` enviado, o el asunto por defecto si se omite (ver [32-guia-frontend-envio-documentos-refinamientos.md](./32-guia-frontend-envio-documentos-refinamientos.md)).
+- Cuerpo: mensaje fijo bilingüe ES/EN + detalles del pedido +, si el usuario escribió algo en `body`, un apartado "Notas" al final — ver doc 32 para el detalle completo del contenido actual.
 - Adjuntos:
+  - **Packing List del pedido** (`Packing_List_{numeroPedido}.pdf`), el mismo documento (todo el pedido, no por contenedor) que genera `GET /orders/{orderId}/pdf/order-packing-list` — se adjunta siempre, generado en el momento.
   - **Export Packing List de cada contenedor del pedido** (`Export_Packing_List_{numeroPedido}_{numeroContenedor}.pdf`), generado en el momento — mismo contenido que la descarga manual documentada en la sección 5 de [28-guia-frontend-export-packing-list.md](./28-guia-frontend-export-packing-list.md).
   - Cada adjunto de `attachmentIds`, con su nombre de archivo original (`original_name`).
 

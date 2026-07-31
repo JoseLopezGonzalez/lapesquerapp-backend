@@ -8,6 +8,7 @@ Cambios sobre lo ya descrito en [30-guia-frontend-envio-documentos-exportacion-m
 2. **El texto que escribe el usuario ahora es "Notas"**, y aparece al final del email, no justo debajo de la cabecera.
 3. **El cuerpo fijo del email muestra más datos del pedido** automáticamente (Buyer Reference, Booking, puertos, Incoterm, nº de factura de exportación), sin que el frontend tenga que enviarlos — ya están guardados en el pedido / en los datos de envío marítimo.
 4. Cambios de redacción: ya no se usa "pedido de exportación" (queda "pedido" a secas) y se añade una frase indicando que se envía la documentación disponible en ese momento y que el resto llegará después si se recibe.
+5. **Adjunto nuevo**: el email incluye ahora también el **Packing List normal del pedido** (el mismo documento de siempre, todo el pedido en un único PDF — no confundir con el Export Packing List, que sigue siendo por contenedor).
 
 ---
 
@@ -73,9 +74,22 @@ Esto es contenido fijo del email (no configurable desde el request) — no requi
 
 ---
 
-## 5. Checklist de Implementación Frontend (incremental sobre doc 30)
+## 5. Adjunto nuevo: Packing List del pedido
+
+Además del Export Packing List por contenedor (ya documentado en doc 30), el email ahora adjunta también el **Packing List normal del pedido** — el mismo PDF de siempre, con todo el pedido en un único documento (no desglosado por contenedor), el mismo que descarga `GET /orders/{orderId}/pdf/order-packing-list`.
+
+- Se genera y adjunta **siempre**, sin que el frontend tenga que pedirlo ni seleccionarlo — no hay ningún campo nuevo en el payload de `send-maritime-export-documents` para esto.
+- Nombre de archivo: `Packing_List_{numeroPedido}.pdf`.
+- No sustituye al Export Packing List por contenedor — el email lleva ambos: uno general del pedido y uno por cada contenedor.
+
+**Acción frontend**: ninguna obligatoria. Si se muestra en el frontend un resumen de "qué se va a adjuntar" antes de enviar, añadir esta línea a esa lista.
+
+---
+
+## 6. Checklist de Implementación Frontend (incremental sobre doc 30)
 
 - [ ] Quitar validación "obligatorio" de los campos Asunto y Notas en el formulario de envío.
 - [ ] Renombrar la etiqueta del campo `body` a algo tipo "Notas adicionales (opcional)" para reflejar que ahora aparece al final, no como cuerpo principal.
 - [ ] (Opcional) Mostrar como placeholder del campo Asunto el valor por defecto: `Pedido {referencia} despachado - Documentación adjunta`.
 - [ ] (Opcional) Recordar visualmente si faltan `buyerReference`, `bookingNumber`, puertos o `exportInvoiceNumber` antes de enviar, ya que ahora se muestran en el email si están rellenos.
+- [ ] (Opcional) Si hay un resumen de adjuntos antes de enviar, incluir el Packing List del pedido junto al Export Packing List por contenedor.

@@ -20,6 +20,8 @@ class Box extends Model
         'manual_cost_per_kg' => 'decimal:4',
     ];
 
+    private const KG_TO_LB = 2.20462;
+
     /**
      * Boot del modelo - Validaciones y eventos
      */
@@ -216,6 +218,25 @@ class Box extends Model
     public function getTotalCostAttribute(): ?float
     {
         return app(ProductionCostResolver::class)->getBoxTotalCost($this);
+    }
+
+    /**
+     * El código GS1-128 impreso en la etiqueta física puede traer el peso neto
+     * en libras (AI 320n) en vez de kilogramos (AI 310n) según el lector/etiquetadora
+     * de origen. net_weight siempre se guarda en kg; esto solo detecta el AI usado.
+     */
+    public function getIsWeighedInPoundsAttribute(): bool
+    {
+        return (bool) preg_match('/\(320\d\)/', (string) $this->gs1_128);
+    }
+
+    public function getNetWeightLbAttribute(): ?float
+    {
+        if (! $this->is_weighed_in_pounds || $this->net_weight === null) {
+            return null;
+        }
+
+        return round($this->net_weight * self::KG_TO_LB, 2);
     }
 
     public function toArrayAssoc()

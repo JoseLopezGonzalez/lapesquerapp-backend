@@ -58,28 +58,6 @@
             </div>
         </div>
 
-        <div class="mb-6 bg-gray-50 p-3 border border-gray-200 rounded-lg text-xs">
-            <h3 class="font-bold mb-1">Interpretación de Lote</h3>
-            <p class="grid grid-cols-4 gap-2">
-                <span>
-                    <b>1.</b> Fecha de captura o producción (DDMMAA)
-                </span>
-                <span>
-                    <b>2.</b> Código FAO de la especie
-                </span>
-                <span>
-                    <b>3.</b> Código de zona de captura
-                </span>
-                <span>
-                    <b>4.</b> Código interno de producción
-                </span>
-            </p>
-            <p class="mt-2 text-[10px] italic">
-                Ejemplo: 150523HKE01002 = Capturado el 15/05/23, Merluza (HKE), Zona 01, Producción 002
-            </p>
-        </div>
-
-
         <div class="mb-6">
             @foreach ($entity->pallets as $pallet)
                 <div class="mb-8 break-after-page">
@@ -167,6 +145,7 @@
                                     <th class=" p-1 text-left">Producto</th>
                                     <th class=" p-1 text-center">Lote</th>
                                     <th class=" p-1 text-center">Peso Neto</th>
+                                    <th class=" p-1 text-center">Peso Neto (lb)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -179,6 +158,13 @@
                                             {{ $box->box->lot }}</td>
                                         <td class=" p-1 text-center font-mono text-xs">
                                             {{ number_format($box->box->net_weight, 2, ',', '.') }} kg
+                                        </td>
+                                        <td class=" p-1 text-center font-mono text-xs">
+                                            @if ($box->box->is_weighed_in_pounds)
+                                                {{ number_format($box->box->net_weight_lb, 2, ',', '.') }} lb
+                                            @else
+                                                -
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach
