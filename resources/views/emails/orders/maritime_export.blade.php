@@ -4,11 +4,11 @@
 
 <br>
 
-**ES -** Su pedido con número **{{ $order->formattedId }}** ha sido cargado y despachado. Le enviamos la documentación disponible en este momento; si recibimos el resto de documentación pendiente, se la haremos llegar en un envío posterior.
+**ES -** Su pedido n.º **{{ substr($order->formattedId, 1) }}** ha sido cargado y expedido. Adjuntamos la documentación disponible en este momento. Cualquier documentación adicional que esté disponible posteriormente le será remitida por este mismo medio.
 
 
 
-**EN -** Your order with number **{{ $order->formattedId }}** has been loaded and dispatched. We are sending you the documentation currently available; if we receive any pending documentation, we will forward it in a follow-up email.
+**EN -** Your order No. **{{ substr($order->formattedId, 1) }}** has been loaded and shipped. Please find the documentation currently available attached. Any additional documentation that becomes available will be sent to you through this same channel.
 
 <br>
 

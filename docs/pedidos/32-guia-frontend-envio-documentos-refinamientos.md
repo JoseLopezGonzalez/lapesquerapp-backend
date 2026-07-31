@@ -64,10 +64,10 @@ La sección "Detalles del Pedido" del email ahora puede incluir, además de Clie
 ## 4. Cambios de redacción del mensaje fijo
 
 - Antes: *"Su pedido de exportación con número **X** ha sido..."* / *"Your export order with number **X**..."*
-  Ahora: *"Su pedido con número **X**..."* / *"Your order with number **X**..."* — se elimina "de exportación"/"export" al referirse al pedido.
-- Se añade una frase indicando que se envía la documentación disponible en ese momento y que, si llega el resto de documentación pendiente más adelante, se enviará en un correo posterior:
-  > **ES** — "...Le enviamos la documentación disponible en este momento; si recibimos el resto de documentación pendiente, se la haremos llegar en un envío posterior."
-  > **EN** — "...We are sending you the documentation currently available; if we receive any pending documentation, we will forward it in a follow-up email."
+  Ahora: *"Su pedido n.º **X**..."* / *"Your order No. **X**..."* — se elimina "de exportación"/"export" al referirse al pedido, y el número ya no lleva el `#` de `formattedId` (se usa el prefijo "n.º"/"No." en su lugar).
+- Texto final del mensaje fijo:
+  > **ES** — "Su pedido n.º **X** ha sido cargado y expedido. Adjuntamos la documentación disponible en este momento. Cualquier documentación adicional que esté disponible posteriormente le será remitida por este mismo medio."
+  > **EN** — "Your order No. **X** has been loaded and shipped. Please find the documentation currently available attached. Any additional documentation that becomes available will be sent to you through this same channel."
 
 Esto es contenido fijo del email (no configurable desde el request) — no requiere ningún cambio de payload, solo se documenta aquí para que el texto mostrado en cualquier vista previa del frontend (si existe) se mantenga alineado con lo que realmente se envía.
 

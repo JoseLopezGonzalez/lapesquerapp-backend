@@ -83,24 +83,27 @@
         <div class="mb-6">
             @foreach ($entity->pallets as $pallet)
                 <div class="mb-8 break-after-page">
-                    <div class="bg-gray-800 text-white p-2 flex justify-between items-center rounded-t-lg">
-                        <h3 class="font-bold">Palet #{{ $pallet->id }}</h3>
-                        {{--  <div class="text-sm">
-                            <span class="mr-4">Peso Neto: {{ $pallet->netWeight }} kg</span>
-                            <span>Cajas: {{ $pallet->numberOfBoxes }} </span>
-                        </div> --}}
-                    </div>
+                    <h2 class="text-lg font-bold border-b-2 border-gray-800 pb-1 mb-3">Palet #{{ $pallet->id }}</h2>
 
-                    <div class="border border-gray-300 border-t-0 p-2 mb-2 bg-gray-50 rounded-b-lg">
-                        <span class="font-semibold">Lotes en este palet: </span>
-                        @foreach ($pallet->lots as $lot)
-                            <span class="inline-block bg-gray-200 px-2 py-1 mr-2 mb-1 rounded-full text-xs">
-                                {{ $lot }}
-                            </span>
-                        @endforeach
-                    </div>
-
-                    <div class="w-full mb-2 rounded-lg overflow-hidden border">
+                    <div class="w-full mb-2 rounded-lg overflow-hidden border border-gray-300">
+                        <div class="p-2 bg-gray-50 border-b border-gray-300 space-y-1">
+                            <p>
+                                <span class="font-semibold">Lotes en este palet: </span>
+                                @foreach ($pallet->lots as $lot)
+                                    <span class="inline-block bg-gray-200 px-2 py-1 mr-2 mb-1 rounded-full text-xs">
+                                        {{ $lot }}
+                                    </span>
+                                @endforeach
+                            </p>
+                            <p>
+                                <span class="font-semibold">Productos en este palet: </span>
+                                @foreach ($pallet->summary as $productDetail)
+                                    <span class="inline-block bg-gray-200 px-2 py-1 mr-2 mb-1 rounded-full text-xs">
+                                        {{ $productDetail['product']->name }}
+                                    </span>
+                                @endforeach
+                            </p>
+                        </div>
                         <table class="w-full ">
                             <thead class="border-b">
                                 <tr class="bg-gray-100">
