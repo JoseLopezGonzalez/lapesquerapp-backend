@@ -33,8 +33,17 @@ Eres un experto en Laravel 10 y PHP 8.2+ especializado en el proyecto lapesquera
 
 ## Contrato OpenAPI de la API
 
-Laravel es la fuente de verdad del contrato de la API v2. Reglas completas en `CLAUDE.md` §19 y
-`docs/api-contract.md` — no las dupliques aquí, consúltalas antes de tocar rutas, Form Requests,
-Resources o controladores de `v2/*`. Resumen: usa Resources explícitas (nunca modelos crudos ni
-arrays de forma variable), y ejecuta `composer contract:update` + `composer contract:verify`
-antes de dar por terminada cualquier tarea que cambie la forma de un endpoint.
+Laravel es la fuente de verdad del contrato de la API v2. Antes de tocar rutas, Form Requests,
+Resources o controladores de `v2/*`, lee `docs/api-contract-master-plan.md` (fases, deuda
+`API-CONTRACT-XXX`, próxima acción) — es la fuente de seguimiento, no `docs/api-contract.md`
+(esa es solo la referencia operativa de comandos) ni `CLAUDE.md` §19 (reglas permanentes, no
+estado). Las decisiones arquitectónicas durables del contrato (herramienta, casing/paginación
+objetivo, política de `toArrayAssoc()`, versionado, nulabilidad) son ADRs en
+`docs/architecture-decisions/0003-*.md` a `0008-*.md` — no las reinventes ni las contradigas sin
+abrir una ADR nueva que las supere explícitamente.
+
+No dupliques estas reglas aquí. Resumen operativo: usa Resources explícitas (nunca modelos crudos
+ni arrays de forma variable — ver ADR-0006 sobre `toArrayAssoc()` para el único patrón transitorio
+permitido), y ejecuta `composer contract:update` + `composer contract:verify` antes de dar por
+terminada cualquier tarea que cambie la forma de un endpoint. Si el endpoint tocado pertenece a un
+módulo del plan maestro (§5 de `docs/api-contract-master-plan.md`), actualiza su fila de estado.

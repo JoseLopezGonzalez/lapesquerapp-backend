@@ -19,6 +19,10 @@ No dar un bloque por cerrado hasta Rating ≥ 9, salvo bloqueo por decisión de 
 ### STEP 0a — Scope & Entity Mapping
 - Lista todas las entidades: modelos, controladores, servicios, rutas, Form Requests, Resources, Policies, tests
 - Confirma el scope con el usuario antes de continuar
+- Si el bloque expone endpoints `v2/*`: comprueba si aparece en `docs/api-contract-master-plan.md`
+  §5 (clasificación de módulos) y si tiene deuda contractual abierta asociada (§4,
+  `API-CONTRACT-XXX`) — el rating Laravel del bloque y el estado de su contrato son cosas
+  distintas, no asumas que uno implica el otro
 
 ### STEP 0 — Comportamiento Actual
 - Documenta estados y transiciones del dominio
@@ -48,6 +52,11 @@ No dar un bloque por cerrado hasta Rating ≥ 9, salvo bloqueo por decisión de 
 
 ### STEP 5 — Entrada en Evolution Log
 Archivo: `docs/audits/laravel-evolution-log.md`
+
+Si STEP 0a detectó cruce con el contrato API: actualiza también
+`docs/api-contract-master-plan.md` (estado de la fila del módulo en §5, estado de los IDs de
+deuda cerrados/mitigados en §4) y ejecuta `composer contract:update`/`contract:verify` antes de
+cerrar el bloque — no dejes el plan del contrato desactualizado por cerrar solo el rating.
 
 Formato de entrada:
 ```markdown

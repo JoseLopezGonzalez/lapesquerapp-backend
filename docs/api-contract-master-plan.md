@@ -714,6 +714,7 @@ estado de una entrada previa, referencia la fecha original en vez de sobrescribi
 | Fecha | Fase | Resumen (1 línea) | Entrada completa |
 |---|---|---|---|
 | 2026-08-02 | Planificación (previa a Fase 0) | Creación del plan maestro; verificación de deuda heredada + 1 hallazgo nuevo (`IncotermResource`, API-CONTRACT-007); extracción de decisiones durables a ADRs 0003-0008. | `docs/audits/laravel-evolution-log.md` → entrada "[2026-08-02] API Contract — Plan maestro y ADRs 0003-0008" |
+| 2026-08-02 | Planificación (previa a Fase 0) | Cierre de huecos de contexto: `evolution-workflow`/`task-workflow` y `laravel-expert` ahora referencian el plan; nueva skill `/api-contract` para retomarlo fase a fase. | `docs/audits/laravel-evolution-log.md` → entrada "[2026-08-02] API Contract — Integración en agentes, skills y CLAUDE.md" |
 
 **Al terminar cualquier intervención de este plan**: añade la entrada completa (formato ya
 establecido en `docs/audits/laravel-evolution-log.md`: problemas abordados, cambios aplicados,

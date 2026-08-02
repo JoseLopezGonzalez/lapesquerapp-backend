@@ -5,6 +5,58 @@ Cada entrada sigue el formato definido en `docs/prompts/01_Laravel incremental e
 
 ---
 
+## [2026-08-02] API Contract — Integración en agentes, skills y CLAUDE.md
+
+**Prioridad**: Media | **Complejidad**: N/A (documentación/instrumentación, sin cambios de código de negocio) | **Estado**: ✅ Completado
+
+Contexto: tras crear el plan maestro y las ADRs 0003-0008 (entrada anterior de este mismo día), se
+auditó si el contexto que carga un agente de Claude Code en este repo (CLAUDE.md, AGENTS.md,
+`.claude/agents/`, `.claude/commands/`) era suficiente para que una sesión futura retome el plan
+sin que el usuario tenga que explicarlo de nuevo. Se encontraron 4 huecos reales: el agente
+`evolution-workflow` y la skill `/task-workflow` (workflow de rating de bloques CORE) no tenían
+ninguna referencia al contrato API, pese a que varios bloques (CRM, Pedidos, Productos...) están
+simultáneamente bajo ambos seguimientos; el agente `laravel-expert` apuntaba solo a
+`docs/api-contract.md`/`CLAUDE.md` §19, no al plan maestro ni a las ADRs directamente; y no existía
+una skill equivalente a `/task-workflow` para retomar el plan del contrato fase a fase.
+
+### Cambios
+
+- **`.claude/agents/laravel-expert.md`**: la sección "Contrato OpenAPI de la API" ahora apunta
+  explícitamente a `docs/api-contract-master-plan.md` y a las ADRs 0003-0008, distinguiendo su rol
+  (seguimiento/estado) del de `docs/api-contract.md` (comandos) y `CLAUDE.md` §19 (reglas
+  permanentes).
+- **`.claude/agents/evolution-workflow.md`** y **`.claude/commands/task-workflow.md`**: STEP 0a
+  ahora exige comprobar si el bloque aparece en el plan maestro (§4/§5) cuando expone endpoints
+  `v2/*`; STEP 5 exige actualizar el plan maestro (no solo el evolution log) si STEP 0a detectó
+  cruce, y ejecutar `contract:update`/`contract:verify` antes de cerrar el bloque.
+- **`.claude/commands/api-contract.md`** (nueva skill, `/api-contract`): equivalente a
+  `/task-workflow` pero para el plan del contrato — lee el plan, confirma la fase (o retoma
+  "Próxima acción recomendada"), ejecuta solo esa fase y actualiza plan/estado/log al terminar. No
+  duplica el detalle de las fases, que sigue viviendo únicamente en el plan maestro.
+- **`CLAUDE.md` §21**: añadida la fila de `/api-contract` a la tabla de skills disponibles.
+
+### Tests
+
+Ninguno aplicable — cambios de contenido de agentes/skills/documentación, sin código ejecutable.
+
+### Gap to 10/10
+
+- No se ha añadido un hook de `SessionStart` que muestre la "próxima acción" del plan al arrancar
+  sesión (evaluado y descartado por ahora: el pointer en `CLAUDE.md` §19, que se carga siempre, ya
+  garantiza que el plan es alcanzable en un salto desde cualquier sesión). Revisar si en el futuro
+  el volumen de fases activas simultáneas lo justifica.
+
+### Rollback Plan
+
+`git revert <commit-hash>` — solo agentes/skills/documentación, sin cambios de código ni
+migraciones.
+
+### Next
+
+Ejecutar Fase 0 del plan maestro (sin cambios respecto a la entrada anterior).
+
+---
+
 ## [2026-08-02] API Contract — Plan maestro y ADRs 0003-0008
 
 **Prioridad**: Alta | **Complejidad**: N/A (documentación/planificación, sin cambios de código de negocio) | **Estado**: ✅ Planificación completada; ⏳ Fase 0 de ejecución pendiente

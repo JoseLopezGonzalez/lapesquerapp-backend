@@ -9,6 +9,10 @@ Bloque objetivo: $ARGUMENTS (ej. "A.6 Producción", "A.19 CRM comercial", o nomb
 Lista todas las entidades, modelos, controladores, servicios, rutas, tests y artefactos del bloque.
 Confirma el scope con el usuario antes de continuar.
 
+Si el bloque expone endpoints `v2/*`: revisa `docs/api-contract-master-plan.md` §5 (clasificación
+de módulos) y §4 (deuda `API-CONTRACT-XXX`) — el rating Laravel del bloque y el estado de su
+contrato API son seguimientos distintos, no des uno por resuelto al cerrar el otro.
+
 ## STEP 0 — Comportamiento Actual
 
 Documenta sin modificar nada:
@@ -50,6 +54,11 @@ Solo tras aprobación del STEP 2:
 - Si Rating < 9: documenta "Gap to 10/10" y propone siguiente sub-bloque
 
 ## STEP 5 — Evolution Log
+
+Si STEP 0a detectó cruce con el contrato API: antes de cerrar, actualiza
+`docs/api-contract-master-plan.md` (fila del módulo en §5, IDs de deuda cerrados/mitigados en §4)
+y ejecuta `composer contract:update`/`contract:verify`. Para retomar o ejecutar directamente una
+fase del plan del contrato (en vez de un bloque del CORE), usa `/api-contract`.
 
 Genera la entrada para `docs/audits/laravel-evolution-log.md`:
 

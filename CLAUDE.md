@@ -293,6 +293,7 @@ Las skills están en `.claude/commands/` y se invocan como `/nombre` dentro de C
 | `/find-skills` | Encontrar qué skill usar para una tarea concreta |
 | `/skill-creator` | Crear una nueva skill siguiendo el patrón del proyecto |
 | `/task-workflow` | Ejecutar el flujo completo de evolución de un bloque (STEP 0a → STEP 5 → evolution log) |
+| `/api-contract` | Retomar o ejecutar una fase del plan maestro del contrato API (`docs/api-contract-master-plan.md`) |
 
 ## 22. Agentes Especializados
 
