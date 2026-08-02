@@ -66,6 +66,7 @@ class PunchController extends Controller
      * Registrar un nuevo evento de fichaje.
      * Detecta automáticamente si es un fichaje manual (con timestamp y event_type) o NFC.
      *
+     * @unauthenticated Ruta pública para dispositivos NFC (fuera del grupo auth:sanctum).
      * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\JsonResponse
      */

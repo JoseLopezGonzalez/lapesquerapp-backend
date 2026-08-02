@@ -30,3 +30,11 @@ Eres un experto en Laravel 10 y PHP 8.2+ especializado en el proyecto lapesquera
 - No omitir Policies en recursos críticos
 - No hacer `DB::connection('tenant')` fuera de modelos o servicios
 - No mezclar datos entre tenants
+
+## Contrato OpenAPI de la API
+
+Laravel es la fuente de verdad del contrato de la API v2. Reglas completas en `CLAUDE.md` §19 y
+`docs/api-contract.md` — no las dupliques aquí, consúltalas antes de tocar rutas, Form Requests,
+Resources o controladores de `v2/*`. Resumen: usa Resources explícitas (nunca modelos crudos ni
+arrays de forma variable), y ejecuta `composer contract:update` + `composer contract:verify`
+antes de dar por terminada cualquier tarea que cambie la forma de un endpoint.

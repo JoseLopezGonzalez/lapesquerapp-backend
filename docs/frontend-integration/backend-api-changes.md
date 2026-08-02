@@ -87,9 +87,74 @@ Los siguientes cambios son transparentes al frontend:
 
 ---
 
-## Sprint 2 (pendiente)
+## Sprint 2 — 2026-08-02 (Contrato OpenAPI)
 
-*Se actualizará cuando se implementen los cambios de Sprint 2.*
+### Resumen de cambios visibles al frontend
+
+| Cambio | Tipo | Endpoints afectados | Acción requerida |
+|---|---|---|---|
+| `GET /v2/orders/{orderId}/incident` cambia de forma | **Breaking** | 1 endpoint | Actualizar el parseo: ya no es el modelo Eloquent crudo |
+
+### 1. `GET /v2/orders/{orderId}/incident` ahora devuelve la misma forma que `POST`/`PUT` (breaking)
+
+**Fecha**: 2026-08-02
+**Motivación**: el mismo recurso `Incident` se serializaba de forma distinta según el verbo —
+`GET` devolvía el modelo Eloquent crudo (columnas de BD en `snake_case`: `order_id`,
+`resolution_type`, `created_at`, ...), mientras que `POST`/`PUT` devolvían `Incident::toArrayAssoc()`
+(`camelCase`: `resolutionType`, `resolutionNotes`, ...). Detectado en `API_CONTRACT_AUDIT.md` §6-7
+como bloqueador para generar un contrato OpenAPI fiable.
+
+**Comportamiento anterior** (`GET`):
+```json
+{
+  "id": 1,
+  "order_id": 42,
+  "description": "...",
+  "status": "open",
+  "resolution_type": null,
+  "resolution_notes": null,
+  "resolved_at": null,
+  "created_at": "2026-08-02T10:00:00.000000Z",
+  "updated_at": "2026-08-02T10:00:00.000000Z"
+}
+```
+
+**Comportamiento nuevo** (`GET`, ahora idéntico a `POST`/`PUT`):
+```json
+{
+  "id": 1,
+  "description": "...",
+  "status": "open",
+  "resolutionType": null,
+  "resolutionNotes": null,
+  "resolvedAt": null,
+  "createdAt": "2026-08-02T10:00:00+00:00",
+  "updatedAt": "2026-08-02T10:00:00+00:00"
+}
+```
+
+Nótese además: `order_id` ya no se expone (redundante, viene de la propia URL) y las fechas se
+serializan vía `toIso8601String()` en vez del formato por defecto de Eloquent.
+
+**Acción requerida por el frontend**: si algún componente lee `order_id`, `resolution_type`,
+`resolution_notes`, `resolved_at`, `created_at` o `updated_at` de la respuesta de `GET .../incident`,
+actualizarlo a los nombres camelCase (`resolutionType`, `resolutionNotes`, `resolvedAt`,
+`createdAt`, `updatedAt`) — igual que ya se hacía para las respuestas de `POST`/`PUT` de este
+mismo endpoint.
+
+### 2. Endpoints internos/administrativos ya no son alcanzables desde el contrato publicado
+
+**Fecha**: 2026-08-02
+**Cambio**: no es un cambio de comportamiento de la API (las rutas siguen funcionando igual),
+sino de qué aparece documentado en `public/openapi/frontend.yaml`. `v2/superadmin/*` y
+`v2/public/impersonation/*` nunca deben usarse desde el frontend de negocio ni la app móvil — si
+algo los está consumiendo hoy, es una integración fuera de contrato que debería revisarse.
+
+**Impacto en frontend**: Ninguno si el frontend de negocio nunca llamó a esas rutas (lo esperado).
+
+---
+
+## Sprint 3 (pendiente)
 
 ---
 

@@ -224,7 +224,43 @@ Documento maestro: `docs/prompts/01_Laravel incremental evolution prompt.md`.
 
 ---
 
-## 19. Referencias Importantes
+## 19. Contrato OpenAPI de la API (fuente de verdad)
+
+**Laravel es la fuente de verdad del contrato de la API.** El frontend Next.js (y en el futuro
+una app móvil) consumen `public/openapi/frontend.yaml`, generado con Scribe a partir del código
+real (rutas, Form Requests, API Resources) — no al revés. Documentación operativa completa:
+**`docs/api-contract.md`** (arquitectura, comandos, qué se excluye, deuda conocida). Handoff para
+el agente del repo frontend: **`FRONTEND_OPENAPI_HANDOFF.md`**. Auditoría original: **`API_CONTRACT_AUDIT.md`**.
+
+Reglas que **todo agente debe seguir** al tocar código relacionado con la API v2:
+
+1. **No devolver nunca un modelo Eloquent crudo ni un array manual con forma variable.** Usa una
+   API Resource explícita. Si dos endpoints sirven la "misma" entidad de negocio, no asumas que
+   tienen la misma representación — verifícalo (ver ejemplo `OrderResource` vs `FieldOrderResource`
+   en `docs/api-contract.md` §5).
+2. **No cambies la forma de una respuesta sin considerar el impacto contractual.** Antes de dar
+   por terminada una tarea que toque rutas/Form Requests/Resources/controladores de `v2/*`:
+   ejecuta `composer contract:update` y `composer contract:verify` (ver `docs/api-contract.md` §2-3),
+   revisa el diff de `public/openapi/frontend.yaml`, y commitea ese archivo junto con el código.
+3. **Reconoce y comunica los breaking changes.** Un campo que desaparece, cambia de tipo o pasa a
+   ser requerido en una request es breaking. Si es intencional, documéntalo en
+   `docs/frontend-integration/backend-api-changes.md` y usa `--allow-breaking` explícitamente al
+   verificar — nunca lo ignores en silencio.
+4. **Nunca expongas rutas sensibles en el contrato frontend.** `v2/superadmin/*`,
+   `v2/public/impersonation/*` y cualquier ruta de debug/observabilidad interna deben quedar
+   excluidas en `config/scribe_public.php` (no en `config/scribe.php`, que es el spec interno
+   completo). Si añades un endpoint administrativo nuevo, confirma que su prefijo ya está excluido
+   o añade la exclusión.
+5. **Añade o actualiza tests** cuando el cambio afecte un endpoint con datos de negocio reales
+   (Feature test), y deja que `tests/Feature/ApiDocumentationTest.php` detecte regresiones de
+   generación/exclusión.
+6. **No inventes campos ni estructuras al generar código de frontend o clientes.** Si necesitas
+   saber la forma real de un endpoint, consulta `public/openapi/frontend.yaml` (o regenera con
+   `composer contract:update`), no asumas por el nombre del modelo.
+
+---
+
+## 20. Referencias Importantes
 
 - **Plan CORE**: `docs/core-consolidation-plan-erp-saas.md`
 - **Workflow evolución**: `docs/prompts/01_Laravel incremental evolution prompt.md`
@@ -232,10 +268,11 @@ Documento maestro: `docs/prompts/01_Laravel incremental evolution prompt.md`.
 - **Evolution log**: `docs/audits/laravel-evolution-log.md`
 - **Arquitectura multi-tenant**: `docs/fundamentos/01-Arquitectura-Multi-Tenant.md`
 - **Hallazgos**: `docs/audits/findings/` (domain-model-review, multi-tenancy-analysis, structural-components-usage, security-concerns, integration-patterns)
+- **Contrato API/OpenAPI**: `docs/api-contract.md`, `FRONTEND_OPENAPI_HANDOFF.md`, `API_CONTRACT_AUDIT.md`
 
 ---
 
-## 20. Skills Disponibles (Slash Commands)
+## 21. Skills Disponibles (Slash Commands)
 
 Las skills están en `.claude/commands/` y se invocan como `/nombre` dentro de Claude Code.
 
@@ -249,7 +286,7 @@ Las skills están en `.claude/commands/` y se invocan como `/nombre` dentro de C
 | `/skill-creator` | Crear una nueva skill siguiendo el patrón del proyecto |
 | `/task-workflow` | Ejecutar el flujo completo de evolución de un bloque (STEP 0a → STEP 5 → evolution log) |
 
-## 21. Agentes Especializados
+## 22. Agentes Especializados
 
 Los agentes están en `.claude/agents/` y pueden invocarse o referenciarse en tareas complejas.
 
@@ -261,4 +298,4 @@ Los agentes están en `.claude/agents/` y pueden invocarse o referenciarse en ta
 
 ---
 
-**Última actualización**: 2026-06-04. Mantener este archivo alineado con el estado real del CORE y con las convenciones aplicadas en el evolution log.
+**Última actualización**: 2026-08-02 (§19 Contrato OpenAPI añadida). Mantener este archivo alineado con el estado real del CORE y con las convenciones aplicadas en el evolution log.

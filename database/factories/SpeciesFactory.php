@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\FishingGear;
 use App\Models\Species;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -20,10 +21,11 @@ class SpeciesFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'Especie ' . $this->faker->unique()->word,
+            'name' => 'Especie '.$this->faker->unique()->word,
             'scientific_name' => $this->faker->unique()->lexify('Species ?????'),
             'fao' => strtoupper($this->faker->unique()->lexify('???')),
             'image' => $this->faker->imageUrl(),
+            'fishing_gear_id' => FishingGear::query()->value('id') ?? FishingGear::factory(),
         ];
     }
 }

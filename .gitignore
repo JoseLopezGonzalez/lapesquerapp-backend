@@ -24,8 +24,13 @@ vendor/
 
 # Scribe (cache/temporal)
 /.scribe/
-# Documentación API generada (solo local/CI; no desplegar en producción)
+/.scribe_public/
+# Documentación API interna/completa generada (solo local/CI; no desplegar en producción,
+# incluye superadmin). El contrato frontend SÍ se versiona: ver /public/openapi/ más abajo.
 /public/docs/
+# Salida de trabajo intermedia de la config Scribe "frontend" (contract:publish/contract:check
+# la genera aquí y copia solo openapi.yaml a /public/openapi/frontend.yaml, que sí se versiona).
+/storage/app/scribe-public/
 
 # Cobertura de tests (generada por phpunit --coverage)
 /coverage/

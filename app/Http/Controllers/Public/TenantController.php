@@ -10,7 +10,11 @@ use Illuminate\Http\JsonResponse;
 
 class TenantController extends Controller
 {
-    /** Respuesta que espera el frontend: { data: { active, name } } */
+    /**
+     * Respuesta que espera el frontend: { data: { active, name } }
+     *
+     * @unauthenticated
+     */
     public function showBySubdomain(ShowTenantBySubdomainRequest $request): JsonResponse
     {
         $tenant = Tenant::where('subdomain', $request->validated('subdomain'))->first();

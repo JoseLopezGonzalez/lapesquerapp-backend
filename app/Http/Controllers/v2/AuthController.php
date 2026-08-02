@@ -26,6 +26,9 @@ class AuthController extends Controller
 
     private const REQUEST_ACCESS_MESSAGE = 'Si el correo está registrado y activo, recibirás un correo con un enlace y un código para acceder.';
 
+    /**
+     * @unauthenticated
+     */
     public function login(Request $request)
     {
         return response()->json([
@@ -57,6 +60,9 @@ class AuthController extends Controller
         return response()->json($this->buildActorPayload($user, includeFeatures: true));
     }
 
+    /**
+     * @unauthenticated
+     */
     public function requestAccess(RequestAccessRequest $request)
     {
         if ($this->isBlocked($request->email, $request->ip())) {
@@ -110,11 +116,17 @@ class AuthController extends Controller
         return response()->json(['message' => self::REQUEST_ACCESS_MESSAGE], 200);
     }
 
+    /**
+     * @unauthenticated
+     */
     public function requestMagicLink(RequestAccessRequest $request)
     {
         return $this->requestAccess($request);
     }
 
+    /**
+     * @unauthenticated
+     */
     public function verifyMagicLink(VerifyMagicLinkRequest $request)
     {
         $hashedToken = hash('sha256', $request->token);
@@ -155,11 +167,17 @@ class AuthController extends Controller
         return $this->tokenResponse($actor);
     }
 
+    /**
+     * @unauthenticated
+     */
     public function requestOtp(RequestAccessRequest $request)
     {
         return $this->requestAccess($request);
     }
 
+    /**
+     * @unauthenticated
+     */
     public function verifyOtp(VerifyOtpRequest $request)
     {
         // lockForUpdate + markAsUsed dentro de la misma transacción previene TOCTOU:
