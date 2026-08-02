@@ -233,11 +233,12 @@ real (rutas, Form Requests, API Resources) — no al revés. Documentación oper
 el agente del repo frontend: **`FRONTEND_OPENAPI_HANDOFF.md`**. Auditoría original: **`API_CONTRACT_AUDIT.md`**.
 
 **Antes de tocar rutas, Form Requests, Resources o controladores de `v2/*`, lee primero
-`docs/api-contract/API_CONTRACT_MASTER_PLAN.md`** — es la fuente de seguimiento (fases, deuda
-contractual con IDs `API-CONTRACT-XXX`, decisiones arquitectónicas, próxima acción recomendada) y
-el punto de partida obligatorio del protocolo de agentes (su §10). `docs/api-contract.md` sigue
-siendo la referencia operativa (comandos), pero el estado del proyecto y qué hacer a continuación
-viven en el plan maestro, no aquí.
+`docs/api-contract-master-plan.md`** — es la fuente de seguimiento (fases, deuda contractual con
+IDs `API-CONTRACT-XXX`, próxima acción recomendada) y el punto de partida obligatorio del
+protocolo de agentes (su §10). Las decisiones arquitectónicas durables del contrato viven como
+ADRs en `docs/architecture-decisions/0003-*.md` a `0008-*.md`. `docs/api-contract.md` sigue siendo
+la referencia operativa (comandos), pero el estado del proyecto y qué hacer a continuación viven
+en el plan maestro, no aquí.
 
 Reglas que **todo agente debe seguir** al tocar código relacionado con la API v2:
 

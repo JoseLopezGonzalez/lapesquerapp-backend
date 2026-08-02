@@ -15,9 +15,22 @@ audience: Agentes IA (Claude Code y otros), backend engineers, frontend engineer
 > el código actual, el código manda — actualiza este documento, no al revés (ver §10, regla 12).
 
 **Cómo llegar aquí**: `CLAUDE.md` §19 y `AGENTS.md` apuntan a este documento como fuente de
-seguimiento del contrato API. La documentación operativa (comandos, cómo generar/verificar,
-convenciones) sigue viviendo en `docs/api-contract.md` — **este documento no la duplica**, la
-referencia y añade la capa de planificación/fases/deuda/estado que faltaba.
+seguimiento del contrato API. Tres documentos complementarios, cada uno con un rol distinto —
+ninguno duplica a los demás:
+
+- **`docs/api-contract.md`** — documentación operativa (comandos, cómo generar/verificar,
+  convenciones). Consúltalo para *cómo ejecutar* algo.
+- **`docs/architecture-decisions/000{3-8}-*.md`** — las decisiones arquitectónicas durables del
+  contrato (herramienta elegida, casing/paginación objetivo, política de `toArrayAssoc()`,
+  versionado, nulabilidad), en el formato ADR estándar del proyecto (ver
+  `docs/architecture-decisions/readme.md`). Este plan las **referencia**, no las repite enteras.
+- **`docs/audits/laravel-evolution-log.md`** — el registro histórico único de todas las
+  intervenciones del CORE v1.0, incluidas las de contrato API (etiquetadas "API Contract"). Este
+  plan no mantiene un log paralelo — ver §8.
+
+Este documento aporta lo que ninguno de los anteriores cubre: fases de ejecución secuenciadas,
+inventario de deuda contractual con IDs estables, clasificación de módulos y la próxima acción
+recomendada en cada momento.
 
 ---
 
@@ -211,164 +224,52 @@ detalle en §4 y primer paso de Fase 1).
 
 ## 3. Principios y decisiones arquitectónicas
 
-Formato por decisión: **Estado** (Aprobada / Propuesta / Pendiente) · Justificación · Consecuencias
-· Fecha · Archivos afectados.
+Este proyecto ya tiene un sistema de ADR (`docs/architecture-decisions/`, formato en
+`0000-adr-template.md`). Las decisiones **durables** del contrato (herramienta, convenciones,
+políticas de migración, versionado) viven ahí como ADRs numeradas, no aquí — este plan las indexa
+y añade las decisiones de alcance más operativo (secuenciación, qué se genera) que no justifican
+una ADR propia. No dupliques el contenido completo de una ADR en este documento: si necesitas más
+detalle que el resumen de una fila, abre la ADR enlazada.
 
-### D1 — Herramienta OpenAPI: Scribe `^5.9`
-**Estado**: Aprobada (preexistente, confirmada vigente en este plan).
-**Justificación**: Ya instalada, ya conoce el dominio (header `X-Tenant`, auth Bearer), y es la
-única opción capaz de capturar la forma real de respuestas basadas en `toArrayAssoc()` para rutas
-`GET` gracias a `ResponseCalls` (ejecuta las rutas reales contra una BD). Scramble, al ser
-puramente estático, no resolvería esto sin el mismo refactor previo. Ver comparación completa en
-`API_CONTRACT_AUDIT.md` §11-13.
-**Consecuencias**: Generar el contrato requiere una base de datos accesible (no es un análisis
-puramente estático); esto ya está resuelto en CI con un servicio MySQL efímero.
-**Fecha**: Preexistente (implementada en `b7e1466`); confirmada 2026-08-02.
-**Archivos**: `composer.json`, `config/scribe.php`, `config/scribe_public.php`.
+### Índice de decisiones con ADR propia
 
-### D2 — Fuente de verdad: código Laravel, no el YAML
-**Estado**: Aprobada.
-**Justificación**: El YAML es un artefacto derivado; si diverge del comportamiento real, el
-comportamiento real manda y el YAML se regenera. Evita el riesgo de "documentación que miente".
-**Consecuencias**: Nunca editar `public/openapi/frontend.yaml` a mano. Cualquier cambio de forma
-de respuesta se hace en el código (Resource/Form Request/controlador) y luego se regenera.
-**Fecha**: Preexistente. **Archivos**: `docs/api-contract.md` §1 (ya lo documenta).
+| ID | Decisión | Estado | ADR |
+|---|---|---|---|
+| D1 | Herramienta OpenAPI: Scribe `^5.9` sobre Scramble | Aprobada (preexistente) | [ADR-0003](../architecture-decisions/0003-scribe-openapi-tooling.md) |
+| D3+D4 | Contrato público vs interno; exclusión de rutas administrativas por prefijo + test de regresión | Aprobada (preexistente) | [ADR-0004](../architecture-decisions/0004-public-vs-internal-contract.md) |
+| D5+D6 | Convenciones objetivo: casing camelCase y paginación estándar (`perPage`, envelope `{data,links,meta}`) | Aprobada como objetivo; migración del código existente es Propuesta (fases 1/2/7) | [ADR-0005](../architecture-decisions/0005-contract-casing-pagination-conventions.md) |
+| D9 | Uso de `toArrayAssoc()`: permitido de forma transitoria, prohibido en código nuevo | Aprobada la política; migración existente es Propuesta (fases 3-7) | [ADR-0006](../architecture-decisions/0006-toarrayassoc-migration-policy.md) |
+| D10+D11 | Versionado de API (mantener `v2` único) y tratamiento de breaking changes | Aprobada (ya implementado) | [ADR-0007](../architecture-decisions/0007-api-versioning-breaking-changes.md) |
+| D7 | Política de nulabilidad en relaciones condicionalmente cargadas (`relationLoaded()`) | Aprobada (opción A por defecto) | [ADR-0008](../architecture-decisions/0008-relation-loaded-nullability-policy.md) |
 
-### D3 — Contrato público vs interno, dos configs separadas
-**Estado**: Aprobada.
-**Justificación**: El equipo backend necesita introspección completa (incluido superadmin) para su
-propio trabajo; el frontend/app móvil solo debe ver la superficie de negocio.
-**Consecuencias**: Cualquier ruta nueva debe evaluarse explícitamente: ¿es de negocio (entra por
-defecto) o administrativa/interna (requiere exclusión explícita en `config/scribe_public.php`)? No
-asumir que quedará fuera "por defecto" si no sigue uno de los prefijos ya excluidos.
-**Fecha**: Preexistente. **Archivos**: `config/scribe.php`, `config/scribe_public.php`.
+### Decisiones de alcance operativo (sin ADR propia — demasiado ligadas a la ejecución de este plan concreto para justificar una ADR de arquitectura)
 
-### D4 — Política de exclusión de rutas: por prefijo + test de regresión obligatorio
-**Estado**: Aprobada.
-**Justificación**: Excluir por prefijo (`api/v2/superadmin/*`, etc.) es simple de razonar y de
-auditar; el test (`ApiDocumentationTest::test_public_openapi_spec_excludes_sensitive_routes`)
-evita que una regresión pase desapercibida.
-**Consecuencias**: Todo endpoint administrativo/interno nuevo **debe** registrarse bajo un prefijo
-ya excluido, o añadir una exclusión nueva explícita antes de mergear. Ningún agente debe asumir
-que un endpoint queda fuera del contrato público sin comprobarlo contra
-`config/scribe_public.php` y sin correr `composer contract:test`.
-**Fecha**: Preexistente. **Archivos**: `config/scribe_public.php`, `tests/Feature/ApiDocumentationTest.php`.
+**D2 — Fuente de verdad: código Laravel, no el YAML.** Aprobada, preexistente. El YAML es un
+artefacto derivado; si diverge del comportamiento real, el comportamiento real manda y el YAML se
+regenera — nunca se edita a mano. Ya documentado en `docs/api-contract.md` §1.
 
-### D5 — Casing objetivo: camelCase en JSON de request/response
-**Estado**: Aprobada como objetivo formal (antes era una convención de facto sin declarar como
-decisión explícita).
-**Justificación**: Es ya el patrón dominante (Resources explícitas, `toArrayAssoc()`, Form
-Requests) — formalizarlo evita que casos como `IncotermResource` (API-CONTRACT-007) se traten como
-"una opción más" en vez de un bug.
-**Consecuencias**: Cualquier campo nuevo en una Resource o en `toArrayAssoc()` debe ser camelCase.
-Las excepciones existentes (`IncotermResource`, endpoints de sesiones/superadmin con `per_page`
-snake_case) son deuda a corregir (API-CONTRACT-006, 007), no precedente a seguir.
-**Fecha**: 2026-08-02 (formalizada en este plan). **Archivos**: n/a (convención transversal).
+**D8 — Uso de API Resources obligatorio para endpoints nuevos.** Aprobada, preexistente (ya en
+`CLAUDE.md` §19 regla 1). Ningún controlador nuevo debe devolver un modelo Eloquent crudo ni un
+array de forma variable.
 
-### D6 — Paginación objetivo: envelope estándar de Laravel + parámetro `perPage`
-**Estado**: Aprobada como objetivo formal para código nuevo; la migración del código existente es
-**Propuesta** (Fase 2/7, requiere decidir caso por caso qué hacer con `active` en `OrderListService`).
-**Justificación**: `{data, links, meta}` es el envelope nativo de `LengthAwarePaginator::toJson()`,
-ya usado por ~10 servicios; `perPage` (76 usos) ya es mayoría frente a `per_page` (19 usos).
-**Consecuencias**: Endpoints de listado nuevos deben paginar siempre (no devolver `Collection`
-plana condicionalmente) y usar `perPage`. La migración de los 19 casos `per_page` existentes y del
-caso `active` de `OrderListService` es trabajo de Fase 2 y Fase 7 respectivamente, no de esta
-decisión en sí.
-**Fecha**: 2026-08-02. **Archivos**: `app/Services/v2/OrderListService.php` (caso pendiente).
+**D12 — Estrategia frontend: catálogos primero, por tráfico/rating después.** Aprobada como orden
+general (preexistente, `FRONTEND_OPENAPI_HANDOFF.md` §4-5); el orden fino de fases 4-7 es
+específico de este plan (§6) y puede reordenarse si el negocio lo pide. No generar tipos para
+CRM, Estadísticas o Field/Autoventa hasta que sus Resources existan (ver §5).
 
-### D7 — Política de nullabilidad en relaciones (`relationLoaded()`)
-**Estado**: Aprobada (opción A) como política por defecto; opción B se evalúa caso por caso.
-**Justificación**: Existen dos formas de resolver "¿por qué este campo es `null`?": (A) documentar
-explícitamente en cada Resource qué controladores cargan qué relación (barato, no rompe nada), o
-(B) forzar eager-loading siempre para que `null` solo signifique "sin valor de negocio" (más caro,
-puede introducir N+1 si no se hace con cuidado). `docs/api-contract.md` §3 ya recomienda la opción
-A ("documenta en el propio Resource qué controladores cargan esa relación").
-**Consecuencias**: No se persigue eliminar `relationLoaded()` como patrón (es una mitigación
-consciente de N+1, correcta desde el punto de vista de rendimiento). Se persigue que cada Resource
-que lo use tenga un comentario explícito indicando qué endpoints garantizan la relación cargada.
-Ningún agente debe "arreglar" esto forzando `with()` en todos los controladores sin medir el
-impacto en N+1 primero.
-**Fecha**: 2026-08-02. **Archivos**: `app/Http/Resources/v2/OrderResource.php` y similares (deuda
-API-CONTRACT-004, sin resolver, solo con política definida).
+**D13 — Estrategia para la aplicación móvil.** **Pendiente** — requiere decisión de negocio, no
+técnica. `API_CONTRACT_AUDIT.md` §19 ya dejaba esta pregunta abierta el 2026-08-02 y sigue sin
+respuesta verificable en el código: ¿la futura app móvil reutiliza `v2/field/*` (hoy pensado para
+`repartidor_autoventa`), o necesita un contrato nuevo? Condiciona si `FieldOrderResource` es "el
+contrato móvil de referencia" o "un caso particular a discontinuar" (API-CONTRACT-005). Fase 8
+(§6) no puede planificarse en detalle hasta que se responda. Deliberadamente **sin ADR todavía**:
+una ADR documenta una decisión tomada, no una pregunta abierta — créala (`0009-*.md`) en el
+momento en que D13 se resuelva, no antes.
 
-### D8 — Uso de API Resources: obligatorio para endpoints nuevos
-**Estado**: Aprobada (ya estaba en `CLAUDE.md` §19 regla 1; se formaliza aquí como decisión con
-justificación y consecuencias explícitas).
-**Justificación**: Es la única forma de que Scribe (o cualquier herramienta futura) pueda inferir
-algo sin depender de `ResponseCalls` contra datos de ejemplo.
-**Consecuencias**: Ningún controlador nuevo debe devolver un modelo Eloquent crudo ni un array de
-forma variable. Ver `CLAUDE.md` §19 regla 1 (ya vigente).
-**Fecha**: Preexistente, formalizada 2026-08-02. **Archivos**: n/a (convención transversal).
-
-### D9 — Uso de `toArrayAssoc()`: permitido de forma transitoria, prohibido para código nuevo
-**Estado**: Aprobada la política; la migración del código existente es **Propuesta** (fases 3-7).
-**Justificación**: Migrar los 39 usos existentes de una sola vez es un refactor grande y
-arriesgado (toca prácticamente todos los módulos de negocio simultáneamente) — no proporcional a
-una sola intervención. Pero seguir añadiendo usos nuevos perpetúa el problema.
-**Consecuencias**: (a) Ningún modelo nuevo debe implementar `toArrayAssoc()` para servir a la API
-— usar Resources anidadas reales desde el principio. (b) Los 39 usos existentes se migran
-progresivamente, priorizados por tráfico/rating (ver §5-6), no todos a la vez. (c) Mientras un
-modelo siga usando `toArrayAssoc()`, su forma solo está verificada para `GET` (vía `ResponseCalls`)
-— ver API-CONTRACT-002/013.
-**Fecha**: 2026-08-02. **Archivos**: los 39 en `app/Models/*.php` (lista completa en
-API-CONTRACT-002).
-
-### D10 — Estrategia de versionado de API
-**Estado**: Aprobada (mantener el statu quo).
-**Justificación**: No existe negociación de contenido, `v2` es un prefijo de URL fijo. Introducir
-`v3` o versionado por header es un cambio arquitectónico mayor sin necesidad de negocio detectada
-hoy. El mecanismo real de gestión de cambios es `contract:verify` + `--allow-breaking` +
-changelog, no un nuevo número de versión.
-**Consecuencias**: Un "breaking change" se gestiona documentándolo y coordinándolo con el
-frontend, no creando un endpoint `v3`. Si en el futuro aparece una razón de negocio real para
-versionar (p. ej. la app móvil necesita un contrato divergente de forma permanente), reabrir esta
-decisión explícitamente, no de forma incremental sin discutirlo.
-**Fecha**: Preexistente (de facto). **Archivos**: `routes/api.php`.
-
-### D11 — Tratamiento de breaking changes
-**Estado**: Aprobada (ya implementado y en vigor).
-**Justificación**: `OpenApiContractDiffer` + `contract:check` ya distinguen `BREAKING` /
-`COMPATIBLE` / `INFO`; CI bloquea `BREAKING` no reconocido salvo `--allow-breaking` explícito.
-**Consecuencias**: Ver `docs/api-contract.md` §6 (tabla de tipos de cambio). Todo `--allow-breaking`
-debe ir acompañado de una entrada en `docs/frontend-integration/backend-api-changes.md` — esto ya
-es una regla vigente (`CLAUDE.md` §19 regla 3), no una decisión nueva.
-**Fecha**: Preexistente. **Archivos**: `app/Services/OpenApi/OpenApiContractDiffer.php`,
-`app/Console/Commands/CheckOpenApiContract.php`.
-
-### D12 — Estrategia frontend: catálogos primero, por tráfico/rating después
-**Estado**: Aprobada como orden general; el orden fino de fases 4-7 es específico de este plan
-(ver §6) y puede reordenarse si el negocio lo pide.
-**Justificación**: Catálogos es el módulo con menor superficie de `toArrayAssoc()` y el patrón más
-uniforme (una vez corregido API-CONTRACT-007) — minimiza el riesgo de que el piloto tropiece con
-un bloqueador estructural a mitad de camino.
-**Consecuencias**: No generar tipos para CRM, Estadísticas o Field/Autoventa hasta que sus
-Resources existan (ver §5).
-**Fecha**: Preexistente (`FRONTEND_OPENAPI_HANDOFF.md` §4-5), confirmada vigente.
-**Archivos**: n/a (decisión de secuenciación).
-
-### D13 — Estrategia para la aplicación móvil
-**Estado**: **Pendiente** — requiere decisión de negocio, no es una decisión técnica que este plan
-pueda tomar unilateralmente.
-**Justificación**: `API_CONTRACT_AUDIT.md` §19 ya dejaba esta pregunta abierta el 2026-08-02 y
-sigue sin respuesta verificable en el código: ¿la futura app móvil reutiliza el canal
-`v2/field/*` (hoy pensado para `repartidor_autoventa`), o necesita un contrato nuevo? Esto
-condiciona si `FieldOrderResource` es "el contrato móvil de referencia" o "un caso particular a
-discontinuar" (API-CONTRACT-005).
-**Consecuencias**: Fase 8 (§6) no puede planificarse en detalle hasta que se responda esto. El
-plan la deja como fase "bloqueada por decisión de negocio", no "pendiente por trabajo técnico".
-**Fecha**: Abierta desde 2026-08-02, sin resolver a la fecha de este documento.
-**Archivos**: `app/Http/Resources/v2/FieldOrderResource.php`, `routes/api.php` (bloque `v2/field/*`).
-
-### D14 — Qué se genera y qué no se genera
-**Estado**: Aprobada.
-**Justificación**: Generar tipos para binarios (PDF/Excel) o para rutas administrativas no aporta
-valor y añade ruido/riesgo de exposición.
-**Consecuencias**: Se generan tipos TypeScript para las respuestas JSON de negocio (`v2/*` no
-excluido). No se generan para `PDFController`/`ExcelController` (documentar como
-`application/pdf`/spreadsheet, consumir como blob) ni para `v2/superadmin/*`,
-`v2/public/impersonation/*`, `v2/debug/*`, `v2/internal/*`, `v2/system/*`.
-**Fecha**: Preexistente (`docs/api-contract.md` §4, `FRONTEND_OPENAPI_HANDOFF.md` §6-7).
-**Archivos**: `config/scribe_public.php`.
+**D14 — Qué se genera y qué no se genera.** Aprobada, preexistente. Se generan tipos TypeScript
+para las respuestas JSON de negocio (`v2/*` no excluido). No se generan para
+`PDFController`/`ExcelController` (documentar como blob) ni para las rutas ya excluidas por
+ADR-0004. Ya documentado en `docs/api-contract.md` §4 y `FRONTEND_OPENAPI_HANDOFF.md` §6-7.
 
 ---
 
@@ -381,12 +282,12 @@ lo contrario explícitamente.
 
 | ID | Problema | Módulo | Severidad | Estado | Dependencias | Evidencia |
 |---|---|---|---|---|---|---|
-| API-CONTRACT-001 | `GET /v2/orders?active=true\|false` devuelve `Collection` plana (sin `links`/`meta`); sin el parámetro, devuelve el envelope de paginación estándar. Mismo endpoint, dos formas. | Pedidos | Crítico | Parcialmente mitigado (documentado en código + alternativa estable `GET /v2/orders/active` con `ActiveOrderCardResource`) | Fase 7; D6 | `app/Services/v2/OrderListService.php:29-60` |
-| API-CONTRACT-002 | 39 modelos serializan vía `toArrayAssoc()`/`toArrayAssocShort()`, opaco a análisis estático; solo capturado para `GET` vía `ResponseCalls` | Transversal | Alto | Abierto | Fases 3-7; D9 | `grep -rl "function toArrayAssoc" app/Models` → 39 archivos (lista completa reverificada 2026-08-02: AgendaAction, AuxiliaryProduct, Box, CaptureZone, Cebo, CommercialInteraction, Country, Customer, CustomsBroker, ExternalProcessor, ExternalUser, FieldOperator, FishingGear, Incident, Incoterm, Offer, OfferLine, OrderAuxiliaryLine, OrderMaritimeContainer, OrderMaritimeShippingDetail, OrderPallet, OrderPlannedProductDetail, Pallet, PalletBox, PaymentTerm, Product, ProductCategory, ProductFamily, Prospect, ProspectCategory, ProspectContact, RawMaterial, Salesperson, Species, Store, StoredPallet, Tax, Transport, User) |
-| API-CONTRACT-003 | 14 Resources delegan el 100% de su serialización en `Model::toArrayAssoc()` (ya no vía magic `__call`, pero sigue opaco a introspección estática) | Transversal (Customer, Product, Store, Offer, Prospect, Country, PaymentTerm, FishingGear, CommercialInteraction, CustomsBroker, AuxiliaryProduct, OrderAuxiliaryLine, OrderMaritimeShippingDetail, OrderMaritimeContainer) | Medio | Parcialmente mitigado (magic `__call` eliminado en `CustomerResource`; el resto del patrón sigue) | Fase 3; D9 | `grep -rl "resource->toArrayAssoc()" app/Http/Resources/v2` → 14 archivos |
-| API-CONTRACT-004 | `relationLoaded()` condicional: mismo campo puede ser `null` por "no aplica" o por "esta vista no cargó la relación", indistinguible en el spec | Transversal (`OrderResource`, `OrderDetailsResource`, `CustomerResource`, `PalletResource`, `SpeciesResource`) | Alto | Abierto (política definida en D7, no implementada) | Fase 2 (documentación por Resource); D7 | `app/Http/Resources/v2/OrderResource.php:20-29` |
+| API-CONTRACT-001 | `GET /v2/orders?active=true\|false` devuelve `Collection` plana (sin `links`/`meta`); sin el parámetro, devuelve el envelope de paginación estándar. Mismo endpoint, dos formas. | Pedidos | Crítico | Parcialmente mitigado (documentado en código + alternativa estable `GET /v2/orders/active` con `ActiveOrderCardResource`) | Fase 7; ADR-0005 | `app/Services/v2/OrderListService.php:29-60` |
+| API-CONTRACT-002 | 39 modelos serializan vía `toArrayAssoc()`/`toArrayAssocShort()`, opaco a análisis estático; solo capturado para `GET` vía `ResponseCalls` | Transversal | Alto | Abierto | Fases 3-7; ADR-0006 | `grep -rl "function toArrayAssoc" app/Models` → 39 archivos (lista completa reverificada 2026-08-02: AgendaAction, AuxiliaryProduct, Box, CaptureZone, Cebo, CommercialInteraction, Country, Customer, CustomsBroker, ExternalProcessor, ExternalUser, FieldOperator, FishingGear, Incident, Incoterm, Offer, OfferLine, OrderAuxiliaryLine, OrderMaritimeContainer, OrderMaritimeShippingDetail, OrderPallet, OrderPlannedProductDetail, Pallet, PalletBox, PaymentTerm, Product, ProductCategory, ProductFamily, Prospect, ProspectCategory, ProspectContact, RawMaterial, Salesperson, Species, Store, StoredPallet, Tax, Transport, User) |
+| API-CONTRACT-003 | 14 Resources delegan el 100% de su serialización en `Model::toArrayAssoc()` (ya no vía magic `__call`, pero sigue opaco a introspección estática) | Transversal (Customer, Product, Store, Offer, Prospect, Country, PaymentTerm, FishingGear, CommercialInteraction, CustomsBroker, AuxiliaryProduct, OrderAuxiliaryLine, OrderMaritimeShippingDetail, OrderMaritimeContainer) | Medio | Parcialmente mitigado (magic `__call` eliminado en `CustomerResource`; el resto del patrón sigue) | Fase 3; ADR-0006 | `grep -rl "resource->toArrayAssoc()" app/Http/Resources/v2` → 14 archivos |
+| API-CONTRACT-004 | `relationLoaded()` condicional: mismo campo puede ser `null` por "no aplica" o por "esta vista no cargó la relación", indistinguible en el spec | Transversal (`OrderResource`, `OrderDetailsResource`, `CustomerResource`, `PalletResource`, `SpeciesResource`) | Alto | Abierto (política definida en ADR-0008, no implementada) | Fase 2 (documentación por Resource); ADR-0008 | `app/Http/Resources/v2/OrderResource.php:20-29` |
 | API-CONTRACT-005 | `FieldOrderResource` y `OrderResource` representan el mismo concepto de negocio ("pedido") con forma distinta, sin marcarlo como decisión de producto en el código | Autoventa/campo vs Pedidos | Medio | Abierto | Fase 7-8; D13 (bloqueada por decisión de negocio sobre app móvil) | Comparación `app/Http/Resources/v2/OrderResource.php` vs `FieldOrderResource.php`, reverificada 2026-08-02 |
-| API-CONTRACT-006 | Parámetro de paginación inconsistente: `perPage` (76 archivos) vs `per_page` (19 archivos) | Transversal | Medio | Abierto (cifras idénticas a la auditoría original; sin cambios) | Fase 2; D6 | `grep -rl "'perPage'" app/Services app/Http` → 76; `grep -rl "'per_page'"` → 19 (reverificado 2026-08-02) |
+| API-CONTRACT-006 | Parámetro de paginación inconsistente: `perPage` (76 archivos) vs `per_page` (19 archivos) | Transversal | Medio | Abierto (cifras idénticas a la auditoría original; sin cambios) | Fase 2; ADR-0005 | `grep -rl "'perPage'" app/Services app/Http` → 76; `grep -rl "'per_page'"` → 19 (reverificado 2026-08-02) |
 | API-CONTRACT-007 | `IncotermResource` devuelve `created_at`/`updated_at` en snake_case mientras `ProductCategoryResource`, `ProductFamilyResource` y `TransportResource` (mismo módulo, Catálogos) devuelven `createdAt`/`updatedAt` camelCase | Catálogos | Alto (bloquea la afirmación "Catálogos es 100% uniforme"; bajo esfuerzo de fix) | Abierto — **hallazgo nuevo, no en auditorías previas** | Fase 1 (primer paso) | `app/Http/Resources/v2/IncotermResource.php:19-20` vs `app/Http/Resources/v2/ProductCategoryResource.php:22-23` |
 | API-CONTRACT-008 | ~27 rutas `v2/superadmin/*` registradas en `routes/api.php` fuera del grupo `TenantMiddleware`, mismo archivo que el resto de la API de negocio | Superadmin | Bajo (para el contrato; el riesgo de exposición ya está mitigado) | Mitigado para el contrato frontend (excluidas explícitamente + test de regresión); nota arquitectónica general sin resolver | Ninguna para el contrato; posible limpieza de `routes/api.php` fuera de alcance de este plan | `routes/api.php:125-137`; `config/scribe_public.php:37-45`; `tests/Feature/ApiDocumentationTest.php:95-102` |
 | API-CONTRACT-009 | `CrmDashboardController`, `CrmAgendaController`, `OrderStatisticsController`, `CeboDispatchStatisticsController`, `RawMaterialReceptionStatisticsController`, `AuxiliaryLineStatisticsController`, `StockStatisticsController` devuelven arrays manuales, 0 uso de `Resource` | CRM, Estadísticas | Alto | Abierto | Fase 4 | `grep -c Resource` = 0 en los 7 archivos (reverificado 2026-08-02) |
@@ -800,51 +701,50 @@ módulo), **grande** (varias semanas de calendario/varios módulos).
 
 ## 8. Registro de ejecución
 
-Acumulativo. **No se borran entradas anteriores.** Cada intervención añade una fila nueva al
-final, incluso si solo corrige el estado de una fila previa (referenciar la fecha original, no
-sobrescribirla).
+El proyecto ya tiene un log histórico único y acumulativo para todo el CORE v1.0:
+`docs/audits/laravel-evolution-log.md`. Las intervenciones sobre el contrato API se registran
+**ahí**, como una entrada más (etiquetada `API Contract` en el título de la entrada), no en una
+tabla paralela dentro de este plan — un futuro agente no debería tener que cruzar dos logs
+distintos para reconstruir "qué pasó cuándo" en este repositorio.
 
-| Fecha | Fase | Trabajo realizado | Tests | Decisiones | Pendiente | Próximo paso |
-|---|---|---|---|---|---|---|
-| 2026-08-02 | Planificación (previa a Fase 0) | Creación de este plan maestro y de `API_CONTRACT_CURRENT_STATUS.md`. Verificación contra código real de: infraestructura existente (§2.1-2.2), deuda heredada re-confirmada (§2.4, API-CONTRACT-001/002/005/006/009), un hallazgo nuevo no documentado antes (API-CONTRACT-007, `IncotermResource` snake_case). Añadidos punteros mínimos desde `CLAUDE.md` §19 y `AGENTS.md` hacia este documento. | No se ha ejecutado ningún test (entorno sin `vendor/`, sin MySQL, sin `.env` — ver §2.3). Solo lectura de código y de tests existentes. | D1-D14 formalizadas en §3 (mayoría confirma decisiones preexistentes; D6/D7/D9 fijan política para deuda que sigue abierta; D13 queda explícitamente pendiente de negocio). | Todo el plan — ninguna fase se ha ejecutado todavía. Confirmar en Fase 0 si CI está realmente en verde (no verificado en esta sesión por falta de acceso a Actions). | Ejecutar Fase 0 (ver §9). |
+Este plan mantiene solo un **índice corto** (fecha + fase + una línea + enlace a la entrada
+completa). **No se borran filas.** Cada intervención añade una fila nueva; si solo corrige el
+estado de una entrada previa, referencia la fecha original en vez de sobrescribirla.
+
+| Fecha | Fase | Resumen (1 línea) | Entrada completa |
+|---|---|---|---|
+| 2026-08-02 | Planificación (previa a Fase 0) | Creación del plan maestro; verificación de deuda heredada + 1 hallazgo nuevo (`IncotermResource`, API-CONTRACT-007); extracción de decisiones durables a ADRs 0003-0008. | `docs/audits/laravel-evolution-log.md` → entrada "[2026-08-02] API Contract — Plan maestro y ADRs 0003-0008" |
+
+**Al terminar cualquier intervención de este plan**: añade la entrada completa (formato ya
+establecido en `docs/audits/laravel-evolution-log.md`: problemas abordados, cambios aplicados,
+resultados de verificación, gap a 10/10, rollback plan) al evolution log, y una fila de una línea
+aquí que enlace a ella. No dupliques el contenido completo en los dos sitios.
 
 ---
 
 ## 9. Estructura documental y cuándo crear sub-documentos
 
-Este plan maestro es la única fuente obligatoria hoy. La estructura completa prevista es:
+Este plan maestro y `docs/api-contract-current-status.md` son la única fuente obligatoria hoy,
+como ficheros planos en `docs/` (no en una carpeta propia — ver nota más abajo). Los documentos
+relacionados y cuándo crear cada uno:
 
-```
-docs/api-contract/
-├── API_CONTRACT_MASTER_PLAN.md      ← este documento (siempre existe, siempre se actualiza)
-├── API_CONTRACT_CURRENT_STATUS.md   ← resumen de 1 minuto (siempre existe, siempre se actualiza)
-├── phases/
-│   ├── PHASE_01_CATALOGS.md         ← crear SOLO al empezar a ejecutar la Fase 1
-│   ├── PHASE_02_NORMALIZATION.md    ← crear SOLO al empezar a ejecutar la Fase 2
-│   └── ...                          ← una por fase, mismo criterio
-├── decisions/                       ← crear SOLO si una decisión de §3 necesita más contexto
-│   └── DXXX-<slug>.md               ← del que cabe en la tabla (p. ej. una investigación técnica
-│                                        larga que respalde D13); no crear un archivo por decisión
-│                                        de forma sistemática, la tabla de §3 basta en el 90% de
-│                                        los casos
-└── handoffs/                        ← crear SOLO al cerrar una fase con entregable real para
-    └── HANDOFF_PHASE_01.md             frontend/móvil; complementa (no sustituye)
-                                         FRONTEND_OPENAPI_HANDOFF.md, que sigue siendo el handoff
-                                         "vivo" general
-```
+| Documento | Cuándo se actualiza / crea |
+|---|---|
+| `docs/api-contract-master-plan.md` (este documento) | Siempre existe; se actualiza en cada intervención (§10). |
+| `docs/api-contract-current-status.md` | Siempre existe; se actualiza en cada intervención (§10). |
+| `docs/api-contract.md` | Documentación operativa (comandos). Se actualiza si cambia el *cómo* (nuevo comando, nuevo flag), no el estado del plan. |
+| `docs/architecture-decisions/000X-*.md` | Una ADR nueva **solo** cuando surja una decisión arquitectónica durable no cubierta por las ADRs 0003-0008 ya existentes (p. ej. cuando D13 — estrategia app móvil — se resuelva, créala como `0009-*.md`). No crear una ADR por cada fila de la tabla de deuda (§4) ni por decisiones de secuenciación operativa (esas quedan en §3, sección "sin ADR propia"). |
+| `docs/audits/laravel-evolution-log.md` | Una entrada nueva por cada intervención que ejecute (no solo planifique) una fase — ver §8. |
+| `docs/frontend-integration/backend-api-changes.md` | Una entrada nueva por cada breaking change reconocido con `--allow-breaking` (regla ya vigente en `CLAUDE.md` §19 regla 3). |
+| `FRONTEND_OPENAPI_HANDOFF.md` | Se actualiza cuando una fase cambia algo que ya afirma (módulos listos, convenciones, breaking changes) — sigue siendo el documento que un agente del repositorio frontend debe leer primero; este plan no lo sustituye. |
+| Un doc de detalle de fase (p. ej. `docs/api-contract-phase-01-catalogs.md`) | **Solo** si el detalle de ejecución de una fase (comandos exactos, capturas de diffs, decisiones intermedias) no cabe razonablemente en su fila de §6 — no es obligatorio, es una válvula de escape. Si se crea, enlázalo desde la fila de la fase en §6 y mantén el resumen de §6 sincronizado, no lo reduzcas a un enlace vacío. |
 
-**Regla**: no crear `phases/`, `decisions/` ni `handoffs/` de forma preventiva. Un agente que abre
-la Fase 1 y necesita más espacio del que cabe razonablemente en la fila de §6 crea
-`phases/PHASE_01_CATALOGS.md` en ese momento, enlaza desde la fila de la fase en §6
-(`Ver también: phases/PHASE_01_CATALOGS.md`), y mantiene el resumen de la fase en este documento
-sincronizado (no lo borra ni lo reduce a un enlace vacío). Si una fase cabe entera en su fila de
-§6 sin necesitar más detalle, no crear el archivo — no es obligatorio, es una válvula de escape
-para cuando el detalle de ejecución (comandos exactos, capturas de diffs, decisiones intermedias)
-no cabe razonablemente aquí.
-
-`FRONTEND_OPENAPI_HANDOFF.md` sigue siendo el documento que un agente del repositorio frontend
-debe leer primero — este plan no lo sustituye. Actualízalo cuando una fase cambie algo de lo que
-ya afirma (módulos listos, convenciones, breaking changes), igual que se ha hecho hasta ahora.
+**Nota sobre la ubicación**: la primera versión de este plan vivía en una carpeta dedicada
+(`docs/api-contract/`), que colisionaba de nombre con el `docs/api-contract.md` ya existente y
+rompía la convención de nomenclatura de `docs/` (minúsculas con guiones — ver
+`docs/core-consolidation-plan-erp-saas.md` como referencia del patrón que sigue este plan). Se
+aplanó a `docs/api-contract-master-plan.md` / `docs/api-contract-current-status.md` el mismo día
+de su creación (2026-08-02, ver §8). No recrear la carpeta.
 
 ---
 
@@ -870,7 +770,7 @@ API de este repositorio:
    y `composer contract:verify`) antes de dar por terminada cualquier intervención que toque el
    contrato.
 7. **Actualiza estados y registro**: cambia el `Estado` de la fase en §6, añade una fila nueva en
-   §8 (nunca borres las anteriores), y actualiza `API_CONTRACT_CURRENT_STATUS.md`.
+   §8 (nunca borres las anteriores), y actualiza `docs/api-contract-current-status.md`.
 8. **Anota nuevas decisiones o problemas** encontrados en §3 (nueva decisión Dxx) o §4 (nuevo
    `API-CONTRACT-0xx`) — no los dejes solo en el mensaje de commit o en la conversación.
 9. **Actualiza la próxima acción** (§11) antes de terminar tu intervención, aunque sea para decir
@@ -929,5 +829,5 @@ usando el acceso a CI disponible en ese momento (no estaba disponible en esta se
 planificación).
 
 **Documento a actualizar al terminar**: Este mismo archivo — cambia el `Estado` de la Fase 0 en
-§6, añade una fila nueva en §8 con lo realizado, y actualiza `API_CONTRACT_CURRENT_STATUS.md` con
+§6, añade una fila nueva en §8 con lo realizado, y actualiza `docs/api-contract-current-status.md` con
 la fase actual y el resultado.

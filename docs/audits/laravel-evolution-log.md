@@ -5,6 +5,80 @@ Cada entrada sigue el formato definido en `docs/prompts/01_Laravel incremental e
 
 ---
 
+## [2026-08-02] API Contract — Plan maestro y ADRs 0003-0008
+
+**Prioridad**: Alta | **Complejidad**: N/A (documentación/planificación, sin cambios de código de negocio) | **Estado**: ✅ Planificación completada; ⏳ Fase 0 de ejecución pendiente
+
+Contexto: el pipeline de contrato OpenAPI (Scribe, dos configs, CI, `contract:publish/check`) se
+implementó el mismo día (commit `b7e1466`) sin una entrada propia en este log ni un documento de
+seguimiento de fases — solo quedó documentado en `API_CONTRACT_AUDIT.md`, `docs/api-contract.md`
+y `FRONTEND_OPENAPI_HANDOFF.md`. Esta intervención cierra ese hueco: crea el plan maestro que
+secuencia el trabajo pendiente (deuda de `toArrayAssoc()`, contrato no determinista de pedidos,
+CRM/Estadísticas sin Resources, etc.) en fases ejecutables, y formaliza como ADRs las decisiones
+arquitectónicas durables que hasta ahora vivían dispersas en varios documentos.
+
+### Cambios
+
+- **`docs/api-contract-master-plan.md`**: plan maestro (visión final, estado verificado contra
+  código, inventario de deuda con IDs estables `API-CONTRACT-001` a `015`, clasificación de 11
+  módulos, 9 fases de ejecución con criterios de aceptación, hitos, protocolo para agentes).
+- **`docs/api-contract-current-status.md`**: resumen de estado de 1 minuto.
+- **6 ADRs nuevas** en `docs/architecture-decisions/`: `0003` (Scribe sobre Scramble), `0004`
+  (contrato público/interno y exclusión de rutas administrativas), `0005` (convenciones de casing
+  y paginación objetivo), `0006` (política de migración de `toArrayAssoc()`), `0007` (versionado
+  de API y tratamiento de breaking changes), `0008` (nulabilidad en `relationLoaded()`). Formalizan
+  decisiones que antes solo estaban implícitas en el código o repartidas entre
+  `API_CONTRACT_AUDIT.md`/`docs/api-contract.md`.
+- **`docs/architecture-decisions/readme.md`**: añadidas las 6 ADRs nuevas al índice; corregidos
+  dos enlaces preexistentes con casing incorrecto (`0000-ADR-TEMPLATE.md`/`0001-API-v2-only.md` →
+  minúsculas, coincidiendo con los nombres de archivo reales) y añadida la fila de `0002`, que
+  faltaba en el índice.
+- **`CLAUDE.md` §19 y `AGENTS.md`**: punteros mínimos hacia el plan maestro y las ADRs, sin
+  duplicar su contenido.
+- Iteración de ubicación el mismo día: la primera versión vivía en `docs/api-contract/` (carpeta
+  dedicada), que colisionaba de nombre con `docs/api-contract.md` y rompía la convención de
+  minúsculas-con-guiones del resto de `docs/`. Se aplanó a `docs/api-contract-master-plan.md` /
+  `docs/api-contract-current-status.md`, siguiendo el patrón de
+  `docs/core-consolidation-plan-erp-saas.md`.
+
+### Verificación realizada
+
+- Relectura de código (no ejecución — entorno sin `vendor/`, sin MySQL, sin `.env`) para confirmar
+  o corregir cada afirmación de `API_CONTRACT_AUDIT.md` frente al estado real del commit `f58e1cb`:
+  confirmado que ya existe CI (`.github/workflows/api-contract.yml`), que `Incident` unificó su
+  serialización GET/POST/PUT, y que el magic `__call` de `CustomerResource` se eliminó.
+  Confirmado que `toArrayAssoc()` sigue en 39 modelos, `perPage`/`per_page` sigue sin unificar
+  (76 vs 19), `OrderListService` sigue sin determinismo, y CRM/Estadísticas siguen sin Resources.
+- **Hallazgo nuevo** (`API-CONTRACT-007`, no presente en auditorías anteriores):
+  `IncotermResource` devuelve `created_at`/`updated_at` en snake_case mientras sus Resources
+  hermanas de Catálogos (`ProductCategoryResource`, `ProductFamilyResource`, `TransportResource`)
+  usan camelCase — dentro del propio módulo recomendado como piloto.
+
+### Tests
+
+Ninguno ejecutado (sin `vendor/`/MySQL en el entorno de esta sesión). El plan maestro deja como
+primer paso de Fase 0 ejecutar `composer contract:test/update/verify` en un entorno real.
+
+### Gap to 10/10 / Pendiente
+
+- Todo el plan de ejecución (Fases 0-8) — esta intervención es solo la planificación y el
+  ordenamiento documental, no resuelve ninguna deuda de negocio todavía.
+- Confirmar en un entorno real que el pipeline (`contract:test/update/verify`) funciona de extremo
+  a extremo, y que CI está en verde (no verificable en esta sesión).
+- D13 (estrategia de contrato para la app móvil) sigue pendiente de decisión de negocio.
+
+### Rollback Plan
+
+`git revert <commit-hash>` — solo documentación (plan maestro, ADRs, punteros, esta entrada de
+log); sin cambios de código de negocio, sin migraciones.
+
+### Next
+
+Ejecutar Fase 0 del plan maestro (`docs/api-contract-master-plan.md`, sección "Próxima acción
+recomendada").
+
+---
+
 ## [2026-07-29] A.2 Ventas — Exportación marítima en pedidos (buque, contenedores, documentación)
 
 **Rating**: 9/10 → 9/10 (capacidad nueva sin deuda; evita repetir el anti-patrón de columnas sueltas en `orders`)
