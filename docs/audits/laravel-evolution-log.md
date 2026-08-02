@@ -5,6 +5,120 @@ Cada entrada sigue el formato definido en `docs/prompts/01_Laravel incremental e
 
 ---
 
+## [2026-08-02] API Contract — Fase 0: CI desacoplada de la suite completa, API-CONTRACT-004 resuelto en generación limpia
+
+**Prioridad**: Alta | **Complejidad**: Baja | **Estado**: 🔄 Fase 0 en progreso (mecanismo confirmado en verde; bloqueo restante es deuda de negocio ya trazada, no infraestructura)
+
+Contexto: continuación directa de la entrada anterior ("Fase 0: activación real, 3 bugs de
+infraestructura corregidos"). Al empezar esta sesión se comprobó que los commits `9677ec0c` y
+`7b89ff0c` (junto con `8c128994`, la documentación de esa sesión) **ya estaban pusheados** a
+`origin/main` — corrige la suposición de la entrada anterior y del índice del plan maestro, que
+asumían que seguían solo en local pendientes de confirmación.
+
+### Verificación de CI tras el push
+
+El run de GitHub Actions para `8c128994` (id `30766051155`) terminó en **failure**. Se investigó la
+causa exacta (API pública de GitHub Actions, sin `gh` CLI disponible — no hay permisos de admin
+para descargar logs de job, así que se reprodujo el paso localmente):
+
+- El job "Tests + Pint" falla en el paso `php artisan test`: ejecutar la suite completa localmente
+  (Sail, MySQL real) reproduce **70 tests fallando**, en la misma familia de módulos ya documentada
+  en API-CONTRACT-016 (Producción, CRM, Route Management, Stock, Superadmin, Suppliers). No hay
+  regresión nueva causada por los fixes de la sesión anterior.
+- El job "OpenAPI contract (generate + check)" aparece como **skipped**, no failure — porque tenía
+  `needs: tests` en `.github/workflows/api-contract.yml`. Se confirmó revisando los 2 runs previos
+  en `main` (`8def9075`, `f58e1cbc`): en ambos, el job de contrato también estaba `skipped`. **El
+  job de contrato no ha completado ni una sola ejecución real en CI desde que existe** — su
+  resultado siempre ha estado enmascarado por la salud de la suite completa, un problema no
+  relacionado.
+
+### Decisión tomada con el usuario
+
+Se preguntó explícitamente cómo tratar este acoplamiento (protocolo §10 regla 5: no reordenar/asumir
+alcance unilateralmente). El usuario eligió **desacoplar el job**: quitar `needs: tests` de
+`api-contract` para que el chequeo del contrato pueda ejecutar y reportar su propio resultado con
+independencia de la salud de la suite completa (que es deuda de otro bloque, API-CONTRACT-016).
+
+### Cambios
+
+- `.github/workflows/api-contract.yml`: eliminada la línea `needs: tests` del job `api-contract`.
+  Cambio de configuración de CI puro, sin efecto en código de negocio ni en los pasos internos del
+  job (sigue migrando su propia BD `contract` desde cero y sembrando su propio fixture).
+
+### Verificación realizada (pipeline de contrato, BD desechable nueva)
+
+Se replicó el job `api-contract` de CI paso a paso en local, contra una base de datos desechable
+nueva (`contract_fixture_20260802`, nunca usada antes) para no repetir el error ya documentado de
+generar contra `pesquerapp` (BD de desarrollo compartida):
+
+1. `php artisan migrate --force` (central) → limpio, sin desviaciones.
+2. `php artisan contract:seed-fixture` → tenant `demo-tenant` + usuario admin + token, igual que en
+   CI.
+3. `php artisan contract:publish` → genera sin error; diff contra el `frontend.yaml` commiteado
+   confirmado pero **no commiteado** (ver siguiente punto).
+4. `php artisan contract:check` (sin `--fail-on-any`, para poder inspeccionar la lista completa) →
+   **0 cambios relacionados con nulabilidad de relaciones**. Los 8 `BREAKING` + 18 `COMPATIBLE` de
+   `fieldOperator`/`externalProcessor`/`incoterm` que la sesión anterior había registrado como
+   API-CONTRACT-004 confirmado **no reaparecen** en esta ejecución — el fix del differ
+   (`normalizeType()`, commit `7b89ff0c`) ya lo resuelve. Único resultado: **23 `BREAKING`,
+   todos concentrados en `GET /api/v2/orders`** (campos como `id`, `customer`, `status`,
+   `totalAmount`, etc. "dejan de existir" en el nivel superior de la respuesta capturada).
+
+### Hallazgo: el diff restante es API-CONTRACT-001, no ruido nuevo
+
+Los 23 `BREAKING` de `GET /api/v2/orders` son la manifestación exacta del problema ya documentado en
+API-CONTRACT-001: `OrderListService::list()` devuelve una `Collection` plana o un envelope paginado
+`{data,links,meta}` según si la petición capturada por Scribe incluyó o no el parámetro `active`.
+Qué forma exacta captura Scribe depende de qué llamada de ejemplo genera para esa ruta en cada
+ejecución — no es determinista entre generaciones. **No se ha republicado `frontend.yaml`** con esta
+captura: haría el mismo ruido que evitar publicar con el diff de nulabilidad la sesión anterior,
+solo que ahora la causa raíz es otra (API-CONTRACT-001, ya en el inventario, Fase 7).
+
+**Importante para CI**: el paso de CI usa `contract:check --fail-on-any` (falla ante *cualquier*
+diff, no solo `BREAKING` sin reconocer), y siembra su propia BD `contract` desde cero con el mismo
+`contract:seed-fixture` — es razonable esperar que reproduzca el mismo resultado (23 `BREAKING` en
+`GET /v2/orders`) tras el push de esta sesión. **Desacoplar el job no garantiza que quede en verde
+de inmediato**: lo que garantiza es que, si sigue en rojo, sea por la razón real y ya trazada
+(API-CONTRACT-001), no por un job saltado. Esto no se ha podido confirmar todavía porque el cambio
+de workflow no se ha pusheado en esta sesión (pendiente de confirmación del usuario).
+
+### Tests
+
+`composer contract:test` (8/8). `php artisan test` (suite completa, réplica exacta del paso de CI):
+70 fallos, ninguno nuevo ni causado por esta intervención (solo se tocó un fichero YAML de CI, sin
+relación con código de aplicación).
+
+### Gap to 10/10 / Pendiente
+
+- Pushear `.github/workflows/api-contract.yml` y confirmar el resultado real del job `api-contract`
+  ya desacoplado — no verificable sin el push.
+- Decidir explícitamente qué hacer con API-CONTRACT-001 antes de que el job de contrato pueda
+  quedar en verde de forma sostenida con `--fail-on-any`: opciones no evaluadas todavía en esta
+  sesión son (a) adelantar su resolución desde Fase 7, (b) fijar el parámetro de query que usa
+  Scribe para capturar `GET /v2/orders` de forma estable (vía `config/scribe_public.php`, sin tocar
+  código de negocio), o (c) aceptar temporalmente `--allow-breaking` en CI solo para esa ruta
+  (requeriría documentarlo en `docs/frontend-integration/backend-api-changes.md` y no es una
+  solución permanente, ya que reduce la cobertura del gate para futuros cambios reales).
+- `public/openapi/frontend.yaml` sigue sin republicar — la generación limpia disponible ahora mismo
+  solo introduciría el ruido de API-CONTRACT-001, no una mejora real.
+- API-CONTRACT-016 sigue abierto, sin tocar en esta sesión (fuera de alcance, confirmado de nuevo).
+
+### Rollback Plan
+
+`git revert` del commit de esta entrada — el único cambio de comportamiento es quitar una
+dependencia (`needs: tests`) de un job de CI; no toca código de aplicación, BD ni migraciones.
+
+### Next
+
+1. Confirmar con el usuario el `git push` del cambio de workflow.
+2. Verificar el resultado real del job `api-contract` en CI tras el push — puede seguir en rojo por
+   API-CONTRACT-001, lo cual sería el resultado correcto y esperado, no un fallo de esta
+   intervención.
+3. Con el resultado real en mano, decidir con el usuario el tratamiento de API-CONTRACT-001 (una de
+   las 3 opciones listadas arriba) antes de declarar la Fase 0 formalmente cerrada.
+
+---
+
 ## [2026-08-02] API Contract — Fase 0: activación real, 3 bugs de infraestructura corregidos
 
 **Prioridad**: Alta | **Complejidad**: Media | **Estado**: 🔄 Fase 0 en progreso (pipeline validado y corregido; contrato aún sin republicar)

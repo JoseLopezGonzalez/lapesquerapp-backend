@@ -68,7 +68,6 @@ jobs:
   api-contract:
     name: OpenAPI contract (generate + check)
     runs-on: ubuntu-latest
-    needs: tests
 
     services:
       mysql:
