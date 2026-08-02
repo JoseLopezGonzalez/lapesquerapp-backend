@@ -134,6 +134,28 @@ class OpenApiContractDifferTest extends TestCase
         $this->assertSame('endpoint_added', $changes[0]['type']);
     }
 
+    public function test_openapi_31_nullable_type_array_is_not_a_type_change(): void
+    {
+        $old = $this->spec(['code' => ['type' => 'string']]);
+        $new = $this->spec(['code' => ['type' => ['string', 'null']]]);
+
+        $changes = (new OpenApiContractDiffer)->diff($old, $new);
+
+        $this->assertSame([], $changes);
+    }
+
+    public function test_nullable_type_array_still_detects_real_type_change(): void
+    {
+        $old = $this->spec(['code' => ['type' => ['string', 'null']]]);
+        $new = $this->spec(['code' => ['type' => ['integer', 'null']]]);
+
+        $changes = (new OpenApiContractDiffer)->diff($old, $new);
+
+        $this->assertCount(1, $changes);
+        $this->assertSame(OpenApiContractDiffer::BREAKING, $changes[0]['severity']);
+        $this->assertSame('response_field_type_changed', $changes[0]['type']);
+    }
+
     public function test_paginated_collection_compares_item_shape(): void
     {
         $old = [

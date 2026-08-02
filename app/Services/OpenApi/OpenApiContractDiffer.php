@@ -183,11 +183,27 @@ class OpenApiContractDiffer
 
         foreach ($schema['properties'] as $name => $definition) {
             $fields[$name] = [
-                'type' => is_array($definition) ? ($definition['type'] ?? null) : null,
+                'type' => is_array($definition) ? $this->normalizeType($definition['type'] ?? null) : null,
                 'required' => in_array($name, $required, true),
             ];
         }
 
         return $fields;
+    }
+
+    /**
+     * OpenAPI 3.1 (JSON Schema 2020-12) representa un campo nullable como `type: [string, null]`
+     * en vez del `type: string` + `nullable: true` de OpenAPI 3.0. Se reduce al tipo no nulo para
+     * comparar solo el tipo real, ya que este differ deliberadamente no compara nulabilidad.
+     */
+    private function normalizeType(mixed $type): ?string
+    {
+        if (! is_array($type)) {
+            return $type;
+        }
+
+        $nonNull = array_values(array_diff($type, ['null']));
+
+        return $nonNull[0] ?? null;
     }
 }
