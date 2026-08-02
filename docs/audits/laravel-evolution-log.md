@@ -5,6 +5,90 @@ Cada entrada sigue el formato definido en `docs/prompts/01_Laravel incremental e
 
 ---
 
+## [2026-08-02] API Contract — Fase 0: `.env.example` con credencial no-placeholder + CI sin overrides completos de DB
+
+**Prioridad**: Crítica (posible secreto expuesto) | **Complejidad**: Baja | **Estado**: ✅ Corregido en esta sesión, pendiente confirmación de rotación por el usuario
+
+Contexto: tras desacoplar `api-contract` de `tests` (entrada anterior) y pushear el cambio, el job
+`api-contract` **por fin se ejecutó de verdad por primera vez** (ya no `skipped`) — pero falló en el
+paso "Central migrations", antes de llegar siquiera a `contract:check`.
+
+### Causa raíz encontrada
+
+`.env.example` (commit `ea3ed02c`, 2026-03-26, sin tocar desde entonces) tiene, en el bloque
+`DB_*`, valores que no parecen un placeholder de plantilla sino una credencial real: `DB_HOST=
+94.143.137.84`, `DB_PORT=3308`, `DB_USERNAME=root`, `DB_PASSWORD='PFkXCoswvTzsr8f5YNVK7lDOCtfyRNUOoVjjpQGb8a6orP4uopB9RP4xVydZjeFK'`.
+El usuario no ha podido confirmar en esta sesión si ese host/contraseña siguen vivos en producción.
+
+Esto interactuaba con un bug independiente en `.github/workflows/api-contract.yml`: los pasos
+"Run test suite" (job `tests`) y "Central migrations"/"Seed demo tenant"/"Check OpenAPI contract"
+(job `api-contract`) solo sobrescribían `DB_HOST`+`DB_PORT` o `DB_HOST`+`DB_DATABASE` en su `env:`
+de paso — nunca `DB_CONNECTION`/`DB_USERNAME`/`DB_PASSWORD`. El paso "Prepare .env" sí fijaba las 6
+variables correctamente, pero solo para su propio proceso (`php artisan key:generate`), no las
+persiste en el `.env` copiado. Los pasos posteriores, al no re-declarar `DB_PORT`/`DB_PASSWORD`,
+heredaban los valores de `.env.example` vía el `.env` copiado — es decir, intentaban conectar al
+puerto `3308` (el de la credencial filtrada) contra un servicio MySQL efímero que solo expone
+`3306`. Conexión rechazada, fallo en 1 segundo — coincide exactamente con lo observado en el run
+`30767128033`.
+
+### Cambios
+
+- `.env.example`: el bloque `DB_*` pasa a valores de placeholder genéricos e inequívocos
+  (`DB_HOST=127.0.0.1`, `DB_PORT=3306`, `DB_DATABASE=laravel`, `DB_USERNAME=root`, `DB_PASSWORD=`
+  vacío) — coherentes con el resto del fichero (secretos vacíos: `AWS_SECRET_ACCESS_KEY=`,
+  `PUSHER_APP_SECRET=`, etc.) y con el bloque Sail ya comentado más abajo en el mismo fichero.
+- `.github/workflows/api-contract.yml`: los 4 pasos afectados (`Run test suite`, `Central
+  migrations`, `Seed demo tenant + admin fixture`, `Check OpenAPI contract...`) ahora declaran las 6
+  variables (`DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`)
+  explícitamente en su propio `env:`, de forma que el resultado de CI ya no depende en absoluto de
+  lo que `.env.example` tenga escrito — cualquier valor futuro ahí (correcto o no) no puede volver a
+  romper este pipeline.
+
+### Verificación realizada
+
+- Se confirmó la causa leyendo el propio workflow y comparando con `.env.example` — el fallo en 1
+  segundo del paso "Central migrations" es consistente con un puerto de conexión rechazado, no con
+  un error de migración real (que tardaría más y daría un mensaje de Laravel, no un `exit code 1`
+  desnudo tras 1s).
+- No se ha vuelto a ejecutar el run de CI todavía en esta sesión tras el fix (pendiente de commit +
+  push y confirmación del usuario — ver Next).
+
+### Pendiente crítico, fuera de lo que este agente puede hacer
+
+**Si `94.143.137.84`/esa contraseña son credenciales reales de producción, llevan meses expuestas en
+el historial de git** (desde `ea3ed02c`, 2026-03-26) y deben rotarse en el servidor/Coolify — sanear
+`.env.example` no deshace la exposición ya ocurrida en el historial, solo evita que se vuelva a
+confundir con un placeholder. El usuario no ha podido confirmar en esta sesión si son credenciales
+vivas; queda como acción suya, fuera del alcance de este agente.
+
+### Tests
+
+Ninguno nuevo — cambio de configuración (`.env.example`, workflow YAML), no de código de aplicación.
+
+### Gap to 10/10 / Pendiente
+
+- Confirmar con el usuario si la credencial es real y, si lo es, coordinar su rotación (fuera de
+  este repositorio/agente).
+- Pushear este fix y volver a verificar el run de CI — ahora sí debería llegar hasta el paso
+  `contract:check --fail-on-any`, donde es esperable que aparezca el diff de API-CONTRACT-001 ya
+  documentado en la entrada anterior.
+
+### Rollback Plan
+
+`git revert` de este commit — cambios de configuración puros (placeholders de `.env.example`,
+variables de entorno explícitas en el workflow), sin efecto en código de aplicación ni datos.
+
+### Next
+
+1. Commitear y pushear (confirmación del usuario).
+2. Verificar el run de CI resultante — objetivo inmediato: que el job `api-contract` llegue vivo
+   hasta `contract:check` (ya no bloqueado por infraestructura), aunque el resultado final dependa
+   de cómo se decida tratar API-CONTRACT-001.
+3. El usuario debe verificar por su cuenta si la credencial de `.env.example` era real y rotarla si
+   corresponde.
+
+---
+
 ## [2026-08-02] API Contract — Fase 0: CI desacoplada de la suite completa, API-CONTRACT-004 resuelto en generación limpia
 
 **Prioridad**: Alta | **Complejidad**: Baja | **Estado**: 🔄 Fase 0 en progreso (mecanismo confirmado en verde; bloqueo restante es deuda de negocio ya trazada, no infraestructura)

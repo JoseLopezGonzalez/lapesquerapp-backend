@@ -62,8 +62,12 @@ jobs:
       - name: Run test suite
         run: php artisan test
         env:
+          DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
+          DB_DATABASE: testing
+          DB_USERNAME: root
+          DB_PASSWORD: ''
 
   api-contract:
     name: OpenAPI contract (generate + check)
@@ -118,21 +122,33 @@ jobs:
       - name: Central migrations
         run: php artisan migrate --force
         env:
+          DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
+          DB_PORT: 3306
           DB_DATABASE: contract
+          DB_USERNAME: root
+          DB_PASSWORD: ''
 
       - name: Seed demo tenant + admin fixture (for authenticated ResponseCalls)
         id: fixture
         run: echo "token=$(php artisan contract:seed-fixture --print-token-only)" >> "$GITHUB_OUTPUT"
         env:
+          DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
+          DB_PORT: 3306
           DB_DATABASE: contract
+          DB_USERNAME: root
+          DB_PASSWORD: ''
 
       - name: Check OpenAPI contract is up to date and free of breaking changes
         run: php artisan contract:check --fail-on-any
         env:
+          DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
+          DB_PORT: 3306
           DB_DATABASE: contract
+          DB_USERNAME: root
+          DB_PASSWORD: ''
           SCRIBE_AUTH_TOKEN: ${{ steps.fixture.outputs.token }}
 
       - name: Upload generated contract (debug artifact)
