@@ -4,7 +4,7 @@ description: Fuente de seguimiento única del proyecto de consolidación del con
 status: vivo — actualizar en cada intervención (ver §10)
 created: 2026-08-02
 last_updated: 2026-08-02
-verified_against_commit: f58e1cb
+verified_against_commit: 7b89ff0c
 audience: Agentes IA (Claude Code y otros), backend engineers, frontend engineers
 ---
 
@@ -285,7 +285,7 @@ lo contrario explícitamente.
 | API-CONTRACT-001 | `GET /v2/orders?active=true\|false` devuelve `Collection` plana (sin `links`/`meta`); sin el parámetro, devuelve el envelope de paginación estándar. Mismo endpoint, dos formas. | Pedidos | Crítico | Parcialmente mitigado (documentado en código + alternativa estable `GET /v2/orders/active` con `ActiveOrderCardResource`) | Fase 7; ADR-0005 | `app/Services/v2/OrderListService.php:29-60` |
 | API-CONTRACT-002 | 39 modelos serializan vía `toArrayAssoc()`/`toArrayAssocShort()`, opaco a análisis estático; solo capturado para `GET` vía `ResponseCalls` | Transversal | Alto | Abierto | Fases 3-7; ADR-0006 | `grep -rl "function toArrayAssoc" app/Models` → 39 archivos (lista completa reverificada 2026-08-02: AgendaAction, AuxiliaryProduct, Box, CaptureZone, Cebo, CommercialInteraction, Country, Customer, CustomsBroker, ExternalProcessor, ExternalUser, FieldOperator, FishingGear, Incident, Incoterm, Offer, OfferLine, OrderAuxiliaryLine, OrderMaritimeContainer, OrderMaritimeShippingDetail, OrderPallet, OrderPlannedProductDetail, Pallet, PalletBox, PaymentTerm, Product, ProductCategory, ProductFamily, Prospect, ProspectCategory, ProspectContact, RawMaterial, Salesperson, Species, Store, StoredPallet, Tax, Transport, User) |
 | API-CONTRACT-003 | 14 Resources delegan el 100% de su serialización en `Model::toArrayAssoc()` (ya no vía magic `__call`, pero sigue opaco a introspección estática) | Transversal (Customer, Product, Store, Offer, Prospect, Country, PaymentTerm, FishingGear, CommercialInteraction, CustomsBroker, AuxiliaryProduct, OrderAuxiliaryLine, OrderMaritimeShippingDetail, OrderMaritimeContainer) | Medio | Parcialmente mitigado (magic `__call` eliminado en `CustomerResource`; el resto del patrón sigue) | Fase 3; ADR-0006 | `grep -rl "resource->toArrayAssoc()" app/Http/Resources/v2` → 14 archivos |
-| API-CONTRACT-004 | `relationLoaded()` condicional: mismo campo puede ser `null` por "no aplica" o por "esta vista no cargó la relación", indistinguible en el spec | Transversal (`OrderResource`, `OrderDetailsResource`, `CustomerResource`, `PalletResource`, `SpeciesResource`) | Alto | Abierto (política definida en ADR-0008, no implementada) | Fase 2 (documentación por Resource); ADR-0008 | `app/Http/Resources/v2/OrderResource.php:20-29` |
+| API-CONTRACT-004 | `relationLoaded()` condicional: mismo campo puede ser `null` por "no aplica" o por "esta vista no cargó la relación", indistinguible en el spec. **Confirmado empíricamente el 2026-08-02**: una ejecución limpia de `contract:verify` (BD desechable) reporta `fieldOperator`/`externalProcessor`/`incoterm` como `BREAKING` (`string`↔`object`) solo porque el registro capturado por Scribe tenía o no la relación poblada — exactamente este problema, ya no solo teórico | Transversal (`OrderResource`, `OrderDetailsResource`, `CustomerResource`, `PalletResource`, `SpeciesResource`) | Alto | Abierto (política definida en ADR-0008, no implementada) | Fase 2 (documentación por Resource); ADR-0008 | `app/Http/Resources/v2/OrderResource.php:20-29`; `docs/audits/laravel-evolution-log.md` → entrada "[2026-08-02] API Contract — Fase 0" |
 | API-CONTRACT-005 | `FieldOrderResource` y `OrderResource` representan el mismo concepto de negocio ("pedido") con forma distinta, sin marcarlo como decisión de producto en el código | Autoventa/campo vs Pedidos | Medio | Abierto | Fase 7-8; D13 (bloqueada por decisión de negocio sobre app móvil) | Comparación `app/Http/Resources/v2/OrderResource.php` vs `FieldOrderResource.php`, reverificada 2026-08-02 |
 | API-CONTRACT-006 | Parámetro de paginación inconsistente: `perPage` (76 archivos) vs `per_page` (19 archivos) | Transversal | Medio | Abierto (cifras idénticas a la auditoría original; sin cambios) | Fase 2; ADR-0005 | `grep -rl "'perPage'" app/Services app/Http` → 76; `grep -rl "'per_page'"` → 19 (reverificado 2026-08-02) |
 | API-CONTRACT-007 | `IncotermResource` devuelve `created_at`/`updated_at` en snake_case mientras `ProductCategoryResource`, `ProductFamilyResource` y `TransportResource` (mismo módulo, Catálogos) devuelven `createdAt`/`updatedAt` camelCase | Catálogos | Alto (bloquea la afirmación "Catálogos es 100% uniforme"; bajo esfuerzo de fix) | Abierto — **hallazgo nuevo, no en auditorías previas** | Fase 1 (primer paso) | `app/Http/Resources/v2/IncotermResource.php:19-20` vs `app/Http/Resources/v2/ProductCategoryResource.php:22-23` |
@@ -297,6 +297,7 @@ lo contrario explícitamente.
 | API-CONTRACT-013 | `ResponseCalls` de Scribe solo ejecuta rutas `GET`; las respuestas de éxito de `POST`/`PUT`/`PATCH` se infieren del código, no se verifican en ejecución real | Transversal | Medio | Limitación de herramienta, aceptada | Fase 3+ (relevante al decidir qué migrar primero) | `config/scribe.php` (`strategies.responses`, `ResponseCalls` con `only: ['GET *']`) |
 | API-CONTRACT-014 | Los tests de contrato (`ApiDocumentationTest`) son un smoke test (genera sin error, contiene ciertas cadenas) — no comparan forma/tipos completos de payload; `OpenApiContractDiffer` solo compara propiedades de primer nivel | Testing | Medio | Abierto (diseño deliberado del differ, documentado en `docs/api-contract.md` §6, pero limita qué detecta CI) | Fase 2-3 (evaluar si merece un nivel de comparación más profundo) | `tests/Feature/ApiDocumentationTest.php`; `docs/api-contract.md` §6 |
 | API-CONTRACT-015 | Solo existe un PHP enum (`Role`); campos categóricos (`status`, `order_type`) son strings validados por `in:`, sin tipo cerrado en el schema generado | Transversal | Bajo | Abierto, mejora recomendada no bloqueante | Ninguna (mejora incremental, cualquier fase) | `app/Enums/Role.php` (único archivo); `app/Models/Order.php:19-31` (constantes `STATUS_*`/`ORDER_TYPE_*`, candidatas a `enum` backed) |
+| API-CONTRACT-016 | La suite completa de tests (`php artisan test`, no solo el filtro del contrato) tiene ~66-68 tests fallando de forma estable y reproducible, ajenos al contrato API: Producción (~20, `UniqueConstraintViolationException`), CRM (~10), Route Management (~6), Order Statistics, Stock, Superadmin, Suppliers y otros | Transversal (por bloque) | Alto (bloquea "tests en verde" en CI aunque Pint/differ ya estén corregidos) | Abierto — detectado 2026-08-02 al ejecutar la suite completa por primera vez en esta sesión (confirmado no causado por los fixes de Pint/Prospect de esa misma sesión, verificado por diff de los ficheros con fallos) | Requiere `evolution-workflow`/`/task-workflow` por bloque, fuera de este plan | `docs/audits/laravel-evolution-log.md` → entrada "[2026-08-02] API Contract — Fase 0: activación real, 3 bugs de infraestructura corregidos" |
 
 **Regla para agentes futuros**: al cerrar o mitigar un ítem, cambia su `Estado` y añade la fecha y
 el commit en una nota al final de la fila (o en el registro de ejecución, §8) — **no borres la
@@ -382,7 +383,17 @@ módulo), **grande** (varias semanas de calendario/varios módulos).
   de versión.
 - **Estrategia de reversión**: Ninguna — esta fase no cambia código de negocio, solo verifica.
 - **Estimación relativa**: Pequeña.
-- **Estado**: Pendiente.
+- **Estado**: 🔄 En progreso (2026-08-02). `composer contract:test` en verde (8/8).
+  `composer contract:verify` completó por primera vez sin fatal error tras corregir 2 bugs reales
+  del pipeline (`OpenApiContractDiffer` no soportaba nullable de OpenAPI 3.1; ver detalle y
+  hallazgo adicional de CI/Pint/Prospect en `docs/audits/laravel-evolution-log.md` → entrada
+  "[2026-08-02] API Contract — Fase 0: activación real, 3 bugs de infraestructura corregidos").
+  Pendiente para cerrar la fase: (a) `git push` de los commits `9677ec0c`/`7b89ff0c` (confirmación
+  del usuario pendiente) y verificar CI en verde en GitHub Actions; (b) decidir tratamiento de
+  API-CONTRACT-004 antes de republicar `frontend.yaml` con una generación limpia (el diff actual,
+  8 BREAKING + 18 COMPATIBLE, refleja sobre todo esa inestabilidad de nulabilidad, no cambios de
+  código deliberados — no se ha publicado). URL pública de despliegue: no confirmada todavía (fuera
+  de alcance de esta sesión, requiere acceso a Coolify/IONOS).
 
 ### Fase 1 — Piloto de catálogos
 
@@ -715,6 +726,7 @@ estado de una entrada previa, referencia la fecha original en vez de sobrescribi
 |---|---|---|---|
 | 2026-08-02 | Planificación (previa a Fase 0) | Creación del plan maestro; verificación de deuda heredada + 1 hallazgo nuevo (`IncotermResource`, API-CONTRACT-007); extracción de decisiones durables a ADRs 0003-0008. | `docs/audits/laravel-evolution-log.md` → entrada "[2026-08-02] API Contract — Plan maestro y ADRs 0003-0008" |
 | 2026-08-02 | Planificación (previa a Fase 0) | Cierre de huecos de contexto: `evolution-workflow`/`task-workflow` y `laravel-expert` ahora referencian el plan; nueva skill `/api-contract` para retomarlo fase a fase. | `docs/audits/laravel-evolution-log.md` → entrada "[2026-08-02] API Contract — Integración en agentes, skills y CLAUDE.md" |
+| 2026-08-02 | Fase 0 (en progreso) | Entorno real disponible por primera vez; se corrigieron 3 bugs que impedían validar el pipeline (CI/Pint en ~80 ficheros, `ProspectFactory::new()`, `OpenApiContractDiffer` con nullable OpenAPI 3.1); `contract:test`/`contract:verify` corren en verde; contrato aún sin republicar; nueva deuda API-CONTRACT-016 (tests preexistentes fuera de alcance). | `docs/audits/laravel-evolution-log.md` → entrada "[2026-08-02] API Contract — Fase 0: activación real, 3 bugs de infraestructura corregidos" |
 
 **Al terminar cualquier intervención de este plan**: añade la entrada completa (formato ya
 establecido en `docs/audits/laravel-evolution-log.md`: problemas abordados, cambios aplicados,
@@ -792,43 +804,43 @@ API de este repositorio:
 
 ## Próxima acción recomendada
 
-**Tarea**: Ejecutar la **Fase 0 — Activación real** (§6), empezando por sus pasos 1-6: levantar un
-entorno con `composer install` + MySQL accesible, y confirmar que `composer contract:test`,
-`composer contract:update` y `composer contract:verify` terminan en verde contra el código actual
-(commit `f58e1cb` o el que esté en `HEAD` en ese momento).
+**Tarea**: Cerrar la **Fase 0 — Activación real** (§6). El pipeline ya se ejecutó con éxito por
+primera vez el 2026-08-02 (`contract:test` 8/8, `contract:verify` completa sin fatal error) tras
+corregir 3 bugs reales (CI/Pint en ~80 ficheros, `ProspectFactory::new()`, `OpenApiContractDiffer`
+sin soporte de nullable OpenAPI 3.1 — detalle completo en
+`docs/audits/laravel-evolution-log.md` → entrada "[2026-08-02] API Contract — Fase 0: activación
+real, 3 bugs de infraestructura corregidos"). Quedan 3 pasos concretos para poder marcar la fase
+`Completada`:
+
+1. **Confirmar con el usuario el `git push`** de los commits `9677ec0c` (Pint + rename
+   `ProspectFactory::new()`→`asNew()`) y `7b89ff0c` (fix de `OpenApiContractDiffer`) — están en
+   `main` local, no en el remoto. Sin esto, CI no puede pasar a verde porque sigue viendo el commit
+   roto.
+2. **Verificar CI en verde** en `.github/workflows/api-contract.yml` tras el push (vía la API de
+   GitHub Actions, `gh` CLI si está disponible, o acceso directo a la pestaña Actions).
+3. **Decidir el tratamiento de API-CONTRACT-004** (nulabilidad de relaciones,
+   `fieldOperator`/`externalProcessor`/`incoterm`) antes de republicar `public/openapi/frontend.yaml`
+   — una generación limpia contra una BD desechable produce 8 cambios BREAKING + 18 COMPATIBLE que
+   reflejan sobre todo esa inestabilidad (no cambios de código deliberados); publicarla tal cual
+   introduciría ruido. Esto es, en la práctica, adelantar el primer paso de la Fase 2 (§6) porque
+   bloquea la republicación limpia del contrato — evaluarlo explícitamente con el usuario antes de
+   avanzar, no decidirlo unilateralmente (protocolo §10, regla 5).
 
 **Por qué es el siguiente paso**: Todo lo demás en este plan (piloto de catálogos, normalización,
-migración de serializadores) asume que el pipeline ya descrito en `docs/api-contract.md` funciona
-de extremo a extremo en un entorno real. Esta sesión de planificación **no pudo verificarlo**: el
-contenedor no tenía `vendor/`, `.env`, cliente `mysql` ni un servicio de base de datos accesible
-(ver §2.3). Es la verificación de menor esfuerzo con mayor valor: si algo falla aquí, todo lo
-demás en el plan está construido sobre una base no confirmada.
+migración de serializadores) asume un pipeline que funciona de extremo a extremo — eso ya está
+confirmado. Lo que falta es cerrar el círculo (push + CI verde) y no dejar pendiente una decisión
+que, si se ignora, hará que cualquier futura republicación del contrato arrastre el mismo ruido de
+nulabilidad.
 
-**Requisitos previos**: Acceso a un entorno con PHP 8.1+ (idealmente 8.2, como usa CI) y un
-servicio MySQL 8.0 accesible (local vía Sail/Docker, o reutilizar el runner de CI). No requiere
-tocar código de negocio.
+**Importante para quien retome esto — generación local**: nunca generar el contrato contra la base
+de datos de desarrollo compartida (`pesquerapp`); usar una BD desechable como replica CI
+(`migrate --force` desde cero + `contract:seed-fixture`), porque `SeedContractFixtureTenant`
+omite su seeding sintético si ya detecta `Order`s existentes, produciendo un YAML no representativo
+y mucho más grande que el real.
 
-**Comandos**:
-```bash
-composer install --no-interaction --prefer-dist
-cp .env.example .env
-php artisan key:generate --ansi
-php artisan migrate --force
-php artisan contract:seed-fixture
-composer contract:test
-composer contract:update
-git diff --stat public/openapi/   # confirmar si cambia algo respecto al commiteado, y por qué
-composer contract:verify
-```
-
-**Criterio de finalización**: Los tres comandos de contrato terminan en verde (`test`/`update`
-sin errores; `verify` sin `BREAKING` no reconocido), y queda registrado si `contract:update`
-produjo o no un diff respecto al `frontend.yaml` ya commiteado (si lo produjo, decidir si es ruido
-de `AUTO_INCREMENT` — API-CONTRACT-012 — o un cambio real pendiente de commitear). Adicionalmente,
-confirmar el estado real del workflow `.github/workflows/api-contract.yml` en la rama de trabajo
-usando el acceso a CI disponible en ese momento (no estaba disponible en esta sesión de
-planificación).
+**Requisitos previos**: Ninguno nuevo — el entorno (Docker/Sail + MySQL) ya está disponible y
+validado en esta sesión.
 
 **Documento a actualizar al terminar**: Este mismo archivo — cambia el `Estado` de la Fase 0 en
-§6, añade una fila nueva en §8 con lo realizado, y actualiza `docs/api-contract-current-status.md` con
-la fase actual y el resultado.
+§6 a `Completada` (o documenta el siguiente gap si algo queda abierto), y actualiza
+`docs/api-contract-current-status.md` con el resultado del push/CI.

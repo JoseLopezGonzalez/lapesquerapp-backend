@@ -5,6 +5,122 @@ Cada entrada sigue el formato definido en `docs/prompts/01_Laravel incremental e
 
 ---
 
+## [2026-08-02] API Contract — Fase 0: activación real, 3 bugs de infraestructura corregidos
+
+**Prioridad**: Alta | **Complejidad**: Media | **Estado**: 🔄 Fase 0 en progreso (pipeline validado y corregido; contrato aún sin republicar)
+
+Contexto: a diferencia de la sesión de planificación (sin `vendor/`, `.env` ni MySQL), esta sesión
+sí tenía un entorno real disponible (Docker/Sail con MySQL, Redis, Mailpit ya definidos en
+`docker-compose.yml`). Se ejecutó la Fase 0 (§6 del plan maestro): levantar el entorno y confirmar
+que `composer contract:test/update/verify` funciona de extremo a extremo. El resultado no fue una
+simple confirmación — se encontraron y corrigieron 3 bugs reales que impedían que el pipeline (y
+la propia suite de tests) se hubiera ejecutado con éxito alguna vez hasta ahora.
+
+### Problemas encontrados y corregidos
+
+1. **CI en rojo desde su activación, por un motivo ajeno al contrato**: el job "Tests + Pint" de
+   `.github/workflows/api-contract.yml` fallaba en el paso `vendor/bin/pint --test` en ~80 ficheros
+   (migrations/companies, seeders, tests, routes/api.php) nunca formateados con el ruleset vigente.
+   Al depender el job `api-contract` de `tests` (`needs: tests`), el job de contrato **nunca había
+   llegado a ejecutarse en CI** — confirmado consultando la API pública de GitHub Actions (sin `gh`
+   CLI disponible): los dos últimos runs en `main` (`f58e1cb` y `8def907`) fallaron en Pint con el
+   job de contrato en estado `skipped`.
+2. **`ProspectFactory::new()` colisiona con `Factory::new()`**: el factory de `Prospect` define un
+   helper de estado público y no estático llamado `new()` (para `status = Prospect::STATUS_NEW`),
+   que sobrescribe el método estático requerido por
+   `Illuminate\Database\Eloquent\Factories\Factory::new()`. Al correr la suite completa
+   (`php artisan test`, no solo el filtro del contrato) esto provocaba un fatal error en cascada
+   que tumbaba una parte significativa de los tests en cuanto se autocargaba la clase.
+3. **`OpenApiContractDiffer` no soportaba el nullable de OpenAPI 3.1**: el contrato se genera con
+   `openapi: 3.1.0` (JSON Schema 2020-12), que representa un campo nullable como
+   `type: [string, null]` en vez del `type: string` + `nullable: true` de OpenAPI 3.0. El differ
+   interpolaba ese array directamente en un mensaje, provocando un fatal "Array to string
+   conversion" en el primer endpoint con un campo nullable — es decir, en la práctica totalidad del
+   contrato. **`composer contract:verify` no había completado una ejecución con éxito nunca**, ni en
+   esta sesión ni previamente (nadie había podido correrlo contra un contrato generado de verdad).
+
+### Cambios
+
+- `database/factories/ProspectFactory.php`: `new()` → `asNew()` (mismo comportamiento, nombre sin
+  colisión). Actualizados sus 2 únicos usos: `database/seeders/TenantVolumeExpansionSeeder.php` y
+  `tests/Concerns/BuildsCrmScenario.php`.
+- `vendor/bin/pint` ejecutado sin `--test` sobre todo el repo: 431 ficheros reformateados, **0
+  cambios de comportamiento** (solo estilo: `braces_position`, `concat_space`, `ordered_traits`,
+  etc.) — verificado comparando los ficheros con fallos reales de test (`StockBlockApiTest.php`)
+  contra los que Pint tocó, y confirmando que las mismas ~66-68 fallas aparecen con o sin el fix de
+  Pint aplicado.
+- `app/Services/OpenApi/OpenApiContractDiffer.php`: nuevo método `normalizeType()` que reduce
+  `type: [string, null]` a su tipo no nulo antes de comparar — coherente con el diseño ya declarado
+  del differ ("no compara nulabilidad"), solo corrige la implementación para cumplirlo.
+- `tests/Unit/OpenApiContractDifferTest.php`: 2 tests de regresión (nullable no es un cambio de
+  tipo; un cambio de tipo real dentro de un nullable se sigue detectando `BREAKING`).
+- Commits: `9677ec0c` (Pint + Prospect), `7b89ff0c` (differ). **Ambos en `main`, sin pushear
+  todavía** — pendiente de confirmación del usuario antes de `git push`.
+
+### Verificación realizada
+
+- `composer contract:test`: 8/8 en verde.
+- `composer contract:verify` ejecutado dos veces contra una base de datos realmente desechable
+  (`contract_verify`, migrada desde cero + `contract:seed-fixture`, replicando el job `api-contract`
+  de CI) — completó sin fatal error por primera vez. Resultado: 8 cambios `BREAKING` + 18
+  `COMPATIBLE`, **no publicados** (ver "Pendiente" abajo).
+- `php artisan test` (suite completa) ejecutado 2 veces tras el fix de Pint/Prospect: 66-68 fallos
+  estables y reproducibles, no causados por esta intervención (confirmado por diff — los ficheros
+  con fallos no relacionados con Pint no fueron tocados por el reformateo). Ver hallazgo nuevo abajo.
+- **Hallazgo importante de proceso**: generar el contrato contra la base de datos de desarrollo
+  compartida (`pesquerapp`, con datos reales de 4 meses de uso) produce un YAML **no representativo
+  y ~50% más grande** que el commiteado, porque `contract:seed-fixture` omite su seeding sintético
+  cuando ya detecta `Order`s existentes (`SeedContractFixtureTenant::seedSampleData()`). Cualquier
+  generación local futura debe usar una base de datos desechable (como se hizo aquí), nunca la de
+  desarrollo — la documentación operativa (`docs/api-contract.md`) debería advertirlo explícitamente
+  (pendiente, ver "Next").
+
+### Hallazgo nuevo (deuda añadida al inventario, §4 del plan)
+
+- **API-CONTRACT-016**: la suite completa de tests (no solo los de contrato) tiene ~66-68 tests
+  fallando de forma estable, repartidos en Producción (~20, `UniqueConstraintViolationException`),
+  CRM (~10), Route Management (~6), Order Statistics, Stock, Superadmin, Suppliers y otros. Ajeno al
+  contrato API; requiere tratamiento por bloque vía `evolution-workflow`/`/task-workflow`, no aquí.
+- **API-CONTRACT-004** (ya existente) queda **confirmado empíricamente, no solo teórico**: los 8
+  cambios `BREAKING` de la ejecución limpia de `contract:verify` son campos de relación
+  (`fieldOperator`, `externalProcessor`, `incoterm`) que cambian de tipo `string`↔`object` según si
+  el registro concreto capturado por Scribe tenía la relación poblada o no — exactamente el
+  problema que ADR-0008 (política de nulabilidad en `relationLoaded()`) todavía no se ha aplicado a
+  código real.
+
+### Tests
+
+`composer contract:test` (8/8), `OpenApiContractDifferTest` (11/11, incluye 2 nuevos), `vendor/bin/pint --test` (1127 ficheros, verde). Suite completa: ver "Hallazgo nuevo" (fallos preexistentes, no en verde, fuera de alcance de esta intervención).
+
+### Gap to 10/10 / Pendiente
+
+- El contrato (`public/openapi/frontend.yaml`) **no se ha republicado** en esta intervención: el
+  diff de una generación limpia (8 BREAKING + 18 COMPATIBLE) refleja sobre todo inestabilidad de
+  nulabilidad de relaciones (API-CONTRACT-004), no cambios de código deliberados — publicarlo tal
+  cual introduciría ruido en vez de señal. Decidir explícitamente cómo tratar API-CONTRACT-004 (Fase
+  2, ADR-0008) antes de la próxima republicación.
+- Commits `9677ec0c`/`7b89ff0c` están en `main` local, **sin pushear** — confirmar con el usuario
+  antes de `git push`.
+- Confirmar CI en verde en GitHub Actions tras el push (no verificable hasta que los commits estén
+  en el remoto).
+- API-CONTRACT-016 (tests preexistentes fallando) queda documentado, no resuelto.
+- `docs/api-contract.md` debería documentar explícitamente la necesidad de una BD desechable para
+  generación local (hallazgo de esta sesión, no aplicado todavía).
+
+### Rollback Plan
+
+`git revert 7b89ff0c 9677ec0c` — ambos commits son mecánicos/aislados (estilo + rename + fix de un
+método privado), sin migraciones ni cambios de datos.
+
+### Next
+
+1. Confirmar con el usuario si se hace `git push` de `9677ec0c`/`7b89ff0c` y verificar CI en verde.
+2. Decidir tratamiento de API-CONTRACT-004 (Fase 2 del plan) antes de republicar el contrato.
+3. Registrar API-CONTRACT-016 como deuda de bloque a repartir entre los `evolution-workflow`
+   correspondientes (Producción, CRM, Route Management, etc.), fuera de este plan.
+
+---
+
 ## [2026-08-02] API Contract — Integración en agentes, skills y CLAUDE.md
 
 **Prioridad**: Media | **Complejidad**: N/A (documentación/instrumentación, sin cambios de código de negocio) | **Estado**: ✅ Completado
