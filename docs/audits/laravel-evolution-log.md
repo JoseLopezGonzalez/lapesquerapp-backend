@@ -5,6 +5,119 @@ Cada entrada sigue el formato definido en `docs/prompts/01_Laravel incremental e
 
 ---
 
+## [2026-08-02] API Contract — Fase 0: cierre, causa real de API-CONTRACT-001 identificada y corregida en el fixture
+
+**Prioridad**: Alta | **Complejidad**: Media | **Estado**: ✅ Fase 0 Completada
+
+Continuación de la sesión anterior. Se leyó el plan maestro completo (protocolo §10) y su "Próxima
+acción recomendada": decidir con el usuario el tratamiento de API-CONTRACT-001 antes de poder
+cerrar Fase 0. Se preguntó al usuario entre 3 opciones (adelantar Fase 7, fijar la captura de
+Scribe, o aceptar el ruido documentándolo); eligió **fijar la captura de Scribe** para que
+`GET /v2/orders` sea estable, sin tocar `OrderListService`.
+
+### Investigación
+
+La hipótesis original (heredada de la sesión anterior) era que el parámetro `active` de
+`IndexOrderRequest`/`OrderListService` causaba que Scribe capturara a veces la forma paginada y a
+veces la forma `Collection` plana. Verificación de código: **esa hipótesis era incorrecta** — el
+ejemplo de `active` está fijado (`Example: true`) en el docblock de `IndexOrderRequest`, así que
+Scribe siempre lo envía igual; la rama que se ejecuta es siempre la misma.
+
+Para aislar la causa real se generó el contrato repetidamente contra bases de datos MySQL efímeras
+completamente independientes (`DROP`/`CREATE DATABASE` + `migrate --force` desde cero +
+`contract:seed-fixture`, replicando lo que hace CI), comparando el YAML resultante entre pares de
+bases de datos. Primer intento contaminado por un artefacto de la propia metodología de prueba: al
+generar contra una BD, cambiar a otra BD distinta bajo el mismo tenant `demo-tenant` y regenerar sin
+limpiar caché, `TenantMiddleware` (que cachea la resolución `tenant_mw:{subdomain}` en Redis 300s)
+seguía devolviendo la BD anterior, causando cientos de 401 "No autenticado" que parecían un fallo
+sistémico de autenticación — no lo era, era caché cruzada entre bases de datos de prueba dentro de
+la misma sesión de contenedor. Documentado en el plan maestro como aviso para quien retome esto.
+
+Con la metodología corregida (`php artisan cache:clear` entre cada BD de prueba), la comparación
+tipo a tipo del bloque `GET /v2/orders` entre dos BDs frescas mostró **flips reales de tipo**
+(`string` ↔ `[string, 'null']`) en campos concretos: `fieldOperator`, `externalProcessor`,
+`incoterm` (a nivel de `Order`) y `productionNotes`/`a3erpCode`/`facilcomCode`/`legalName` (a nivel
+de `Customer`/`ExternalProcessor` anidados). Causa raíz: `OrderFactory`, `CustomerFactory` y
+`ExternalProcessorFactory` usan `faker->optional(...)` en estos campos/FKs — comportamiento correcto
+y deseado para tests reales (variedad de datos), pero el fixture de contrato
+(`SeedContractFixtureTenant::seedSampleData()`) solo crea **1 fila de muestra** de cada uno. Con una
+única fila, cada regeneración de una BD efímera nueva (como hace CI en cada run) tiene una
+probabilidad real y distinta de capturar el campo como objeto o como `null`, y Scribe infiere el
+tipo del ejemplo literal capturado — de ahí el "23 BREAKING, todos en `GET /api/v2/orders`" no
+reproducible reportado en la sesión anterior.
+
+### Cambios
+
+- `app/Console/Commands/SeedContractFixtureTenant.php`: se crean explícitamente un `FieldOperator`
+  y un `ExternalProcessor` de fixture (antes solo existían si el `optional()` de alguna factory los
+  creaba "bajo demanda", de forma no garantizada), y se fijan a valores conocidos, en vez de dejarlos
+  al azar de `faker->optional()`, los siguientes campos de los 2 clientes y 2 pedidos de ejemplo que
+  ya creaba el comando: `field_operator_id`, `external_processor_id`, `incoterm_id`,
+  `transportation_notes`, `production_notes`, `accounting_notes` (Order y Customer),
+  `a3erp_code`/`facilcom_code` (Customer), y `legal_name`/`sanitary_registration_number`/`notes`
+  (ExternalProcessor). Las factories compartidas (`OrderFactory`, `CustomerFactory`,
+  `ExternalProcessorFactory`) **no se tocaron** — siguen siendo aleatorias para tests reales, que es
+  lo correcto; el cambio está aislado al comando de fixture del contrato.
+- `public/openapi/frontend.yaml` / `public/openapi/meta.json`: republicados (`composer
+  contract:update`) contra el fixture corregido.
+- `docs/frontend-integration/backend-api-changes.md`: nueva entrada "Sprint 3" documentando los 8
+  cambios "breaking" resultantes (solo en el spec — `fieldOperator`/`externalProcessor`/`incoterm`
+  pasan de documentarse incorrectamente como `string` a documentarse correctamente como
+  objeto/entero anidado; el comportamiento real de la API no cambió en ningún momento).
+
+### Verificación realizada
+
+- 4 bases de datos MySQL efímeras independientes (`contract_fresh_e`, `_f`, `_g`, `_h`), cada una
+  `migrate --force` desde cero + `contract:seed-fixture` desde cero: el bloque `GET /v2/orders`
+  capturado es **idéntico en tipo** entre las 4 (solo difieren valores de ejemplo — nombres,
+  direcciones, timestamps — nunca la estructura ni los tipos).
+- `php artisan contract:check --fail-on-any` contra una BD efímera nueva (`contract_fresh_h`, no
+  usada para publicar): **"Sin cambios de contrato"**, sale limpio — el escenario exacto que CI
+  ejecuta en cada PR.
+- `composer contract:test` (`ApiDocumentationTest`, 8 tests, 13 assertions): **PASS**.
+- `./vendor/bin/pint --test app/Console/Commands/SeedContractFixtureTenant.php`: **PASS**, sin
+  cambios de estilo necesarios.
+- Diff real entre el contrato anterior (commit `1fd40233`) y el republicado: 8 `BREAKING` (todos
+  del tipo "campo cambia de `string` a objeto/entero", documentados arriba) + 18 `COMPATIBLE`
+  (campos nuevos en `GET /v2/external-processors/{id}`, antes sin ejemplo capturable porque no
+  existía ningún `ExternalProcessor` en el fixture previo).
+
+### Pendiente fuera de este agente
+
+- Confirmar si el host/password que tenía `.env.example` (saneado en la sesión anterior) era una
+  credencial real de producción y, si lo era, rotarla — sigue sin confirmación del usuario.
+- URL pública de despliegue de `frontend.yaml` en Coolify/IONOS, sigue sin confirmar.
+
+### Tests
+
+`composer contract:test` (8 tests, PASS). No se añadieron tests nuevos: el cambio es de datos de
+fixture, no de código de aplicación con lógica propia que testear; la cobertura de
+`ApiDocumentationTest` ya ejerce el fixture corregido en cada ejecución.
+
+### Gap to 10/10 / Pendiente
+
+Fase 0 queda cerrada con Rating 10/10 para su propio alcance (pipeline funcionando de extremo a
+extremo, en CI real, de forma reproducible). La deuda de negocio transversal documentada en §4 del
+plan maestro (39 modelos con `toArrayAssoc()`, CRM/Estadísticas sin Resources, `perPage`/
+`per_page`, el envelope inconsistente de `GET /v2/orders` con `?active=`) sigue abierta — es
+precisamente lo que las Fases 1-7 abordan a partir de ahora, no algo que Fase 0 debiera resolver.
+
+### Rollback Plan
+
+`git revert` de este commit: el cambio de código está aislado a un comando de fixture que no se usa
+en producción ni en tests de features (`app/Console/Commands/SeedContractFixtureTenant.php`); el
+YAML republicado puede revertirse junto con él sin efectos colaterales, ya que no cambia ningún
+comportamiento de runtime.
+
+### Next
+
+1. Commitear y pushear (confirmación del usuario).
+2. Confirmar que el job `api-contract` de CI queda en verde en el siguiente run real sobre `main`.
+3. Iniciar Fase 1 — Piloto de catálogos (corregir `IncotermResource`, API-CONTRACT-007; generar
+   primeros tipos TypeScript reales desde `frontend.yaml`).
+
+---
+
 ## [2026-08-02] API Contract — Fase 0: confirmación real en CI tras el fix de env vars
 
 **Prioridad**: Alta | **Complejidad**: Baja | **Estado**: 🔄 Fase 0 — mecanismo confirmado en verde end-to-end en CI real; único bloqueo restante es una decisión de negocio ya identificada (API-CONTRACT-001)

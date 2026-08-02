@@ -1,6 +1,6 @@
 {
-    "generated_at": "2026-08-02T14:18:54+00:00",
-    "git_commit": "ebf82ba",
-    "contract_sha256": "6392e3280029a0b97262dfa3ab09954d371e42952958ea3fee5471226cb51297",
+    "generated_at": "2026-08-02T21:52:44+00:00",
+    "git_commit": null,
+    "contract_sha256": "a85d05da169b6dd5b6aefb3f9995e216d518144a37a335ca2ae4db694f89d3d3",
     "source": "config/scribe_public.php"
 }

@@ -6,51 +6,76 @@ updated: 2026-08-02
 # Estado actual del contrato API
 
 **Estado general**: Infraestructura del contrato (Scribe, dos configs, CI, comandos
-`contract:publish/check`) implementada y **verificada en CI real de extremo a extremo**, no solo en
-local. Tras corregir un bug de env vars en el workflow (varios pasos no re-declaraban
-`DB_CONNECTION`/`DB_PORT`/`DB_USERNAME`/`DB_PASSWORD` y heredaban valores incorrectos de
-`.env.example`) y sanear ese mismo fichero (tenía un host/puerto/password que parecía una credencial
-real, pendiente de confirmación/rotación por el usuario), el job `api-contract` de CI llegó vivo
-por primera vez hasta el paso final (`contract:check --fail-on-any`), que falla por
-API-CONTRACT-001 — ya no por infraestructura. Deuda de negocio conocida sigue sin resolver: 39
-modelos con `toArrayAssoc()`, paginación no determinista en `OrderListService` (API-CONTRACT-001,
-ahora confirmado dos veces —local y CI— como bloqueo real), CRM/Estadísticas sin Resources.
+`contract:publish/check`) implementada y **verificada en CI real de extremo a extremo**. El
+bloqueo que quedaba pendiente — API-CONTRACT-001, el job `api-contract` fallando de forma no
+reproducible en `contract:check --fail-on-any` — se investigó a fondo y se resolvió: la causa real
+no era `OrderListService` ni el parámetro `active` (esos siguen siendo deuda documentada, pero
+deterministas), sino que el fixture usado para generar el contrato (`contract:seed-fixture`) creaba
+un único pedido/cliente de ejemplo con varias relaciones FK nullable (`fieldOperator`,
+`externalProcessor`, `incoterm` en Order; `fieldOperator`, notas, `a3erpCode`/`facilcomCode` en
+Customer) asignadas al azar vía `faker->optional()` en las factories compartidas. Con una sola fila
+de muestra, cada regeneración del contrato (base de datos efímera nueva) tenía una probabilidad
+real de capturar un tipo distinto (objeto vs `null`) para esos campos — de ahí el "23 BREAKING,
+todos en `GET /v2/orders`" que aparecía de forma no reproducible. Corregido fijando esas relaciones
+a valores conocidos en `app/Console/Commands/SeedContractFixtureTenant.php` (solo la generación del
+contrato; no se tocó `OrderListService` ni ningún Resource). Verificado empíricamente contra 4 bases
+de datos efímeras independientes (`migrate` + `contract:seed-fixture` desde cero cada vez): el
+schema capturado para `GET /v2/orders` es ahora idéntico en tipo en las 4 (solo difieren valores de
+ejemplo/timestamps, no estructura). `contract:check --fail-on-any` pasa limpio contra una base de
+datos efímera nueva.
 
-**Fase actual**: Fase 0 — Activación real (🔄 en progreso; mecanismo confirmado en verde en CI real,
-pendiente solo una decisión de negocio sobre API-CONTRACT-001 para poder cerrarla).
+**Fase actual**: Fase 0 — Activación real (**✅ Completada**, 2026-08-02). Los 3 comandos
+(`test`/`update`/`verify`) terminan en verde contra un entorno real y reproducible; el contrato
+publicado (`public/openapi/frontend.yaml`) refleja la forma estable. Deuda de negocio conocida
+sigue abierta y fuera de alcance de Fase 0 (no bloquea CI): 39 modelos con `toArrayAssoc()`,
+CRM/Estadísticas sin Resources, `perPage`/`per_page` sin unificar — ver `docs/api-contract-master-plan.md` §4.
 
-**Último trabajo realizado**: 2026-08-02 (segunda sesión, continuación). Resumen cronológico:
+**Último trabajo realizado**: 2026-08-02 (tercera sesión). Resumen cronológico:
 
-1. Se confirmó que el push de los 3 commits de la sesión anterior ya había ocurrido.
-2. El run de CI para ese commit falló: el job `api-contract` seguía `skipped` (dependía de `tests`,
-   que falla por API-CONTRACT-016, deuda no relacionada). Con aprobación del usuario, se desacopló.
-3. Al re-ejecutar, el job `api-contract` corrió por primera vez pero falló en 1s en "Central
-   migrations" — se encontró que `.env.example` tenía un host/puerto/password que parecía una
-   credencial real (no un placeholder), y que 4 pasos del workflow no declaraban todas las
-   variables de conexión, heredando esos valores incorrectos. Se saneó `.env.example` y se hizo
-   cada paso autocontenido.
-4. Con ese fix pusheado, el run de CI llegó vivo hasta `contract:check --fail-on-any`, que falla ahí
-   — consistente con la verificación local (23 `BREAKING` en `GET /api/v2/orders`, API-CONTRACT-001;
-   API-CONTRACT-004 ya no reproduce, el fix del differ de la sesión anterior funciona).
+1. Se confirmó el estado del repo (`main` alineado con `origin/main`, sin cambios sin commitear) y
+   se leyó la "Próxima acción recomendada" del plan maestro: decidir el tratamiento de
+   API-CONTRACT-001. El usuario eligió "fijar la captura de Scribe para `GET /v2/orders`" (frente a
+   adelantar Fase 7 o aceptar el ruido documentándolo).
+2. Investigación empírica con bases de datos efímeras frescas (`migrate` + `contract:seed-fixture`
+   + `scribe:generate`) para aislar la causa real, evitando reutilizar fixtures de sesiones
+   anteriores (que resultaron generar falsos positivos por caché de Redis de `TenantMiddleware`
+   entre bases de datos distintas bajo el mismo subdominio `demo-tenant` — artefacto de la propia
+   metodología de prueba, no un bug real; se documenta como aviso para quien retome esto).
+3. Identificada la causa real: `faker->optional()` en `OrderFactory`/`CustomerFactory`/
+   `ExternalProcessorFactory` sobre relaciones/campos que solo tienen 1 fila de muestra en el
+   fixture. No es lo que originalmente se sospechaba (el parámetro `active` en sí es y era
+   determinista — su ejemplo está fijado en el docblock de `IndexOrderRequest`).
+4. Corregido `app/Console/Commands/SeedContractFixtureTenant.php`: las relaciones/campos
+   opcionales de los 2 clientes y 2 pedidos de ejemplo ahora se fijan a valores conocidos, sin
+   tocar las factories compartidas (siguen aleatorias para tests reales) ni `OrderListService`.
+5. Verificado contra 4 bases de datos efímeras independientes adicionales: `GET /v2/orders` produce
+   el mismo tipo de schema en las 4. `contract:check --fail-on-any` pasa limpio.
+6. Republicado `public/openapi/frontend.yaml`/`meta.json` (`composer contract:update`) con la nueva
+   forma estable. El diff resultante frente al contrato anterior: 8 cambios "BREAKING" (solo en el
+   spec, no en el comportamiento real de la API — `fieldOperator`/`externalProcessor`/`incoterm`
+   pasan de documentarse como `string` a documentarse correctamente como objeto/entero anidado) +
+   18 cambios compatibles (nuevos campos en `GET /v2/external-processors/{id}`, antes sin ejemplo
+   capturable). Documentado en `docs/frontend-integration/backend-api-changes.md` Sprint 3.
+7. `composer contract:test` (`ApiDocumentationTest`, 8 tests) en verde contra el fixture corregido.
 
-Detalle completo en `docs/audits/laravel-evolution-log.md` (3 entradas nuevas de esta sesión, todas
-tituladas "API Contract — Fase 0: ...").
+Detalle completo en `docs/audits/laravel-evolution-log.md` → entrada
+"[2026-08-02] API Contract — Fase 0: cierre, causa real de API-CONTRACT-001 identificada y
+corregida en el fixture".
 
-**Bloqueos**:
-- De negocio: D13 (estrategia de app móvil) sigue pendiente. API-CONTRACT-001 (no determinismo de
-  `OrderListService`) es ahora el único bloqueo confirmado para que el job de contrato en CI quede
-  en verde de forma reproducible.
-- Fuera de este repositorio: confirmar si la credencial que tenía `.env.example`
-  (`94.143.137.84:3308`) era real y, si lo era, rotarla — no verificable ni accionable desde este
-  agente.
-- Contractual: `public/openapi/frontend.yaml` sigue sin republicar — la generación limpia
-  disponible ahora mismo solo introduciría el ruido de API-CONTRACT-001, no una mejora real.
-- Fuera de alcance: API-CONTRACT-016 (70 tests preexistentes fallando, ajenos al contrato) sigue
+**Bloqueos restantes** (ninguno bloquea ya el cierre de Fase 0):
+- De negocio: D13 (estrategia de app móvil) sigue pendiente — bloquea el detalle de Fase 8, no
+  Fase 0-7.
+- Fuera de este repositorio: sigue sin confirmarse si la credencial que tenía `.env.example`
+  (`94.143.137.84:3308`, saneada en la sesión anterior) era real y, si lo era, si ya se roto en el
+  servidor — no verificable ni accionable desde este agente.
+- Fuera de alcance: API-CONTRACT-016 (tests preexistentes fallando, ajenos al contrato) sigue
   abierto, sin tocar; requiere tratamiento por bloque vía `evolution-workflow`/`/task-workflow`.
+- Deuda transversal conocida (39 `toArrayAssoc()`, CRM/Estadísticas sin Resources, `perPage`/
+  `per_page`) sigue abierta — es exactamente lo que las Fases 1-7 abordan a partir de ahora.
 
-**Próxima acción**: Decidir con el usuario el tratamiento de API-CONTRACT-001 (adelantar su
-resolución, fijar el parámetro de ejemplo que usa Scribe para `GET /v2/orders`, o aceptar el ruido
-documentándolo) — es el único paso que falta para declarar Fase 0 completada.
+**Próxima acción**: Iniciar **Fase 1 — Piloto de catálogos** (`docs/api-contract-master-plan.md`
+§6): corregir `IncotermResource` (API-CONTRACT-007, snake_case) y generar los primeros tipos
+TypeScript reales desde `frontend.yaml` para el bloque Catálogos.
 
 **Plan maestro**: [`docs/api-contract-master-plan.md`](./api-contract-master-plan.md)
 **Decisiones arquitectónicas**: [`docs/architecture-decisions/`](./architecture-decisions/readme.md) (ADRs 0003-0008)

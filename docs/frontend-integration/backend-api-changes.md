@@ -154,13 +154,56 @@ algo los está consumiendo hoy, es una integración fuera de contrato que deber�
 
 ---
 
-## Sprint 3 (pendiente)
+## Sprint 3 — 2026-08-02 (Contrato API — Fase 0, estabilización de `GET /v2/orders`)
+
+### Resumen de cambios visibles al frontend
+
+| Cambio | Tipo | Endpoints afectados | Acción requerida |
+|---|---|---|---|
+| `fieldOperator`/`externalProcessor`/`incoterm` (y sus `*Id`) documentados correctamente como objeto/entero anidado en vez de `string` | **Breaking** (solo en el spec; el comportamiento en producción no cambió) | `GET /v2/orders`, `GET /v2/orders/{id}`, `GET /v2/customers/{id}` | Si generaste tipos TS desde una versión anterior de `frontend.yaml`, regenéralos |
+
+### 1. Tipos de `fieldOperator`, `externalProcessor`, `incoterm` corregidos en el spec (breaking solo documental)
+
+**Fecha**: 2026-08-02
+**Motivación**: no es un cambio de comportamiento de la API — `OrderResource`/`CustomerResource`
+siempre devolvieron estos campos como objeto anidado (o `null` si la relación no aplica). El
+`public/openapi/frontend.yaml` anterior los documentaba incorrectamente como `type: string` porque
+el fixture usado por `php artisan contract:seed-fixture` (base de datos desechable que Scribe usa
+para capturar ejemplos reales) creaba un único pedido/cliente con estas relaciones FK asignadas al
+azar (`faker->optional()`), y con una sola fila de muestra la probabilidad de que el ejemplo
+capturado saliera `null` era alta — un valor `null` sin contexto adicional se documentaba con un
+tipo poco informativo. Esto también hacía que el job `api-contract` de CI (`contract:check
+--fail-on-any`) fallara de forma no reproducible en cada ejecución (base de datos efímera nueva en
+cada run ⇒ nueva probabilidad al azar), ver `API-CONTRACT-001` en
+`docs/api-contract-master-plan.md`. Corregido fijando estas relaciones a valores conocidos en
+`app/Console/Commands/SeedContractFixtureTenant.php` (solo afecta a la generación del contrato, no
+a `OrderListService` ni a ningún Resource).
+
+**Documentado antes** (`GET /v2/orders`, ejemplo):
+```json
+{ "fieldOperator": "algún string", "fieldOperatorId": "algún string", "externalProcessor": "...", "incoterm": "..." }
+```
+
+**Documentado ahora** (refleja lo que la API siempre devolvió):
+```json
+{
+  "fieldOperator": { "id": 1, "name": "...", "emails": [...] },
+  "fieldOperatorId": 1,
+  "externalProcessor": { "id": 1, "name": "...", "legalName": "...", "...": "..." },
+  "externalProcessorId": 1,
+  "incoterm": { "id": 1, "code": "...", "description": "..." }
+}
+```
+
+**Acción requerida por el frontend**: si ya generaste tipos TypeScript desde una versión anterior
+de `frontend.yaml` para `GET /v2/orders`, `GET /v2/orders/{id}` o `GET /v2/customers/{id}`,
+regenéralos — el runtime real de la API no cambia, solo la precisión del tipo documentado.
 
 ---
 
-## Sprint 3 (pendiente)
+## Sprint 4 (pendiente)
 
-*Se actualizará cuando se implementen los cambios de Sprint 3.*
+*Se actualizará cuando se implementen los cambios de Sprint 4.*
 
 ---
 

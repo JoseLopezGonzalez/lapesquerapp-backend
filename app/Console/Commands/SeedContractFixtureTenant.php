@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use App\Enums\Role;
 use App\Models\CaptureZone;
 use App\Models\Customer;
+use App\Models\ExternalProcessor;
+use App\Models\FieldOperator;
 use App\Models\FishingGear;
 use App\Models\Incident;
 use App\Models\Incoterm;
@@ -111,6 +113,18 @@ class SeedContractFixtureTenant extends Command
             fn () => Store::factory()->count(1)->create(),
             fn () => Supplier::factory()->count(1)->create(),
             fn () => Product::factory()->count(2)->create(),
+            // FieldOperator/ExternalProcessor: sembrados aquí explícitamente (en vez de dejar
+            // que Customer/OrderFactory los creen bajo demanda vía optional()) para que existan
+            // SIEMPRE que se asignen más abajo — ver comentario en la asignación de Customer/Order.
+            // Sus propios campos opcionales (legalName, sanitaryRegistrationNumber, notes) se
+            // fijan aquí por el mismo motivo: con una sola fila, faker->optional() decide al
+            // azar si salen como string o null en cada regeneración del contrato.
+            fn () => FieldOperator::factory()->count(1)->create(),
+            fn () => ExternalProcessor::factory()->count(1)->create([
+                'legal_name' => 'Maquilador Fixture Legal S.L.',
+                'sanitary_registration_number' => '12.34567/AB',
+                'notes' => 'Procesador de fixture para el contrato OpenAPI.',
+            ]),
         ] as $seedStep) {
             try {
                 $seedStep();
@@ -120,10 +134,45 @@ class SeedContractFixtureTenant extends Command
         }
 
         try {
-            $customers = Customer::factory()->count(2)->create();
+            // Las relaciones nullable de Customer/Order (fieldOperator, externalProcessor,
+            // incoterm) usan faker->optional() en sus factories: con una única fila de fixture,
+            // eso convierte cada regeneración del contrato en una moneda al aire sobre si el
+            // campo sale como tipo concreto o `null`, produciendo diffs "BREAKING" fantasma en
+            // CI (API-CONTRACT-001) cada vez que se recrea la base de datos efímera. Aquí se
+            // fijan explícitamente a un valor conocido para que la forma capturada por Scribe
+            // sea la misma en cualquier generación futura, sin tocar OrderListService ni las
+            // factories compartidas (que deben seguir siendo aleatorias para tests reales).
+            $fieldOperatorId = FieldOperator::query()->value('id');
+            $externalProcessorId = ExternalProcessor::query()->value('id');
+            $incotermId = Incoterm::query()->value('id');
 
-            $pending = Order::factory()->pending()->create(['customer_id' => $customers->first()->id]);
-            Order::factory()->finished()->create(['customer_id' => $customers->last()->id]);
+            $customers = Customer::factory()->count(2)->create([
+                'field_operator_id' => $fieldOperatorId,
+                'transportation_notes' => 'Notas de transporte de fixture.',
+                'production_notes' => 'Notas de producción de fixture.',
+                'accounting_notes' => 'Notas de contabilidad de fixture.',
+                'a3erp_code' => 'A3999',
+                'facilcom_code' => 'FC999',
+            ]);
+
+            $pending = Order::factory()->pending()->create([
+                'customer_id' => $customers->first()->id,
+                'field_operator_id' => $fieldOperatorId,
+                'external_processor_id' => $externalProcessorId,
+                'incoterm_id' => $incotermId,
+                'transportation_notes' => 'Notas de transporte de fixture.',
+                'production_notes' => 'Notas de producción de fixture.',
+                'accounting_notes' => 'Notas de contabilidad de fixture.',
+            ]);
+            Order::factory()->finished()->create([
+                'customer_id' => $customers->last()->id,
+                'field_operator_id' => $fieldOperatorId,
+                'external_processor_id' => $externalProcessorId,
+                'incoterm_id' => $incotermId,
+                'transportation_notes' => 'Notas de transporte de fixture.',
+                'production_notes' => 'Notas de producción de fixture.',
+                'accounting_notes' => 'Notas de contabilidad de fixture.',
+            ]);
 
             Incident::factory()->create(['order_id' => $pending->id]);
         } catch (\Throwable $e) {
