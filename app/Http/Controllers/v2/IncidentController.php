@@ -23,7 +23,7 @@ class IncidentController extends Controller
             ], 404);
         }
 
-        return response()->json($order->incident);
+        return response()->json($order->incident->toArrayAssoc());
     }
 
     public function store(StoreIncidentRequest $request, $orderId)

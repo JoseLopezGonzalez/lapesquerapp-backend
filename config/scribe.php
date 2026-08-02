@@ -114,7 +114,15 @@ return [
     // How is your API authenticated? This information will be used in the displayed docs, generated examples and response calls.
     'auth' => [
         'enabled' => true,
-        'default' => false,
+        // La inmensa mayoría de rutas de negocio requieren auth:sanctum; solo un puñado
+        // (login, magic-link/OTP, fichaje NFC, lookup público de tenant) no la requieren y
+        // están marcadas explícitamente con @unauthenticated en su controlador. Con
+        // 'default' => false (valor por defecto de Scribe), ResponseCalls no adjunta el
+        // Bearer token salvo que la ruta esté anotada @authenticated — como casi ninguna de
+        // las 242 Form Requests lo está, TODAS las rutas protegidas devolvían 401 durante la
+        // generación y el spec quedaba sin ejemplos de respuesta reales. 'default' => true
+        // invierte la asunción para que coincida con la realidad del proyecto.
+        'default' => true,
         'in' => AuthIn::BEARER->value,
         'name' => 'Authorization',
         'use_value' => env('SCRIBE_AUTH_TOKEN', 'your-token-here'),
@@ -242,9 +250,16 @@ return [
         ],
     ],
 
-    // Empty to avoid requiring DB when generating docs (e.g. in CI or when DB is not running).
-    // When using response calls with a running DB, you can set to [config('database.default')].
-    'database_connections_to_transact' => [],
+    // Cada ResponseCall se envuelve en una transacción que se revierte al terminar esa
+    // llamada concreta. Sin esto, el models_source `factoryCreate` (ver `examples` más abajo)
+    // persiste modelos de ejemplo efímeros en la BD de generación en cada ejecución, lo que
+    // hace que sucesivas generaciones devuelvan datos distintos (IDs auto-incrementales
+    // desplazándose, relaciones que aparecen o desaparecen según qué fila se cree de más) y
+    // rompe la reproducibilidad del contrato (contract:check reportaría falsos "breaking
+    // changes" sin que el código haya cambiado). Requiere una conexión con transacciones
+    // (MySQL real, no aplica si no hay BD disponible — en ese caso usar `--no-response-calls`
+    // o dejar este array vacío temporalmente).
+    'database_connections_to_transact' => ['tenant', 'mysql'],
 
     'fractal' => [
         // If you are using a custom serializer with league/fractal, you can specify it here.

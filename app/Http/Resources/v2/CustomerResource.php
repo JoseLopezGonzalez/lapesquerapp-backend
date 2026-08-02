@@ -14,6 +14,9 @@ class CustomerResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return parent::toArrayAssoc();
+        // Nota: Customer::toArrayAssoc() serializa relaciones anidadas (paymentTerm, salesperson, etc.)
+        // condicionalmente vía relationLoaded(). No usar parent::toArrayAssoc() (magic __call, opaco
+        // para IDE/análisis estático/generación OpenAPI): llamar explícitamente al modelo subyacente.
+        return $this->resource->toArrayAssoc();
     }
 }

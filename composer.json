@@ -64,6 +64,15 @@
         ],
         "post-create-project-cmd": [
             "@php artisan key:generate --ansi"
+        ],
+        "contract:update": [
+            "@php artisan contract:publish"
+        ],
+        "contract:verify": [
+            "@php artisan contract:check"
+        ],
+        "contract:test": [
+            "@php artisan test --filter=ApiDocumentationTest"
         ]
     },
     "extra": {

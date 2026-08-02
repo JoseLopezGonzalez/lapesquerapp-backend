@@ -16,7 +16,9 @@ class UpdateProfileRequest extends FormRequest
 
     public function rules(): array
     {
-        $userId = $this->user()->id;
+        // Null-safe: rules() puede ejecutarse fuera de un contexto autenticado real
+        // (introspección de Scribe/OpenAPI), no solo en la request HTTP real.
+        $userId = $this->user()?->id;
 
         return [
             'name' => 'sometimes|string|max:255',

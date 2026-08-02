@@ -5,6 +5,14 @@ namespace App\Http\Requests\v2;
 use App\Models\Order;
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * @queryParam active string Deprecated: cuando se envía, la respuesta cambia de forma (`{ data: [...] }`
+ *   sin `links`/`meta`, en vez del sobre de paginación estándar completo). Usa `GET /v2/orders/active`
+ *   para el listado de pedidos activos (forma estable, ActiveOrderCardResource). Example: true
+ * @queryParam perPage integer Elementos por página (máx. 100). Example: 15
+ * @queryParam status string Filtra por estado. Example: pending
+ * @queryParam orderType string Filtra por tipo de pedido. Example: standard
+ */
 class IndexOrderRequest extends FormRequest
 {
     public function authorize(): bool

@@ -30,6 +30,19 @@ class OrderListService
      * Listado de pedidos: rama active (true/false) sin paginar, o listado filtrado paginado.
      * Misma lógica que OrderController::index().
      *
+     * CONTRATO NO DETERMINISTA (deuda documentada, ver docs/api-contract.md §5):
+     * cuando la request trae `active`, GET /v2/orders devuelve `{ data: [...] }` sin `links`
+     * ni `meta` (colección sin paginar); en caso contrario devuelve el sobre de paginación
+     * estándar completo (`data`, `links`, `meta`). Ambas ramas se sirven bajo la misma
+     * OrderResource dentro de `data`, pero un cliente TypeScript generado a partir de una
+     * sola observación no cubre la otra rama (una espera `links`/`meta` presentes, la otra no).
+     * No se ha cambiado el comportamiento en esta intervención por el riesgo de romper el
+     * frontend actual (Order Manager). Para pedidos activos, usar preferentemente el endpoint
+     * dedicado `GET /v2/orders/active` (OrderListService::active(), ver más abajo), que ya
+     * devuelve una forma única y estable (ActiveOrderCardResource). El parámetro `active` en
+     * este método se mantiene por compatibilidad y se documenta como deprecated en Scribe
+     * (@see \App\Http\Requests\v2\IndexOrderRequest).
+     *
      * @return Collection<int, Order>|LengthAwarePaginator
      */
     public static function list(Request $request): Collection|LengthAwarePaginator

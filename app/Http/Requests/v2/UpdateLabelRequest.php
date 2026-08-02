@@ -18,8 +18,10 @@ class UpdateLabelRequest extends FormRequest
     {
         $label = $this->route('label');
 
+        // Null-safe: rules() puede ejecutarse sin binding de ruta resuelto
+        // (introspección de Scribe/OpenAPI), no solo en la request HTTP real.
         return [
-            'name' => 'sometimes|required|string|max:255|unique:tenant.labels,name,' . $label->id,
+            'name' => 'sometimes|required|string|max:255|unique:tenant.labels,name,'.$label?->id,
             'format' => 'nullable|array',
         ];
     }
