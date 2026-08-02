@@ -3,14 +3,13 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class RawMaterial extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = [
         'id',
@@ -22,7 +21,7 @@ class RawMaterial extends Model
 
     public function product()
     {
-        return $this->belongsTo(Product::class , 'id');
+        return $this->belongsTo(Product::class, 'id');
     }
 
     public function toArrayAssoc()

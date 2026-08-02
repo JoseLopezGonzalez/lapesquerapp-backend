@@ -15,12 +15,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasTable('users')) {
+        if (! Schema::hasTable('users')) {
             return;
         }
 
         // 1. Añadir columna role (nullable para poder migrar)
-        if (!Schema::hasColumn('users', 'role')) {
+        if (! Schema::hasColumn('users', 'role')) {
             Schema::table('users', function (Blueprint $table) {
                 $table->string('role', 50)->nullable()->after('company_logo_url');
             });
@@ -92,7 +92,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (!Schema::hasTable('users') || !Schema::hasColumn('users', 'role')) {
+        if (! Schema::hasTable('users') || ! Schema::hasColumn('users', 'role')) {
             return;
         }
         Schema::table('users', function (Blueprint $table) {

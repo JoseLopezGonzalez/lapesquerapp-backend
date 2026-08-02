@@ -18,10 +18,10 @@ class ProductFamilyFactory extends Factory
         $names = ['Bacalao', 'Merluza', 'Salmón', 'Boquerón', 'Sardina', 'Atún', 'Pulpo', 'Sepia', 'Mejillón', 'Gamba'];
 
         return [
-            'name'        => $this->faker->unique()->randomElement($names) . ' ' . $this->faker->numberBetween(1, 99),
+            'name' => $this->faker->unique()->randomElement($names).' '.$this->faker->numberBetween(1, 99),
             'description' => $this->faker->optional(0.5)->sentence(),
             'category_id' => ProductCategory::query()->value('id') ?? ProductCategory::factory(),
-            'active'      => true,
+            'active' => true,
         ];
     }
 

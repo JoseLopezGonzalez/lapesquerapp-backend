@@ -42,11 +42,11 @@ class CeboDispatchListService
 
         if ($request->has('dates')) {
             $dates = $request->input('dates');
-            if (!empty($dates['start'])) {
+            if (! empty($dates['start'])) {
                 $startDate = date('Y-m-d 00:00:00', strtotime($dates['start']));
                 $query->where('date', '>=', $startDate);
             }
-            if (!empty($dates['end'])) {
+            if (! empty($dates['end'])) {
                 $endDate = date('Y-m-d 23:59:59', strtotime($dates['end']));
                 $query->where('date', '<=', $endDate);
             }
@@ -65,7 +65,7 @@ class CeboDispatchListService
         }
 
         if ($request->filled('notes')) {
-            $query->where('notes', 'like', '%' . $request->notes . '%');
+            $query->where('notes', 'like', '%'.$request->notes.'%');
         }
 
         if ($request->filled('export_type')) {

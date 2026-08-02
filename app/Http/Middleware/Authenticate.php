@@ -14,6 +14,4 @@ class Authenticate extends Middleware
     {
         return null; // Nunca redirige a login
     }
-
-   
 }

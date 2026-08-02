@@ -28,13 +28,14 @@ class DynamicCorsMiddleware
     {
         $origin = $request->headers->get('Origin');
 
-        if (!$origin) {
+        if (! $origin) {
             return $next($request);
         }
 
-        if (!$this->pathMatches($request)) {
+        if (! $this->pathMatches($request)) {
             $response = $next($request);
             $response->headers->set('Vary', 'Origin');
+
             return $response;
         }
 
@@ -73,7 +74,7 @@ class DynamicCorsMiddleware
      */
     private function handleWithStatic(Request $request, Closure $next, string $origin): Response
     {
-        if (!$this->originMatchesStatic($origin)) {
+        if (! $this->originMatchesStatic($origin)) {
             return $this->rejectCors($request, $next);
         }
 
@@ -100,7 +101,7 @@ class DynamicCorsMiddleware
 
         $subdomain = $this->extractSubdomain($origin);
 
-        if (!$subdomain || !$this->isActiveTenant($subdomain)) {
+        if (! $subdomain || ! $this->isActiveTenant($subdomain)) {
             return $this->rejectCors($request, $next);
         }
 
@@ -143,10 +144,10 @@ class DynamicCorsMiddleware
         $host = $parsed['host'] ?? '';
 
         foreach ($baseDomains as $base) {
-            $suffix = '.' . $base;
+            $suffix = '.'.$base;
             if (str_ends_with($host, $suffix)) {
                 $sub = substr($host, 0, -strlen($suffix));
-                if ($sub !== '' && !str_contains($sub, '.')) {
+                if ($sub !== '' && ! str_contains($sub, '.')) {
                     return $sub;
                 }
             }
@@ -177,7 +178,7 @@ class DynamicCorsMiddleware
         }
 
         $exposed = $this->corsConfig['exposed_headers'] ?? [];
-        if (!empty($exposed)) {
+        if (! empty($exposed)) {
             $response->headers->set('Access-Control-Expose-Headers', implode(', ', $exposed));
         }
 

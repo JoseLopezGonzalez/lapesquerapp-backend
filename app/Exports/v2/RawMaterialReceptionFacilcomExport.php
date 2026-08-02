@@ -4,21 +4,21 @@ namespace App\Exports\v2;
 
 use App\Models\RawMaterialReception;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\WithStyles;
-
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings, WithMapping, WithStyles
 {
     use Exportable;
 
     protected $filters;
+
     protected $limit;
+
     protected $index;
 
     public function __construct(Request $request, $limit = null)
@@ -54,7 +54,7 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         // Para optimizar memoria, usamos eager loading con with() y limitamos con ->limit() si es necesario.
         return $query->with([
             'supplier',
-            'products.product'
+            'products.product',
         ])->get();
     }
 
@@ -109,7 +109,7 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
 
         // Filtro por notas
         if (isset($filters['notes'])) {
-            $query->where('notes', 'like', '%' . $filters['notes'] . '%');
+            $query->where('notes', 'like', '%'.$filters['notes'].'%');
         }
     }
 
@@ -132,7 +132,7 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
     {
         // Mejorar el manejo de relaciones nulas (igual que BoxesReportExport)
         $supplier = $reception->supplier;
-        
+
         $rows = [];
 
         // Procesar todas las recepciones, incluso si no tienen códigos
@@ -140,7 +140,7 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         // Agregar productos regulares
         foreach ($reception->products as $product) {
             $productModel = $product->product;
-            
+
             $rows[] = [
                 $this->index, // Mismo código para toda la recepción
                 $reception->date ? date('d/m/Y', strtotime($reception->date)) : '-',
@@ -184,10 +184,10 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         $highestColumn = $sheet->getHighestColumn();
 
         // Solo negrita para encabezados
-        $sheet->getStyle('A1:' . $highestColumn . '1')->applyFromArray([
+        $sheet->getStyle('A1:'.$highestColumn.'1')->applyFromArray([
             'font' => [
-                'bold' => true
-            ]
+                'bold' => true,
+            ],
         ]);
 
         // Formato de números para columnas de peso y precio (G y H)
@@ -201,14 +201,14 @@ class RawMaterialReceptionFacilcomExport implements FromCollection, WithHeadings
         // Colorear de amarillo las celdas con datos faltantes ("-")
         for ($row = 2; $row <= $highestRow; $row++) {
             for ($col = 'A'; $col <= $highestColumn; $col++) {
-                $cellValue = $sheet->getCell($col . $row)->getValue();
+                $cellValue = $sheet->getCell($col.$row)->getValue();
                 if ($cellValue === '-') {
-                    $sheet->getStyle($col . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-                    $sheet->getStyle($col . $row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
+                    $sheet->getStyle($col.$row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+                    $sheet->getStyle($col.$row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
                 }
             }
         }
 
         return [];
     }
-} 
+}

@@ -17,7 +17,7 @@ class StoredBoxFactory extends Factory
     public function definition(): array
     {
         return [
-            'box_id'   => Box::query()->value('id') ?? Box::factory(),
+            'box_id' => Box::query()->value('id') ?? Box::factory(),
             'store_id' => Store::query()->where('type', 'interno')->value('id')
                 ?? Store::factory(),
             'position' => $this->faker->optional(0.7)->numberBetween(1, 100),

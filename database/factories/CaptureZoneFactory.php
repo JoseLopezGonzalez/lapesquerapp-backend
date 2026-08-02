@@ -20,7 +20,7 @@ class CaptureZoneFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'Zona ' . $this->faker->unique()->bothify('FAO-##'),
+            'name' => 'Zona '.$this->faker->unique()->bothify('FAO-##'),
         ];
     }
 }

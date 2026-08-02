@@ -43,7 +43,7 @@ class PdfExtractionService
                 ! $this->startsWithDigit(trim($lines[$i + 1])) &&
                 ! $this->isLikelyNewSection($lines[$i + 1])
             ) {
-                $line .= ' ' . trim($lines[$i + 1]);
+                $line .= ' '.trim($lines[$i + 1]);
                 $i += 2;
             } else {
                 $i++;

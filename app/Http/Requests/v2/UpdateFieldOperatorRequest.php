@@ -46,6 +46,7 @@ class UpdateFieldOperatorRequest extends FormRequest
                     $user = User::find($value);
                     if (! $user || $user->role !== Role::RepartidorAutoventa->value) {
                         $fail('El usuario enlazado debe tener rol repartidor/autoventa.');
+
                         return;
                     }
 

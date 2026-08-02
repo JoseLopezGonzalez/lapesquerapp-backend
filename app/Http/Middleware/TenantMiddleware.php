@@ -17,7 +17,7 @@ class TenantMiddleware
     {
         $subdomain = $request->header('X-Tenant');
 
-        if (!$subdomain) {
+        if (! $subdomain) {
             return response()->json(['error' => 'Tenant not specified'], 400);
         }
 
@@ -25,7 +25,7 @@ class TenantMiddleware
             return Tenant::where('subdomain', $subdomain)->first();
         });
 
-        if (!$tenant) {
+        if (! $tenant) {
             return response()->json(['error' => 'Tenant not found'], 404);
         }
 
@@ -73,7 +73,7 @@ class TenantMiddleware
 
         // Actualizar last_activity_at con throttle (máximo una vez cada 5 minutos por tenant)
         $activityKey = "tenant_activity:{$tenant->id}";
-        if (!Cache::has($activityKey)) {
+        if (! Cache::has($activityKey)) {
             Cache::put($activityKey, true, 300);
             DB::connection('mysql')->table('tenants')
                 ->where('id', $tenant->id)
@@ -83,7 +83,7 @@ class TenantMiddleware
         if (config('app.debug')) {
             Log::info('Tenant connection established', [
                 'subdomain' => $subdomain,
-                'database'  => $tenant->database,
+                'database' => $tenant->database,
             ]);
         }
 

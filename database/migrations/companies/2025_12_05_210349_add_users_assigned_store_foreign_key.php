@@ -2,14 +2,14 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Agrega la foreign key para assigned_store_id en users.
      * onDelete('set null') permite que un usuario quede sin almacén asignado
      * si se elimina el almacén.
@@ -22,15 +22,15 @@ return new class extends Migration
 
         Schema::table('users', function (Blueprint $table) {
             // Verificar si la columna existe
-            if (!Schema::hasColumn('users', 'assigned_store_id')) {
+            if (! Schema::hasColumn('users', 'assigned_store_id')) {
                 $table->unsignedBigInteger('assigned_store_id')->nullable()->after('email_verified_at');
             }
         });
-        
+
         // Limpiar datos inválidos: usuarios con assigned_store_id que no existe en stores
         if (Schema::hasTable('users') && Schema::hasTable('stores')) {
             $validStoreIds = DB::table('stores')->pluck('id')->toArray();
-            if (!empty($validStoreIds)) {
+            if (! empty($validStoreIds)) {
                 DB::table('users')
                     ->whereNotNull('assigned_store_id')
                     ->whereNotIn('assigned_store_id', $validStoreIds)
@@ -42,7 +42,7 @@ return new class extends Migration
                     ->update(['assigned_store_id' => null]);
             }
         }
-        
+
         // Eliminar FK existente si existe (usando SQL directo para evitar errores)
         try {
             $fks = DB::select("
@@ -59,7 +59,7 @@ return new class extends Migration
         } catch (\Exception $e) {
             // La FK no existe o error al consultar, continuar
         }
-        
+
         // Verificar que la tabla stores existe antes de crear la FK
         if (Schema::hasTable('stores')) {
             // Crear la foreign key con onDelete('set null')

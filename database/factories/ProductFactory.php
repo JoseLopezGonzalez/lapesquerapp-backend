@@ -23,13 +23,13 @@ class ProductFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'Producto ' . $this->faker->unique()->words(2, true),
+            'name' => 'Producto '.$this->faker->unique()->words(2, true),
             'family_id' => ProductFamily::query()->value('id'),
             'species_id' => Species::query()->value('id') ?? Species::factory(),
             'capture_zone_id' => CaptureZone::query()->value('id') ?? CaptureZone::factory(),
-            'article_gtin' => $this->faker->numerify('84' . str_repeat('#', 11)),
-            'box_gtin' => $this->faker->numerify('984' . str_repeat('#', 11)),
-            'pallet_gtin' => $this->faker->numerify('984' . str_repeat('#', 11)),
+            'article_gtin' => $this->faker->numerify('84'.str_repeat('#', 11)),
+            'box_gtin' => $this->faker->numerify('984'.str_repeat('#', 11)),
+            'pallet_gtin' => $this->faker->numerify('984'.str_repeat('#', 11)),
             'a3erp_code' => $this->faker->optional(0.35)->numerify('10###'),
             'facil_com_code' => $this->faker->optional(0.45)->numerify('##'),
         ];

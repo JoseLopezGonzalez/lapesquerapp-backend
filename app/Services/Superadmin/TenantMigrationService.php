@@ -3,11 +3,10 @@
 namespace App\Services\Superadmin;
 
 use App\Jobs\MigrateTenantJob;
+use App\Models\SuperadminUser;
 use App\Models\Tenant;
 use App\Models\TenantMigrationRun;
-use App\Models\SuperadminUser;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +23,7 @@ class TenantMigrationService
         DB::reconnect('tenant');
 
         Artisan::call('migrate:status', [
-            '--path'     => 'database/migrations/companies',
+            '--path' => 'database/migrations/companies',
             '--database' => 'tenant',
         ]);
 
@@ -39,10 +38,10 @@ class TenantMigrationService
     public function runMigrations(Tenant $tenant, ?SuperadminUser $triggeredBy = null): TenantMigrationRun
     {
         $run = TenantMigrationRun::create([
-            'tenant_id'                  => $tenant->id,
+            'tenant_id' => $tenant->id,
             'triggered_by_superadmin_id' => $triggeredBy?->id,
-            'started_at'                 => now('UTC'),
-            'success'                    => false,
+            'started_at' => now('UTC'),
+            'success' => false,
         ]);
 
         MigrateTenantJob::dispatch($tenant->id, $triggeredBy?->id);
@@ -101,15 +100,15 @@ class TenantMigrationService
                 $parts = array_values($parts);
 
                 if (count($parts) >= 2) {
-                    $ran   = strtolower($parts[0] ?? '') === 'yes' || str_contains(strtolower($parts[0] ?? ''), 'ran');
-                    $name  = $parts[1] ?? '';
+                    $ran = strtolower($parts[0] ?? '') === 'yes' || str_contains(strtolower($parts[0] ?? ''), 'ran');
+                    $name = $parts[1] ?? '';
                     $batch = isset($parts[2]) && is_numeric($parts[2]) ? (int) $parts[2] : null;
 
                     if ($name) {
                         $migrations[] = [
                             'migration' => $name,
-                            'ran'       => $ran,
-                            'batch'     => $batch,
+                            'ran' => $ran,
+                            'batch' => $batch,
                         ];
                     }
                 }
@@ -121,21 +120,21 @@ class TenantMigrationService
             if (preg_match('/\[(Ran|Pending)\]\s+(.+)/i', $line, $m)) {
                 $migrations[] = [
                     'migration' => trim($m[2]),
-                    'ran'       => strtolower($m[1]) === 'ran',
-                    'batch'     => null,
+                    'ran' => strtolower($m[1]) === 'ran',
+                    'batch' => null,
                 ];
             }
         }
 
-        $pending = count(array_filter($migrations, fn ($m) => !$m['ran']));
-        $ran     = count(array_filter($migrations, fn ($m) => $m['ran']));
+        $pending = count(array_filter($migrations, fn ($m) => ! $m['ran']));
+        $ran = count(array_filter($migrations, fn ($m) => $m['ran']));
 
         return [
-            'migrations'     => $migrations,
-            'total'          => count($migrations),
-            'ran'            => $ran,
-            'pending'        => $pending,
-            'raw_output'     => $raw,
+            'migrations' => $migrations,
+            'total' => count($migrations),
+            'ran' => $ran,
+            'pending' => $pending,
+            'raw_output' => $raw,
         ];
     }
 }

@@ -14,6 +14,7 @@ class UpdateSettingsRequest extends FormRequest
 
     /**
      * Acepta un objeto/array de clave-valor. Sin whitelist estricta para no romper clientes.
+     *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array

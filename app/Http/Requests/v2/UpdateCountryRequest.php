@@ -19,7 +19,7 @@ class UpdateCountryRequest extends FormRequest
         $id = $this->route('country')?->getKey();
 
         return [
-            'name' => 'required|string|min:2|max:255|unique:tenant.countries,name,' . $id,
+            'name' => 'required|string|min:2|max:255|unique:tenant.countries,name,'.$id,
         ];
     }
 

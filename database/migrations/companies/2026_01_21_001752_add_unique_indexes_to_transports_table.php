@@ -8,20 +8,20 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Agrega constraints únicos en name y vat_number para asegurar que no se puedan crear
      * múltiples transportes con el mismo nombre o NIF dentro del mismo tenant.
      */
     public function up(): void
     {
-        if (!Schema::hasTable('transports')) {
+        if (! Schema::hasTable('transports')) {
             return;
         }
 
         // Verificar si ya existe el constraint único en name
         $hasNameUnique = false;
         $hasVatNumberUnique = false;
-        
+
         try {
             $indexes = \DB::select("SHOW INDEX FROM transports WHERE Key_name != 'PRIMARY'");
             foreach ($indexes as $index) {
@@ -35,17 +35,17 @@ return new class extends Migration
         } catch (\Exception $e) {
             // Si falla la consulta, asumimos que no existe y lo creamos
         }
-        
+
         Schema::table('transports', function (Blueprint $table) use ($hasNameUnique, $hasVatNumberUnique) {
-            if (!$hasNameUnique) {
+            if (! $hasNameUnique) {
                 try {
                     $table->unique('name');
                 } catch (\Exception $e) {
                     // El constraint ya existe, continuar
                 }
             }
-            
-            if (!$hasVatNumberUnique) {
+
+            if (! $hasVatNumberUnique) {
                 try {
                     $table->unique('vat_number');
                 } catch (\Exception $e) {
@@ -60,7 +60,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (!Schema::hasTable('transports')) {
+        if (! Schema::hasTable('transports')) {
             return;
         }
 
@@ -70,7 +70,7 @@ return new class extends Migration
             } catch (\Exception $e) {
                 // El constraint no existe, continuar
             }
-            
+
             try {
                 $table->dropUnique(['vat_number']);
             } catch (\Exception $e) {

@@ -51,6 +51,7 @@ class UpdateUserRequest extends FormRequest
                     $targetId = $param instanceof User ? $param->id : (int) $param;
                     if ($this->user()->id === $targetId) {
                         $fail('No puedes cambiar tu propio rol.');
+
                         return;
                     }
                     $elevatedRoles = [Role::Administrador->value, Role::Tecnico->value];

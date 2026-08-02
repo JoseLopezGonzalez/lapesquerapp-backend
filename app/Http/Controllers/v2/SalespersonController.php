@@ -45,9 +45,9 @@ class SalespersonController extends Controller
             $allEmails[] = trim($email);
         }
         foreach ($validated['ccEmails'] ?? [] as $ccEmail) {
-            $allEmails[] = 'CC:' . trim($ccEmail);
+            $allEmails[] = 'CC:'.trim($ccEmail);
         }
-        $validated['emails'] = count($allEmails) > 0 ? implode(";\n", $allEmails) . ';' : null;
+        $validated['emails'] = count($allEmails) > 0 ? implode(";\n", $allEmails).';' : null;
         unset($validated['ccEmails']);
 
         $salesperson = Salesperson::create($validated);
@@ -57,10 +57,6 @@ class SalespersonController extends Controller
             'data' => new SalespersonResource($salesperson),
         ], 201);
     }
-
-
-
-
 
     /**
      * Display the specified resource.
@@ -75,7 +71,6 @@ class SalespersonController extends Controller
             'data' => new SalespersonResource($salesperson),
         ]);
     }
-
 
     /**
      * Show the form for editing the specified resource.
@@ -100,9 +95,9 @@ class SalespersonController extends Controller
             $allEmails[] = trim($email);
         }
         foreach ($validated['ccEmails'] ?? [] as $ccEmail) {
-            $allEmails[] = 'CC:' . trim($ccEmail);
+            $allEmails[] = 'CC:'.trim($ccEmail);
         }
-        $validated['emails'] = count($allEmails) > 0 ? implode(";\n", $allEmails) . ';' : null;
+        $validated['emails'] = count($allEmails) > 0 ? implode(";\n", $allEmails).';' : null;
         unset($validated['ccEmails']);
 
         $salesperson->update($validated);
@@ -112,7 +107,6 @@ class SalespersonController extends Controller
             'data' => new SalespersonResource($salesperson),
         ]);
     }
-
 
     /**
      * Remove the specified resource from storage.
@@ -126,23 +120,26 @@ class SalespersonController extends Controller
 
         if ($usedInCustomers || $usedInOrders) {
             $reasons = [];
-            if ($usedInCustomers) $reasons[] = 'clientes';
-            if ($usedInOrders) $reasons[] = 'pedidos';
-            
+            if ($usedInCustomers) {
+                $reasons[] = 'clientes';
+            }
+            if ($usedInOrders) {
+                $reasons[] = 'pedidos';
+            }
+
             $reasonsText = implode(' y ', $reasons);
-            
+
             return response()->json([
                 'message' => 'No se puede eliminar el comercial porque está en uso',
-                'details' => 'El comercial está siendo utilizado en: ' . $reasonsText,
-                'userMessage' => 'No se puede eliminar el comercial porque está siendo utilizado en: ' . $reasonsText
+                'details' => 'El comercial está siendo utilizado en: '.$reasonsText,
+                'userMessage' => 'No se puede eliminar el comercial porque está siendo utilizado en: '.$reasonsText,
             ], 400);
         }
 
         $salesperson->delete();
+
         return response()->json(['message' => 'Comercial eliminado con éxito.']);
     }
-
-
 
     public function destroyMultiple(DestroyMultipleSalespeopleRequest $request)
     {
@@ -150,36 +147,40 @@ class SalespersonController extends Controller
 
         $validated = $request->validated();
         $salespeople = Salesperson::whereIn('id', $validated['ids'])->get();
-        
+
         // Validar si alguno de los comerciales está en uso
         $inUse = [];
         foreach ($salespeople as $salesperson) {
             $usedInCustomers = $salesperson->customers()->exists();
             $usedInOrders = $salesperson->orders()->exists();
-            
+
             if ($usedInCustomers || $usedInOrders) {
                 $reasons = [];
-                if ($usedInCustomers) $reasons[] = 'clientes';
-                if ($usedInOrders) $reasons[] = 'pedidos';
-                
+                if ($usedInCustomers) {
+                    $reasons[] = 'clientes';
+                }
+                if ($usedInOrders) {
+                    $reasons[] = 'pedidos';
+                }
+
                 $inUse[] = [
                     'id' => $salesperson->id,
                     'name' => $salesperson->name,
-                    'reasons' => implode(' y ', $reasons)
+                    'reasons' => implode(' y ', $reasons),
                 ];
             }
         }
 
-        if (!empty($inUse)) {
+        if (! empty($inUse)) {
             $message = 'No se pueden eliminar algunos comerciales porque están en uso: ';
-            $details = array_map(function($item) {
-                return $item['name'] . ' (usado en: ' . $item['reasons'] . ')';
+            $details = array_map(function ($item) {
+                return $item['name'].' (usado en: '.$item['reasons'].')';
             }, $inUse);
-            
+
             return response()->json([
                 'message' => 'No se pueden eliminar algunos comerciales porque están en uso',
                 'details' => implode(', ', $details),
-                'userMessage' => $message . implode(', ', array_column($inUse, 'name'))
+                'userMessage' => $message.implode(', ', array_column($inUse, 'name')),
             ], 400);
         }
 
@@ -187,8 +188,6 @@ class SalespersonController extends Controller
 
         return response()->json(['message' => 'Comerciales eliminados correctamente.']);
     }
-
-
 
     public function options(\Illuminate\Http\Request $request)
     {
@@ -207,5 +206,4 @@ class SalespersonController extends Controller
 
         return response()->json($salespeople);
     }
-    
 }

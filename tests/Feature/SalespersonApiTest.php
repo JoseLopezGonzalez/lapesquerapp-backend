@@ -12,10 +12,11 @@ use Tests\TestCase;
 
 class SalespersonApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?string $token = null;
+
     private ?string $tenantSubdomain = null;
 
     protected function setUp(): void
@@ -28,8 +29,8 @@ class SalespersonApiTest extends TestCase
 
     private function createTenantAndUser(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'salesperson-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'salesperson-'.uniqid();
         Tenant::create([
             'name' => 'Test Tenant Salesperson',
             'subdomain' => $slug,
@@ -39,7 +40,7 @@ class SalespersonApiTest extends TestCase
 
         $user = User::create([
             'name' => 'Test User',
-            'email' => $slug . '@test.com',
+            'email' => $slug.'@test.com',
             'password' => bcrypt('password'),
             'role' => Role::Administrador->value,
         ]);
@@ -52,7 +53,7 @@ class SalespersonApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $this->token,
+            'Authorization' => 'Bearer '.$this->token,
             'Accept' => 'application/json',
         ];
     }
@@ -68,7 +69,7 @@ class SalespersonApiTest extends TestCase
 
     public function test_can_create_salesperson(): void
     {
-        $name = 'Comercial Test ' . uniqid();
+        $name = 'Comercial Test '.uniqid();
         $response = $this->withHeaders($this->authHeaders())
             ->postJson('/api/v2/salespeople', [
                 'name' => $name,
@@ -82,11 +83,11 @@ class SalespersonApiTest extends TestCase
     public function test_can_show_salesperson(): void
     {
         $salesperson = Salesperson::create([
-            'name' => 'Comercial Show ' . uniqid(),
+            'name' => 'Comercial Show '.uniqid(),
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/salespeople/' . $salesperson->id);
+            ->getJson('/api/v2/salespeople/'.$salesperson->id);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.id', $salesperson->id);
@@ -96,12 +97,12 @@ class SalespersonApiTest extends TestCase
     public function test_can_update_salesperson(): void
     {
         $salesperson = Salesperson::create([
-            'name' => 'Comercial Update ' . uniqid(),
+            'name' => 'Comercial Update '.uniqid(),
         ]);
-        $newName = 'Comercial Actualizado ' . uniqid();
+        $newName = 'Comercial Actualizado '.uniqid();
 
         $response = $this->withHeaders($this->authHeaders())
-            ->putJson('/api/v2/salespeople/' . $salesperson->id, [
+            ->putJson('/api/v2/salespeople/'.$salesperson->id, [
                 'name' => $newName,
             ]);
 
@@ -113,11 +114,11 @@ class SalespersonApiTest extends TestCase
     public function test_can_destroy_salesperson_without_customers_or_orders(): void
     {
         $salesperson = Salesperson::create([
-            'name' => 'Comercial Destroy ' . uniqid(),
+            'name' => 'Comercial Destroy '.uniqid(),
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/salespeople/' . $salesperson->id);
+            ->deleteJson('/api/v2/salespeople/'.$salesperson->id);
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('salespeople', ['id' => $salesperson->id], 'tenant');

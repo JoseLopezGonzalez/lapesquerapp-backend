@@ -4,9 +4,9 @@ namespace Database\Seeders;
 
 use App\Models\CeboDispatch;
 use App\Models\Supplier;
+use Faker\Factory as Faker;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Schema;
-use Faker\Factory as Faker;
 
 /**
  * Despachos de cebo de desarrollo — entorno tipo producción.
@@ -22,6 +22,7 @@ class CeboDispatchSeeder extends Seeder
         $suppliers = Supplier::all();
         if ($suppliers->isEmpty()) {
             $this->command?->warn('CeboDispatchSeeder: Ejecuta antes SupplierSeeder.');
+
             return;
         }
 

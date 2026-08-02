@@ -32,6 +32,7 @@ class OrderPolicy
         if ($user->hasRole(Role::Comercial->value)) {
             return $user->salesperson !== null;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -47,6 +48,7 @@ class OrderPolicy
         if ($user->hasRole(Role::Comercial->value)) {
             return $user->salesperson && $order->salesperson_id === $user->salesperson->id;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -58,6 +60,7 @@ class OrderPolicy
         if ($user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -73,6 +76,7 @@ class OrderPolicy
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -88,6 +92,7 @@ class OrderPolicy
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -103,6 +108,7 @@ class OrderPolicy
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -118,6 +124,7 @@ class OrderPolicy
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 

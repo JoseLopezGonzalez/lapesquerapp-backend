@@ -20,7 +20,6 @@ return [
 
     'driver' => env('SESSION_DRIVER', 'file'),
 
-
     /*
     |--------------------------------------------------------------------------
     | Session Lifetime
@@ -157,10 +156,8 @@ return [
     */
 
     //'domain' => env('SESSION_DOMAIN'),
-    /* 'domain' => '.congeladosbrisamar.com',  *//* Añadido para evitar CORS */
+    /* 'domain' => '.congeladosbrisamar.com',  */ /* Añadido para evitar CORS */
     'domain' => env('SESSION_DOMAIN', null),
-    
-
 
     /*
     |--------------------------------------------------------------------------
@@ -174,8 +171,7 @@ return [
     */
 
     /* 'secure' => env('SESSION_SECURE_COOKIE'), */
-    'secure' => env('SESSION_SECURE_COOKIE', false),/* Para localhost */
-
+    'secure' => env('SESSION_SECURE_COOKIE', false), /* Para localhost */
 
     /*
     |--------------------------------------------------------------------------

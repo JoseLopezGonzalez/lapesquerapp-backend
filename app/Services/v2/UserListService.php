@@ -30,15 +30,15 @@ class UserListService
     public static function applyFilters(Builder $query, Request $request): Builder
     {
         if ($request->filled('id')) {
-            $query->where('id', 'like', '%' . $request->id . '%');
+            $query->where('id', 'like', '%'.$request->id.'%');
         }
 
         if ($request->filled('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
+            $query->where('name', 'like', '%'.$request->name.'%');
         }
 
         if ($request->filled('email')) {
-            $query->where('email', 'like', '%' . $request->email . '%');
+            $query->where('email', 'like', '%'.$request->email.'%');
         }
 
         if ($request->filled('role')) {
@@ -47,11 +47,11 @@ class UserListService
 
         if ($request->has('created_at')) {
             $createdAt = $request->input('created_at');
-            if (!empty($createdAt['start'])) {
+            if (! empty($createdAt['start'])) {
                 $startDate = date('Y-m-d 00:00:00', strtotime($createdAt['start']));
                 $query->where('created_at', '>=', $startDate);
             }
-            if (!empty($createdAt['end'])) {
+            if (! empty($createdAt['end'])) {
                 $endDate = date('Y-m-d 23:59:59', strtotime($createdAt['end']));
                 $query->where('created_at', '<=', $endDate);
             }

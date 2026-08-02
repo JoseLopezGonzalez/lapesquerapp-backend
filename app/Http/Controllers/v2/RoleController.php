@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\v2;
 
-use App\Http\Controllers\Controller;
 use App\Enums\Role;
+use App\Http\Controllers\Controller;
 
 class RoleController extends Controller
 {

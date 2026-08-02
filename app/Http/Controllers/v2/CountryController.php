@@ -25,7 +25,7 @@ class CountryController extends Controller
             $query->whereIn('id', $request->ids);
         }
         if ($request->has('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
+            $query->where('name', 'like', '%'.$request->name.'%');
         }
         $query->orderBy('name', 'asc');
         $perPage = $request->input('perPage', 12);
@@ -93,12 +93,12 @@ class CountryController extends Controller
         }
 
         if (! empty($inUse)) {
-            $details = array_map(fn ($item) => $item['name'] . ' (usado en: ' . $item['reasons'] . ')', $inUse);
+            $details = array_map(fn ($item) => $item['name'].' (usado en: '.$item['reasons'].')', $inUse);
 
             return response()->json([
                 'message' => 'No se pueden eliminar algunos países porque están en uso',
                 'details' => implode(', ', $details),
-                'userMessage' => 'No se pueden eliminar algunos países porque están en uso: ' . implode(', ', array_column($inUse, 'name')),
+                'userMessage' => 'No se pueden eliminar algunos países porque están en uso: '.implode(', ', array_column($inUse, 'name')),
             ], 400);
         }
 

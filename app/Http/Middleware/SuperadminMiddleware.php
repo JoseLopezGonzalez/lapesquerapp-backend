@@ -20,7 +20,7 @@ class SuperadminMiddleware
 
         Sanctum::usePersonalAccessTokenModel($previousModel);
 
-        if (!$user || !($user instanceof \App\Models\SuperadminUser)) {
+        if (! $user || ! ($user instanceof \App\Models\SuperadminUser)) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 

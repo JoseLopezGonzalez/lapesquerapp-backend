@@ -25,10 +25,10 @@ class IncotermController extends Controller
             $query->whereIn('id', $request->ids);
         }
         if ($request->has('code')) {
-            $query->where('code', 'like', '%' . $request->code . '%');
+            $query->where('code', 'like', '%'.$request->code.'%');
         }
         if ($request->has('description')) {
-            $query->where('description', 'like', '%' . $request->description . '%');
+            $query->where('description', 'like', '%'.$request->description.'%');
         }
         $query->orderBy('code', 'asc');
         $perPage = $request->input('perPage', 10);
@@ -96,12 +96,12 @@ class IncotermController extends Controller
         }
 
         if (! empty($inUse)) {
-            $details = array_map(fn ($item) => $item['code'] . ' (usado en: ' . $item['reasons'] . ')', $inUse);
+            $details = array_map(fn ($item) => $item['code'].' (usado en: '.$item['reasons'].')', $inUse);
 
             return response()->json([
                 'message' => 'No se pueden eliminar algunos incoterms porque están en uso',
                 'details' => implode(', ', $details),
-                'userMessage' => 'No se pueden eliminar algunos incoterms porque están en uso: ' . implode(', ', array_column($inUse, 'code')),
+                'userMessage' => 'No se pueden eliminar algunos incoterms porque están en uso: '.implode(', ', array_column($inUse, 'code')),
             ], 400);
         }
 

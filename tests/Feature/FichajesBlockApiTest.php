@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
-use App\Models\Employee;
 use App\Models\PunchEvent;
 use App\Models\Tenant;
 use App\Models\User;
@@ -17,10 +16,11 @@ use Tests\TestCase;
  */
 class FichajesBlockApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?string $token = null;
+
     private ?string $tenantSubdomain = null;
 
     protected function setUp(): void
@@ -32,8 +32,8 @@ class FichajesBlockApiTest extends TestCase
 
     private function createTenantAndUser(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'fichajes-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'fichajes-'.uniqid();
         Tenant::create([
             'name' => 'Test Tenant Fichajes',
             'subdomain' => $slug,
@@ -43,7 +43,7 @@ class FichajesBlockApiTest extends TestCase
 
         $user = User::create([
             'name' => 'Test User Fichajes',
-            'email' => $slug . '@test.com',
+            'email' => $slug.'@test.com',
             'password' => bcrypt('password'),
             'role' => Role::Administrador->value,
         ]);
@@ -56,7 +56,7 @@ class FichajesBlockApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $this->token,
+            'Authorization' => 'Bearer '.$this->token,
             'Accept' => 'application/json',
         ];
     }
@@ -109,8 +109,8 @@ class FichajesBlockApiTest extends TestCase
     {
         $response = $this->withHeaders($this->authHeaders())
             ->postJson('/api/v2/employees', [
-                'name' => 'Empleado Test ' . uniqid(),
-                'nfc_uid' => 'TEST-' . uniqid(),
+                'name' => 'Empleado Test '.uniqid(),
+                'nfc_uid' => 'TEST-'.uniqid(),
             ]);
 
         $response->assertCreated()->assertJsonStructure(['message', 'data' => ['id', 'name']]);
@@ -141,7 +141,7 @@ class FichajesBlockApiTest extends TestCase
         $createEmployee = $this->withHeaders($this->authHeaders())
             ->postJson('/api/v2/employees', [
                 'name' => 'Empleado Fichaje Día',
-                'nfc_uid' => 'NFC-' . uniqid(),
+                'nfc_uid' => 'NFC-'.uniqid(),
             ]);
         $createEmployee->assertCreated();
         $employeeId = $createEmployee->json('data.id');
@@ -174,7 +174,7 @@ class FichajesBlockApiTest extends TestCase
         $createEmployee = $this->withHeaders($this->authHeaders())
             ->postJson('/api/v2/employees', [
                 'name' => 'Empleado UTC Test',
-                'nfc_uid' => 'NFC-UTC-' . uniqid(),
+                'nfc_uid' => 'NFC-UTC-'.uniqid(),
             ]);
         $createEmployee->assertCreated();
         $employeeId = $createEmployee->json('data.id');

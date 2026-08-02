@@ -16,6 +16,4 @@ class ProductResource extends JsonResource
     {
         return $this->toArrayAssoc();
     }
-
-
 }

@@ -69,6 +69,7 @@ class StorePolicy
         if ($user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -80,6 +81,7 @@ class StorePolicy
         if ($user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -91,6 +93,7 @@ class StorePolicy
         if ($user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 }

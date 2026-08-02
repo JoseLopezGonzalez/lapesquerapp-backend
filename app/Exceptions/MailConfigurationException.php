@@ -20,4 +20,3 @@ class MailConfigurationException extends Exception
         ], $this->getCode());
     }
 }
-

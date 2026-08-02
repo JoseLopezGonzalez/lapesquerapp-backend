@@ -31,4 +31,3 @@ class UpdateProductionRecordRequest extends FormRequest
         ];
     }
 }
-

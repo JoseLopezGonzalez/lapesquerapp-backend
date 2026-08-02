@@ -8,13 +8,13 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Cambia onDelete('cascade') a onDelete('restrict') en species_id y capture_zone_id
      * para proteger la trazabilidad histórica de las producciones.
      */
     public function up(): void
     {
-        if (!Schema::hasTable('productions')) {
+        if (! Schema::hasTable('productions')) {
             return;
         }
 
@@ -25,21 +25,21 @@ return new class extends Migration
             } catch (\Exception $e) {
                 // La FK no existe, continuar
             }
-            
+
             try {
                 $table->dropForeign(['capture_zone_id']);
             } catch (\Exception $e) {
                 // La FK no existe, continuar
             }
         });
-        
+
         // Recrear con onDelete('restrict')
         Schema::table('productions', function (Blueprint $table) {
             $table->foreign('species_id')
                 ->references('id')
                 ->on('species')
                 ->onDelete('restrict');
-                
+
             $table->foreign('capture_zone_id')
                 ->references('id')
                 ->on('capture_zones')
@@ -56,13 +56,13 @@ return new class extends Migration
             // Eliminar las foreign keys
             $table->dropForeign(['species_id']);
             $table->dropForeign(['capture_zone_id']);
-            
+
             // Recrear con onDelete('cascade') (comportamiento original)
             $table->foreign('species_id')
                 ->references('id')
                 ->on('species')
                 ->onDelete('cascade');
-                
+
             $table->foreign('capture_zone_id')
                 ->references('id')
                 ->on('capture_zones')

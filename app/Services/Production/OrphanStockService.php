@@ -14,7 +14,7 @@ class OrphanStockService
     public function getLots(array $filters): array
     {
         $perPage = (int) ($filters['per_page'] ?? 25);
-        $page    = max(1, (int) ($filters['page'] ?? 1));
+        $page = max(1, (int) ($filters['page'] ?? 1));
         $sortDir = ($filters['sort_dir'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
         $lotSearch = $filters['lot'] ?? null;
 
@@ -44,12 +44,12 @@ class OrphanStockService
         $rows = empty($lots) ? [] : $this->buildRows($lots);
 
         return [
-            'lots'       => $rows,
+            'lots' => $rows,
             'pagination' => [
                 'currentPage' => $page,
-                'perPage'     => $perPage,
-                'total'       => $total,
-                'lastPage'    => max(1, (int) ceil($total / $perPage)),
+                'perPage' => $perPage,
+                'total' => $total,
+                'lastPage' => max(1, (int) ceil($total / $perPage)),
             ],
         ];
     }
@@ -73,12 +73,11 @@ class OrphanStockService
                 ->whereNull('pallets.reception_id')
                 ->whereNotNull('boxes.lot')
                 ->where('boxes.lot', '!=', '')
-                ->whereNotExists(fn ($sub) =>
-                    $sub->from('productions')->whereColumn('productions.lot', 'boxes.lot')
+                ->whereNotExists(fn ($sub) => $sub->from('productions')->whereColumn('productions.lot', 'boxes.lot')
                 );
 
             if ($lotSearch) {
-                $query->where('boxes.lot', 'like', '%' . $lotSearch . '%');
+                $query->where('boxes.lot', 'like', '%'.$lotSearch.'%');
             }
         };
     }
@@ -126,66 +125,66 @@ class OrphanStockService
             ->get();
 
         // Agrupar: lot → pallet_id → products[]
-        $byLot    = [];
+        $byLot = [];
         $byPallet = [];
 
         foreach ($detail as $row) {
-            $lot      = $row->lot;
+            $lot = $row->lot;
             $palletId = $row->pallet_id;
 
-            if (!isset($byLot[$lot])) {
+            if (! isset($byLot[$lot])) {
                 $byLot[$lot] = ['totalWeightKg' => 0.0, 'totalBoxes' => 0, 'palletIds' => [], 'productIds' => []];
             }
 
             $byLot[$lot]['totalWeightKg'] += (float) $row->weight_kg;
-            $byLot[$lot]['totalBoxes']    += (int) $row->boxes_count;
+            $byLot[$lot]['totalBoxes'] += (int) $row->boxes_count;
 
-            if (!in_array($palletId, $byLot[$lot]['palletIds'])) {
+            if (! in_array($palletId, $byLot[$lot]['palletIds'])) {
                 $byLot[$lot]['palletIds'][] = $palletId;
             }
-            if (!in_array($row->product_id, $byLot[$lot]['productIds'])) {
+            if (! in_array($row->product_id, $byLot[$lot]['productIds'])) {
                 $byLot[$lot]['productIds'][] = $row->product_id;
             }
 
-            if (!isset($byPallet[$lot][$palletId])) {
+            if (! isset($byPallet[$lot][$palletId])) {
                 $byPallet[$lot][$palletId] = [
-                    'id'          => $palletId,
-                    'status'      => $row->pallet_status,
+                    'id' => $palletId,
+                    'status' => $row->pallet_status,
                     'statusLabel' => $this->palletStatusLabel($row->pallet_status),
-                    'location'    => $this->buildLocation($row->store_name, $row->store_position),
-                    'createdAt'   => $row->pallet_created_at,
-                    'weightKg'    => 0.0,
-                    'boxesCount'  => 0,
-                    'products'    => [],
+                    'location' => $this->buildLocation($row->store_name, $row->store_position),
+                    'createdAt' => $row->pallet_created_at,
+                    'weightKg' => 0.0,
+                    'boxesCount' => 0,
+                    'products' => [],
                 ];
             }
 
-            $byPallet[$lot][$palletId]['weightKg']   += (float) $row->weight_kg;
-            $byPallet[$lot][$palletId]['boxesCount']  += (int) $row->boxes_count;
-            $byPallet[$lot][$palletId]['products'][]   = [
-                'id'       => $row->product_id,
-                'name'     => $row->product_name,
+            $byPallet[$lot][$palletId]['weightKg'] += (float) $row->weight_kg;
+            $byPallet[$lot][$palletId]['boxesCount'] += (int) $row->boxes_count;
+            $byPallet[$lot][$palletId]['products'][] = [
+                'id' => $row->product_id,
+                'name' => $row->product_name,
                 'weightKg' => round((float) $row->weight_kg, 3),
-                'boxes'    => (int) $row->boxes_count,
+                'boxes' => (int) $row->boxes_count,
             ];
         }
 
         // Construir el array final respetando el orden de $lots
         return array_map(function (string $lot) use ($byLot, $byPallet) {
-            $meta    = $byLot[$lot] ?? ['totalWeightKg' => 0.0, 'totalBoxes' => 0, 'palletIds' => []];
+            $meta = $byLot[$lot] ?? ['totalWeightKg' => 0.0, 'totalBoxes' => 0, 'palletIds' => []];
             $pallets = array_values($byPallet[$lot] ?? []);
 
             foreach ($pallets as &$pallet) {
-                $pallet['weightKg']  = round($pallet['weightKg'], 3);
+                $pallet['weightKg'] = round($pallet['weightKg'], 3);
             }
             unset($pallet);
 
             return [
-                'lot'            => $lot,
-                'totalWeightKg'  => round($meta['totalWeightKg'], 3),
-                'totalBoxes'     => $meta['totalBoxes'],
-                'totalPallets'   => count($meta['palletIds']),
-                'pallets'        => $pallets,
+                'lot' => $lot,
+                'totalWeightKg' => round($meta['totalWeightKg'], 3),
+                'totalBoxes' => $meta['totalBoxes'],
+                'totalPallets' => count($meta['palletIds']),
+                'pallets' => $pallets,
             ];
         }, $lots);
     }
@@ -194,16 +193,16 @@ class OrphanStockService
     {
         return match ($status) {
             Pallet::STATE_REGISTERED => 'Registrado',
-            Pallet::STATE_STORED     => 'Almacenado',
-            Pallet::STATE_SHIPPED    => 'Enviado',
-            Pallet::STATE_PROCESSED  => 'Procesado',
-            default                  => "Estado {$status}",
+            Pallet::STATE_STORED => 'Almacenado',
+            Pallet::STATE_SHIPPED => 'Enviado',
+            Pallet::STATE_PROCESSED => 'Procesado',
+            default => "Estado {$status}",
         };
     }
 
     private function buildLocation(?string $storeName, ?string $position): ?string
     {
-        if (!$storeName) {
+        if (! $storeName) {
             return null;
         }
 

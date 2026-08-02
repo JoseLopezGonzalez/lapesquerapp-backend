@@ -11,13 +11,13 @@ use App\Http\Requests\v2\SyncMultipleProductionInputsRequest;
 use App\Http\Resources\v2\ProductionInputResource;
 use App\Models\ProductionInput;
 use App\Services\Production\ProductionInputService;
-use Illuminate\Http\Request;
 
 class ProductionInputController extends Controller
 {
     public function __construct(
         private ProductionInputService $productionInputService
     ) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -69,7 +69,7 @@ class ProductionInputController extends Controller
             );
 
             return response()->json([
-                'message' => count($result['created']) . ' entradas creadas correctamente.',
+                'message' => count($result['created']).' entradas creadas correctamente.',
                 'data' => ProductionInputResource::collection($result['created']),
                 'errors' => $result['errors'],
             ], 201);

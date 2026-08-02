@@ -16,4 +16,3 @@ class DomainValidationException extends Exception
         parent::__construct($message, $status);
     }
 }
-

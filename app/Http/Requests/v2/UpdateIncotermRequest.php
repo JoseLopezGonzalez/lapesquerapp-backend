@@ -19,7 +19,7 @@ class UpdateIncotermRequest extends FormRequest
         $id = $this->route('incoterm')?->getKey();
 
         return [
-            'code' => 'required|string|max:10|unique:tenant.incoterms,code,' . $id,
+            'code' => 'required|string|max:10|unique:tenant.incoterms,code,'.$id,
             'description' => 'required|string|max:255',
         ];
     }

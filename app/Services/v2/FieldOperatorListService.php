@@ -21,7 +21,7 @@ class FieldOperatorListService
         }
 
         if ($request->filled('name')) {
-            $query->where('name', 'like', '%' . $request->input('name') . '%');
+            $query->where('name', 'like', '%'.$request->input('name').'%');
         }
 
         if ($request->filled('userId')) {

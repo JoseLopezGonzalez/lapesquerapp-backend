@@ -119,7 +119,7 @@ class SupplierLiquidationController extends Controller
         $startDate = $dates['start'] ?? null;
         $endDate = $dates['end'] ?? null;
         $supplierName = $details['supplier']['name'] ?? 'Proveedor';
-        $fileName = 'Liquidacion_Proveedor_' . str_replace([' ', '/', '\\'], '_', $supplierName) . '_' . $startDate . '_' . $endDate;
+        $fileName = 'Liquidacion_Proveedor_'.str_replace([' ', '/', '\\'], '_', $supplierName).'_'.$startDate.'_'.$endDate;
 
         return $this->streamPdf($details['supplier'], $details['date_range'], $filteredReceptions, $filteredDispatches, $summary, $paymentTotals, $showTransferPayment, $fileName, null, true);
     }
@@ -141,7 +141,7 @@ class SupplierLiquidationController extends Controller
         $startDate = $detail['liquidation']['start_date'];
         $endDate = $detail['liquidation']['end_date'];
         $supplierName = $detail['supplier']['name'] ?? 'Proveedor';
-        $fileName = 'Liquidacion_Proveedor_' . str_replace([' ', '/', '\\'], '_', $supplierName) . '_' . $startDate . '_' . $endDate;
+        $fileName = 'Liquidacion_Proveedor_'.str_replace([' ', '/', '\\'], '_', $supplierName).'_'.$startDate.'_'.$endDate;
 
         $dateRange = ['start' => $startDate, 'end' => $endDate];
 
@@ -183,7 +183,7 @@ class SupplierLiquidationController extends Controller
             'is_preview' => $isPreview,
         ])->render();
 
-        $snappdf = new Snappdf();
+        $snappdf = new Snappdf;
         $this->configureChromium($snappdf);
         $pdf = $snappdf->setHtml($html)->generate();
 

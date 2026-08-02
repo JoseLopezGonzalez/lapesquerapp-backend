@@ -7,7 +7,6 @@ use App\Models\ExternalUser;
 use App\Models\Salesperson;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 /**
  * Siembra usuarios en roles límite para QA de permisos y visibilidad.
@@ -21,8 +20,8 @@ class TenantPermissionsScenariosSeeder extends Seeder
         $comercialUser = User::firstOrCreate(
             ['email' => 'edge.comercial@pesquerapp.test'],
             [
-                'name'   => 'Edge Comercial Permisos',
-                'role'   => Role::Comercial->value,
+                'name' => 'Edge Comercial Permisos',
+                'role' => Role::Comercial->value,
                 'active' => true,
             ]
         );
@@ -30,9 +29,9 @@ class TenantPermissionsScenariosSeeder extends Seeder
         Salesperson::firstOrCreate(
             ['email' => 'edge.comercial@pesquerapp.test'],
             [
-                'name'    => 'Edge Comercial Permisos',
+                'name' => 'Edge Comercial Permisos',
                 'user_id' => $comercialUser->id,
-                'active'  => true,
+                'active' => true,
             ]
         );
 
@@ -40,9 +39,9 @@ class TenantPermissionsScenariosSeeder extends Seeder
         Salesperson::firstOrCreate(
             ['email' => 'edge.comercial.orphan@pesquerapp.test'],
             [
-                'name'    => 'Edge Comercial Huérfano',
+                'name' => 'Edge Comercial Huérfano',
                 'user_id' => null,
-                'active'  => true,
+                'active' => true,
             ]
         );
 
@@ -50,8 +49,8 @@ class TenantPermissionsScenariosSeeder extends Seeder
         User::firstOrCreate(
             ['email' => 'edge.operario@pesquerapp.test'],
             [
-                'name'   => 'Edge Operario Almacén',
-                'role'   => Role::Operario->value,
+                'name' => 'Edge Operario Almacén',
+                'role' => Role::Operario->value,
                 'active' => true,
             ]
         );
@@ -60,8 +59,8 @@ class TenantPermissionsScenariosSeeder extends Seeder
         User::firstOrCreate(
             ['email' => 'edge.repartidor@pesquerapp.test'],
             [
-                'name'   => 'Edge Repartidor Autoventa',
-                'role'   => Role::RepartidorAutoventa->value,
+                'name' => 'Edge Repartidor Autoventa',
+                'role' => Role::RepartidorAutoventa->value,
                 'active' => true,
             ]
         );
@@ -70,8 +69,8 @@ class TenantPermissionsScenariosSeeder extends Seeder
         User::firstOrCreate(
             ['email' => 'edge.direccion@pesquerapp.test'],
             [
-                'name'   => 'Edge Dirección Lectura',
-                'role'   => Role::Direccion->value,
+                'name' => 'Edge Dirección Lectura',
+                'role' => Role::Direccion->value,
                 'active' => true,
             ]
         );
@@ -80,8 +79,8 @@ class TenantPermissionsScenariosSeeder extends Seeder
         User::firstOrCreate(
             ['email' => 'edge.inactive@pesquerapp.test'],
             [
-                'name'   => 'Edge Usuario Inactivo',
-                'role'   => Role::Comercial->value,
+                'name' => 'Edge Usuario Inactivo',
+                'role' => Role::Comercial->value,
                 'active' => false,
             ]
         );
@@ -90,10 +89,10 @@ class TenantPermissionsScenariosSeeder extends Seeder
         ExternalUser::firstOrCreate(
             ['email' => 'edge.external.active@pesquerapp.test'],
             [
-                'name'         => 'Edge External Activo',
+                'name' => 'Edge External Activo',
                 'company_name' => 'Tienda Edge Activa',
-                'type'         => ExternalUser::TYPE_MAQUILADOR,
-                'is_active'    => true,
+                'type' => ExternalUser::TYPE_MAQUILADOR,
+                'is_active' => true,
             ]
         );
 
@@ -101,10 +100,10 @@ class TenantPermissionsScenariosSeeder extends Seeder
         ExternalUser::firstOrCreate(
             ['email' => 'edge.external.inactive@pesquerapp.test'],
             [
-                'name'         => 'Edge External Inactivo',
+                'name' => 'Edge External Inactivo',
                 'company_name' => 'Tienda Edge Inactiva',
-                'type'         => ExternalUser::TYPE_MAQUILADOR,
-                'is_active'    => false,
+                'type' => ExternalUser::TYPE_MAQUILADOR,
+                'is_active' => false,
             ]
         );
     }

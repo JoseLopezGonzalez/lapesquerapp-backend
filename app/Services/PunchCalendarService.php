@@ -37,7 +37,7 @@ class PunchCalendarService
                 $day = Carbon::parse($dayKey)->day;
                 $dayEvents = $dayEvents->sortBy('timestamp')->values();
 
-                if (!isset($punchesByDay[$day])) {
+                if (! isset($punchesByDay[$day])) {
                     $punchesByDay[$day] = [
                         'punches' => [],
                         'incidents' => [],
@@ -78,7 +78,7 @@ class PunchCalendarService
                         }
                     } elseif ($dayEvents[$i]->event_type === PunchEvent::TYPE_OUT) {
                         $prevIn = $dayEvents->slice(0, $i)->reverse()->firstWhere('event_type', PunchEvent::TYPE_IN);
-                        if (!$prevIn) {
+                        if (! $prevIn) {
                             $hasOrphanExit = true;
                             $orphanExit = $dayEvents[$i];
                         }
@@ -125,7 +125,7 @@ class PunchCalendarService
         $minThreshold = 0;
         $maxThreshold = 0;
 
-        if (!empty($allDayHours)) {
+        if (! empty($allDayHours)) {
             $dayHoursValues = array_column($allDayHours, 'hours');
             $averageHoursPerDay = array_sum($dayHoursValues) / count($dayHoursValues);
             $minThreshold = $averageHoursPerDay * 0.5;
@@ -136,7 +136,7 @@ class PunchCalendarService
                 if ($dayHours < $minThreshold || $dayHours > $maxThreshold) {
                     $day = $dayData['day'];
                     $reason = $dayHours < $minThreshold ? 'muy_pocas_horas' : 'muchas_horas';
-                    if (!isset($punchesByDay[$day])) {
+                    if (! isset($punchesByDay[$day])) {
                         $punchesByDay[$day] = [
                             'punches' => [],
                             'incidents' => [],
@@ -150,8 +150,8 @@ class PunchCalendarService
                         'hours' => $dayHours,
                         'reason' => $reason,
                         'reason_label' => $reason === 'muy_pocas_horas'
-                            ? 'Muy pocas horas (< ' . round($minThreshold, 2) . 'h)'
-                            : 'Muchas horas (> ' . round($maxThreshold, 2) . 'h)',
+                            ? 'Muy pocas horas (< '.round($minThreshold, 2).'h)'
+                            : 'Muchas horas (> '.round($maxThreshold, 2).'h)',
                     ];
                 }
             }

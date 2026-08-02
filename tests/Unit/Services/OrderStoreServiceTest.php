@@ -14,8 +14,8 @@ use Tests\TestCase;
 
 class OrderStoreServiceTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -35,7 +35,7 @@ class OrderStoreServiceTest extends TestCase
         $salesperson = \App\Models\Salesperson::firstOrCreate(['name' => 'Comercial Test']);
         $customer = Customer::create([
             'name' => 'Cliente Test',
-            'vat_number' => 'B87654321-' . uniqid(),
+            'vat_number' => 'B87654321-'.uniqid(),
             'payment_term_id' => $paymentTerm->id,
             'billing_address' => 'Dir fact',
             'shipping_address' => 'Dir env',

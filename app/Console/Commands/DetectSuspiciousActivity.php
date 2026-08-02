@@ -11,12 +11,15 @@ use Illuminate\Support\Facades\Redis;
 
 class DetectSuspiciousActivity extends Command
 {
-    protected $signature   = 'superadmin:detect-suspicious';
+    protected $signature = 'superadmin:detect-suspicious';
+
     protected $description = 'Detect suspicious login activity and queue health issues across tenants';
 
-    private const FAILED_ATTEMPTS_PER_IP    = 10;
+    private const FAILED_ATTEMPTS_PER_IP = 10;
+
     private const FAILED_ATTEMPTS_PER_EMAIL = 5;
-    private const QUEUE_STOPPED_MINUTES     = 10;
+
+    private const QUEUE_STOPPED_MINUTES = 10;
 
     public function handle(): void
     {
@@ -28,7 +31,7 @@ class DetectSuspiciousActivity extends Command
     {
         try {
             $pendingJobs = Redis::connection()->llen('queues:default');
-            $failedJobs  = DB::table('failed_jobs')->count();
+            $failedJobs = DB::table('failed_jobs')->count();
 
             if ($pendingJobs === null) {
                 SystemAlert::createIfNotExists(

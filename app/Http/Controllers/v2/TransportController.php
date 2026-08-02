@@ -35,9 +35,9 @@ class TransportController extends Controller
             $allEmails[] = trim($email);
         }
         foreach ($validated['ccEmails'] ?? [] as $email) {
-            $allEmails[] = 'CC:' . trim($email);
+            $allEmails[] = 'CC:'.trim($email);
         }
-        $emailsText = implode(";\n", $allEmails) . ';';
+        $emailsText = implode(";\n", $allEmails).';';
 
         $transport = Transport::create([
             'name' => $validated['name'],
@@ -71,9 +71,9 @@ class TransportController extends Controller
             $allEmails[] = trim($email);
         }
         foreach ($validated['ccEmails'] ?? [] as $email) {
-            $allEmails[] = 'CC:' . trim($email);
+            $allEmails[] = 'CC:'.trim($email);
         }
-        $emailsText = implode(";\n", $allEmails) . ';';
+        $emailsText = implode(";\n", $allEmails).';';
 
         $transport->update([
             'name' => $validated['name'],
@@ -108,8 +108,8 @@ class TransportController extends Controller
 
             return response()->json([
                 'message' => 'No se puede eliminar el transporte porque está en uso',
-                'details' => 'El transporte está siendo utilizado en: ' . $reasonsText,
-                'userMessage' => 'No se puede eliminar el transporte porque está siendo utilizado en: ' . $reasonsText,
+                'details' => 'El transporte está siendo utilizado en: '.$reasonsText,
+                'userMessage' => 'No se puede eliminar el transporte porque está siendo utilizado en: '.$reasonsText,
             ], 400);
         }
 
@@ -145,12 +145,12 @@ class TransportController extends Controller
         }
 
         if (! empty($inUse)) {
-            $details = array_map(fn ($item) => $item['name'] . ' (usado en: ' . $item['reasons'] . ')', $inUse);
+            $details = array_map(fn ($item) => $item['name'].' (usado en: '.$item['reasons'].')', $inUse);
 
             return response()->json([
                 'message' => 'No se pueden eliminar algunos transportes porque están en uso',
                 'details' => implode(', ', $details),
-                'userMessage' => 'No se pueden eliminar algunos transportes porque están en uso: ' . implode(', ', array_column($inUse, 'name')),
+                'userMessage' => 'No se pueden eliminar algunos transportes porque están en uso: '.implode(', ', array_column($inUse, 'name')),
             ], 400);
         }
 

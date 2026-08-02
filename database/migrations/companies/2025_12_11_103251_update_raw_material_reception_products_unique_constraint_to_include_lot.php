@@ -8,8 +8,8 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
-     * Cambia el constraint único de ['reception_id', 'product_id'] 
+     *
+     * Cambia el constraint único de ['reception_id', 'product_id']
      * a ['reception_id', 'product_id', 'lot'] para permitir múltiples líneas
      * del mismo producto con diferentes lotes en la misma recepción.
      */
@@ -29,14 +29,14 @@ return new class extends Migration
             AND INDEX_NAME != 'PRIMARY'
             GROUP BY INDEX_NAME
         ");
-        
+
         $oldConstraintName = null;
         foreach ($indexes as $index) {
             $columns = explode(',', $index->columns);
-            if (count($columns) === 2 && 
-                in_array('reception_id', $columns) && 
+            if (count($columns) === 2 &&
+                in_array('reception_id', $columns) &&
                 in_array('product_id', $columns) &&
-                !in_array('lot', $columns)) {
+                ! in_array('lot', $columns)) {
                 $oldConstraintName = $index->INDEX_NAME;
                 break;
             }
@@ -63,8 +63,8 @@ return new class extends Migration
         $hasNewConstraint = false;
         foreach ($indexes as $index) {
             $columns = explode(',', $index->columns);
-            if (count($columns) === 3 && 
-                in_array('reception_id', $columns) && 
+            if (count($columns) === 3 &&
+                in_array('reception_id', $columns) &&
                 in_array('product_id', $columns) &&
                 in_array('lot', $columns)) {
                 $hasNewConstraint = true;
@@ -73,12 +73,12 @@ return new class extends Migration
         }
 
         // Agregar nuevo constraint si no existe
-        if (!$hasNewConstraint) {
+        if (! $hasNewConstraint) {
             // Usar SQL directo con nombre corto para evitar error de nombre demasiado largo
-            \DB::statement("
+            \DB::statement('
                 ALTER TABLE raw_material_reception_products 
                 ADD UNIQUE INDEX `rmrp_reception_product_lot_unique` (`reception_id`, `product_id`, `lot`)
-            ");
+            ');
         }
     }
 
@@ -93,7 +93,7 @@ return new class extends Migration
 
         // Eliminar constraint nuevo
         try {
-            \DB::statement("ALTER TABLE raw_material_reception_products DROP INDEX `rmrp_reception_product_lot_unique`");
+            \DB::statement('ALTER TABLE raw_material_reception_products DROP INDEX `rmrp_reception_product_lot_unique`');
         } catch (\Exception $e) {
             // Constraint no existe, continuar
         }
@@ -101,14 +101,14 @@ return new class extends Migration
         // Restaurar constraint antiguo
         Schema::table('raw_material_reception_products', function (Blueprint $table) {
             // Limpiar duplicados antes de restaurar el constraint antiguo
-            \DB::statement("
+            \DB::statement('
                 DELETE r1 FROM raw_material_reception_products r1
                 INNER JOIN raw_material_reception_products r2 
                 WHERE r1.id > r2.id 
                 AND r1.reception_id = r2.reception_id 
                 AND r1.product_id = r2.product_id
-            ");
-            
+            ');
+
             try {
                 $table->unique(['reception_id', 'product_id']);
             } catch (\Exception $e) {

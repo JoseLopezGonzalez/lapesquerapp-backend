@@ -3,12 +3,12 @@
 namespace App\Exports\v2;
 
 use App\Models\OrderPlannedProductDetail;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\Exportable;
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
 
-class ActiveOrderPlannedProductsExport implements FromCollection, WithMapping, WithHeadings
+class ActiveOrderPlannedProductsExport implements FromCollection, WithHeadings, WithMapping
 {
     use Exportable;
 
@@ -36,10 +36,9 @@ class ActiveOrderPlannedProductsExport implements FromCollection, WithMapping, W
             $detail->quantity,
             $detail->boxes,
             number_format($detail->unit_price, 2, ',', '.'),
-            $detail->tax->rate . '%' ?? 'N/A',
+            $detail->tax->rate.'%' ?? 'N/A',
         ];
     }
-
 
     public function headings(): array
     {

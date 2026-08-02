@@ -13,7 +13,6 @@ class CleanOldOrderPDFs extends Command
      */
     protected $signature = 'app:clean-old-order-pdfs';
 
-
     /**
      * The console command description.
      *
@@ -27,7 +26,7 @@ class CleanOldOrderPDFs extends Command
     public function handle()
     {
         $directory = storage_path('app/public');
-        $files = glob($directory . '/*.pdf');
+        $files = glob($directory.'/*.pdf');
 
         $now = time();
         $maxAge = 3600; // 1 hora
@@ -39,7 +38,6 @@ class CleanOldOrderPDFs extends Command
         }
 
         $this->info('PDFs antiguos eliminados correctamente.');
-
 
     }
 }

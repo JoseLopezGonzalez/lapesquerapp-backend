@@ -65,6 +65,7 @@ enum Role: string
                 'name' => $case->label(),
             ];
         }
+
         return $options;
     }
 }

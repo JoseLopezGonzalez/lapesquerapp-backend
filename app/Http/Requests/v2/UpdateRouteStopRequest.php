@@ -15,8 +15,8 @@ class UpdateRouteStopRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => 'required|string|in:' . implode(',', RouteStop::validStatuses()),
-            'result_type' => 'nullable|string|in:' . implode(',', RouteStop::validResultTypes()) . '|required_if:status,' . RouteStop::STATUS_COMPLETED,
+            'status' => 'required|string|in:'.implode(',', RouteStop::validStatuses()),
+            'result_type' => 'nullable|string|in:'.implode(',', RouteStop::validResultTypes()).'|required_if:status,'.RouteStop::STATUS_COMPLETED,
             'result_notes' => 'nullable|string|max:1000',
         ];
     }

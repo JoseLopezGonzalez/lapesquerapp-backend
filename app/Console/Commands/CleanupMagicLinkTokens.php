@@ -28,6 +28,7 @@ class CleanupMagicLinkTokens extends Command
             $this->warn($tenantSubdomain
                 ? "No se encontró ningún tenant activo con subdominio «{$tenantSubdomain}»."
                 : 'No hay tenants activos.');
+
             return Command::FAILURE;
         }
 
@@ -47,7 +48,7 @@ class CleanupMagicLinkTokens extends Command
             $totalDeleted += $deleted;
 
             if ($deleted > 0 || $this->output->isVerbose()) {
-                $this->line("  [{$tenant->subdomain}] " . ($dryRun ? "Se eliminarían {$deleted} registros." : "Eliminados {$deleted} registros."));
+                $this->line("  [{$tenant->subdomain}] ".($dryRun ? "Se eliminarían {$deleted} registros." : "Eliminados {$deleted} registros."));
             }
         }
 
@@ -64,7 +65,7 @@ class CleanupMagicLinkTokens extends Command
 
     private function cleanupTenant(bool $deleteExpired, ?\DateTimeInterface $cutoffUsed, bool $dryRun): int
     {
-        if (!$deleteExpired && $cutoffUsed === null) {
+        if (! $deleteExpired && $cutoffUsed === null) {
             return 0;
         }
 
@@ -81,7 +82,7 @@ class CleanupMagicLinkTokens extends Command
 
         $count = $query->count();
 
-        if (!$dryRun && $count > 0) {
+        if (! $dryRun && $count > 0) {
             $query->delete();
         }
 

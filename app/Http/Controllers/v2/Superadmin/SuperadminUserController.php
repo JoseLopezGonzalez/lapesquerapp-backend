@@ -39,6 +39,7 @@ class SuperadminUserController extends Controller
                 app(SuperadminAuthService::class)->sendAccessEmail($admin);
             } catch (\Throwable $e) {
                 report($e);
+
                 return (new SuperadminUserResource($admin))
                     ->additional(['warning' => 'Usuario creado pero no se pudo enviar el correo de acceso.'])
                     ->response()

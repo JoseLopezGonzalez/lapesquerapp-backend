@@ -65,7 +65,7 @@ class RouteTemplateStopFactory extends Factory
             'target_type' => 'location',
             'customer_id' => null,
             'prospect_id' => null,
-            'label' => 'Parada logística ' . $this->faker->city(),
+            'label' => 'Parada logística '.$this->faker->city(),
             'address' => $this->faker->address(),
         ]);
     }

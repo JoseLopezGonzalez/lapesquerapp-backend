@@ -14,7 +14,7 @@ class ProductionFactory extends Factory
     public function definition(): array
     {
         return [
-            'lot' => 'LOT-' . $this->faker->unique()->bothify('#####'),
+            'lot' => 'LOT-'.$this->faker->unique()->bothify('#####'),
             'date' => $this->faker->dateTimeBetween('-30 days', 'now')->format('Y-m-d'),
             'species_id' => Species::query()->value('id') ?? Species::factory(),
             'capture_zone_id' => CaptureZone::query()->value('id') ?? CaptureZone::factory(),

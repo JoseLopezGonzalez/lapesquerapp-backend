@@ -36,12 +36,12 @@ class TenantDataAnomaliesSeeder extends Seeder
         Customer::firstOrCreate(
             ['name' => 'Anomalía Cliente Sin Alias'],
             [
-                'name'               => 'Anomalía Cliente Sin Alias',
-                'alias'              => null,
-                'vat_number'         => 'ESANOMALY01',
+                'name' => 'Anomalía Cliente Sin Alias',
+                'alias' => null,
+                'vat_number' => 'ESANOMALY01',
                 'operational_status' => 'active',
-                'salesperson_id'     => $salespersonId,
-                'emails'             => 'anomalia.sinAlias@pesquerapp.test',
+                'salesperson_id' => $salespersonId,
+                'emails' => 'anomalia.sinAlias@pesquerapp.test',
             ]
         );
 
@@ -49,13 +49,13 @@ class TenantDataAnomaliesSeeder extends Seeder
         Customer::firstOrCreate(
             ['name' => 'Anomalía Cliente Sin Transporte'],
             [
-                'name'               => 'Anomalía Cliente Sin Transporte',
-                'alias'              => 'ANOM-TRANSPORT',
-                'vat_number'         => 'ESANOMALY02',
+                'name' => 'Anomalía Cliente Sin Transporte',
+                'alias' => 'ANOM-TRANSPORT',
+                'vat_number' => 'ESANOMALY02',
                 'operational_status' => 'active',
-                'salesperson_id'     => $salespersonId,
-                'transport_id'       => null,
-                'emails'             => 'anomalia.sinTransporte@pesquerapp.test',
+                'salesperson_id' => $salespersonId,
+                'transport_id' => null,
+                'emails' => 'anomalia.sinTransporte@pesquerapp.test',
             ]
         );
 
@@ -63,12 +63,12 @@ class TenantDataAnomaliesSeeder extends Seeder
         Customer::firstOrCreate(
             ['name' => 'Anomalía Cliente Pausado'],
             [
-                'name'               => 'Anomalía Cliente Pausado',
-                'alias'              => 'ANOM-PAUSED',
-                'vat_number'         => 'ESANOMALY03',
+                'name' => 'Anomalía Cliente Pausado',
+                'alias' => 'ANOM-PAUSED',
+                'vat_number' => 'ESANOMALY03',
                 'operational_status' => 'paused',
-                'salesperson_id'     => $salespersonId,
-                'emails'             => 'anomalia.pausado@pesquerapp.test',
+                'salesperson_id' => $salespersonId,
+                'emails' => 'anomalia.pausado@pesquerapp.test',
             ]
         );
     }
@@ -76,7 +76,7 @@ class TenantDataAnomaliesSeeder extends Seeder
     private function seedAnomalousOrders(): void
     {
         $customer = Customer::query()->first();
-        if (!$customer) {
+        if (! $customer) {
             return;
         }
 
@@ -84,10 +84,10 @@ class TenantDataAnomaliesSeeder extends Seeder
         Order::firstOrCreate(
             ['reference' => 'ANOM-ORDER-NOLINES'],
             [
-                'reference'   => 'ANOM-ORDER-NOLINES',
+                'reference' => 'ANOM-ORDER-NOLINES',
                 'customer_id' => $customer->id,
-                'status'      => 'pending',
-                'notes'       => 'Anomalía: pedido sin líneas de producto para QA',
+                'status' => 'pending',
+                'notes' => 'Anomalía: pedido sin líneas de producto para QA',
             ]
         );
     }
@@ -99,8 +99,8 @@ class TenantDataAnomaliesSeeder extends Seeder
             ['observations' => 'Anomalía: Palé sin posición en almacén'],
             [
                 'observations' => 'Anomalía: Palé sin posición en almacén',
-                'status'       => Pallet::STATE_STORED,
-                'order_id'     => null,
+                'status' => Pallet::STATE_STORED,
+                'order_id' => null,
                 'reception_id' => null,
             ]
         );
@@ -110,8 +110,8 @@ class TenantDataAnomaliesSeeder extends Seeder
             ['observations' => 'Anomalía: Palé sin asociación a recepción ni pedido'],
             [
                 'observations' => 'Anomalía: Palé sin asociación a recepción ni pedido',
-                'status'       => Pallet::STATE_REGISTERED,
-                'order_id'     => null,
+                'status' => Pallet::STATE_REGISTERED,
+                'order_id' => null,
                 'reception_id' => null,
             ]
         );
@@ -120,7 +120,7 @@ class TenantDataAnomaliesSeeder extends Seeder
     private function seedAnomalousPunchEvents(): void
     {
         $employee = Employee::query()->first();
-        if (!$employee) {
+        if (! $employee) {
             return;
         }
 
@@ -129,31 +129,31 @@ class TenantDataAnomaliesSeeder extends Seeder
         // Doble IN consecutivo (sin OUT entre medias)
         PunchEvent::create([
             'employee_id' => $employee->id,
-            'event_type'  => PunchEvent::TYPE_IN,
-            'device_id'   => 'DEVICE-ANOMALY',
-            'timestamp'   => $base,
+            'event_type' => PunchEvent::TYPE_IN,
+            'device_id' => 'DEVICE-ANOMALY',
+            'timestamp' => $base,
         ]);
 
         PunchEvent::create([
             'employee_id' => $employee->id,
-            'event_type'  => PunchEvent::TYPE_IN,
-            'device_id'   => 'DEVICE-ANOMALY',
-            'timestamp'   => $base->copy()->addMinutes(5),
+            'event_type' => PunchEvent::TYPE_IN,
+            'device_id' => 'DEVICE-ANOMALY',
+            'timestamp' => $base->copy()->addMinutes(5),
         ]);
 
         // OUT sin IN previo (inicio de día ya en OUT)
         PunchEvent::create([
             'employee_id' => $employee->id,
-            'event_type'  => PunchEvent::TYPE_OUT,
-            'device_id'   => 'DEVICE-ANOMALY',
-            'timestamp'   => Carbon::now()->subDays(1)->setTime(7, 55),
+            'event_type' => PunchEvent::TYPE_OUT,
+            'device_id' => 'DEVICE-ANOMALY',
+            'timestamp' => Carbon::now()->subDays(1)->setTime(7, 55),
         ]);
     }
 
     private function seedAnomalousReceptions(): void
     {
         $supplier = \App\Models\Supplier::query()->first();
-        if (!$supplier) {
+        if (! $supplier) {
             return;
         }
 
@@ -161,11 +161,11 @@ class TenantDataAnomaliesSeeder extends Seeder
         RawMaterialReception::firstOrCreate(
             ['reference' => 'ANOM-RECEP-NODECLARED'],
             [
-                'reference'    => 'ANOM-RECEP-NODECLARED',
-                'supplier_id'  => $supplier->id,
+                'reference' => 'ANOM-RECEP-NODECLARED',
+                'supplier_id' => $supplier->id,
                 'reception_at' => now()->subDays(5),
                 'observations' => null,
-                'status'       => 'pending',
+                'status' => 'pending',
             ]
         );
     }

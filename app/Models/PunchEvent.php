@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class PunchEvent extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     const TYPE_IN = 'IN';
+
     const TYPE_OUT = 'OUT';
 
     protected $fillable = [
@@ -36,4 +37,3 @@ class PunchEvent extends Model
         return $this->belongsTo(Employee::class);
     }
 }
-

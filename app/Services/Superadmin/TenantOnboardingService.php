@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Schema;
 
 class TenantOnboardingService
 {
@@ -101,10 +100,11 @@ class TenantOnboardingService
         $collation = 'utf8mb4_unicode_ci';
 
         $exists = DB::connection('mysql')
-            ->select("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?", [$dbName]);
+            ->select('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?', [$dbName]);
 
-        if (!empty($exists)) {
+        if (! empty($exists)) {
             Log::info("Onboarding [{$tenant->subdomain}] DB {$dbName} already exists, skipping.");
+
             return;
         }
 
@@ -123,7 +123,7 @@ class TenantOnboardingService
             '--force' => true,
         ]);
 
-        Log::info("Onboarding [{$tenant->subdomain}] migrations output: " . Artisan::output());
+        Log::info("Onboarding [{$tenant->subdomain}] migrations output: ".Artisan::output());
     }
 
     /** Step 4: Run the production seeder (catalogs only). */
@@ -139,7 +139,7 @@ class TenantOnboardingService
             '--force' => true,
         ]);
 
-        Log::info("Onboarding [{$tenant->subdomain}] seeder output: " . Artisan::output());
+        Log::info("Onboarding [{$tenant->subdomain}] seeder output: ".Artisan::output());
     }
 
     /** Step 5: Create the admin user in the tenant DB. */
@@ -148,18 +148,20 @@ class TenantOnboardingService
         $this->connectToTenantDb($tenant);
 
         $email = $tenant->admin_email;
-        if (!$email) {
+        if (! $email) {
             Log::warning("Onboarding [{$tenant->subdomain}] no admin_email, skipping user creation.");
+
             return;
         }
 
         $existing = User::on('tenant')->where('email', $email)->first();
         if ($existing) {
             Log::info("Onboarding [{$tenant->subdomain}] admin user {$email} already exists.");
+
             return;
         }
 
-        $user = new User();
+        $user = new User;
         $user->setConnection('tenant');
         $user->name = explode('@', $email)[0];
         $user->email = $email;
@@ -199,12 +201,12 @@ class TenantOnboardingService
     /** Step 8: Send welcome email to the tenant admin. */
     protected function stepSendWelcomeEmail(Tenant $tenant): void
     {
-        if (!$tenant->admin_email) {
+        if (! $tenant->admin_email) {
             return;
         }
 
         $baseDomain = parse_url(config('superadmin.tenant_base_url', 'https://lapesquerapp.es'), PHP_URL_HOST);
-        $tenantUrl = 'https://' . $tenant->subdomain . '.' . $baseDomain;
+        $tenantUrl = 'https://'.$tenant->subdomain.'.'.$baseDomain;
 
         Mail::to($tenant->admin_email)->send(
             new TenantWelcomeEmail($tenant->name, $tenantUrl, $tenant->admin_email)

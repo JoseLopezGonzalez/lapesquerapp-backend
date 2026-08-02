@@ -21,19 +21,19 @@ class ProductionControlPanelService
 
     public function getPanelData(array $filters): array
     {
-        $query   = $this->buildBaseQuery($filters);
+        $query = $this->buildBaseQuery($filters);
         $perPage = (int) ($filters['per_page'] ?? 25);
 
         $paginator = $this->buildProductionList($query, $perPage);
 
         return [
-            'summary'     => $this->buildSummary(),
+            'summary' => $this->buildSummary(),
             'productions' => collect($paginator->items())->all(),
-            'pagination'  => [
+            'pagination' => [
                 'currentPage' => $paginator->currentPage(),
-                'perPage'     => $paginator->perPage(),
-                'total'       => $paginator->total(),
-                'lastPage'    => $paginator->lastPage(),
+                'perPage' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'lastPage' => $paginator->lastPage(),
             ],
         ];
     }
@@ -45,7 +45,7 @@ class ProductionControlPanelService
     private function buildSummary(): array
     {
         return [
-            'openProductions'  => Production::whereNotNull('opened_at')->whereNull('closed_at')->count(),
+            'openProductions' => Production::whereNotNull('opened_at')->whereNull('closed_at')->count(),
             'boxesWithoutCost' => $this->countBoxesWithoutKnownCost(),
         ];
     }
@@ -61,23 +61,23 @@ class ProductionControlPanelService
         // Panel únicamente operativo sobre producciones no cerradas.
         $query->whereNull('closed_at');
 
-        if (!empty($filters['lot'])) {
-            $query->where('lot', 'like', '%' . $filters['lot'] . '%');
+        if (! empty($filters['lot'])) {
+            $query->where('lot', 'like', '%'.$filters['lot'].'%');
         }
 
-        if (!empty($filters['species_id'])) {
+        if (! empty($filters['species_id'])) {
             $query->where('species_id', $filters['species_id']);
         }
 
-        if (!empty($filters['date_from'])) {
+        if (! empty($filters['date_from'])) {
             $query->whereDate('date', '>=', $filters['date_from']);
         }
 
-        if (!empty($filters['date_to'])) {
+        if (! empty($filters['date_to'])) {
             $query->whereDate('date', '<=', $filters['date_to']);
         }
 
-        $sortBy  = \in_array($filters['sort_by'] ?? '', ['date', 'lot', 'id']) ? $filters['sort_by'] : 'id';
+        $sortBy = \in_array($filters['sort_by'] ?? '', ['date', 'lot', 'id']) ? $filters['sort_by'] : 'id';
         $sortDir = ($filters['sort_dir'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortDir);
 
@@ -105,36 +105,36 @@ class ProductionControlPanelService
     private function buildProductionRow(Production $production): array
     {
         $reconciliation = $production->getDetailedReconciliationByProduct();
-        $closure        = $this->closureService->canClose($production);
-        $costStatus     = $this->getProductionCostStatus($production);
+        $closure = $this->closureService->canClose($production);
+        $costStatus = $this->getProductionCostStatus($production);
 
         return [
-            'id'      => $production->id,
-            'lot'     => $production->lot,
-            'date'    => $production->date?->format('Y-m-d'),
-            'status'  => $this->resolveStatus($production, $reconciliation, $closure),
+            'id' => $production->id,
+            'lot' => $production->lot,
+            'date' => $production->date?->format('Y-m-d'),
+            'status' => $this->resolveStatus($production, $reconciliation, $closure),
             'species' => $production->species
                 ? ['id' => $production->species->id, 'name' => $production->species->name]
                 : null,
             'metrics' => [
-                'inputWeightKg'       => round($this->getStockInputWeight($production), 3),
-                'producedWeightKg'    => round($closure['summary']['producedWeight'] ?? 0, 3),
-                'salesWeightKg'       => round($closure['summary']['salesWeight'] ?? 0, 3),
-                'stockWeightKg'       => round($closure['summary']['stockWeight'] ?? 0, 3),
+                'inputWeightKg' => round($this->getStockInputWeight($production), 3),
+                'producedWeightKg' => round($closure['summary']['producedWeight'] ?? 0, 3),
+                'salesWeightKg' => round($closure['summary']['salesWeight'] ?? 0, 3),
+                'stockWeightKg' => round($closure['summary']['stockWeight'] ?? 0, 3),
                 'reprocessedWeightKg' => round($closure['summary']['reprocessedWeight'] ?? 0, 3),
-                'balanceWeightKg'     => round($closure['summary']['balanceWeight'] ?? 0, 3),
+                'balanceWeightKg' => round($closure['summary']['balanceWeight'] ?? 0, 3),
             ],
             'reconciliation' => [
-                'status'          => $reconciliation['summary']['overallStatus'] ?? 'ok',
-                'productsOk'      => $reconciliation['summary']['productsOk'] ?? 0,
+                'status' => $reconciliation['summary']['overallStatus'] ?? 'ok',
+                'productsOk' => $reconciliation['summary']['productsOk'] ?? 0,
                 'productsWarning' => $reconciliation['summary']['productsWarning'] ?? 0,
-                'productsError'   => $reconciliation['summary']['productsError'] ?? 0,
+                'productsError' => $reconciliation['summary']['productsError'] ?? 0,
             ],
             'closure' => [
-                'canClose'        => $closure['canClose'],
+                'canClose' => $closure['canClose'],
                 'blockingReasons' => array_column($closure['blockingReasons'], 'code'),
             ],
-            'costs'  => $costStatus,
+            'costs' => $costStatus,
             'alerts' => $this->buildAlerts($reconciliation, $closure, $costStatus),
         ];
     }
@@ -159,7 +159,7 @@ class ProductionControlPanelService
             return 'ready_to_close';
         }
 
-        if (!empty($closure['blockingReasons'])) {
+        if (! empty($closure['blockingReasons'])) {
             return 'not_closeable';
         }
 
@@ -172,13 +172,13 @@ class ProductionControlPanelService
 
         $overallStatus = $reconciliation['summary']['overallStatus'] ?? 'ok';
         if ($overallStatus !== 'ok') {
-            $balance  = (float) ($reconciliation['summary']['totalBalanceWeight'] ?? 0);
+            $balance = (float) ($reconciliation['summary']['totalBalanceWeight'] ?? 0);
             $alerts[] = [
                 'severity' => $overallStatus === 'error' ? 'critical' : 'warning',
-                'code'     => 'reconciliation_not_ok',
-                'message'  => $balance < 0
-                    ? 'Hay ' . abs(round($balance, 3)) . ' kg mas contabilizados que producidos.'
-                    : 'Faltan ' . abs(round($balance, 3)) . ' kg por contabilizar.',
+                'code' => 'reconciliation_not_ok',
+                'message' => $balance < 0
+                    ? 'Hay '.abs(round($balance, 3)).' kg mas contabilizados que producidos.'
+                    : 'Faltan '.abs(round($balance, 3)).' kg por contabilizar.',
             ];
         }
 
@@ -188,9 +188,9 @@ class ProductionControlPanelService
             }
             $alerts[] = [
                 'severity' => 'warning',
-                'code'     => $reason['code'],
-                'message'  => $reason['message'],
-                'action'   => $reason['action'] ?? null,
+                'code' => $reason['code'],
+                'message' => $reason['message'],
+                'action' => $reason['action'] ?? null,
             ];
         }
 
@@ -207,8 +207,8 @@ class ProductionControlPanelService
 
             $alerts[] = [
                 'severity' => 'info',
-                'code'     => 'missing_cost',
-                'message'  => "Hay {$costStatus['missingCostBoxesCount']} cajas ({$costStatus['missingCostWeightKg']} kg) sin coste trazable conocido.{$sampleSuffix}",
+                'code' => 'missing_cost',
+                'message' => "Hay {$costStatus['missingCostBoxesCount']} cajas ({$costStatus['missingCostWeightKg']} kg) sin coste trazable conocido.{$sampleSuffix}",
             ];
         }
 
@@ -232,9 +232,9 @@ class ProductionControlPanelService
         $weight = $result['weight'];
 
         return [
-            'hasMissingCosts'       => $count > 0,
+            'hasMissingCosts' => $count > 0,
             'missingCostBoxesCount' => $count,
-            'missingCostWeightKg'   => round($weight, 3),
+            'missingCostWeightKg' => round($weight, 3),
             'missingCostBoxesSample' => $result['details'],
         ];
     }
@@ -254,8 +254,7 @@ class ProductionControlPanelService
     {
         $base = Box::query()
             ->whereDoesntHave('productionInputs')
-            ->whereHas('palletBox.pallet', fn ($q) =>
-                $q->whereIn('status', [Pallet::STATE_REGISTERED, Pallet::STATE_STORED])
+            ->whereHas('palletBox.pallet', fn ($q) => $q->whereIn('status', [Pallet::STATE_REGISTERED, Pallet::STATE_STORED])
             );
 
         return $this->countMissingCosts($base)['count'];

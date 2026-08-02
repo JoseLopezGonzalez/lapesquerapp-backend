@@ -19,7 +19,7 @@ return new class extends Migration
             $table->integer('boxes')->default(0); // Cantidad de cajas producidas
             $table->decimal('weight_kg', 10, 2)->default(0); // Peso en kilogramos
             $table->timestamps();
-            
+
             // Índices para mejorar rendimiento
             $table->index('production_record_id');
             $table->index('product_id');

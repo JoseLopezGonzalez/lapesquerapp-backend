@@ -205,7 +205,7 @@ class TenantDeliveryRoutesSeeder extends Seeder
 
     private function linkOrderIfNeeded(DeliveryRoute $route, RouteStop $routeStop, array $orders): void
     {
-        $order = match ($route->name . '#' . $routeStop->position) {
+        $order = match ($route->name.'#'.$routeStop->position) {
             'Ruta Comercial Norte - Hoy#1' => $orders['ROUTE-001'],
             'Ruta Comercial Norte - En curso#1' => $orders['ROUTE-002'],
             'Ruta Comercial Secundario - Hoy#1' => $orders['ROUTE-003'],

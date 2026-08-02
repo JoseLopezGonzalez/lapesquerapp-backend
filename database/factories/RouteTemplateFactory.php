@@ -15,7 +15,7 @@ class RouteTemplateFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'Plantilla ' . $this->faker->unique()->city(),
+            'name' => 'Plantilla '.$this->faker->unique()->city(),
             'description' => $this->faker->optional(0.35)->sentence(),
             'salesperson_id' => $this->faker->optional(0.75)->passthrough(Salesperson::query()->value('id') ?? Salesperson::factory()),
             'field_operator_id' => $this->faker->optional(0.75)->passthrough(FieldOperator::query()->value('id') ?? FieldOperator::factory()),

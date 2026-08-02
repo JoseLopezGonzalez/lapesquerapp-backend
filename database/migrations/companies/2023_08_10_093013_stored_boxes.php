@@ -16,8 +16,8 @@ return new class extends Migration
             $table->unsignedBigInteger('store_id');
             $table->unsignedBigInteger('box_id');
             $table->unsignedBigInteger('position')->nullable();
-            $table->foreign('box_id')->references('id')->on('boxes')->onDelete('cascade'); 
-            $table->foreign('store_id')->references('id')->on('stores')->onDelete('cascade'); 
+            $table->foreign('box_id')->references('id')->on('boxes')->onDelete('cascade');
+            $table->foreign('store_id')->references('id')->on('stores')->onDelete('cascade');
             $table->timestamps();
         });
     }

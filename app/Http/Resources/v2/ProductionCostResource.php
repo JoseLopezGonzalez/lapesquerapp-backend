@@ -21,7 +21,7 @@ class ProductionCostResource extends JsonResource
             'costCatalogId' => $this->cost_catalog_id,
             'costCatalog' => $this->when(
                 $this->costCatalog && $request->has('include_catalog'),
-                fn() => new CostCatalogResource($this->costCatalog)
+                fn () => new CostCatalogResource($this->costCatalog)
             ),
             'costType' => $this->cost_type,
             'name' => $this->name,

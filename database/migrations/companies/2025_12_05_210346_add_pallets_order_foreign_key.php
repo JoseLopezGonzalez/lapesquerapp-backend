@@ -8,24 +8,24 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Asegura que existe la foreign key para order_id en pallets.
      * Si la columna no existe, la crea. Si existe pero no tiene FK, la agrega.
      * onDelete('set null') permite que un palet quede sin pedido si se elimina el pedido.
      */
     public function up(): void
     {
-        if (!Schema::hasTable('pallets')) {
+        if (! Schema::hasTable('pallets')) {
             return;
         }
 
         Schema::table('pallets', function (Blueprint $table) {
             // Verificar si la columna existe, si no, crearla
-            if (!Schema::hasColumn('pallets', 'order_id')) {
+            if (! Schema::hasColumn('pallets', 'order_id')) {
                 $table->unsignedBigInteger('order_id')->nullable()->after('status');
             }
         });
-        
+
         // Eliminar FK existente si existe (puede tener nombre diferente)
         try {
             Schema::table('pallets', function (Blueprint $table) {
@@ -34,7 +34,7 @@ return new class extends Migration
         } catch (\Exception $e) {
             // La FK no existe o tiene otro nombre, continuar
         }
-        
+
         // Verificar que la tabla orders existe antes de crear la FK
         if (Schema::hasTable('orders')) {
             // Crear la foreign key con onDelete('set null')

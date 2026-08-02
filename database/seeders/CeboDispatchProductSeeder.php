@@ -5,8 +5,8 @@ namespace Database\Seeders;
 use App\Models\CeboDispatch;
 use App\Models\CeboDispatchProduct;
 use App\Models\Product;
-use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
 
 /**
  * Lineas de producto de despachos de cebo. Inspirado en produccion.
@@ -23,6 +23,7 @@ class CeboDispatchProductSeeder extends Seeder
 
         if ($dispatches->isEmpty() || $products->isEmpty()) {
             $this->command?->warn('CeboDispatchProductSeeder: Ejecuta antes CeboDispatchSeeder y ProductSeeder.');
+
             return;
         }
 

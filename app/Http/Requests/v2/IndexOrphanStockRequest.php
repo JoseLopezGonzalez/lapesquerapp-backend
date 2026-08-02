@@ -15,7 +15,7 @@ class IndexOrphanStockRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'lot'      => 'nullable|string|max:255',
+            'lot' => 'nullable|string|max:255',
             'per_page' => 'nullable|integer|min:1|max:100',
             'sort_dir' => 'nullable|in:asc,desc',
         ];

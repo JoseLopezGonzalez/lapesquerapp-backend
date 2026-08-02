@@ -13,7 +13,6 @@ use App\Models\Label;
 use App\Models\Offer;
 use App\Models\OfferLine;
 use App\Models\Order;
-use App\Models\OrderPlannedProductDetail;
 use App\Models\Pallet;
 use App\Models\Process;
 use App\Models\Product;
@@ -29,8 +28,8 @@ use App\Models\RouteStop;
 use App\Models\RouteTemplate;
 use App\Models\RouteTemplateStop;
 use App\Models\Salesperson;
-use Illuminate\Database\Seeder;
 use Illuminate\Database\Eloquent\Factories\Sequence;
+use Illuminate\Database\Seeder;
 
 /**
  * Añade volumen adicional usando factories reutilizables.
@@ -98,7 +97,7 @@ class TenantVolumeExpansionSeeder extends Seeder
                 1 => Prospect::factory()->following(),
                 2 => Prospect::factory()->offerSent(),
                 3 => Prospect::factory()->discarded(),
-                default => Prospect::factory()->new(),
+                default => Prospect::factory()->asNew(),
             };
 
             $prospect = $prospectFactory

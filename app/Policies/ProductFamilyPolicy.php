@@ -24,6 +24,7 @@ class ProductFamilyPolicy
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -35,6 +36,7 @@ class ProductFamilyPolicy
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 

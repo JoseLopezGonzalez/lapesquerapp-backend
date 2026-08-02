@@ -18,8 +18,8 @@ class CustomerFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'Cliente ' . $this->faker->unique()->company(),
-            'vat_number' => 'ES' . $this->faker->unique()->bothify('?????????'),
+            'name' => 'Cliente '.$this->faker->unique()->company(),
+            'vat_number' => 'ES'.$this->faker->unique()->bothify('?????????'),
             'payment_term_id' => PaymentTerm::query()->value('id') ?? PaymentTerm::factory(),
             'billing_address' => $this->faker->address(),
             'shipping_address' => $this->faker->address(),
@@ -30,20 +30,20 @@ class CustomerFactory extends Factory
             'field_operator_id' => $this->faker->optional(0.4)->passthrough(FieldOperator::query()->value('id') ?? FieldOperator::factory()),
             'operational_status' => $this->faker->randomElement(['active', 'paused']),
             'created_by_user_id' => User::query()->value('id') ?? User::factory(),
-            'emails' => $this->faker->companyEmail() . '; CC:' . $this->faker->safeEmail(),
-            'contact_info' => $this->faker->name() . ' - ' . $this->faker->phoneNumber(),
+            'emails' => $this->faker->companyEmail().'; CC:'.$this->faker->safeEmail(),
+            'contact_info' => $this->faker->name().' - '.$this->faker->phoneNumber(),
             'country_id' => Country::query()->value('id') ?? Country::factory(),
             'transport_id' => Transport::query()->value('id') ?? Transport::factory(),
             'a3erp_code' => $this->faker->optional(0.35)->numerify('A3###'),
             'facilcom_code' => $this->faker->optional(0.35)->numerify('FC###'),
-            'alias' => 'Cliente Nº' . $this->faker->numberBetween(10, 999),
+            'alias' => 'Cliente Nº'.$this->faker->numberBetween(10, 999),
         ];
     }
 
     public function withAlias(): static
     {
         return $this->state(fn () => [
-            'alias' => 'Cliente Nº' . $this->faker->numberBetween(10, 999),
+            'alias' => 'Cliente Nº'.$this->faker->numberBetween(10, 999),
         ]);
     }
 

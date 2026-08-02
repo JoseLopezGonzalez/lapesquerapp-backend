@@ -2,13 +2,13 @@
 
 namespace Database\Seeders;
 
-use App\Models\Customer;
 use App\Models\Country;
+use App\Models\Customer;
 use App\Models\PaymentTerm;
 use App\Models\Salesperson;
 use App\Models\Transport;
-use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
 
 /**
  * Clientes de desarrollo.
@@ -27,8 +27,9 @@ class CustomerSeeder extends Seeder
         $salesperson = Salesperson::whereNotNull('user_id')->first() ?? Salesperson::first();
         $transport = Transport::first();
 
-        if (!$country || !$paymentTerm || !$salesperson || !$transport) {
+        if (! $country || ! $paymentTerm || ! $salesperson || ! $transport) {
             $this->command?->warn('CustomerSeeder: Ejecuta antes Countries, PaymentTerms, Salespeople y Transports.');
+
             return;
         }
 
@@ -95,7 +96,7 @@ class CustomerSeeder extends Seeder
                 'shipping_address' => $faker->address(),
                 'salesperson_id' => $salesperson->id,
                 'emails' => json_encode([$faker->companyEmail()]),
-                'contact_info' => $faker->name() . ', ' . $faker->phoneNumber(),
+                'contact_info' => $faker->name().', '.$faker->phoneNumber(),
                 'country_id' => $country->id,
                 'transport_id' => $transport->id,
             ],
@@ -114,7 +115,7 @@ class CustomerSeeder extends Seeder
                 ? $salesperson->id
                 : Salesperson::inRandomOrder()->first()->id;
             Customer::firstOrCreate(
-                ['vat_number' => 'B' . $faker->unique()->numerify('########')],
+                ['vat_number' => 'B'.$faker->unique()->numerify('########')],
                 [
                     'name' => $faker->company(),
                     'alias' => null,
@@ -123,7 +124,7 @@ class CustomerSeeder extends Seeder
                     'shipping_address' => $faker->address(),
                     'salesperson_id' => $salespersonId,
                     'emails' => json_encode([$faker->companyEmail()]),
-                    'contact_info' => $faker->name() . ', ' . $faker->phoneNumber(),
+                    'contact_info' => $faker->name().', '.$faker->phoneNumber(),
                     'country_id' => Country::inRandomOrder()->first()->id,
                     'transport_id' => Transport::inRandomOrder()->first()->id,
                 ]

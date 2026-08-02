@@ -15,15 +15,15 @@ class IndexProductionControlPanelRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'lot'                   => 'nullable|string|max:255',
-            'species_id'            => 'nullable|exists:tenant.species,id',
-            'status'                => 'prohibited',
-            'date_from'             => 'nullable|date',
-            'date_to'               => 'nullable|date|after_or_equal:date_from',
+            'lot' => 'nullable|string|max:255',
+            'species_id' => 'nullable|exists:tenant.species,id',
+            'status' => 'prohibited',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
             'reconciliation_status' => 'nullable|in:ok,warning,error',
-            'per_page'              => 'nullable|integer|min:1|max:50',
-            'sort_by'               => 'nullable|in:date,lot,id',
-            'sort_dir'              => 'nullable|in:asc,desc',
+            'per_page' => 'nullable|integer|min:1|max:50',
+            'sort_by' => 'nullable|in:date,lot,id',
+            'sort_dir' => 'nullable|in:asc,desc',
         ];
     }
 }

@@ -30,9 +30,8 @@ class SpeciesController extends Controller
 
         /* name like */
         if (request()->has('name')) {
-            $query->where('name', 'like', '%' . request()->name . '%');
+            $query->where('name', 'like', '%'.request()->name.'%');
         }
-
 
         /* fishingGears where ir */
         if (request()->has('fishingGears')) {
@@ -41,12 +40,12 @@ class SpeciesController extends Controller
 
         /* fao like */
         if (request()->has('fao')) {
-            $query->where('fao', 'like', '%' . request()->fao . '%');
+            $query->where('fao', 'like', '%'.request()->fao.'%');
         }
 
         /* scientific name like */
         if (request()->has('scientificName')) {
-            $query->where('scientific_name', 'like', '%' . request()->scientificName . '%');
+            $query->where('scientific_name', 'like', '%'.request()->scientificName.'%');
         }
 
         /* order by name */
@@ -54,6 +53,7 @@ class SpeciesController extends Controller
 
         $perPage = request()->input('perPage', 10); // Default a 10 si no se proporciona
         $query->with('fishingGear');
+
         return SpeciesResource::collection($query->paginate($perPage));
 
     }
@@ -95,6 +95,7 @@ class SpeciesController extends Controller
     public function show(Species $species)
     {
         $species->load('fishingGear');
+
         return response()->json([
             'data' => new SpeciesResource($species),
         ]);
@@ -106,9 +107,9 @@ class SpeciesController extends Controller
     public function update(Request $request, Species $species)
     {
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|min:2|unique:tenant.species,name,' . $species->id,
-            'scientificName' => 'sometimes|required|string|min:2|unique:tenant.species,scientific_name,' . $species->id,
-            'fao' => ['sometimes', 'required', 'regex:/^[A-Z]{3,5}$/', 'unique:tenant.species,fao,' . $species->id],
+            'name' => 'sometimes|required|string|min:2|unique:tenant.species,name,'.$species->id,
+            'scientificName' => 'sometimes|required|string|min:2|unique:tenant.species,scientific_name,'.$species->id,
+            'fao' => ['sometimes', 'required', 'regex:/^[A-Z]{3,5}$/', 'unique:tenant.species,fao,'.$species->id],
             'fishingGearId' => 'sometimes|required|exists:tenant.fishing_gears,id',
             'image' => 'nullable|string',
         ], [
@@ -118,23 +119,23 @@ class SpeciesController extends Controller
         ]);
 
         $updateData = [];
-        
+
         if (isset($validated['name'])) {
             $updateData['name'] = $validated['name'];
         }
-        
+
         if (isset($validated['scientificName'])) {
             $updateData['scientific_name'] = $validated['scientificName'];
         }
-        
+
         if (isset($validated['fao'])) {
             $updateData['fao'] = $validated['fao'];
         }
-        
+
         if (isset($validated['fishingGearId'])) {
             $updateData['fishing_gear_id'] = $validated['fishingGearId'];
         }
-        
+
         if (isset($validated['image'])) {
             $updateData['image'] = $validated['image'];
         }
@@ -169,7 +170,7 @@ class SpeciesController extends Controller
         }
 
         $species->delete();
-        
+
         return response()->json([
             'message' => 'Especie eliminada con éxito.',
         ]);
@@ -192,12 +193,14 @@ class SpeciesController extends Controller
             // Verificar si tiene productos asociados
             if ($specie->products()->count() > 0) {
                 $errors[] = "Especie '{$specie->name}' no se puede eliminar porque tiene productos asociados";
+
                 continue;
             }
 
             // Verificar si tiene producciones asociadas
             if ($specie->productions()->count() > 0) {
                 $errors[] = "Especie '{$specie->name}' no se puede eliminar porque tiene producciones asociadas";
+
                 continue;
             }
 
@@ -208,10 +211,10 @@ class SpeciesController extends Controller
         // Construir mensajes en lenguaje natural
         $message = "Se eliminaron {$deletedCount} especies con éxito";
         $userMessage = '';
-        
-        if (!empty($errors)) {
-            $message .= ". Errores: " . implode(', ', $errors);
-            
+
+        if (! empty($errors)) {
+            $message .= '. Errores: '.implode(', ', $errors);
+
             // Generar mensaje en lenguaje natural para el usuario
             if ($deletedCount === 0) {
                 // No se eliminó ninguna
@@ -240,6 +243,7 @@ class SpeciesController extends Controller
             'errors' => $errors,
         ]);
     }
+
     /**
      * Get all options for the species select box.
      *
@@ -255,7 +259,7 @@ class SpeciesController extends Controller
             ->map(function ($item) {
                 return [
                     'id' => $item->id,
-                    'name' => "{$item->name} ({$item->scientific_name} - {$item->fao})"
+                    'name' => "{$item->name} ({$item->scientific_name} - {$item->fao})",
                 ];
             });
 

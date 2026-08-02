@@ -13,7 +13,6 @@ class CustomerListService
      * Lista clientes con filtros y paginación.
      *
      * @param  Request  $request  Request con query params ya validados (IndexCustomerRequest)
-     * @return LengthAwarePaginator
      */
     public static function list(Request $request): LengthAwarePaginator
     {
@@ -28,15 +27,15 @@ class CustomerListService
         if ($request->filled('search')) {
             $search = (string) $request->input('search');
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('vat_number', 'like', '%' . $search . '%')
-                    ->orWhere('billing_address', 'like', '%' . $search . '%')
-                    ->orWhere('shipping_address', 'like', '%' . $search . '%')
-                    ->orWhere('contact_info', 'like', '%' . $search . '%')
-                    ->orWhere('emails', 'like', '%' . $search . '%')
-                    ->orWhere('a3erp_code', 'like', '%' . $search . '%')
-                    ->orWhere('facilcom_code', 'like', '%' . $search . '%')
-                    ->orWhere('alias', 'like', '%' . $search . '%');
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('vat_number', 'like', '%'.$search.'%')
+                    ->orWhere('billing_address', 'like', '%'.$search.'%')
+                    ->orWhere('shipping_address', 'like', '%'.$search.'%')
+                    ->orWhere('contact_info', 'like', '%'.$search.'%')
+                    ->orWhere('emails', 'like', '%'.$search.'%')
+                    ->orWhere('a3erp_code', 'like', '%'.$search.'%')
+                    ->orWhere('facilcom_code', 'like', '%'.$search.'%')
+                    ->orWhere('alias', 'like', '%'.$search.'%');
             });
         }
 
@@ -49,7 +48,7 @@ class CustomerListService
         }
 
         if ($request->filled('name')) {
-            $query->where('name', 'like', '%' . $request->input('name') . '%');
+            $query->where('name', 'like', '%'.$request->input('name').'%');
         }
 
         if ($request->filled('vatNumber')) {

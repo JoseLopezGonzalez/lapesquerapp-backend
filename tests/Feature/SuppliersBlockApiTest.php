@@ -16,8 +16,8 @@ use Tests\TestCase;
  */
 class SuppliersBlockApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?string $token = null;
 
@@ -33,8 +33,8 @@ class SuppliersBlockApiTest extends TestCase
 
     private function createTenantAndUser(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'suppliers-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'suppliers-'.uniqid();
         Tenant::create([
             'name' => 'Test Tenant Suppliers',
             'subdomain' => $slug,
@@ -44,7 +44,7 @@ class SuppliersBlockApiTest extends TestCase
 
         $user = User::create([
             'name' => 'Test User Suppliers',
-            'email' => $slug . '@test.com',
+            'email' => $slug.'@test.com',
             'password' => bcrypt('password'),
             'role' => Role::Administrador->value,
         ]);
@@ -57,7 +57,7 @@ class SuppliersBlockApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $this->token,
+            'Authorization' => 'Bearer '.$this->token,
             'Accept' => 'application/json',
         ];
     }
@@ -86,7 +86,7 @@ class SuppliersBlockApiTest extends TestCase
 
     public function test_supplier_can_be_created(): void
     {
-        $name = 'Proveedor Test ' . uniqid();
+        $name = 'Proveedor Test '.uniqid();
         $response = $this->withHeaders($this->authHeaders())
             ->postJson('/api/v2/suppliers', [
                 'name' => $name,
@@ -126,7 +126,7 @@ class SuppliersBlockApiTest extends TestCase
     {
         (new SupplierSeeder)->run();
         $supplier = Supplier::on('tenant')->first();
-        $newName = 'Proveedor Actualizado ' . uniqid();
+        $newName = 'Proveedor Actualizado '.uniqid();
 
         $response = $this->withHeaders($this->authHeaders())
             ->putJson("/api/v2/suppliers/{$supplier->id}", [
@@ -143,7 +143,7 @@ class SuppliersBlockApiTest extends TestCase
     public function test_supplier_can_be_deleted(): void
     {
         $supplier = Supplier::on('tenant')->create([
-            'name' => 'Proveedor para eliminar ' . uniqid(),
+            'name' => 'Proveedor para eliminar '.uniqid(),
             'type' => 'raw_material',
         ]);
 
@@ -156,8 +156,8 @@ class SuppliersBlockApiTest extends TestCase
 
     public function test_suppliers_destroy_multiple(): void
     {
-        $s1 = Supplier::on('tenant')->create(['name' => 'Proveedor multi 1 ' . uniqid(), 'type' => 'raw_material']);
-        $s2 = Supplier::on('tenant')->create(['name' => 'Proveedor multi 2 ' . uniqid(), 'type' => 'raw_material']);
+        $s1 = Supplier::on('tenant')->create(['name' => 'Proveedor multi 1 '.uniqid(), 'type' => 'raw_material']);
+        $s2 = Supplier::on('tenant')->create(['name' => 'Proveedor multi 2 '.uniqid(), 'type' => 'raw_material']);
 
         $response = $this->withHeaders($this->authHeaders())
             ->deleteJson('/api/v2/suppliers', ['ids' => [$s1->id, $s2->id]]);

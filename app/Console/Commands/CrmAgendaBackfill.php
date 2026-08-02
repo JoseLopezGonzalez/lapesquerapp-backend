@@ -26,6 +26,7 @@ class CrmAgendaBackfill extends Command
 
         if ($tenants->isEmpty()) {
             $this->info('No hay tenants para procesar.');
+
             return Command::SUCCESS;
         }
 
@@ -45,4 +46,3 @@ class CrmAgendaBackfill extends Command
         return Command::SUCCESS;
     }
 }
-

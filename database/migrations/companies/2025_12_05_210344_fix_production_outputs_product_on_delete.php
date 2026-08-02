@@ -8,14 +8,14 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Cambia onDelete('cascade') a onDelete('restrict') en product_id
      * para impedir eliminar productos que son catálogos maestros.
      * Los productos no deben eliminarse cuando se elimina un output.
      */
     public function up(): void
     {
-        if (!Schema::hasTable('production_outputs')) {
+        if (! Schema::hasTable('production_outputs')) {
             return;
         }
 
@@ -27,7 +27,7 @@ return new class extends Migration
                 // La FK no existe, continuar
             }
         });
-        
+
         // Recrear con onDelete('restrict')
         Schema::table('production_outputs', function (Blueprint $table) {
             $table->foreign('product_id')
@@ -45,7 +45,7 @@ return new class extends Migration
         Schema::table('production_outputs', function (Blueprint $table) {
             // Eliminar la foreign key
             $table->dropForeign(['product_id']);
-            
+
             // Recrear con onDelete('cascade') (comportamiento original)
             $table->foreign('product_id')
                 ->references('id')

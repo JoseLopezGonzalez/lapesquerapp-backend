@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Log;
 
 class CheckOnboardingStuck extends Command
 {
-    protected $signature   = 'superadmin:check-onboarding-stuck';
+    protected $signature = 'superadmin:check-onboarding-stuck';
+
     protected $description = 'Detect tenants whose onboarding is stuck (started > 30min ago without failure recorded)';
 
     public function handle(): void
@@ -29,7 +30,7 @@ class CheckOnboardingStuck extends Command
                 tenantId: $tenant->id,
                 metadata: [
                     'onboarding_step' => $tenant->onboarding_step,
-                    'created_at'      => $tenant->created_at,
+                    'created_at' => $tenant->created_at,
                 ]
             );
 

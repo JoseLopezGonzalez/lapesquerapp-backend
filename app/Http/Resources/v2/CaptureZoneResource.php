@@ -20,4 +20,3 @@ class CaptureZoneResource extends JsonResource
         ];
     }
 }
-

@@ -26,7 +26,7 @@ class TenantMigrationController extends Controller
         } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Error al obtener el estado de migraciones.',
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -40,8 +40,8 @@ class TenantMigrationController extends Controller
 
         return response()->json([
             'message' => 'Migraciones encoladas para el tenant.',
-            'run_id'  => $run->id,
-            'tenant'  => $tenant->subdomain,
+            'run_id' => $run->id,
+            'tenant' => $tenant->subdomain,
         ]);
     }
 
@@ -59,8 +59,8 @@ class TenantMigrationController extends Controller
             'data' => $history->items(),
             'meta' => [
                 'current_page' => $history->currentPage(),
-                'last_page'    => $history->lastPage(),
-                'total'        => $history->total(),
+                'last_page' => $history->lastPage(),
+                'total' => $history->total(),
             ],
         ]);
     }
@@ -73,8 +73,8 @@ class TenantMigrationController extends Controller
         $count = $this->service->runAllMigrations($request->user());
 
         return response()->json([
-            'message'         => 'Migraciones encoladas para todos los tenants activos.',
-            'tenants_queued'  => $count,
+            'message' => 'Migraciones encoladas para todos los tenants activos.',
+            'tenants_queued' => $count,
         ]);
     }
 }

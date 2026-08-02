@@ -13,11 +13,13 @@ use Tests\TestCase;
 
 class FieldOperatorApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private string $tenantSubdomain;
+
     private User $adminUser;
+
     private User $fieldUser;
 
     protected function setUp(): void
@@ -26,8 +28,8 @@ class FieldOperatorApiTest extends TestCase
         parent::setUp();
         $this->setUpTenantConnection();
 
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'field-operator-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'field-operator-'.uniqid();
         Tenant::create([
             'name' => 'Field Operator Tenant',
             'subdomain' => $slug,
@@ -38,13 +40,13 @@ class FieldOperatorApiTest extends TestCase
         $this->tenantSubdomain = $slug;
         $this->adminUser = User::create([
             'name' => 'Admin',
-            'email' => $slug . '-admin@test.com',
+            'email' => $slug.'-admin@test.com',
             'role' => Role::Administrador->value,
             'active' => true,
         ]);
         $this->fieldUser = User::create([
             'name' => 'Field User',
-            'email' => $slug . '-field@test.com',
+            'email' => $slug.'-field@test.com',
             'role' => Role::RepartidorAutoventa->value,
             'active' => true,
         ]);
@@ -54,7 +56,7 @@ class FieldOperatorApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $user->createToken('test')->plainTextToken,
+            'Authorization' => 'Bearer '.$user->createToken('test')->plainTextToken,
             'Accept' => 'application/json',
         ];
     }
@@ -95,7 +97,7 @@ class FieldOperatorApiTest extends TestCase
     {
         $dualUser = User::create([
             'name' => 'Dual User',
-            'email' => 'dual-' . uniqid() . '@test.com',
+            'email' => 'dual-'.uniqid().'@test.com',
             'role' => Role::RepartidorAutoventa->value,
             'active' => true,
         ]);
@@ -124,7 +126,7 @@ class FieldOperatorApiTest extends TestCase
 
         $dualUser = User::create([
             'name' => 'Dual User Update',
-            'email' => 'dual-update-' . uniqid() . '@test.com',
+            'email' => 'dual-update-'.uniqid().'@test.com',
             'role' => Role::RepartidorAutoventa->value,
             'active' => true,
         ]);
@@ -135,7 +137,7 @@ class FieldOperatorApiTest extends TestCase
         ]);
 
         $response = $this->withHeaders($this->headersFor($this->adminUser))
-            ->putJson('/api/v2/field-operators/' . $fieldOperator->id, [
+            ->putJson('/api/v2/field-operators/'.$fieldOperator->id, [
                 'user_id' => $dualUser->id,
             ]);
 

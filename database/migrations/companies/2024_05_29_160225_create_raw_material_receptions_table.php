@@ -17,7 +17,7 @@ return new class extends Migration
             $table->date('date');
             $table->text('notes')->nullable();
             $table->timestamps();
-    
+
             $table->foreign('supplier_id')->references('id')->on('suppliers')->onDelete('cascade');
         });
     }

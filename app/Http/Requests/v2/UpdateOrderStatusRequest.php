@@ -18,7 +18,7 @@ class UpdateOrderStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => 'required|string|in:' . implode(',', Order::getValidStatuses()),
+            'status' => 'required|string|in:'.implode(',', Order::getValidStatuses()),
         ];
     }
 

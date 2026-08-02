@@ -33,8 +33,8 @@ class ObservabilityController extends Controller
             'data' => $logs->items(),
             'meta' => [
                 'current_page' => $logs->currentPage(),
-                'last_page'    => $logs->lastPage(),
-                'total'        => $logs->total(),
+                'last_page' => $logs->lastPage(),
+                'total' => $logs->total(),
             ],
         ]);
     }
@@ -53,8 +53,8 @@ class ObservabilityController extends Controller
             'data' => $logs->items(),
             'meta' => [
                 'current_page' => $logs->currentPage(),
-                'last_page'    => $logs->lastPage(),
-                'total'        => $logs->total(),
+                'last_page' => $logs->lastPage(),
+                'total' => $logs->total(),
             ],
         ]);
     }
@@ -116,8 +116,8 @@ class ObservabilityController extends Controller
             'data' => $alerts->items(),
             'meta' => [
                 'current_page' => $alerts->currentPage(),
-                'last_page'    => $alerts->lastPage(),
-                'total'        => $alerts->total(),
+                'last_page' => $alerts->lastPage(),
+                'total' => $alerts->total(),
             ],
         ]);
     }
@@ -135,8 +135,8 @@ class ObservabilityController extends Controller
         $admin = $request->user();
 
         $alert->update([
-            'resolved_at'                => now('UTC'),
-            'resolved_by_superadmin_id'  => $admin->id,
+            'resolved_at' => now('UTC'),
+            'resolved_by_superadmin_id' => $admin->id,
         ]);
 
         return response()->json(['message' => 'Alerta marcada como resuelta.', 'data' => $alert]);

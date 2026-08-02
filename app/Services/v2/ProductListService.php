@@ -37,7 +37,7 @@ class ProductListService
         }
 
         if ($request->has('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
+            $query->where('name', 'like', '%'.$request->name.'%');
         }
 
         if ($request->has('species')) {

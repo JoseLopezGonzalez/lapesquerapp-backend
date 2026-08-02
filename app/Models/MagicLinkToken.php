@@ -11,6 +11,7 @@ class MagicLinkToken extends Model
     use UsesTenantConnection;
 
     public const TYPE_MAGIC_LINK = 'magic_link';
+
     public const TYPE_OTP = 'otp';
 
     protected $fillable = [

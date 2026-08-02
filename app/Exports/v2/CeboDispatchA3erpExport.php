@@ -4,21 +4,20 @@ namespace App\Exports\v2;
 
 use App\Models\CeboDispatch;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
-
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithTitle
 {
     use Exportable;
 
     protected $filters;
+
     protected $limit;
 
     public function __construct(Request $request, $limit = null)
@@ -53,7 +52,7 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
         // Para optimizar memoria, usamos eager loading con with() y limitamos con ->limit() si es necesario.
         return $query->with([
             'supplier',
-            'products.product'
+            'products.product',
         ])->get();
     }
 
@@ -108,7 +107,7 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
 
         // Filtro por notas
         if (isset($filters['notes'])) {
-            $query->where('notes', 'like', '%' . $filters['notes'] . '%');
+            $query->where('notes', 'like', '%'.$filters['notes'].'%');
         }
 
         // Filtro por tipo de exportación
@@ -137,7 +136,7 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
     {
         // Mejorar el manejo de relaciones nulas
         $supplier = $ceboDispatch->supplier;
-        
+
         $rows = [];
 
         // Procesar todos los despachos de tipo a3erp, incluso si no tienen códigos
@@ -145,18 +144,18 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
         if ($ceboDispatch->export_type === 'a3erp') {
             // Obtener año de 2 dígitos basado en la fecha del despacho
             $year = $ceboDispatch->date ? date('y', strtotime($ceboDispatch->date)) : '25';
-            $serie = 'C' . $year;
+            $serie = 'C'.$year;
 
             foreach ($ceboDispatch->products as $product) {
                 $productModel = $product->product;
-                
+
                 $rows[] = [
                     $serie, // cabSerie
                     $ceboDispatch->id ?: '-', // id
                     $ceboDispatch->date ? date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
                     // Mostrar "-" si el proveedor no tiene código A3ERP
                     $supplier && $supplier->a3erp_cebo_code ? $supplier->a3erp_cebo_code : '-',
-                    $supplier && $ceboDispatch->date ? $supplier->name . " - CEBO - " . date('d/m/Y', strtotime($ceboDispatch->date)) : ($supplier ? $supplier->name : '-'),
+                    $supplier && $ceboDispatch->date ? $supplier->name.' - CEBO - '.date('d/m/Y', strtotime($ceboDispatch->date)) : ($supplier ? $supplier->name : '-'),
                     // Mostrar "-" si el producto no tiene código A3ERP
                     $productModel && $productModel->a3erp_code ? $productModel->a3erp_code : '-',
                     $productModel ? $productModel->name : '-',
@@ -182,10 +181,10 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
         $highestColumn = $sheet->getHighestColumn();
 
         // Solo negrita para encabezados
-        $sheet->getStyle('A1:' . $highestColumn . '1')->applyFromArray([
+        $sheet->getStyle('A1:'.$highestColumn.'1')->applyFromArray([
             'font' => [
-                'bold' => true
-            ]
+                'bold' => true,
+            ],
         ]);
 
         // Formato de números para columnas de peso y precio (H e I)
@@ -199,14 +198,14 @@ class CeboDispatchA3erpExport implements FromCollection, WithHeadings, WithMappi
         // Colorear de amarillo las celdas con datos faltantes ("-")
         for ($row = 2; $row <= $highestRow; $row++) {
             for ($col = 'A'; $col <= $highestColumn; $col++) {
-                $cellValue = $sheet->getCell($col . $row)->getValue();
+                $cellValue = $sheet->getCell($col.$row)->getValue();
                 if ($cellValue === '-') {
-                    $sheet->getStyle($col . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-                    $sheet->getStyle($col . $row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
+                    $sheet->getStyle($col.$row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+                    $sheet->getStyle($col.$row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
                 }
             }
         }
 
         return [];
     }
-} 
+}

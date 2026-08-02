@@ -21,10 +21,9 @@ class OrdersReportController extends Controller
 
             return Excel::download(new OrderExport($request), 'orders_report.xls', \Maatwebsite\Excel\Excel::XLS);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Error durante la exportación del archivo: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Error durante la exportación del archivo: '.$e->getMessage()], 500);
         }
     }
-
 
     /**
      * Exportación Excel formato A3ERP. Nota: actualmente no tiene ruta registrada en api.php.
@@ -40,15 +39,7 @@ class OrdersReportController extends Controller
 
             return Excel::download(new OrderExport($request), 'orders_report_a3erp.xls', \Maatwebsite\Excel\Excel::XLS);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Error durante la exportación del archivo: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Error durante la exportación del archivo: '.$e->getMessage()], 500);
         }
     }
-
-    
-    
-
-
-
-
-
 }

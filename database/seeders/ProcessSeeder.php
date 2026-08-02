@@ -73,4 +73,3 @@ class ProcessSeeder extends Seeder
         }
     }
 }
-

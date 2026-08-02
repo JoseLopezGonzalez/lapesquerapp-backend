@@ -11,12 +11,14 @@ use Tests\TestCase;
 
 class CustomerApiTest extends TestCase
 {
-    use RefreshDatabase;
-    use ConfiguresTenantConnection;
     use BuildsOperationsScenario;
+    use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?string $token = null;
+
     private ?string $tenantSubdomain = null;
+
     private array $salesContext = [];
 
     protected function setUp(): void
@@ -34,7 +36,7 @@ class CustomerApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $this->token,
+            'Authorization' => 'Bearer '.$this->token,
             'Accept' => 'application/json',
         ];
     }
@@ -53,16 +55,16 @@ class CustomerApiTest extends TestCase
         Customer::query()->delete();
 
         $ctx = $this->salesContext;
-        $needle = 'Mer-' . uniqid();
+        $needle = 'Mer-'.uniqid();
 
         $match = Customer::factory()->create([
-            'name' => 'Cliente ' . $needle,
+            'name' => 'Cliente '.$needle,
             'payment_term_id' => $ctx['paymentTerm']->id,
             'salesperson_id' => $ctx['salesperson']->id,
             'country_id' => $ctx['country']->id,
             'transport_id' => $ctx['transport']->id,
         ]);
-        $otherName = 'Cliente Otro ' . uniqid();
+        $otherName = 'Cliente Otro '.uniqid();
         Customer::factory()->create([
             'name' => $otherName,
             'payment_term_id' => $ctx['paymentTerm']->id,
@@ -72,7 +74,7 @@ class CustomerApiTest extends TestCase
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/customers?search=' . urlencode($needle) . '&perPage=50');
+            ->getJson('/api/v2/customers?search='.urlencode($needle).'&perPage=50');
 
         $response->assertStatus(200);
         $response->assertJsonFragment(['id' => $match->id, 'name' => $match->name]);
@@ -82,11 +84,11 @@ class CustomerApiTest extends TestCase
     public function test_can_create_customer(): void
     {
         $ctx = $this->salesContext;
-        $name = 'Cliente Test ' . uniqid();
+        $name = 'Cliente Test '.uniqid();
         $response = $this->withHeaders($this->authHeaders())
             ->postJson('/api/v2/customers', [
                 'name' => $name,
-                'vatNumber' => 'B' . uniqid(),
+                'vatNumber' => 'B'.uniqid(),
                 'billing_address' => 'Dir fact test',
                 'shipping_address' => 'Dir env test',
                 'payment_term_id' => $ctx['paymentTerm']->id,
@@ -107,7 +109,7 @@ class CustomerApiTest extends TestCase
         $customer = $this->createCustomerForTest($this->salesContext);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/customers/' . $customer->id);
+            ->getJson('/api/v2/customers/'.$customer->id);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.id', $customer->id);
@@ -117,10 +119,10 @@ class CustomerApiTest extends TestCase
     public function test_can_update_customer(): void
     {
         $customer = $this->createCustomerForTest($this->salesContext);
-        $newName = 'Cliente Actualizado ' . uniqid();
+        $newName = 'Cliente Actualizado '.uniqid();
 
         $response = $this->withHeaders($this->authHeaders())
-            ->putJson('/api/v2/customers/' . $customer->id, [
+            ->putJson('/api/v2/customers/'.$customer->id, [
                 'name' => $newName,
                 'vatNumber' => $customer->vat_number,
                 'billing_address' => $customer->billing_address,
@@ -143,7 +145,7 @@ class CustomerApiTest extends TestCase
         $customer = $this->createCustomerForTest($this->salesContext);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/customers/' . $customer->id);
+            ->deleteJson('/api/v2/customers/'.$customer->id);
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('customers', ['id' => $customer->id], 'tenant');
@@ -155,14 +157,14 @@ class CustomerApiTest extends TestCase
         $customer = $this->createCustomerForTest($ctx);
 
         $baseOrderData = [
-            'customer_id'      => $customer->id,
-            'payment_term_id'  => $ctx['paymentTerm']->id,
-            'salesperson_id'   => $ctx['salesperson']->id,
-            'transport_id'     => $ctx['transport']->id,
-            'billing_address'  => 'Dir fact',
+            'customer_id' => $customer->id,
+            'payment_term_id' => $ctx['paymentTerm']->id,
+            'salesperson_id' => $ctx['salesperson']->id,
+            'transport_id' => $ctx['transport']->id,
+            'billing_address' => 'Dir fact',
             'shipping_address' => 'Dir env',
-            'emails'           => 'ventas@test.com',
-            'status'           => 'pending',
+            'emails' => 'ventas@test.com',
+            'status' => 'pending',
         ];
 
         Order::create(array_merge($baseOrderData, ['entry_date' => '2024-03-01', 'load_date' => '2024-03-15']));
@@ -170,7 +172,7 @@ class CustomerApiTest extends TestCase
         Order::create(array_merge($baseOrderData, ['entry_date' => '2025-01-01', 'load_date' => '2025-01-10']));
 
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/customers/' . $customer->id . '/order-history/ranges');
+            ->getJson('/api/v2/customers/'.$customer->id.'/order-history/ranges');
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.first_order_date', '2024-03-15');
@@ -185,7 +187,7 @@ class CustomerApiTest extends TestCase
         $customer = $this->createCustomerForTest($this->salesContext);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/customers/' . $customer->id . '/order-history/ranges');
+            ->getJson('/api/v2/customers/'.$customer->id.'/order-history/ranges');
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.first_order_date', null);

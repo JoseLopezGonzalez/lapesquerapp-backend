@@ -8,19 +8,19 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Agrega constraint único en code para asegurar que no se puedan crear
      * múltiples incoterms con el mismo código dentro del mismo tenant.
      */
     public function up(): void
     {
-        if (!Schema::hasTable('incoterms')) {
+        if (! Schema::hasTable('incoterms')) {
             return;
         }
 
         // Verificar si ya existe el constraint único en code
         $hasCodeUnique = false;
-        
+
         try {
             $indexes = \DB::select("SHOW INDEX FROM incoterms WHERE Key_name != 'PRIMARY'");
             foreach ($indexes as $index) {
@@ -32,8 +32,8 @@ return new class extends Migration
         } catch (\Exception $e) {
             // Si falla la consulta, asumimos que no existe y lo creamos
         }
-        
-        if (!$hasCodeUnique) {
+
+        if (! $hasCodeUnique) {
             Schema::table('incoterms', function (Blueprint $table) {
                 try {
                     $table->unique('code');
@@ -49,7 +49,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (!Schema::hasTable('incoterms')) {
+        if (! Schema::hasTable('incoterms')) {
             return;
         }
 

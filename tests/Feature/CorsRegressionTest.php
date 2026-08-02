@@ -102,7 +102,7 @@ class CorsRegressionTest extends TestCase
 
         $this->assertTrue(
             in_array($response->getStatusCode(), [200, 204]),
-            'OPTIONS without Origin should return 200 or 204, got ' . $response->getStatusCode()
+            'OPTIONS without Origin should return 200 or 204, got '.$response->getStatusCode()
         );
         $this->assertNull(
             $response->headers->get('Access-Control-Allow-Origin'),

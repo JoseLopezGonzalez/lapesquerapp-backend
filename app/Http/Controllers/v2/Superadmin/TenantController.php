@@ -43,7 +43,7 @@ class TenantController extends Controller
         $tenant = Tenant::create([
             'name' => $data['name'],
             'subdomain' => $data['subdomain'],
-            'database' => 'tenant_' . $data['subdomain'],
+            'database' => 'tenant_'.$data['subdomain'],
             'status' => 'pending',
             'plan' => $data['plan'] ?? null,
             'timezone' => $data['timezone'] ?? 'Europe/Madrid',

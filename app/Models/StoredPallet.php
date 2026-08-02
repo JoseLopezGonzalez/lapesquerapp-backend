@@ -3,18 +3,15 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
-use App\Models\Pallet;
 
 class StoredPallet extends Model
 {
     use UsesTenantConnection;
+
     // App\Models\StoredPallet.php
     protected $fillable = ['pallet_id', 'store_id', 'position']; // si usas 'position' también
-
 
     use HasFactory;
     //protected $table = 'pallet_positions_store';
@@ -41,14 +38,12 @@ class StoredPallet extends Model
         ]);
     }
 
-
     /* NUEVO LA PESQUERAPP */
 
-public function scopeStored($query)
-{
-    return $query
-        ->join('pallets', 'pallets.id', '=', 'stored_pallets.pallet_id')
-        ->where('pallets.status', Pallet::STATE_STORED);
-}
-
+    public function scopeStored($query)
+    {
+        return $query
+            ->join('pallets', 'pallets.id', '=', 'stored_pallets.pallet_id')
+            ->where('pallets.status', Pallet::STATE_STORED);
+    }
 }

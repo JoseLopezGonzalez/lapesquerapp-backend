@@ -51,6 +51,7 @@ class SessionPolicy
         if ($token->tokenable_id === (int) $user->id && $token->tokenable_type === User::class) {
             return true;
         }
+
         return $user->hasAnyRole($this->rolesCanDeleteAny());
     }
 }

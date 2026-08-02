@@ -32,7 +32,7 @@ return new class extends Migration
             }
         }
 
-        DB::statement("ALTER TABLE customers
+        DB::statement('ALTER TABLE customers
             MODIFY vat_number VARCHAR(255) NULL,
             MODIFY payment_term_id BIGINT UNSIGNED NULL,
             MODIFY billing_address TEXT NULL,
@@ -41,7 +41,7 @@ return new class extends Migration
             MODIFY contact_info TEXT NULL,
             MODIFY country_id BIGINT UNSIGNED NULL,
             MODIFY transport_id BIGINT UNSIGNED NULL
-        ");
+        ');
 
         Schema::table('customers', function (Blueprint $table) {
             if (Schema::hasTable('payment_terms')) {
@@ -77,7 +77,7 @@ return new class extends Migration
             $table->dropForeign(['transport_id']);
         });
 
-        DB::statement("ALTER TABLE customers
+        DB::statement('ALTER TABLE customers
             MODIFY vat_number VARCHAR(255) NOT NULL,
             MODIFY payment_term_id BIGINT UNSIGNED NOT NULL,
             MODIFY billing_address TEXT NOT NULL,
@@ -86,7 +86,7 @@ return new class extends Migration
             MODIFY contact_info TEXT NOT NULL,
             MODIFY country_id BIGINT UNSIGNED NOT NULL,
             MODIFY transport_id BIGINT UNSIGNED NOT NULL
-        ");
+        ');
 
         Schema::table('customers', function (Blueprint $table) {
             if (Schema::hasTable('payment_terms')) {

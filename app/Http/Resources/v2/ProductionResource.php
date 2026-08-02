@@ -20,17 +20,17 @@ class ProductionResource extends JsonResource
         $inputWeight = (float) ($globalTotals['totalInputWeight'] ?? 0);
         $outputWeight = (float) ($globalTotals['totalOutputWeight'] ?? 0);
         $difference = $inputWeight - $outputWeight;
-        
+
         // Calcular waste (solo si hay pérdida)
         $waste = $difference > 0 ? round($difference, 2) : 0;
-        $wastePercentage = ($difference > 0 && $inputWeight > 0) 
-            ? round(($difference / $inputWeight) * 100, 2) 
+        $wastePercentage = ($difference > 0 && $inputWeight > 0)
+            ? round(($difference / $inputWeight) * 100, 2)
             : 0;
-        
+
         // Calcular yield (solo si hay ganancia)
         $yield = $difference < 0 ? round(abs($difference), 2) : 0;
-        $yieldPercentage = ($difference < 0 && $inputWeight > 0) 
-            ? round((abs($difference) / $inputWeight) * 100, 2) 
+        $yieldPercentage = ($difference < 0 && $inputWeight > 0)
+            ? round((abs($difference) / $inputWeight) * 100, 2)
             : 0;
 
         return [

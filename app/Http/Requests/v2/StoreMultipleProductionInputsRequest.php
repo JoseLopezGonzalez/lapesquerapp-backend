@@ -29,4 +29,3 @@ class StoreMultipleProductionInputsRequest extends FormRequest
         ];
     }
 }
-

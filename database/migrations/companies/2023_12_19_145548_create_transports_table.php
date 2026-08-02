@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name'); // Campo para el nombre
             $table->string('vat_number'); // Campo para el número de IVA
             $table->text('address'); // Campo para la dirección
-            $table->text('emails'); 
+            $table->text('emails');
             $table->timestamps();
         });
     }

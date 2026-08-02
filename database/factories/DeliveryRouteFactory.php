@@ -16,7 +16,7 @@ class DeliveryRouteFactory extends Factory
     {
         return [
             'route_template_id' => null,
-            'name' => 'Ruta ' . $this->faker->unique()->city(),
+            'name' => 'Ruta '.$this->faker->unique()->city(),
             'description' => $this->faker->optional(0.35)->sentence(),
             'route_date' => $this->faker->dateTimeBetween('-5 days', '+10 days')->format('Y-m-d'),
             'status' => $this->faker->randomElement(DeliveryRoute::validStatuses()),

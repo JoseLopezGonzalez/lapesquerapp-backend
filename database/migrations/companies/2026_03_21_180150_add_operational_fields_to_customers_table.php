@@ -25,7 +25,7 @@ return new class extends Migration
             }
         }
 
-        DB::statement("ALTER TABLE customers MODIFY salesperson_id BIGINT UNSIGNED NULL");
+        DB::statement('ALTER TABLE customers MODIFY salesperson_id BIGINT UNSIGNED NULL');
 
         Schema::table('customers', function (Blueprint $table) {
             $table->foreignId('field_operator_id')->nullable()->after('salesperson_id')->constrained('field_operators')->nullOnDelete();
@@ -55,7 +55,7 @@ return new class extends Migration
             throw new \RuntimeException('No se puede revertir customers.salesperson_id a NOT NULL mientras existan clientes sin owner comercial.');
         }
 
-        DB::statement("ALTER TABLE customers MODIFY salesperson_id BIGINT UNSIGNED NOT NULL");
+        DB::statement('ALTER TABLE customers MODIFY salesperson_id BIGINT UNSIGNED NOT NULL');
 
         Schema::table('customers', function (Blueprint $table) {
             $table->foreign('salesperson_id')

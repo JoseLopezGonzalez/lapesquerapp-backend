@@ -17,7 +17,8 @@ class MigrateTenantJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 1;
+    public int $tries = 1;
+
     public int $timeout = 120;
 
     public function __construct(
@@ -30,10 +31,10 @@ class MigrateTenantJob implements ShouldQueue
         $tenant = Tenant::findOrFail($this->tenantId);
 
         $run = TenantMigrationRun::create([
-            'tenant_id'                  => $tenant->id,
+            'tenant_id' => $tenant->id,
             'triggered_by_superadmin_id' => $this->triggeredBySupeadminId,
-            'started_at'                 => now('UTC'),
-            'success'                    => false,
+            'started_at' => now('UTC'),
+            'success' => false,
         ]);
 
         Log::info("MigrateTenantJob started for [{$tenant->subdomain}]");
@@ -45,9 +46,9 @@ class MigrateTenantJob implements ShouldQueue
             config(['database.default' => 'tenant']);
 
             Artisan::call('migrate', [
-                '--path'     => 'database/migrations/companies',
+                '--path' => 'database/migrations/companies',
                 '--database' => 'tenant',
-                '--force'    => true,
+                '--force' => true,
             ]);
 
             $output = Artisan::output();
@@ -56,16 +57,16 @@ class MigrateTenantJob implements ShouldQueue
 
             $run->update([
                 'migrations_applied' => $migrationsApplied,
-                'output'             => $output,
-                'success'            => true,
-                'finished_at'        => now('UTC'),
+                'output' => $output,
+                'success' => true,
+                'finished_at' => now('UTC'),
             ]);
 
             Log::info("MigrateTenantJob completed for [{$tenant->subdomain}]: {$migrationsApplied} migrations applied");
         } catch (\Throwable $e) {
             $run->update([
-                'output'      => $e->getMessage(),
-                'success'     => false,
+                'output' => $e->getMessage(),
+                'success' => false,
                 'finished_at' => now('UTC'),
             ]);
 

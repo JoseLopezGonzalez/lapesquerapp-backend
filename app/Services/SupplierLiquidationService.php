@@ -17,9 +17,9 @@ class SupplierLiquidationService
      * Lista proveedores con actividad en recepciones o salidas de cebo en el rango de fechas.
      *
      * @param  array{start: string, end: string}  $dates
-     * @param  bool  $includeLiquidated   Si true, incluye registros ya liquidados (comportamiento legacy)
-     * @param  bool  $onlyUnliquidated    Si true, solo proveedores con ≥1 ítem no liquidado; los totales
-     *                                    reflejan TODA la actividad del período (no solo ítems sin liquidar)
+     * @param  bool  $includeLiquidated  Si true, incluye registros ya liquidados (comportamiento legacy)
+     * @param  bool  $onlyUnliquidated  Si true, solo proveedores con ≥1 ítem no liquidado; los totales
+     *                                  reflejan TODA la actividad del período (no solo ítems sin liquidar)
      * @return \Illuminate\Support\Collection<int, array>
      */
     public static function getSuppliersWithActivity(array $dates, bool $includeLiquidated = false, bool $onlyUnliquidated = false): Collection
@@ -115,7 +115,6 @@ class SupplierLiquidationService
     /**
      * Obtiene el detalle completo de liquidación de un proveedor.
      *
-     * @param  int  $supplierId
      * @param  array{start: string, end: string}  $dates
      * @return array{supplier: array, date_range: array, receptions: array, dispatches: array, summary: array, existing_liquidation: array|null}
      */
@@ -251,9 +250,8 @@ class SupplierLiquidationService
      *
      * @param  array  $data  Datos validados del request
      * @param  int  $userId  ID del usuario que cierra
-     * @return SupplierLiquidation
      *
-     * @throws \Illuminate\Validation\ValidationException  Si algún ID ya está vinculado a otra liquidación
+     * @throws \Illuminate\Validation\ValidationException Si algún ID ya está vinculado a otra liquidación
      */
     public static function closeLiquidation(array $data, int $userId): SupplierLiquidation
     {
@@ -269,7 +267,7 @@ class SupplierLiquidationService
 
             if (! empty($alreadyLiquidatedReceptions)) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'reception_ids' => 'Las siguientes recepciones ya pertenecen a una liquidación cerrada: ' . implode(', ', $alreadyLiquidatedReceptions),
+                    'reception_ids' => 'Las siguientes recepciones ya pertenecen a una liquidación cerrada: '.implode(', ', $alreadyLiquidatedReceptions),
                 ]);
             }
         }
@@ -283,7 +281,7 @@ class SupplierLiquidationService
 
             if (! empty($alreadyLiquidatedDispatches)) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'dispatch_ids' => 'Las siguientes salidas de cebo ya pertenecen a una liquidación cerrada: ' . implode(', ', $alreadyLiquidatedDispatches),
+                    'dispatch_ids' => 'Las siguientes salidas de cebo ya pertenecen a una liquidación cerrada: '.implode(', ', $alreadyLiquidatedDispatches),
                 ]);
             }
         }
@@ -364,7 +362,6 @@ class SupplierLiquidationService
     }
 
     /**
-     * @param  \Illuminate\Support\Collection  $dispatches
      * @return array<int, array>
      */
     private static function mapDispatchesToDetail(Collection $dispatches): array
@@ -419,7 +416,6 @@ class SupplierLiquidationService
     /**
      * Filtra recepciones y despachos según los IDs seleccionados para el PDF.
      *
-     * @param  array  $details
      * @param  array<int>  $selectedReceptionIds
      * @param  array<int>  $selectedDispatchIds
      * @return array{0: array, 1: array}
@@ -464,8 +460,6 @@ class SupplierLiquidationService
     }
 
     /**
-     * @param  array  $receptions
-     * @param  array  $dispatches
      * @return array<string, mixed>
      */
     public static function calculateSummary(array $receptions, array $dispatches): array
@@ -535,9 +529,6 @@ class SupplierLiquidationService
     }
 
     /**
-     * @param  array  $summary
-     * @param  string|null  $paymentMethod
-     * @param  bool  $hasManagementFee
      * @return array<string, mixed>
      */
     public static function calculatePaymentTotals(array $summary, ?string $paymentMethod, bool $hasManagementFee): array

@@ -17,13 +17,13 @@ return new class extends Migration
 
         // Limpiar duplicados antes de agregar el constraint único
         // Mantener solo el registro con el ID más bajo para cada combinación
-        \DB::statement("
+        \DB::statement('
             DELETE r1 FROM raw_material_reception_products r1
             INNER JOIN raw_material_reception_products r2 
             WHERE r1.id > r2.id 
             AND r1.reception_id = r2.reception_id 
             AND r1.product_id = r2.product_id
-        ");
+        ');
 
         // Verificar si ya existe el constraint único usando SQL
         $indexes = \DB::select("
@@ -35,19 +35,19 @@ return new class extends Migration
             AND INDEX_NAME != 'PRIMARY'
             GROUP BY INDEX_NAME
         ");
-        
+
         $hasCompositeUnique = false;
         foreach ($indexes as $index) {
             $columns = explode(',', $index->columns);
-            if (count($columns) === 2 && 
-                in_array('reception_id', $columns) && 
+            if (count($columns) === 2 &&
+                in_array('reception_id', $columns) &&
                 in_array('product_id', $columns)) {
                 $hasCompositeUnique = true;
                 break;
             }
         }
 
-        if (!$hasCompositeUnique) {
+        if (! $hasCompositeUnique) {
             Schema::table('raw_material_reception_products', function (Blueprint $table) {
                 $table->unique(['reception_id', 'product_id']);
             });

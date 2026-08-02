@@ -27,11 +27,11 @@ class OnboardTenant extends Command
 
         $tenant = Tenant::where('subdomain', $subdomain)->first();
 
-        if (!$tenant) {
+        if (! $tenant) {
             $tenant = Tenant::create([
                 'name' => $name,
                 'subdomain' => $subdomain,
-                'database' => 'tenant_' . $subdomain,
+                'database' => 'tenant_'.$subdomain,
                 'status' => 'pending',
                 'plan' => $plan,
                 'timezone' => $timezone,
@@ -44,14 +44,16 @@ class OnboardTenant extends Command
             $this->info("Tenant ya existe: {$tenant->name} (step: {$tenant->onboarding_step})");
         }
 
-        $this->info("Iniciando onboarding...");
+        $this->info('Iniciando onboarding...');
 
         try {
             $service->run($tenant);
-            $this->info("Onboarding completado. Tenant activo.");
+            $this->info('Onboarding completado. Tenant activo.');
+
             return Command::SUCCESS;
         } catch (\Throwable $e) {
             $this->error("Onboarding falló en step {$tenant->fresh()->onboarding_step}: {$e->getMessage()}");
+
             return Command::FAILURE;
         }
     }

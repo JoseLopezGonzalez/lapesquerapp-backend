@@ -3,10 +3,10 @@
 namespace App\Exports\v2;
 
 use App\Models\Order;
+use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\Exportable;
 
 class ProductLotDetailsExport implements FromCollection, WithHeadings, WithMapping
 {
@@ -49,7 +49,7 @@ class ProductLotDetailsExport implements FromCollection, WithHeadings, WithMappi
             'GTIN Caja',
             'Lote',
             'Cajas',
-            'Peso Neto'
+            'Peso Neto',
         ];
     }
 

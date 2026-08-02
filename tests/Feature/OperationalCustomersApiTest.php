@@ -17,12 +17,15 @@ use Tests\TestCase;
 
 class OperationalCustomersApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private string $tenantSubdomain;
+
     private User $adminUser;
+
     private User $fieldUser;
+
     private FieldOperator $fieldOperator;
 
     protected function setUp(): void
@@ -31,8 +34,8 @@ class OperationalCustomersApiTest extends TestCase
         parent::setUp();
         $this->setUpTenantConnection();
 
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'operational-customers-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'operational-customers-'.uniqid();
         Tenant::create([
             'name' => 'Operational Customer Tenant',
             'subdomain' => $slug,
@@ -43,13 +46,13 @@ class OperationalCustomersApiTest extends TestCase
         $this->tenantSubdomain = $slug;
         $this->adminUser = User::create([
             'name' => 'Admin',
-            'email' => $slug . '-admin@test.com',
+            'email' => $slug.'-admin@test.com',
             'role' => Role::Administrador->value,
             'active' => true,
         ]);
         $this->fieldUser = User::create([
             'name' => 'Field User',
-            'email' => $slug . '-field@test.com',
+            'email' => $slug.'-field@test.com',
             'role' => Role::RepartidorAutoventa->value,
             'active' => true,
         ]);
@@ -63,7 +66,7 @@ class OperationalCustomersApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $user->createToken('test')->plainTextToken,
+            'Authorization' => 'Bearer '.$user->createToken('test')->plainTextToken,
             'Accept' => 'application/json',
         ];
     }
@@ -74,7 +77,7 @@ class OperationalCustomersApiTest extends TestCase
         $country = Country::firstOrCreate(['name' => 'España OC']);
         $transport = Transport::firstOrCreate(
             ['name' => 'Transport OC'],
-            ['vat_number' => 'B' . uniqid(), 'address' => 'Street', 'emails' => 'transport@example.com']
+            ['vat_number' => 'B'.uniqid(), 'address' => 'Street', 'emails' => 'transport@example.com']
         );
 
         return Customer::create([
@@ -100,7 +103,7 @@ class OperationalCustomersApiTest extends TestCase
         $customer = $this->createCustomer('Cliente Operativo', null, null);
 
         $update = $this->withHeaders($this->headersFor($this->adminUser))
-            ->putJson('/api/v2/customers/' . $customer->id . '/assignment', [
+            ->putJson('/api/v2/customers/'.$customer->id.'/assignment', [
                 'field_operator_id' => $this->fieldOperator->id,
                 'salesperson_id' => $salesperson->id,
                 'operational_status' => 'alta_operativa',
@@ -112,7 +115,7 @@ class OperationalCustomersApiTest extends TestCase
         $ownerless = $this->createCustomer('Sin owner', $this->fieldOperator->id, null);
 
         $list = $this->withHeaders($this->headersFor($this->adminUser))
-            ->getJson('/api/v2/customers?withoutSalesperson=1&fieldOperatorId=' . $this->fieldOperator->id . '&operationalStatus=alta_operativa');
+            ->getJson('/api/v2/customers?withoutSalesperson=1&fieldOperatorId='.$this->fieldOperator->id.'&operationalStatus=alta_operativa');
 
         $list->assertStatus(200);
         $list->assertJsonFragment(['id' => $ownerless->id, 'name' => 'Sin owner']);
@@ -140,7 +143,7 @@ class OperationalCustomersApiTest extends TestCase
     {
         $fieldUserWithoutOperator = User::create([
             'name' => 'Field User Without Operator',
-            'email' => $this->tenantSubdomain . '-field-no-operator@test.com',
+            'email' => $this->tenantSubdomain.'-field-no-operator@test.com',
             'role' => Role::RepartidorAutoventa->value,
             'active' => true,
         ]);

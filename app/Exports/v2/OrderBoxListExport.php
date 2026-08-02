@@ -3,10 +3,10 @@
 namespace App\Exports\v2;
 
 use App\Models\Order;
+use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\Exportable;
 
 class OrderBoxListExport implements FromCollection, WithHeadings, WithMapping
 {
@@ -29,7 +29,7 @@ class OrderBoxListExport implements FromCollection, WithHeadings, WithMapping
                     'Pedido' => $this->order->id,
                     'Cliente' => $this->order->customer->name,
                     'Palet ID' => $pallet->id,
-                    'Código de Caja' => $box->box->id, 
+                    'Código de Caja' => $box->box->id,
                     'Producto' => $box->box->product->name ?? '',
                     'Lote' => $box->box->lot,
                     'GTIN Caja' => $box->box->gs1_128 ?? '',

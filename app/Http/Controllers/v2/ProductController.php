@@ -32,6 +32,7 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $this->authorize('viewAny', Product::class);
+
         return ProductResource::collection(ProductListService::list($request));
     }
 
@@ -106,8 +107,8 @@ class ProductController extends Controller
 
             return response()->json([
                 'message' => 'No se puede eliminar el producto porque está en uso',
-                'details' => 'El producto está siendo utilizado en: ' . $reasonsText,
-                'userMessage' => 'No se puede eliminar el producto porque está siendo utilizado en: ' . $reasonsText,
+                'details' => 'El producto está siendo utilizado en: '.$reasonsText,
+                'userMessage' => 'No se puede eliminar el producto porque está siendo utilizado en: '.$reasonsText,
             ], 400);
         }
 
@@ -135,6 +136,7 @@ class ProductController extends Controller
                 ]);
                 $reasonsText = implode(', ', $reasons);
                 $errors[] = "Producto '{$product->name}' no se puede eliminar porque está siendo utilizado en: {$reasonsText}";
+
                 continue;
             }
 
@@ -146,7 +148,7 @@ class ProductController extends Controller
         $userMessage = '';
 
         if (! empty($errors)) {
-            $message .= '. Errores: ' . implode(', ', $errors);
+            $message .= '. Errores: '.implode(', ', $errors);
             if ($deletedCount === 0) {
                 $userMessage = count($errors) === 1
                     ? $errors[0]

@@ -19,11 +19,11 @@ return new class extends Migration
             $table->integer('consumed_boxes')->default(0);
             $table->text('notes')->nullable();
             $table->timestamps();
-            
+
             // Índices para mejorar rendimiento
             $table->index('production_record_id');
             $table->index('production_output_id');
-            
+
             // Evitar duplicados: un proceso no puede consumir el mismo output múltiples veces
             // Nota: Si necesitas consumos parciales múltiples, esto debería ser único por (production_record_id, production_output_id)
             // Por ahora asumimos que un proceso puede consumir un output solo una vez, pero puede ser parcial
@@ -39,4 +39,3 @@ return new class extends Migration
         Schema::dropIfExists('production_output_consumptions');
     }
 };
-

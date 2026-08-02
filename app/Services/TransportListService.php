@@ -20,11 +20,11 @@ class TransportListService
         }
 
         if (! empty($filters['name'])) {
-            $query->where('name', 'like', '%' . $filters['name'] . '%');
+            $query->where('name', 'like', '%'.$filters['name'].'%');
         }
 
         if (! empty($filters['address'])) {
-            $query->where('address', 'like', '%' . $filters['address'] . '%');
+            $query->where('address', 'like', '%'.$filters['address'].'%');
         }
 
         $query->orderBy('name', 'asc');

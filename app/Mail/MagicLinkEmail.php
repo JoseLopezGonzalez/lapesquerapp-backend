@@ -22,7 +22,7 @@ class MagicLinkEmail extends Mailable
 
         $companyName = $mailConfigService->getFromName();
 
-        return $this->subject('Inicia sesión en ' . $companyName)
+        return $this->subject('Inicia sesión en '.$companyName)
             ->from($mailConfigService->getFromAddress(), $companyName)
             ->view('emails.auth.magic-link', [
                 'magicLinkUrl' => $this->magicLinkUrl,

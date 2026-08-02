@@ -25,7 +25,7 @@ class FishingGearController extends Controller
             $query->whereIn('id', $request->ids);
         }
         if ($request->has('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
+            $query->where('name', 'like', '%'.$request->name.'%');
         }
         $query->orderBy('name', 'asc');
         $perPage = $request->input('perPage', 12);
@@ -89,6 +89,7 @@ class FishingGearController extends Controller
         foreach ($fishingGears as $fishingGear) {
             if ($fishingGear->species()->count() > 0) {
                 $errors[] = "Arte de pesca '{$fishingGear->name}' no se puede eliminar porque tiene especies asociadas";
+
                 continue;
             }
             $fishingGear->delete();
@@ -98,7 +99,7 @@ class FishingGearController extends Controller
         $message = "Se eliminaron {$deletedCount} artes de pesca con éxito";
         $userMessage = '';
         if (! empty($errors)) {
-            $message .= '. Errores: ' . implode(', ', $errors);
+            $message .= '. Errores: '.implode(', ', $errors);
             if ($deletedCount === 0) {
                 $userMessage = count($errors) === 1 ? $errors[0] : 'No se pudieron eliminar los artes de pesca porque tienen especies asociadas';
             } else {

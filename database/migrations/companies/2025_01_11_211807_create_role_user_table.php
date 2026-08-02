@@ -12,7 +12,7 @@ return new class extends Migration
     public function up()
     {
         // Verificar que las tablas users y roles existen antes de crear role_user
-        if (!Schema::hasTable('users') || !Schema::hasTable('roles')) {
+        if (! Schema::hasTable('users') || ! Schema::hasTable('roles')) {
             return;
         }
 
@@ -27,7 +27,6 @@ return new class extends Migration
             $table->timestamps();
         });
     }
-
 
     /**
      * Reverse the migrations.

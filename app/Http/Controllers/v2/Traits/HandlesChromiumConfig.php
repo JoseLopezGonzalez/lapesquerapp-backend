@@ -9,9 +9,7 @@ trait HandlesChromiumConfig
     /**
      * Configure Chromium/Chrome path and arguments for PDF generation.
      *
-     * @param Snappdf $snappdf
-     * @param array $additionalArguments Additional arguments to add (optional)
-     * @return void
+     * @param  array  $additionalArguments  Additional arguments to add (optional)
      */
     protected function configureChromium(Snappdf $snappdf, array $additionalArguments = []): void
     {
@@ -22,16 +20,16 @@ trait HandlesChromiumConfig
         // Apply margins from configuration
         $margins = config('pdf.chromium.margins', []);
         if (isset($margins['top'])) {
-            $snappdf->addChromiumArguments('--margin-top=' . $margins['top']);
+            $snappdf->addChromiumArguments('--margin-top='.$margins['top']);
         }
         if (isset($margins['right'])) {
-            $snappdf->addChromiumArguments('--margin-right=' . $margins['right']);
+            $snappdf->addChromiumArguments('--margin-right='.$margins['right']);
         }
         if (isset($margins['bottom'])) {
-            $snappdf->addChromiumArguments('--margin-bottom=' . $margins['bottom']);
+            $snappdf->addChromiumArguments('--margin-bottom='.$margins['bottom']);
         }
         if (isset($margins['left'])) {
-            $snappdf->addChromiumArguments('--margin-left=' . $margins['left']);
+            $snappdf->addChromiumArguments('--margin-left='.$margins['left']);
         }
 
         // Apply default arguments from configuration
@@ -46,4 +44,3 @@ trait HandlesChromiumConfig
         }
     }
 }
-

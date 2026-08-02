@@ -2,11 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Tenant;
 use App\Support\TenantSeedDataset;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
-use App\Models\Tenant;
+use Illuminate\Support\Facades\DB;
 
 class MigrateTenants extends Command
 {
@@ -70,6 +70,7 @@ class MigrateTenants extends Command
         }
 
         $this->info('🎉 Migraciones finalizadas para todos los tenants.');
+
         return Command::SUCCESS;
     }
 }

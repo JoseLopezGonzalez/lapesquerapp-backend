@@ -21,6 +21,7 @@ class EmployeePolicy
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -29,6 +30,7 @@ class EmployeePolicy
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 

@@ -16,11 +16,11 @@ return new class extends Migration
             $table->foreignId('production_record_id')->constrained('production_records')->onDelete('cascade');
             $table->foreignId('box_id')->constrained('boxes')->onDelete('cascade');
             $table->timestamps();
-            
+
             // Índices para mejorar rendimiento
             $table->index('production_record_id');
             $table->index('box_id');
-            
+
             // Evitar duplicados: una caja no puede estar dos veces en el mismo proceso
             $table->unique(['production_record_id', 'box_id']);
         });

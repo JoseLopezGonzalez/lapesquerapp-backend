@@ -15,7 +15,7 @@ class OrderProfitabilityProductsRequest extends FormRequest
     {
         return [
             'dateFrom' => 'required|date',
-            'dateTo'   => 'required|date|after_or_equal:dateFrom',
+            'dateTo' => 'required|date|after_or_equal:dateFrom',
         ];
     }
 }

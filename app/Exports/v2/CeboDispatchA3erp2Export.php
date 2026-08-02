@@ -4,21 +4,20 @@ namespace App\Exports\v2;
 
 use App\Models\CeboDispatch;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
-
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class CeboDispatchA3erp2Export implements FromCollection, WithHeadings, WithMapping, WithStyles, WithTitle
 {
     use Exportable;
 
     protected $filters;
+
     protected $limit;
 
     public function __construct(Request $request, $limit = null)
@@ -56,7 +55,7 @@ class CeboDispatchA3erp2Export implements FromCollection, WithHeadings, WithMapp
         // Para optimizar memoria, usamos eager loading con with() y limitamos con ->limit() si es necesario.
         return $query->with([
             'supplier',
-            'products.product'
+            'products.product',
         ])->get();
     }
 
@@ -111,7 +110,7 @@ class CeboDispatchA3erp2Export implements FromCollection, WithHeadings, WithMapp
 
         // Filtro por notas
         if (isset($filters['notes'])) {
-            $query->where('notes', 'like', '%' . $filters['notes'] . '%');
+            $query->where('notes', 'like', '%'.$filters['notes'].'%');
         }
 
         // Nota: No aplicamos filtro por export_type aquí porque ya lo forzamos a 'facilcom' en collection()
@@ -137,7 +136,7 @@ class CeboDispatchA3erp2Export implements FromCollection, WithHeadings, WithMapp
     {
         // Mejorar el manejo de relaciones nulas
         $supplier = $ceboDispatch->supplier;
-        
+
         $rows = [];
 
         // Procesar todos los despachos de tipo facilcom, incluso si no tienen códigos
@@ -146,18 +145,18 @@ class CeboDispatchA3erp2Export implements FromCollection, WithHeadings, WithMapp
         if ($ceboDispatch->export_type == 'facilcom') {
             // Obtener año de 2 dígitos basado en la fecha del despacho
             $year = $ceboDispatch->date ? date('y', strtotime($ceboDispatch->date)) : '25';
-            $serie = 'C' . $year;
+            $serie = 'C'.$year;
 
             foreach ($ceboDispatch->products as $product) {
                 $productModel = $product->product;
-                
+
                 $rows[] = [
                     $serie, // cabSerie
                     $ceboDispatch->id ?: '-', // id
                     $ceboDispatch->date ? date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
                     // Usar códigos de Facilcom, mostrar "-" si no existe
                     $supplier && $supplier->facilcom_cebo_code ? $supplier->facilcom_cebo_code : '-',
-                    $supplier && $ceboDispatch->date ? $supplier->name . " - CEBO - " . date('d/m/Y', strtotime($ceboDispatch->date)) : ($supplier ? $supplier->name : '-'),
+                    $supplier && $ceboDispatch->date ? $supplier->name.' - CEBO - '.date('d/m/Y', strtotime($ceboDispatch->date)) : ($supplier ? $supplier->name : '-'),
                     // Usar códigos de Facilcom, mostrar "-" si no existe
                     $productModel && $productModel->facil_com_code ? $productModel->facil_com_code : '-',
                     $productModel ? $productModel->name : '-',
@@ -183,10 +182,10 @@ class CeboDispatchA3erp2Export implements FromCollection, WithHeadings, WithMapp
         $highestColumn = $sheet->getHighestColumn();
 
         // Solo negrita para encabezados
-        $sheet->getStyle('A1:' . $highestColumn . '1')->applyFromArray([
+        $sheet->getStyle('A1:'.$highestColumn.'1')->applyFromArray([
             'font' => [
-                'bold' => true
-            ]
+                'bold' => true,
+            ],
         ]);
 
         // Formato de números para columnas de peso y precio (H e I)
@@ -200,10 +199,10 @@ class CeboDispatchA3erp2Export implements FromCollection, WithHeadings, WithMapp
         // Colorear de amarillo las celdas con datos faltantes ("-")
         for ($row = 2; $row <= $highestRow; $row++) {
             for ($col = 'A'; $col <= $highestColumn; $col++) {
-                $cellValue = $sheet->getCell($col . $row)->getValue();
+                $cellValue = $sheet->getCell($col.$row)->getValue();
                 if ($cellValue === '-') {
-                    $sheet->getStyle($col . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-                    $sheet->getStyle($col . $row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
+                    $sheet->getStyle($col.$row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+                    $sheet->getStyle($col.$row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
                 }
             }
         }
@@ -211,4 +210,3 @@ class CeboDispatchA3erp2Export implements FromCollection, WithHeadings, WithMapp
         return [];
     }
 }
-

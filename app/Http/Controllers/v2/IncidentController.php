@@ -7,7 +7,6 @@ use App\Http\Requests\v2\StoreIncidentRequest;
 use App\Http\Requests\v2\UpdateIncidentRequest;
 use App\Models\Incident;
 use App\Models\Order;
-use Illuminate\Http\Request;
 
 class IncidentController extends Controller
 {
@@ -16,10 +15,10 @@ class IncidentController extends Controller
         $order = Order::with('incident')->findOrFail($orderId);
         $this->authorize('view', $order);
 
-        if (!$order->incident) {
+        if (! $order->incident) {
             return response()->json([
                 'message' => 'Incidencia no encontrada.',
-                'userMessage' => 'No se encontró incidencia para este pedido.'
+                'userMessage' => 'No se encontró incidencia para este pedido.',
             ], 404);
         }
 
@@ -34,7 +33,7 @@ class IncidentController extends Controller
         if ($order->incident) {
             return response()->json([
                 'message' => 'La incidencia ya existe.',
-                'userMessage' => 'Este pedido ya tiene una incidencia registrada.'
+                'userMessage' => 'Este pedido ya tiene una incidencia registrada.',
             ], 400);
         }
 
@@ -57,10 +56,10 @@ class IncidentController extends Controller
 
         $incident = $order->incident;
 
-        if (!$incident) {
+        if (! $incident) {
             return response()->json([
                 'message' => 'Incidencia no encontrada.',
-                'userMessage' => 'No se encontró incidencia para este pedido.'
+                'userMessage' => 'No se encontró incidencia para este pedido.',
             ], 404);
         }
 
@@ -82,10 +81,10 @@ class IncidentController extends Controller
 
         $incident = $order->incident;
 
-        if (!$incident) {
+        if (! $incident) {
             return response()->json([
                 'message' => 'Incidencia no encontrada.',
-                'userMessage' => 'No se encontró incidencia para este pedido.'
+                'userMessage' => 'No se encontró incidencia para este pedido.',
             ], 404);
         }
 

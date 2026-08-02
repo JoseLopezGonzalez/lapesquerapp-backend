@@ -10,6 +10,7 @@ class LinkOrderPalletRequest extends FormRequest
     public function authorize(): bool
     {
         $id = $this->route('id');
+
         return $id && $this->user()->can('update', Pallet::findOrFail($id));
     }
 

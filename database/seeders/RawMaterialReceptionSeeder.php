@@ -4,8 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\RawMaterialReception;
 use App\Models\Supplier;
-use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
 
 /**
  * Recepciones de materia prima de desarrollo — entorno tipo producción.
@@ -21,6 +21,7 @@ class RawMaterialReceptionSeeder extends Seeder
         $suppliers = Supplier::all();
         if ($suppliers->isEmpty()) {
             $this->command?->warn('RawMaterialReceptionSeeder: Ejecuta antes SupplierSeeder.');
+
             return;
         }
 

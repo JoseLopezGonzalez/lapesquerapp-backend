@@ -10,8 +10,8 @@ use Tests\TestCase;
 
 class OrderListServiceTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {

@@ -12,6 +12,7 @@ class SuperadminMagicLinkToken extends Model
     protected $table = 'superadmin_magic_link_tokens';
 
     public const TYPE_MAGIC_LINK = 'magic_link';
+
     public const TYPE_OTP = 'otp';
 
     protected $fillable = [

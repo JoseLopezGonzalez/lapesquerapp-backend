@@ -12,17 +12,25 @@ class RouteStop extends Model
     use UsesTenantConnection;
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_SKIPPED = 'skipped';
 
     public const STOP_TYPE_REQUIRED = 'obligatoria';
+
     public const STOP_TYPE_SUGGESTED = 'sugerida';
+
     public const STOP_TYPE_OPPORTUNITY = 'oportunidad';
 
     public const RESULT_TYPE_DELIVERY = 'delivery';
+
     public const RESULT_TYPE_AUTOVENTA = 'autoventa';
+
     public const RESULT_TYPE_NO_CONTACT = 'no_contact';
+
     public const RESULT_TYPE_INCIDENT = 'incident';
+
     public const RESULT_TYPE_VISIT = 'visit';
 
     protected $fillable = [

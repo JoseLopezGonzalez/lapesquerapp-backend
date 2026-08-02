@@ -37,7 +37,7 @@ class TenantBlocklist extends Model
     {
         return $query->where(function ($q) {
             $q->whereNull('expires_at')
-              ->orWhere('expires_at', '>', now('UTC'));
+                ->orWhere('expires_at', '>', now('UTC'));
         });
     }
 

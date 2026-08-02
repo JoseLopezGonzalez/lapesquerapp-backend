@@ -17,6 +17,7 @@ class UpdateCostCatalogRequest extends FormRequest
     {
         $cost = $this->route('cost_catalog');
         $id = $cost ? (is_object($cost) ? $cost->id : $cost) : $this->route('id');
+
         return [
             'name' => [
                 'sometimes',

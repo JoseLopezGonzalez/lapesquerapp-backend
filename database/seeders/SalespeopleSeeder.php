@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Enums\Role;
 use App\Models\Salesperson;
 use App\Models\User;
-use App\Enums\Role;
 use Illuminate\Database\Seeder;
 
 class SalespeopleSeeder extends Seeder
@@ -16,7 +16,7 @@ class SalespeopleSeeder extends Seeder
             ['name' => 'María',         'emails' => 'maria@comercial.es;'],
             ['name' => 'Carlos García', 'emails' => 'carlos.garcia@comercial.es;'],
             ['name' => 'Ana',           'emails' => 'ana@comercial.es;'],
-            ['name' => 'Luis Fernández','emails' => 'luis.fernandez@comercial.es;'],
+            ['name' => 'Luis Fernández', 'emails' => 'luis.fernandez@comercial.es;'],
             ['name' => 'Elena',         'emails' => 'elena@comercial.es;'],
         ];
 

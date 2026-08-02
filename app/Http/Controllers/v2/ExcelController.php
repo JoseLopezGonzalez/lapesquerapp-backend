@@ -2,28 +2,28 @@
 
 namespace App\Http\Controllers\v2;
 
-use App\Exports\v2\A3ERPOrderSalesDeliveryNoteExport;
-use App\Exports\v2\A3ERPOrdersSalesDeliveryNotesExport;
 use App\Exports\v2\A3ERP2OrderSalesDeliveryNoteExport;
 use App\Exports\v2\A3ERP2OrdersSalesDeliveryNotesExport;
+use App\Exports\v2\A3ERPOrderSalesDeliveryNoteExport;
+use App\Exports\v2\A3ERPOrdersSalesDeliveryNotesExport;
+use App\Exports\v2\ActiveOrderPlannedProductsExport;
+use App\Exports\v2\BoxesReportExport;
+use App\Exports\v2\CeboDispatchA3erp2Export;
+use App\Exports\v2\CeboDispatchA3erpExport;
+use App\Exports\v2\CeboDispatchFacilcomExport;
 use App\Exports\v2\FacilcomOrderSalesDeliveryNoteExport;
 use App\Exports\v2\FacilcomOrdersSalesDeliveryNotesExport;
 use App\Exports\v2\OrderBoxListExport;
-use App\Exports\v2\ActiveOrderPlannedProductsExport;
-use App\Exports\v2\BoxesReportExport;
-use App\Exports\v2\RawMaterialReceptionFacilcomExport;
+use App\Exports\v2\OrderExport;
+use App\Exports\v2\ProductLotDetailsExport;
 use App\Exports\v2\RawMaterialReceptionA3erpExport;
-use App\Exports\v2\CeboDispatchFacilcomExport;
-use App\Exports\v2\CeboDispatchA3erpExport;
-use App\Exports\v2\CeboDispatchA3erp2Export;
+use App\Exports\v2\RawMaterialReceptionFacilcomExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\OrderFilteredExportRequest;
 use App\Models\Order;
 use App\Services\v2\OrderExportFilterService;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\v2\OrderExport;
-use App\Exports\v2\ProductLotDetailsExport;
 
 class ExcelController extends Controller
 {
@@ -152,7 +152,7 @@ class ExcelController extends Controller
         $this->authorize('viewAny', Order::class);
 
         return Excel::download(
-            new ActiveOrderPlannedProductsExport(),
+            new ActiveOrderPlannedProductsExport,
             'productos_previstos_pedidos_activos.xlsx'
         );
     }
@@ -164,7 +164,7 @@ class ExcelController extends Controller
 
         // Verificar si se solicita un límite para testing
         $limit = $request->input('limit');
-        
+
         // Probar Excel::download() directamente ahora que las rutas están correctas
         return Excel::download(
             new BoxesReportExport($request, $limit),
@@ -180,22 +180,22 @@ class ExcelController extends Controller
 
             // Verificar si se solicita un límite para testing
             $limit = $request->input('limit');
-            
+
             return Excel::download(
                 new RawMaterialReceptionFacilcomExport($request, $limit),
                 'recepciones_materia_prima_facilcom.xls',
                 \Maatwebsite\Excel\Excel::XLS
             );
-            
+
         } catch (\Exception $e) {
-            \Log::error('Error en exportación Facilcom v2: ' . $e->getMessage(), [
+            \Log::error('Error en exportación Facilcom v2: '.$e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return response()->json([
-                'error' => 'Error durante la exportación: ' . $e->getMessage()
+                'error' => 'Error durante la exportación: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -208,22 +208,22 @@ class ExcelController extends Controller
 
             // Verificar si se solicita un límite para testing
             $limit = $request->input('limit');
-            
+
             return Excel::download(
                 new CeboDispatchFacilcomExport($request, $limit),
                 'despachos_cebo_facilcom.xlsx',
                 \Maatwebsite\Excel\Excel::XLSX
             );
-            
+
         } catch (\Exception $e) {
-            \Log::error('Error en exportación Cebo Dispatch Facilcom v2: ' . $e->getMessage(), [
+            \Log::error('Error en exportación Cebo Dispatch Facilcom v2: '.$e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return response()->json([
-                'error' => 'Error durante la exportación: ' . $e->getMessage()
+                'error' => 'Error durante la exportación: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -236,22 +236,22 @@ class ExcelController extends Controller
 
             // Verificar si se solicita un límite para testing
             $limit = $request->input('limit');
-            
+
             return Excel::download(
                 new CeboDispatchA3erpExport($request, $limit),
                 'despachos_cebo_a3erp.xls',
                 \Maatwebsite\Excel\Excel::XLS
             );
-            
+
         } catch (\Exception $e) {
-            \Log::error('Error en exportación Cebo Dispatch A3erp v2: ' . $e->getMessage(), [
+            \Log::error('Error en exportación Cebo Dispatch A3erp v2: '.$e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return response()->json([
-                'error' => 'Error durante la exportación: ' . $e->getMessage()
+                'error' => 'Error durante la exportación: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -264,22 +264,22 @@ class ExcelController extends Controller
 
             // Verificar si se solicita un límite para testing
             $limit = $request->input('limit');
-            
+
             return Excel::download(
                 new CeboDispatchA3erp2Export($request, $limit),
                 'despachos_cebo_a3erp2.xls',
                 \Maatwebsite\Excel\Excel::XLS
             );
-            
+
         } catch (\Exception $e) {
-            \Log::error('Error en exportación Cebo Dispatch A3erp2 v2: ' . $e->getMessage(), [
+            \Log::error('Error en exportación Cebo Dispatch A3erp2 v2: '.$e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return response()->json([
-                'error' => 'Error durante la exportación: ' . $e->getMessage()
+                'error' => 'Error durante la exportación: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -292,24 +292,23 @@ class ExcelController extends Controller
 
             // Verificar si se solicita un límite para testing
             $limit = $request->input('limit');
-            
+
             return Excel::download(
                 new RawMaterialReceptionA3erpExport($request, $limit),
                 'recepciones_materia_prima_a3erp.xls',
                 \Maatwebsite\Excel\Excel::XLS
             );
-            
+
         } catch (\Exception $e) {
-            \Log::error('Error en exportación Raw Material Reception A3erp v2: ' . $e->getMessage(), [
+            \Log::error('Error en exportación Raw Material Reception A3erp v2: '.$e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return response()->json([
-                'error' => 'Error durante la exportación: ' . $e->getMessage()
+                'error' => 'Error durante la exportación: '.$e->getMessage(),
             ], 500);
         }
     }
-
 }

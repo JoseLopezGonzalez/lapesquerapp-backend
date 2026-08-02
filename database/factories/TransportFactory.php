@@ -12,10 +12,10 @@ class TransportFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'Transportes ' . $this->faker->unique()->company(),
-            'vat_number' => 'B' . $this->faker->unique()->numerify('########'),
+            'name' => 'Transportes '.$this->faker->unique()->company(),
+            'vat_number' => 'B'.$this->faker->unique()->numerify('########'),
             'address' => $this->faker->address(),
-            'emails' => $this->faker->companyEmail() . ';',
+            'emails' => $this->faker->companyEmail().';',
         ];
     }
 }

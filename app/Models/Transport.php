@@ -10,8 +10,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Transport extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     // Define los atributos fillable y otras propiedades
     protected $fillable = [
@@ -57,8 +57,6 @@ class Transport extends Model
         return $this->extractEmails('regular');
     }
 
-
-
     /**
      * Get the array of CC emails.
      *
@@ -69,12 +67,10 @@ class Transport extends Model
         return $this->extractEmails('cc');
     }
 
-
-
     /**
      * Helper method to extract emails based on type.
      *
-     * @param string $type 'regular' or 'cc'
+     * @param  string  $type  'regular' or 'cc'
      * @return array
      */
     protected function extractEmails($type)
@@ -89,13 +85,12 @@ class Transport extends Model
             }
 
             if ($type == 'cc' && (str_starts_with($email, 'CC:') || str_starts_with($email, 'cc:'))) {
-                $result[] = substr($email, 3);  // Remove 'CC:' prefix and add to results 
-            } elseif ($type == 'regular' && !str_starts_with($email, 'CC:') && !str_starts_with($email, 'cc:')) {
+                $result[] = substr($email, 3);  // Remove 'CC:' prefix and add to results
+            } elseif ($type == 'regular' && ! str_starts_with($email, 'CC:') && ! str_starts_with($email, 'cc:')) {
                 $result[] = $email;  // Add regular email to results
             }
         }
 
         return $result;
     }
-
 }

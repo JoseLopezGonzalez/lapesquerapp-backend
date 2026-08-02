@@ -19,7 +19,7 @@ class UpdateFishingGearRequest extends FormRequest
         $id = $this->route('fishing_gear')?->getKey();
 
         return [
-            'name' => 'required|string|min:2|unique:tenant.fishing_gears,name,' . $id,
+            'name' => 'required|string|min:2|unique:tenant.fishing_gears,name,'.$id,
         ];
     }
 

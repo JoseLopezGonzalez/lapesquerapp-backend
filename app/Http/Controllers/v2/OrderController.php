@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\v2;
 
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\BulkUpdateInvoicedOrdersRequest;
 use App\Http\Requests\v2\DestroyMultipleOrdersRequest;
@@ -14,15 +15,14 @@ use App\Http\Requests\v2\UpdateOrderStatusRequest;
 use App\Http\Resources\v2\ActiveOrderCardResource;
 use App\Http\Resources\v2\OrderDetailsResource;
 use App\Http\Resources\v2\OrderResource;
-use App\Enums\Role;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Services\v2\OrderCostAnalysisService;
 use App\Services\v2\OrderDetailService;
 use App\Services\v2\OrderListService;
 use App\Services\v2\OrderProductionViewService;
 use App\Services\v2\OrderStatisticsService;
 use App\Services\v2\OrderStoreService;
-use App\Services\v2\OrderCostAnalysisService;
 use App\Services\v2\OrderUpdateService;
 use Illuminate\Validation\ValidationException;
 
@@ -70,6 +70,7 @@ class OrderController extends Controller
         try {
             $order = OrderStoreService::store($validated, $user);
             $order = OrderDetailService::getOrderForDetail((string) $order->id);
+
             return response()->json([
                 'message' => 'Pedido creado correctamente.',
                 'data' => new OrderDetailsResource($order),
@@ -90,6 +91,7 @@ class OrderController extends Controller
     {
         $order = OrderDetailService::getOrderForDetail($id);
         $this->authorize('view', $order);
+
         return new OrderDetailsResource($order);
     }
 
@@ -108,6 +110,7 @@ class OrderController extends Controller
         try {
             $order = OrderUpdateService::update($order, $request->validated());
             $order = OrderDetailService::getOrderForDetail((string) $order->id);
+
             return response()->json([
                 'message' => 'Pedido actualizado correctamente.',
                 'data' => new OrderDetailsResource($order),
@@ -133,11 +136,12 @@ class OrderController extends Controller
             return response()->json([
                 'message' => 'No se puede eliminar el pedido porque está en uso',
                 'details' => 'El pedido está siendo utilizado en palets',
-                'userMessage' => 'No se puede eliminar el pedido porque está siendo utilizado en palets'
+                'userMessage' => 'No se puede eliminar el pedido porque está siendo utilizado en palets',
             ], 400);
         }
 
         $order->delete();
+
         return response()->json(['message' => 'Pedido eliminado correctamente'], 200);
     }
 
@@ -154,18 +158,18 @@ class OrderController extends Controller
             if ($order->pallets()->exists()) {
                 $inUse[] = [
                     'id' => $order->id,
-                    'formattedId' => $order->formatted_id ?? '#' . str_pad($order->id, 5, '0', STR_PAD_LEFT),
+                    'formattedId' => $order->formatted_id ?? '#'.str_pad($order->id, 5, '0', STR_PAD_LEFT),
                 ];
             }
         }
 
-        if (!empty($inUse)) {
-            $details = array_map(fn ($item) => $item['formattedId'] . ' (usado en palets)', $inUse);
+        if (! empty($inUse)) {
+            $details = array_map(fn ($item) => $item['formattedId'].' (usado en palets)', $inUse);
 
             return response()->json([
                 'message' => 'No se pueden eliminar algunos pedidos porque están en uso',
                 'details' => implode(', ', $details),
-                'userMessage' => 'No se pueden eliminar algunos pedidos porque están en uso: ' . implode(', ', array_column($inUse, 'formattedId'))
+                'userMessage' => 'No se pueden eliminar algunos pedidos porque están en uso: '.implode(', ', array_column($inUse, 'formattedId')),
             ], 400);
         }
 
@@ -279,11 +283,12 @@ class OrderController extends Controller
 
             return response()->json($data);
         } catch (\Exception $e) {
-            \Log::error('Error in salesBySalesperson: ' . $e->getMessage(), [
+            \Log::error('Error in salesBySalesperson: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'request' => $request->all(),
             ]);
-            return response()->json(['error' => 'Error processing request: ' . $e->getMessage()], 500);
+
+            return response()->json(['error' => 'Error processing request: '.$e->getMessage()], 500);
         }
     }
 
@@ -301,11 +306,12 @@ class OrderController extends Controller
 
             return response()->json($result);
         } catch (\Exception $e) {
-            \Log::error('Error in transportChartData: ' . $e->getMessage(), [
+            \Log::error('Error in transportChartData: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'request' => $request->all(),
             ]);
-            return response()->json(['error' => 'Error processing request: ' . $e->getMessage()], 500);
+
+            return response()->json(['error' => 'Error processing request: '.$e->getMessage()], 500);
         }
     }
 
@@ -319,11 +325,12 @@ class OrderController extends Controller
         try {
             return response()->json(OrderProductionViewService::getData(null, $request->user()));
         } catch (\Exception $e) {
-            \Log::error('Error in productionView: ' . $e->getMessage(), [
+            \Log::error('Error in productionView: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json([
-                'error' => 'Error processing request: ' . $e->getMessage(),
+                'error' => 'Error processing request: '.$e->getMessage(),
             ], 500);
         }
     }

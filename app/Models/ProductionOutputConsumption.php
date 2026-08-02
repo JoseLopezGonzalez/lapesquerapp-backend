@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductionOutputConsumption extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = [
         'production_record_id',
@@ -81,7 +81,7 @@ class ProductionOutputConsumption extends Model
             $output = ProductionOutput::find($this->production_output_id);
             if ($output) {
                 // Calcular lo ya consumido (excluyendo este consumo si estamos actualizando)
-                $existingConsumption = $this->exists 
+                $existingConsumption = $this->exists
                     ? static::where('production_output_id', $this->production_output_id)
                         ->where('id', '!=', $this->id)
                         ->sum('consumed_weight_kg')
@@ -164,7 +164,7 @@ class ProductionOutputConsumption extends Model
     public function isComplete()
     {
         $output = $this->productionOutput;
-        if (!$output) {
+        if (! $output) {
             return false;
         }
 
@@ -179,7 +179,7 @@ class ProductionOutputConsumption extends Model
      */
     public function isPartial()
     {
-        return !$this->isComplete();
+        return ! $this->isComplete();
     }
 
     /**
@@ -188,7 +188,7 @@ class ProductionOutputConsumption extends Model
     public function getWeightConsumptionPercentageAttribute()
     {
         $output = $this->productionOutput;
-        if (!$output || $output->weight_kg <= 0) {
+        if (! $output || $output->weight_kg <= 0) {
             return 0;
         }
 
@@ -201,11 +201,10 @@ class ProductionOutputConsumption extends Model
     public function getBoxesConsumptionPercentageAttribute()
     {
         $output = $this->productionOutput;
-        if (!$output || $output->boxes <= 0) {
+        if (! $output || $output->boxes <= 0) {
             return 0;
         }
 
         return ($this->consumed_boxes / $output->boxes) * 100;
     }
 }
-

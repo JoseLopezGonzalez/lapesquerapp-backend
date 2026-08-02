@@ -3,15 +3,14 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
-class OrderPlannedProductDetail  extends Model
+class OrderPlannedProductDetail extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = [
         'order_id',
@@ -20,7 +19,7 @@ class OrderPlannedProductDetail  extends Model
         'quantity',
         'boxes',
         'unit_price',
-      /*   'line_base',
+        /*   'line_base',
         'line_total', */
         /* 'pallets', */
         /* 'discount_type', */
@@ -56,7 +55,7 @@ class OrderPlannedProductDetail  extends Model
             'quantity' => $this->quantity,
             'boxes' => $this->boxes,
             'unitPrice' => $this->unit_price,
-           /*  'subTotal' => $this->line_base,
+            /*  'subTotal' => $this->line_base,
             'total' => $this->line_total, */
             /* 'pallets' => $this->pallets, */
             /* 'discount_type' => $this->discount_type,
@@ -87,5 +86,4 @@ class OrderPlannedProductDetail  extends Model
             }
         });
     }
-
 }

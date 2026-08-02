@@ -2,12 +2,10 @@
 
 namespace App\Mail;
 
+use Beganovich\Snappdf\Snappdf;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
-use Beganovich\Snappdf\Snappdf;
-
-
 
 class OrderShipped extends Mailable
 {
@@ -18,7 +16,7 @@ class OrderShipped extends Mailable
     /**
      * Create a new message instance.
      *
-     * @param mixed $order Los datos del pedido.
+     * @param  mixed  $order  Los datos del pedido.
      */
     public function __construct($order)
     {
@@ -33,7 +31,6 @@ class OrderShipped extends Mailable
     public function build()
     {
 
-
         /* // Usar Browsershot para generar el PDF
             $html = view('pdf.delivery_note', ['order' => $this->order])->render();
             $pdf = Browsershot::html($html)
@@ -41,11 +38,11 @@ class OrderShipped extends Mailable
                 ->showBackground()
                 ->margins(10, 10, 10, 10)
                 ->pdf();
-    
+
             // Guarda temporalmente el PDF para adjuntarlo
             $pdfPath = storage_path('app/public/delivery-note-' . $this->order->id . '.pdf');
             file_put_contents($pdfPath, $pdf);
-    
+
             return $this->subject('Order Shipped: #' . $this->order->id)
                         ->markdown('emails.orders.shipped', [
                             'order' => $this->order,
@@ -68,10 +65,9 @@ class OrderShipped extends Mailable
                         'mime' => 'application/pdf',
                     ]); */
 
-
-        $snappdf = new Snappdf();
+        $snappdf = new Snappdf;
         $html = view('pdf.delivery_note', ['order' => $this->order])->render();
-        
+
         // Configure Chromium using centralized configuration
         $this->configureChromium($snappdf);
 
@@ -79,12 +75,10 @@ class OrderShipped extends Mailable
 
         /* NUEVO */
 
-
-
         /* $pdfContent = $snappdf->generate(); */
 
         // Guarda temporalmente el PDF para adjuntarlo
-        $pdfPath = storage_path('app/public/delivery-note-' . $this->order->id . '.pdf');
+        $pdfPath = storage_path('app/public/delivery-note-'.$this->order->id.'.pdf');
         file_put_contents($pdfPath, $pdfContent);
 
         // Obtener configuración de remitente del tenant
@@ -92,13 +86,13 @@ class OrderShipped extends Mailable
         $fromAddress = $mailConfigService->getFromAddress();
         $fromName = $mailConfigService->getFromName();
 
-        return $this->subject('Order Shipped: #' . $this->order->id)
+        return $this->subject('Order Shipped: #'.$this->order->id)
             ->from($fromAddress, $fromName)
             ->markdown('emails.orders.shipped', [
                 'order' => $this->order,
             ])
             ->attach($pdfPath, [
-                'as' => 'Delivery-note-' . $this->order->formattedId . '.pdf',
+                'as' => 'Delivery-note-'.$this->order->formattedId.'.pdf',
                 'mime' => 'application/pdf',
             ]);
     }
@@ -106,9 +100,7 @@ class OrderShipped extends Mailable
     /**
      * Configure Chromium/Chrome path and arguments for PDF generation.
      *
-     * @param Snappdf $snappdf
-     * @param array $additionalArguments Additional arguments to add (optional)
-     * @return void
+     * @param  array  $additionalArguments  Additional arguments to add (optional)
      */
     private function configureChromium(Snappdf $snappdf, array $additionalArguments = []): void
     {
@@ -119,16 +111,16 @@ class OrderShipped extends Mailable
         // Apply margins from configuration
         $margins = config('pdf.chromium.margins', []);
         if (isset($margins['top'])) {
-            $snappdf->addChromiumArguments('--margin-top=' . $margins['top']);
+            $snappdf->addChromiumArguments('--margin-top='.$margins['top']);
         }
         if (isset($margins['right'])) {
-            $snappdf->addChromiumArguments('--margin-right=' . $margins['right']);
+            $snappdf->addChromiumArguments('--margin-right='.$margins['right']);
         }
         if (isset($margins['bottom'])) {
-            $snappdf->addChromiumArguments('--margin-bottom=' . $margins['bottom']);
+            $snappdf->addChromiumArguments('--margin-bottom='.$margins['bottom']);
         }
         if (isset($margins['left'])) {
-            $snappdf->addChromiumArguments('--margin-left=' . $margins['left']);
+            $snappdf->addChromiumArguments('--margin-left='.$margins['left']);
         }
 
         // Apply default arguments from configuration

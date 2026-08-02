@@ -59,6 +59,7 @@ class ProductionInputService
 
                     if ($existing) {
                         $errors[] = "La caja {$boxId} ya está asignada a este proceso.";
+
                         continue;
                     }
 
@@ -69,15 +70,15 @@ class ProductionInputService
 
                     $input->load(['productionRecord', 'box.product', 'box.product.species', 'box.product.captureZone', 'box.palletBox.pallet']);
                     $created[] = $input;
-                    
+
                     // Track pallet for state update (avoid duplicates)
                     // Acceder al palet a través de palletBox para evitar problemas con accessors
                     $pallet = $input->box->palletBox->pallet ?? null;
-                    if ($pallet && !in_array($pallet->id, $palletsToUpdate)) {
+                    if ($pallet && ! in_array($pallet->id, $palletsToUpdate)) {
                         $palletsToUpdate[] = $pallet->id;
                     }
                 } catch (\Exception $e) {
-                    $errors[] = "Error al crear entrada para caja {$boxId}: " . $e->getMessage();
+                    $errors[] = "Error al crear entrada para caja {$boxId}: ".$e->getMessage();
                 }
             }
 
@@ -191,18 +192,18 @@ class ProductionInputService
     {
         $input->load(['box.palletBox.pallet']);
         $this->lotLock->assertBoxIsMutable($input->box, 'eliminar input de producción');
-        
+
         // Obtener el palet antes de eliminar
         // Acceder al palet a través de palletBox para evitar problemas con accessors
         $pallet = $input->box->palletBox->pallet ?? null;
-        
+
         $deleted = $input->delete();
-        
+
         // Si se eliminó correctamente y hay un palet, actualizar su estado
         if ($deleted && $pallet) {
             $pallet->updateStateBasedOnBoxes();
         }
-        
+
         return $deleted;
     }
 
@@ -227,8 +228,8 @@ class ProductionInputService
                 // Obtener el palet antes de eliminar
                 // Acceder al palet a través de palletBox para evitar problemas con accessors
                 $pallet = $input->box->palletBox->pallet ?? null;
-                
-                if ($pallet && !in_array($pallet->id, $palletsToUpdate)) {
+
+                if ($pallet && ! in_array($pallet->id, $palletsToUpdate)) {
                     $palletsToUpdate[] = $pallet->id;
                 }
             }
@@ -248,4 +249,3 @@ class ProductionInputService
         });
     }
 }
-

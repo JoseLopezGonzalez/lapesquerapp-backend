@@ -15,7 +15,7 @@ class CheckTenantEmailBlocklist
         $user = $request->user();
         $tenantId = app()->bound('currentTenantId') ? app('currentTenantId') : null;
 
-        if (!$user || !$tenantId) {
+        if (! $user || ! $tenantId) {
             return $next($request);
         }
 

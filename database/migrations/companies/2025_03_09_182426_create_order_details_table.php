@@ -13,7 +13,6 @@ return new class extends Migration
 
             // Relación con la tabla 'orders'
             $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
-            
 
             // Relación con la tabla 'products'
             $table->foreignId('product_id')->constrained('products');
@@ -36,8 +35,8 @@ return new class extends Migration
             /* $table->decimal('discount_value', 10, 2)->nullable(); */
 
             // Total de la línea
-           /*  $table->decimal('line_base', 10, 2)->nullable();
-            $table->decimal('line_total', 10, 2)->nullable();
+            /*  $table->decimal('line_base', 10, 2)->nullable();
+             $table->decimal('line_total', 10, 2)->nullable();
  */
             $table->timestamps();
         });

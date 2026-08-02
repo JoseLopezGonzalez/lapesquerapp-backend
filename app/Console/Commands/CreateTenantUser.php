@@ -3,10 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Enums\Role;
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class CreateTenantUser extends Command
 {
@@ -28,13 +28,15 @@ class CreateTenantUser extends Command
         // Buscar el tenant
         $tenant = Tenant::where('subdomain', $subdomain)->first();
 
-        if (!$tenant) {
+        if (! $tenant) {
             $this->error("❌ No se encontró el tenant con subdomain: {$subdomain}");
+
             return Command::FAILURE;
         }
 
-        if (!$tenant->is_active) {
+        if (! $tenant->is_active) {
             $this->error("❌ El tenant {$subdomain} no está activo (status: {$tenant->status})");
+
             return Command::FAILURE;
         }
 
@@ -49,23 +51,25 @@ class CreateTenantUser extends Command
         $existingUser = User::on('tenant')->where('email', $email)->first();
         if ($existingUser) {
             $this->warn("⚠️  El usuario con email {$email} ya existe en este tenant.");
+
             return Command::SUCCESS;
         }
 
-        if ($roleName && !in_array($roleName, Role::values(), true)) {
-            $this->error("❌ Rol inválido: {$roleName}. Valores permitidos: " . implode(', ', Role::values()));
+        if ($roleName && ! in_array($roleName, Role::values(), true)) {
+            $this->error("❌ Rol inválido: {$roleName}. Valores permitidos: ".implode(', ', Role::values()));
+
             return Command::FAILURE;
         }
 
         try {
-            $user = new User();
+            $user = new User;
             $user->setConnection('tenant');
             $user->name = $name;
             $user->email = $email;
             $user->role = $roleName ?? Role::Operario->value;
             $user->save();
 
-            $this->info("✅ Usuario creado exitosamente:");
+            $this->info('✅ Usuario creado exitosamente:');
             $this->line("   - ID: {$user->id}");
             $this->line("   - Nombre: {$user->name}");
             $this->line("   - Email: {$user->email}");
@@ -74,8 +78,8 @@ class CreateTenantUser extends Command
             return Command::SUCCESS;
         } catch (\Exception $e) {
             $this->error("❌ Error al crear el usuario: {$e->getMessage()}");
+
             return Command::FAILURE;
         }
     }
 }
-

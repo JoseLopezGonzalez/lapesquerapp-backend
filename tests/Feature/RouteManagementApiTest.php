@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Enums\Role;
 use App\Models\DeliveryRoute;
 use App\Models\FieldOperator;
 use App\Models\RouteStop;

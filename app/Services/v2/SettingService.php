@@ -22,7 +22,7 @@ class SettingService
      * Ofusca company.mail.password (devuelve ******** si existe).
      * Si el usuario es comercial, devuelve solo la whitelist (keys permitidos).
      *
-     * @param User|null $user Usuario actual (para restringir a whitelist si es comercial)
+     * @param  User|null  $user  Usuario actual (para restringir a whitelist si es comercial)
      */
     public function getAllKeyValue(?User $user = null): array
     {
@@ -47,7 +47,7 @@ class SettingService
      */
     public function updateFromPayload(array $data): void
     {
-        if (!array_key_exists(Setting::SENSITIVE_KEY_PASSWORD, $data)) {
+        if (! array_key_exists(Setting::SENSITIVE_KEY_PASSWORD, $data)) {
             $isUpdatingEmailSettings = false;
             foreach (array_keys($data) as $key) {
                 if (str_starts_with((string) $key, 'company.mail.')) {

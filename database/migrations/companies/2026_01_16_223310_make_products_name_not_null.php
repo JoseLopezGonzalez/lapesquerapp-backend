@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * IMPORTANTE: Ejecutar solo después de verificar que todos los products tienen name
      */
     public function up(): void
@@ -29,4 +29,3 @@ return new class extends Migration
         });
     }
 };
-

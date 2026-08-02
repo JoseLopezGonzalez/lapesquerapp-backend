@@ -6,15 +6,14 @@ namespace App\Models;
 
 use App\Casts\DateTimeUtcCast;
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
 class Incident extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $casts = [
         'resolved_at' => DateTimeUtcCast::class,
@@ -24,13 +23,16 @@ class Incident extends Model
      * Estados válidos del incidente
      */
     const STATUS_OPEN = 'open';
+
     const STATUS_RESOLVED = 'resolved';
 
     /**
      * Tipos de resolución válidos
      */
     const RESOLUTION_TYPE_RETURNED = 'returned';
+
     const RESOLUTION_TYPE_PARTIALLY_RETURNED = 'partially_returned';
+
     const RESOLUTION_TYPE_COMPENSATED = 'compensated';
 
     /**
@@ -93,16 +95,16 @@ class Incident extends Model
 
         static::saving(function ($incident) {
             // Validar status valores válidos
-            if ($incident->status && !in_array($incident->status, self::getValidStatuses())) {
+            if ($incident->status && ! in_array($incident->status, self::getValidStatuses())) {
                 throw ValidationException::withMessages([
-                    'status' => 'El estado del incidente no es válido. Valores permitidos: ' . implode(', ', self::getValidStatuses()),
+                    'status' => 'El estado del incidente no es válido. Valores permitidos: '.implode(', ', self::getValidStatuses()),
                 ]);
             }
 
             // Validar resolution_type valores válidos (si existe)
-            if ($incident->resolution_type && !in_array($incident->resolution_type, self::getValidResolutionTypes())) {
+            if ($incident->resolution_type && ! in_array($incident->resolution_type, self::getValidResolutionTypes())) {
                 throw ValidationException::withMessages([
-                    'resolution_type' => 'El tipo de resolución no es válido. Valores permitidos: ' . implode(', ', self::getValidResolutionTypes()),
+                    'resolution_type' => 'El tipo de resolución no es válido. Valores permitidos: '.implode(', ', self::getValidResolutionTypes()),
                 ]);
             }
         });

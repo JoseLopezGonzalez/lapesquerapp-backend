@@ -17,7 +17,7 @@ class ImpersonationApprovalController extends Controller
      */
     public function approve(Request $request, string $token)
     {
-        if (!$request->hasValidSignature()) {
+        if (! $request->hasValidSignature()) {
             return response()->json(['error' => 'Enlace inválido o expirado.'], 403);
         }
 
@@ -35,7 +35,7 @@ class ImpersonationApprovalController extends Controller
      */
     public function reject(Request $request, string $token)
     {
-        if (!$request->hasValidSignature()) {
+        if (! $request->hasValidSignature()) {
             return response()->json(['error' => 'Enlace inválido o expirado.'], 403);
         }
 

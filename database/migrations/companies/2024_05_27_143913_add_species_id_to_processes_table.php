@@ -15,7 +15,7 @@ return new class extends Migration
         if (Schema::hasTable('processes')) {
             Schema::table('processes', function (Blueprint $table) {
                 // Verificar que la columna no existe ya
-                if (!Schema::hasColumn('processes', 'species_id')) {
+                if (! Schema::hasColumn('processes', 'species_id')) {
                     $table->unsignedBigInteger('species_id');
                 }
             });

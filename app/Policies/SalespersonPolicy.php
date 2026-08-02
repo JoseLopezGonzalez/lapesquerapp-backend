@@ -37,6 +37,7 @@ class SalespersonPolicy
         if ($user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -48,6 +49,7 @@ class SalespersonPolicy
         if ($user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -59,6 +61,7 @@ class SalespersonPolicy
         if ($user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -70,6 +73,7 @@ class SalespersonPolicy
         if ($user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -81,6 +85,7 @@ class SalespersonPolicy
         if ($user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -92,6 +97,7 @@ class SalespersonPolicy
         if ($user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 }

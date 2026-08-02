@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class StoredBox extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = ['store_id', 'box_id', 'position'];
 

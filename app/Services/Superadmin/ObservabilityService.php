@@ -49,13 +49,13 @@ class ObservabilityService
             ->get()
             ->each(function ($log) use (&$items) {
                 $items->push([
-                    'type'      => 'impersonation',
-                    'icon'      => 'user-switch',
-                    'severity'  => 'info',
-                    'message'   => "Impersonación {$log->mode} de {$log->superadminUser?->name} en {$log->tenant?->subdomain}" . ($log->reason ? " — {$log->reason}" : ''),
-                    'tenant'    => $log->tenant?->subdomain,
+                    'type' => 'impersonation',
+                    'icon' => 'user-switch',
+                    'severity' => 'info',
+                    'message' => "Impersonación {$log->mode} de {$log->superadminUser?->name} en {$log->tenant?->subdomain}".($log->reason ? " — {$log->reason}" : ''),
+                    'tenant' => $log->tenant?->subdomain,
                     'tenant_id' => $log->tenant_id,
-                    'at'        => $log->started_at,
+                    'at' => $log->started_at,
                 ]);
             });
 
@@ -66,13 +66,13 @@ class ObservabilityService
             ->get()
             ->each(function ($run) use (&$items) {
                 $items->push([
-                    'type'      => 'migration',
-                    'icon'      => 'database',
-                    'severity'  => $run->success ? 'info' : 'warning',
-                    'message'   => "Migración tenant {$run->tenant?->subdomain}: " . ($run->success ? "{$run->migrations_applied} aplicadas" : 'FALLÓ'),
-                    'tenant'    => $run->tenant?->subdomain,
+                    'type' => 'migration',
+                    'icon' => 'database',
+                    'severity' => $run->success ? 'info' : 'warning',
+                    'message' => "Migración tenant {$run->tenant?->subdomain}: ".($run->success ? "{$run->migrations_applied} aplicadas" : 'FALLÓ'),
+                    'tenant' => $run->tenant?->subdomain,
                     'tenant_id' => $run->tenant_id,
-                    'at'        => $run->started_at,
+                    'at' => $run->started_at,
                 ]);
             });
 
@@ -83,14 +83,14 @@ class ObservabilityService
             ->get()
             ->each(function ($alert) use (&$items) {
                 $items->push([
-                    'type'      => 'alert',
-                    'icon'      => 'alert-triangle',
-                    'severity'  => $alert->severity,
-                    'message'   => $alert->message,
-                    'tenant'    => $alert->tenant?->subdomain,
+                    'type' => 'alert',
+                    'icon' => 'alert-triangle',
+                    'severity' => $alert->severity,
+                    'message' => $alert->message,
+                    'tenant' => $alert->tenant?->subdomain,
                     'tenant_id' => $alert->tenant_id,
-                    'at'        => $alert->created_at,
-                    'resolved'  => $alert->resolved_at !== null,
+                    'at' => $alert->created_at,
+                    'resolved' => $alert->resolved_at !== null,
                 ]);
             });
 
@@ -101,13 +101,13 @@ class ObservabilityService
             ->get()
             ->each(function ($tenant) use (&$items) {
                 $items->push([
-                    'type'      => 'tenant_status',
-                    'icon'      => 'building',
-                    'severity'  => 'info',
-                    'message'   => "Tenant {$tenant->subdomain} — estado: {$tenant->status}",
-                    'tenant'    => $tenant->subdomain,
+                    'type' => 'tenant_status',
+                    'icon' => 'building',
+                    'severity' => 'info',
+                    'message' => "Tenant {$tenant->subdomain} — estado: {$tenant->status}",
+                    'tenant' => $tenant->subdomain,
                     'tenant_id' => $tenant->id,
-                    'at'        => $tenant->updated_at,
+                    'at' => $tenant->updated_at,
                 ]);
             });
 
@@ -129,16 +129,16 @@ class ObservabilityService
             $pendingJobs = (int) Redis::connection()->llen('queues:default');
             $redisStatus = 'ok';
         } catch (\Throwable $e) {
-            $redisStatus = 'error: ' . $e->getMessage();
+            $redisStatus = 'error: '.$e->getMessage();
         }
 
         $failedJobs = DB::table('failed_jobs')->count();
 
         return [
             'pending_jobs' => $pendingJobs,
-            'failed_jobs'  => $failedJobs,
+            'failed_jobs' => $failedJobs,
             'redis_status' => $redisStatus,
-            'healthy'      => $redisStatus === 'ok',
+            'healthy' => $redisStatus === 'ok',
         ];
     }
 }

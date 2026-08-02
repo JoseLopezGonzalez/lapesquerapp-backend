@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class SupplierLiquidation extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = [
         'supplier_id',

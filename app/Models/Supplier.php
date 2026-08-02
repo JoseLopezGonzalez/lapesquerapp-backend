@@ -3,15 +3,13 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Supplier extends Model
 {
-    use UsesTenantConnection;
-
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = [
         'name',
@@ -36,7 +34,6 @@ class Supplier extends Model
         return $this->extractEmails('regular');
     }
 
-
     /**
      * Get the array of CC emails.
      *
@@ -50,7 +47,7 @@ class Supplier extends Model
     /**
      * Helper method to extract emails based on type.
      *
-     * @param string $type 'regular' or 'cc'
+     * @param  string  $type  'regular' or 'cc'
      * @return array
      */
     protected function extractEmails($type)
@@ -65,8 +62,8 @@ class Supplier extends Model
             }
 
             if ($type == 'cc' && (str_starts_with($email, 'CC:') || str_starts_with($email, 'cc:'))) {
-                $result[] = substr($email, 3);  // Remove 'CC:' prefix and add to results 
-            } elseif ($type == 'regular' && !str_starts_with($email, 'CC:') && !str_starts_with($email, 'cc:')) {
+                $result[] = substr($email, 3);  // Remove 'CC:' prefix and add to results
+            } elseif ($type == 'regular' && ! str_starts_with($email, 'CC:') && ! str_starts_with($email, 'cc:')) {
                 $result[] = $email;  // Add regular email to results
             }
         }
@@ -89,5 +86,4 @@ class Supplier extends Model
     {
         return $this->hasMany(CeboDispatch::class);
     }
-
 }

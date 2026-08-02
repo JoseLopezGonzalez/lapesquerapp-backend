@@ -16,6 +16,7 @@ class UpdateProductCategoryRequest extends FormRequest
         if (! $category) {
             return false;
         }
+
         return $this->user()->can('update', ProductCategory::findOrFail($category));
     }
 
@@ -25,7 +26,7 @@ class UpdateProductCategoryRequest extends FormRequest
         $id = $id instanceof ProductCategory ? $id->id : $id;
 
         return [
-            'name' => 'sometimes|required|string|min:3|max:255|unique:tenant.product_categories,name,' . $id,
+            'name' => 'sometimes|required|string|min:3|max:255|unique:tenant.product_categories,name,'.$id,
             'description' => 'nullable|string|max:1000',
             'active' => 'boolean',
         ];

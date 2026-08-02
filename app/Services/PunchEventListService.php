@@ -15,8 +15,8 @@ class PunchEventListService
      * Aplicar filtros a la consulta de fichajes.
      * Soporta estructura anidada de filtros (filters.filters) como otros controladores genéricos.
      *
-     * @param Builder<PunchEvent> $query
-     * @param array<string, mixed> $filters
+     * @param  Builder<PunchEvent>  $query
+     * @param  array<string, mixed>  $filters
      * @return Builder<PunchEvent>
      */
     public function applyFiltersToQuery(Builder $query, array $filters): Builder
@@ -29,7 +29,7 @@ class PunchEventListService
             $query->where('id', $filters['id']);
         }
 
-        if (isset($filters['ids']) && is_array($filters['ids']) && !empty($filters['ids'])) {
+        if (isset($filters['ids']) && is_array($filters['ids']) && ! empty($filters['ids'])) {
             $query->whereIn('id', $filters['ids']);
         }
 
@@ -37,9 +37,9 @@ class PunchEventListService
             $query->where('employee_id', $filters['employee_id']);
         }
 
-        if (isset($filters['employee_ids']) && is_array($filters['employee_ids']) && !empty($filters['employee_ids'])) {
+        if (isset($filters['employee_ids']) && is_array($filters['employee_ids']) && ! empty($filters['employee_ids'])) {
             $query->whereIn('employee_id', $filters['employee_ids']);
-        } elseif (isset($filters['employees']) && is_array($filters['employees']) && !empty($filters['employees'])) {
+        } elseif (isset($filters['employees']) && is_array($filters['employees']) && ! empty($filters['employees'])) {
             $query->whereIn('employee_id', $filters['employees']);
         }
 
@@ -51,7 +51,7 @@ class PunchEventListService
             $query->where('device_id', $filters['device_id']);
         }
 
-        if (isset($filters['devices']) && is_array($filters['devices']) && !empty($filters['devices'])) {
+        if (isset($filters['devices']) && is_array($filters['devices']) && ! empty($filters['devices'])) {
             $query->whereIn('device_id', $filters['devices']);
         }
 

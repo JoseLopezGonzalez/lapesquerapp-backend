@@ -20,4 +20,3 @@ class RescheduleCrmAgendaActionRequest extends FormRequest
         ];
     }
 }
-

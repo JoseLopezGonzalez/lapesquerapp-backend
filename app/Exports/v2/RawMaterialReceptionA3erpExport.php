@@ -4,21 +4,20 @@ namespace App\Exports\v2;
 
 use App\Models\RawMaterialReception;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
-
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithTitle
 {
     use Exportable;
 
     protected $filters;
+
     protected $limit;
 
     public function __construct(Request $request, $limit = null)
@@ -53,7 +52,7 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
         // Para optimizar memoria, usamos eager loading con with() y limitamos con ->limit() si es necesario.
         return $query->with([
             'supplier',
-            'products.product'
+            'products.product',
         ])->get();
     }
 
@@ -108,7 +107,7 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
 
         // Filtro por notas
         if (isset($filters['notes'])) {
-            $query->where('notes', 'like', '%' . $filters['notes'] . '%');
+            $query->where('notes', 'like', '%'.$filters['notes'].'%');
         }
     }
 
@@ -131,26 +130,26 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
     {
         // Mejorar el manejo de relaciones nulas
         $supplier = $reception->supplier;
-        
+
         $rows = [];
 
         // Procesar todas las recepciones, incluso si no tienen códigos
         // Los campos faltantes se mostrarán con "-" y se resaltarán en amarillo
         // Obtener año de 2 dígitos basado en la fecha de recepción
         $year = $reception->date ? date('y', strtotime($reception->date)) : '25';
-        $serie = 'RE' . $year;
+        $serie = 'RE'.$year;
 
         // Agregar productos regulares
         foreach ($reception->products as $product) {
             $productModel = $product->product;
-            
+
             $rows[] = [
                 $serie, // cabSerie - usando RE + año para recepciones de materia prima
                 $reception->id ?: '-', // id
                 $reception->date ? date('d/m/Y', strtotime($reception->date)) : '-',
                 // Mostrar "-" si el proveedor no tiene código
                 $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
-                $supplier && $reception->date ? $supplier->name . " - " . date('d/m/Y', strtotime($reception->date)) .' - ' . $reception->id  : ($supplier ? $supplier->name : '-'),
+                $supplier && $reception->date ? $supplier->name.' - '.date('d/m/Y', strtotime($reception->date)).' - '.$reception->id : ($supplier ? $supplier->name : '-'),
                 // Mostrar "-" si el producto no tiene código
                 $productModel && $productModel->facil_com_code ? $productModel->facil_com_code : '-',
                 $productModel ? $productModel->name : '-',
@@ -166,7 +165,7 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
                 $reception->id ?: '-', // id
                 $reception->date ? date('d/m/Y', strtotime($reception->date)) : '-',
                 $supplier && $supplier->facil_com_code ? $supplier->facil_com_code : '-',
-                $supplier && $reception->date ? $supplier->name . " - " . date('d/m/Y', strtotime($reception->date)) .' - ' . $reception->id  : '-',
+                $supplier && $reception->date ? $supplier->name.' - '.date('d/m/Y', strtotime($reception->date)).' - '.$reception->id : '-',
                 '9', // Código especial para PULPO FRESCO LONJA
                 'Pulpo Fresco Compensado',
                 $reception->declared_total_net_weight ? $reception->declared_total_net_weight * -1 : '-',
@@ -189,10 +188,10 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
         $highestColumn = $sheet->getHighestColumn();
 
         // Solo negrita para encabezados
-        $sheet->getStyle('A1:' . $highestColumn . '1')->applyFromArray([
+        $sheet->getStyle('A1:'.$highestColumn.'1')->applyFromArray([
             'font' => [
-                'bold' => true
-            ]
+                'bold' => true,
+            ],
         ]);
 
         // Formato de números para columnas de peso y precio (H e I)
@@ -206,10 +205,10 @@ class RawMaterialReceptionA3erpExport implements FromCollection, WithHeadings, W
         // Colorear de amarillo las celdas con datos faltantes ("-")
         for ($row = 2; $row <= $highestRow; $row++) {
             for ($col = 'A'; $col <= $highestColumn; $col++) {
-                $cellValue = $sheet->getCell($col . $row)->getValue();
+                $cellValue = $sheet->getCell($col.$row)->getValue();
                 if ($cellValue === '-') {
-                    $sheet->getStyle($col . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-                    $sheet->getStyle($col . $row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
+                    $sheet->getStyle($col.$row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+                    $sheet->getStyle($col.$row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
                 }
             }
         }

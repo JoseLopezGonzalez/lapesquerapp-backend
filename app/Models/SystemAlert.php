@@ -21,7 +21,7 @@ class SystemAlert extends Model
     ];
 
     protected $casts = [
-        'metadata'    => 'array',
+        'metadata' => 'array',
         'resolved_at' => 'datetime',
     ];
 
@@ -71,11 +71,11 @@ class SystemAlert extends Model
         }
 
         return self::create([
-            'type'      => $type,
-            'severity'  => $severity,
-            'message'   => $message,
+            'type' => $type,
+            'severity' => $severity,
+            'message' => $message,
             'tenant_id' => $tenantId,
-            'metadata'  => $metadata,
+            'metadata' => $metadata,
         ]);
     }
 }

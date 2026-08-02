@@ -295,6 +295,6 @@ class PalletTimelineSeeder extends Seeder
             $pallet->save();
         }
 
-        $this->command?->info('PalletTimelineSeeder: Timeline completo asignado a ' . $pallets->count() . ' palet(s).');
+        $this->command?->info('PalletTimelineSeeder: Timeline completo asignado a '.$pallets->count().' palet(s).');
     }
 }

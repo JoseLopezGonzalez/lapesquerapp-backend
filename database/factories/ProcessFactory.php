@@ -12,7 +12,7 @@ class ProcessFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'Proceso ' . $this->faker->unique()->word(),
+            'name' => 'Proceso '.$this->faker->unique()->word(),
             'type' => $this->faker->randomElement(['process', 'final']),
         ];
     }

@@ -87,7 +87,7 @@ trait BuildsCrmScenario
 
         $secondaryProspect = Prospect::factory()
             ->assignedTo($secondarySalesperson)
-            ->new()
+            ->asNew()
             ->create([
                 'company_name' => 'CRM Prospect Secondary',
                 'country_id' => $country->id,

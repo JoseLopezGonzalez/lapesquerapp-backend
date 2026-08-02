@@ -29,6 +29,7 @@ class ProductPolicy
         if ($user->hasRole(Role::Comercial->value) || $user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -44,6 +45,7 @@ class ProductPolicy
         if ($user->hasRole(Role::Comercial->value) || $user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -73,6 +75,7 @@ class ProductPolicy
         if ($user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -84,6 +87,7 @@ class ProductPolicy
         if ($user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 
@@ -95,6 +99,7 @@ class ProductPolicy
         if ($user->hasRole(Role::RepartidorAutoventa->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 }

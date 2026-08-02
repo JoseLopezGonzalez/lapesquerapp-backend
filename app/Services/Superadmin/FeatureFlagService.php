@@ -59,9 +59,9 @@ class FeatureFlagService
         $override = TenantFeatureOverride::updateOrCreate(
             ['tenant_id' => $tenant->id, 'flag_key' => $flagKey],
             [
-                'enabled'                    => $enabled,
+                'enabled' => $enabled,
                 'overridden_by_superadmin_id' => $superadmin?->id,
-                'reason'                     => $reason,
+                'reason' => $reason,
             ]
         );
 
@@ -86,8 +86,6 @@ class FeatureFlagService
 
     /**
      * Get default flags for all plans.
-     *
-     * @return Collection
      */
     public function getPlanDefaults(): Collection
     {

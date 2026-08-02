@@ -23,7 +23,7 @@ class StoreRouteTemplateRequest extends FormRequest
             'isActive' => 'nullable|boolean',
             'stops' => 'nullable|array',
             'stops.*.position' => 'required_with:stops|integer|min:1',
-            'stops.*.stopType' => 'required_with:stops|string|in:' . implode(',', RouteStop::validStopTypes()),
+            'stops.*.stopType' => 'required_with:stops|string|in:'.implode(',', RouteStop::validStopTypes()),
             'stops.*.targetType' => 'nullable|string|in:customer,prospect,location',
             'stops.*.customerId' => 'nullable|integer|exists:tenant.customers,id',
             'stops.*.prospectId' => 'nullable|integer|exists:tenant.prospects,id',

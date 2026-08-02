@@ -3,15 +3,14 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
 class CeboDispatchProduct extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = ['dispatch_id', 'product_id', 'net_weight', 'price'];
 

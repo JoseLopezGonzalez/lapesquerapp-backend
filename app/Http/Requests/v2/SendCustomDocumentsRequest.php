@@ -39,9 +39,9 @@ class SendCustomDocumentsRequest extends FormRequest
     {
         return [
             'documents' => 'required|array|min:1',
-            'documents.*.type' => 'required|string|in:' . implode(',', self::$validDocumentTypes),
+            'documents.*.type' => 'required|string|in:'.implode(',', self::$validDocumentTypes),
             'documents.*.recipients' => 'required|array|min:1',
-            'documents.*.recipients.*' => 'string|in:' . implode(',', self::$validRecipientKeys),
+            'documents.*.recipients.*' => 'string|in:'.implode(',', self::$validRecipientKeys),
         ];
     }
 
@@ -54,10 +54,10 @@ class SendCustomDocumentsRequest extends FormRequest
             'documents.required' => 'Debe indicar al menos un documento a enviar.',
             'documents.min' => 'Debe indicar al menos un documento a enviar.',
             'documents.*.type.required' => 'Cada documento debe tener un tipo.',
-            'documents.*.type.in' => 'El tipo de documento no es válido. Valores permitidos: ' . implode(', ', self::$validDocumentTypes),
+            'documents.*.type.in' => 'El tipo de documento no es válido. Valores permitidos: '.implode(', ', self::$validDocumentTypes),
             'documents.*.recipients.required' => 'Cada documento debe tener al menos un destinatario.',
             'documents.*.recipients.min' => 'Cada documento debe tener al menos un destinatario.',
-            'documents.*.recipients.*.in' => 'El destinatario no es válido. Valores permitidos: ' . implode(', ', self::$validRecipientKeys),
+            'documents.*.recipients.*.in' => 'El destinatario no es válido. Valores permitidos: '.implode(', ', self::$validRecipientKeys),
         ];
     }
 }

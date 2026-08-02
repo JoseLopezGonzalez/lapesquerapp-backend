@@ -20,7 +20,7 @@ class StoreFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'Almacén ' . $this->faker->unique()->city(),
+            'name' => 'Almacén '.$this->faker->unique()->city(),
             'temperature' => $this->faker->randomFloat(2, -20, 20),
             'capacity' => $this->faker->randomFloat(2, 1000, 100000),
             'map' => '{"posiciones":[{"id":1,"nombre":"U1","x":40,"y":40,"width":460,"height":238,"tipo":"center"}],"elementos":{"fondos":[{"x":0,"y":0,"width":665,"height":1510}],"textos":[]}}',

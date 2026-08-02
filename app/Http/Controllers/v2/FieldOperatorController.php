@@ -95,9 +95,9 @@ class FieldOperatorController extends Controller
             $all[] = trim($email);
         }
         foreach ($ccEmails as $email) {
-            $all[] = 'CC:' . trim($email);
+            $all[] = 'CC:'.trim($email);
         }
 
-        return count($all) > 0 ? implode(";\n", $all) . ';' : null;
+        return count($all) > 0 ? implode(";\n", $all).';' : null;
     }
 }

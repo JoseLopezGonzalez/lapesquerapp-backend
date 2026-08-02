@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\v2;
 
-use App\Models\Process;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateProcessRequest extends FormRequest

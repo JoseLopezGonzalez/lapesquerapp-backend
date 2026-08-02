@@ -16,12 +16,14 @@ class ProductCategoryController extends Controller
     public function index()
     {
         $this->authorize('viewAny', ProductCategory::class);
+
         return ProductCategoryResource::collection(ProductCategoryListService::list(request()));
     }
 
     public function store(StoreProductCategoryRequest $request): JsonResponse
     {
         $category = ProductCategory::create($request->validated());
+
         return response()->json([
             'message' => 'Categoría de producto creada con éxito',
             'data' => new ProductCategoryResource($category),
@@ -32,6 +34,7 @@ class ProductCategoryController extends Controller
     {
         $category = ProductCategory::with('families')->findOrFail($id);
         $this->authorize('view', $category);
+
         return response()->json([
             'message' => 'Categoría de producto obtenida con éxito',
             'data' => new ProductCategoryResource($category),
@@ -43,6 +46,7 @@ class ProductCategoryController extends Controller
         $category = ProductCategory::findOrFail($id);
         $this->authorize('update', $category);
         $category->update($request->validated());
+
         return response()->json([
             'message' => 'Categoría de producto actualizada con éxito',
             'data' => new ProductCategoryResource($category),
@@ -60,6 +64,7 @@ class ProductCategoryController extends Controller
             ], 400);
         }
         $category->delete();
+
         return response()->json(['message' => 'Categoría de producto eliminada con éxito']);
     }
 
@@ -74,6 +79,7 @@ class ProductCategoryController extends Controller
             $this->authorize('delete', $category);
             if (! $category->canBeDeleted()) {
                 $errors[] = "Categoría '{$category->name}' no se puede eliminar porque tiene familias asociadas";
+
                 continue;
             }
             $category->delete();
@@ -83,10 +89,10 @@ class ProductCategoryController extends Controller
         $message = "Se eliminaron {$deletedCount} categorías con éxito";
         $userMessage = $deletedCount === 0 && count($errors) > 0
             ? (count($errors) === 1 ? $errors[0] : 'No se pudieron eliminar las categorías porque tienen familias asociadas')
-            : (count($errors) > 0 ? "Se eliminaron {$deletedCount} categorías. " . (count($errors) === 1 ? $errors[0] : 'Algunas no se pudieron eliminar porque tienen familias asociadas') : "Se eliminaron {$deletedCount} categorías con éxito");
+            : (count($errors) > 0 ? "Se eliminaron {$deletedCount} categorías. ".(count($errors) === 1 ? $errors[0] : 'Algunas no se pudieron eliminar porque tienen familias asociadas') : "Se eliminaron {$deletedCount} categorías con éxito");
 
         return response()->json([
-            'message' => $message . (count($errors) > 0 ? '. Errores: ' . implode(', ', $errors) : ''),
+            'message' => $message.(count($errors) > 0 ? '. Errores: '.implode(', ', $errors) : ''),
             'userMessage' => $userMessage,
             'deletedCount' => $deletedCount,
             'errors' => $errors,
@@ -100,6 +106,7 @@ class ProductCategoryController extends Controller
             ->select('id', 'name', 'description')
             ->orderBy('name', 'asc')
             ->get();
+
         return response()->json($categories);
     }
 }

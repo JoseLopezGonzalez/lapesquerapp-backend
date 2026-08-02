@@ -51,6 +51,7 @@ class RawMaterialReceptionBulkService
                     }
 
                     $errors[] = $errorDetails;
+
                     continue;
                 }
 
@@ -135,6 +136,7 @@ class RawMaterialReceptionBulkService
                     }
 
                     $errors[] = $errorDetails;
+
                     continue;
                 }
 

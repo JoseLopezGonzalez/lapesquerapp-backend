@@ -15,7 +15,7 @@ class SalespersonFactory extends Factory
     {
         return [
             'name' => $this->faker->unique()->name(),
-            'emails' => $this->faker->companyEmail() . ';',
+            'emails' => $this->faker->companyEmail().';',
             'user_id' => null,
         ];
     }

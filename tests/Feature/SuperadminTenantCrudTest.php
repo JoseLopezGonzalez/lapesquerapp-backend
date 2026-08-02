@@ -14,8 +14,8 @@ use Tests\TestCase;
 
 class SuperadminTenantCrudTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?SuperadminUser $superadmin = null;
 
@@ -28,7 +28,7 @@ class SuperadminTenantCrudTest extends TestCase
 
         $this->superadmin = SuperadminUser::create([
             'name' => 'SA Test',
-            'email' => 'sa-crud-' . uniqid() . '@lapesquerapp.es',
+            'email' => 'sa-crud-'.uniqid().'@lapesquerapp.es',
         ]);
 
         $previousModel = Sanctum::$personalAccessTokenModel;
@@ -37,7 +37,7 @@ class SuperadminTenantCrudTest extends TestCase
         Sanctum::usePersonalAccessTokenModel($previousModel);
 
         $this->headers = [
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'application/json',
         ];
     }
@@ -46,7 +46,7 @@ class SuperadminTenantCrudTest extends TestCase
 
     public function test_index_lists_tenants(): void
     {
-        Tenant::create(['name' => 'T1', 'subdomain' => 'idx-' . uniqid(), 'database' => 'db1', 'status' => 'active']);
+        Tenant::create(['name' => 'T1', 'subdomain' => 'idx-'.uniqid(), 'database' => 'db1', 'status' => 'active']);
 
         $response = $this->withHeaders($this->headers)
             ->getJson('/api/v2/superadmin/tenants');
@@ -57,8 +57,8 @@ class SuperadminTenantCrudTest extends TestCase
 
     public function test_index_filters_by_status(): void
     {
-        Tenant::create(['name' => 'Active', 'subdomain' => 'filt-a-' . uniqid(), 'database' => 'dba', 'status' => 'active']);
-        Tenant::create(['name' => 'Suspended', 'subdomain' => 'filt-s-' . uniqid(), 'database' => 'dbs', 'status' => 'suspended']);
+        Tenant::create(['name' => 'Active', 'subdomain' => 'filt-a-'.uniqid(), 'database' => 'dba', 'status' => 'active']);
+        Tenant::create(['name' => 'Suspended', 'subdomain' => 'filt-s-'.uniqid(), 'database' => 'dbs', 'status' => 'suspended']);
 
         $response = $this->withHeaders($this->headers)
             ->getJson('/api/v2/superadmin/tenants?status=suspended');
@@ -73,7 +73,7 @@ class SuperadminTenantCrudTest extends TestCase
 
     public function test_show_returns_tenant_detail(): void
     {
-        $tenant = Tenant::create(['name' => 'Detail', 'subdomain' => 'show-' . uniqid(), 'database' => 'dbshow', 'status' => 'active']);
+        $tenant = Tenant::create(['name' => 'Detail', 'subdomain' => 'show-'.uniqid(), 'database' => 'dbshow', 'status' => 'active']);
 
         $response = $this->withHeaders($this->headers)
             ->getJson("/api/v2/superadmin/tenants/{$tenant->id}");
@@ -88,7 +88,7 @@ class SuperadminTenantCrudTest extends TestCase
     {
         Queue::fake();
 
-        $sub = 'new-' . uniqid();
+        $sub = 'new-'.uniqid();
 
         $response = $this->withHeaders($this->headers)
             ->postJson('/api/v2/superadmin/tenants', [
@@ -102,15 +102,15 @@ class SuperadminTenantCrudTest extends TestCase
         $response->assertCreated();
         $response->assertJsonPath('data.subdomain', $sub);
         $response->assertJsonPath('data.status', 'pending');
-        $response->assertJsonPath('data.database', 'tenant_' . $sub);
+        $response->assertJsonPath('data.database', 'tenant_'.$sub);
 
         Queue::assertPushed(OnboardTenantJob::class);
     }
 
     public function test_store_rejects_duplicate_subdomain(): void
     {
-        $sub = 'dup-' . uniqid();
-        Tenant::create(['name' => 'Existing', 'subdomain' => $sub, 'database' => 'tenant_' . $sub, 'status' => 'active']);
+        $sub = 'dup-'.uniqid();
+        Tenant::create(['name' => 'Existing', 'subdomain' => $sub, 'database' => 'tenant_'.$sub, 'status' => 'active']);
 
         $response = $this->withHeaders($this->headers)
             ->postJson('/api/v2/superadmin/tenants', [
@@ -138,7 +138,7 @@ class SuperadminTenantCrudTest extends TestCase
 
     public function test_update_modifies_tenant(): void
     {
-        $tenant = Tenant::create(['name' => 'Old', 'subdomain' => 'upd-' . uniqid(), 'database' => 'dbupd', 'status' => 'active']);
+        $tenant = Tenant::create(['name' => 'Old', 'subdomain' => 'upd-'.uniqid(), 'database' => 'dbupd', 'status' => 'active']);
 
         $response = $this->withHeaders($this->headers)
             ->putJson("/api/v2/superadmin/tenants/{$tenant->id}", [
@@ -155,7 +155,7 @@ class SuperadminTenantCrudTest extends TestCase
 
     public function test_activate_changes_status_to_active(): void
     {
-        $tenant = Tenant::create(['name' => 'Suspended', 'subdomain' => 'act-' . uniqid(), 'database' => 'dbact', 'status' => 'suspended']);
+        $tenant = Tenant::create(['name' => 'Suspended', 'subdomain' => 'act-'.uniqid(), 'database' => 'dbact', 'status' => 'suspended']);
 
         $response = $this->withHeaders($this->headers)
             ->postJson("/api/v2/superadmin/tenants/{$tenant->id}/activate");
@@ -166,7 +166,7 @@ class SuperadminTenantCrudTest extends TestCase
 
     public function test_suspend_changes_status_to_suspended(): void
     {
-        $tenant = Tenant::create(['name' => 'Active', 'subdomain' => 'sus-' . uniqid(), 'database' => 'dbsus', 'status' => 'active']);
+        $tenant = Tenant::create(['name' => 'Active', 'subdomain' => 'sus-'.uniqid(), 'database' => 'dbsus', 'status' => 'active']);
 
         $response = $this->withHeaders($this->headers)
             ->postJson("/api/v2/superadmin/tenants/{$tenant->id}/suspend");
@@ -177,7 +177,7 @@ class SuperadminTenantCrudTest extends TestCase
 
     public function test_cancel_changes_status_to_cancelled(): void
     {
-        $tenant = Tenant::create(['name' => 'Active', 'subdomain' => 'can-' . uniqid(), 'database' => 'dbcan', 'status' => 'active']);
+        $tenant = Tenant::create(['name' => 'Active', 'subdomain' => 'can-'.uniqid(), 'database' => 'dbcan', 'status' => 'active']);
 
         $response = $this->withHeaders($this->headers)
             ->postJson("/api/v2/superadmin/tenants/{$tenant->id}/cancel");
@@ -190,8 +190,8 @@ class SuperadminTenantCrudTest extends TestCase
 
     public function test_dashboard_returns_stats(): void
     {
-        Tenant::create(['name' => 'A1', 'subdomain' => 'dash-a-' . uniqid(), 'database' => 'db', 'status' => 'active']);
-        Tenant::create(['name' => 'A2', 'subdomain' => 'dash-s-' . uniqid(), 'database' => 'db', 'status' => 'suspended']);
+        Tenant::create(['name' => 'A1', 'subdomain' => 'dash-a-'.uniqid(), 'database' => 'db', 'status' => 'active']);
+        Tenant::create(['name' => 'A2', 'subdomain' => 'dash-s-'.uniqid(), 'database' => 'db', 'status' => 'suspended']);
 
         $response = $this->withHeaders($this->headers)
             ->getJson('/api/v2/superadmin/dashboard');

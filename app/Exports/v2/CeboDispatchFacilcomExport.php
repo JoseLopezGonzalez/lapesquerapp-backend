@@ -4,21 +4,21 @@ namespace App\Exports\v2;
 
 use App\Models\CeboDispatch;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\WithStyles;
-
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMapping, WithStyles
 {
     use Exportable;
 
     protected $filters;
+
     protected $limit;
+
     protected $index;
 
     public function __construct(Request $request, $limit = null)
@@ -54,7 +54,7 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
         // Para optimizar memoria, usamos eager loading con with() y limitamos con ->limit() si es necesario.
         return $query->with([
             'supplier',
-            'products.product'
+            'products.product',
         ])->get();
     }
 
@@ -109,7 +109,7 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
 
         // Filtro por notas
         if (isset($filters['notes'])) {
-            $query->where('notes', 'like', '%' . $filters['notes'] . '%');
+            $query->where('notes', 'like', '%'.$filters['notes'].'%');
         }
 
         // Filtro por tipo de exportación
@@ -137,7 +137,7 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
     {
         // Mejorar el manejo de relaciones nulas
         $supplier = $ceboDispatch->supplier;
-        
+
         $rows = [];
 
         // Procesar todos los despachos de tipo facilcom, incluso si no tienen códigos
@@ -145,7 +145,7 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
         if ($ceboDispatch->export_type == 'facilcom') {
             foreach ($ceboDispatch->products as $product) {
                 $productModel = $product->product;
-                
+
                 $rows[] = [
                     $this->index, // Mismo código para todo el despacho
                     $ceboDispatch->date ? date('d/m/Y', strtotime($ceboDispatch->date)) : '-',
@@ -175,10 +175,10 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
         $highestColumn = $sheet->getHighestColumn();
 
         // Solo negrita para encabezados
-        $sheet->getStyle('A1:' . $highestColumn . '1')->applyFromArray([
+        $sheet->getStyle('A1:'.$highestColumn.'1')->applyFromArray([
             'font' => [
-                'bold' => true
-            ]
+                'bold' => true,
+            ],
         ]);
 
         // Formato de números para columnas de peso y precio (G y H)
@@ -192,14 +192,14 @@ class CeboDispatchFacilcomExport implements FromCollection, WithHeadings, WithMa
         // Colorear de amarillo las celdas con datos faltantes ("-")
         for ($row = 2; $row <= $highestRow; $row++) {
             for ($col = 'A'; $col <= $highestColumn; $col++) {
-                $cellValue = $sheet->getCell($col . $row)->getValue();
+                $cellValue = $sheet->getCell($col.$row)->getValue();
                 if ($cellValue === '-') {
-                    $sheet->getStyle($col . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-                    $sheet->getStyle($col . $row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
+                    $sheet->getStyle($col.$row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+                    $sheet->getStyle($col.$row)->getFill()->getStartColor()->setRGB('FFFF00'); // Amarillo
                 }
             }
         }
 
         return [];
     }
-} 
+}

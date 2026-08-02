@@ -3,14 +3,13 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Tax extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = [
         'name',
@@ -34,6 +33,4 @@ class Tax extends Model
     {
         return $this->hasMany(OrderPlannedProductDetail::class);
     }
-
 }
-

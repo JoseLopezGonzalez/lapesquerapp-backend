@@ -15,12 +15,12 @@ return new class extends Migration
             // Primero eliminar la foreign key existente
             $table->dropForeign(['process_id']);
         });
-        
+
         // Cambiar process_id a NOT NULL (fuera del Schema::table para evitar problemas)
         Schema::table('production_records', function (Blueprint $table) {
             $table->foreignId('process_id')->nullable(false)->change();
         });
-        
+
         // Recrear la foreign key sin onDelete('set null') ya que ahora es required
         Schema::table('production_records', function (Blueprint $table) {
             $table->foreign('process_id')->references('id')->on('processes')->onDelete('restrict');
@@ -35,10 +35,10 @@ return new class extends Migration
         Schema::table('production_records', function (Blueprint $table) {
             // Eliminar la foreign key
             $table->dropForeign(['process_id']);
-            
+
             // Volver a hacer process_id nullable
             $table->foreignId('process_id')->nullable()->change();
-            
+
             // Recrear la foreign key original
             $table->foreign('process_id')->references('id')->on('processes')->onDelete('set null');
         });

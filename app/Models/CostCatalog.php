@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class CostCatalog extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $table = 'cost_catalog';
 
@@ -29,14 +29,18 @@ class CostCatalog extends Model
      * Constantes para cost_type
      */
     const COST_TYPE_PRODUCTION = 'production';
+
     const COST_TYPE_LABOR = 'labor';
+
     const COST_TYPE_OPERATIONAL = 'operational';
+
     const COST_TYPE_PACKAGING = 'packaging';
 
     /**
      * Constantes para default_unit
      */
     const DEFAULT_UNIT_TOTAL = 'total';
+
     const DEFAULT_UNIT_PER_KG = 'per_kg';
 
     /**

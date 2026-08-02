@@ -61,7 +61,7 @@ trait ConfiguresTenantConnection
         $this->ensureDatabaseReachable();
 
         $defaultConnection = $this->getConfig('database.default', 'mysql');
-        $database = $this->getConfig('database.connections.' . $defaultConnection . '.database', env('DB_DATABASE', 'testing'));
+        $database = $this->getConfig('database.connections.'.$defaultConnection.'.database', env('DB_DATABASE', 'testing'));
 
         $this->app['config']->set('database.connections.tenant.database', $database);
         DB::purge('tenant');

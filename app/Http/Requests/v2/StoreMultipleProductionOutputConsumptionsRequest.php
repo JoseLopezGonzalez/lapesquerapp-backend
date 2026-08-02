@@ -31,4 +31,3 @@ class StoreMultipleProductionOutputConsumptionsRequest extends FormRequest
         ];
     }
 }
-

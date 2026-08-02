@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\Pallet;
-use App\Models\StoredPallet;
 use App\Models\Store;
+use App\Models\StoredPallet;
 use Illuminate\Database\Seeder;
 
 class StoredPalletSeeder extends Seeder

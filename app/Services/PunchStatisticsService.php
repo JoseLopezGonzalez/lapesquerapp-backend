@@ -99,7 +99,7 @@ class PunchStatisticsService
                         }
                     } elseif ($dayEvents[$i]->event_type === PunchEvent::TYPE_OUT) {
                         $prevIn = $dayEvents->slice(0, $i)->reverse()->firstWhere('event_type', PunchEvent::TYPE_IN);
-                        if (!$prevIn) {
+                        if (! $prevIn) {
                             $hasOrphanExit = true;
                             $orphanExit = $dayEvents[$i];
                         }
@@ -146,7 +146,7 @@ class PunchStatisticsService
                         'date' => $day,
                     ];
 
-                    if (!isset($dayActivityDetails[$day])) {
+                    if (! isset($dayActivityDetails[$day])) {
                         $dayActivityDetails[$day] = [
                             'date' => $day,
                             'total_hours' => 0,
@@ -178,7 +178,7 @@ class PunchStatisticsService
         }
 
         $anomalousDaysCount = 0;
-        if (!empty($allDayHours)) {
+        if (! empty($allDayHours)) {
             $dayHoursValues = array_column($allDayHours, 'hours');
             $averageHoursPerDay = array_sum($dayHoursValues) / count($dayHoursValues);
             $minThreshold = $averageHoursPerDay * 0.5;
@@ -195,8 +195,8 @@ class PunchStatisticsService
                         'hours' => $dayHours,
                         'reason' => $reason,
                         'reason_label' => $reason === 'muy_pocas_horas'
-                            ? 'Muy pocas horas (< ' . round($minThreshold, 2) . 'h)'
-                            : 'Muchas horas (> ' . round($maxThreshold, 2) . 'h)',
+                            ? 'Muy pocas horas (< '.round($minThreshold, 2).'h)'
+                            : 'Muchas horas (> '.round($maxThreshold, 2).'h)',
                     ];
                 }
             }
@@ -224,14 +224,14 @@ class PunchStatisticsService
         $averageHoursPerDay = $daysWithActivityCount > 0 ? round($totalHours / $daysWithActivityCount, 2) : 0;
 
         $averageHoursPerDayPerEmployee = 0;
-        if (!empty($employeeStats)) {
+        if (! empty($employeeStats)) {
             $hoursPerDayByEmployee = [];
             foreach ($employeeStats as $emp) {
                 if ($emp['days_with_activity'] > 0) {
                     $hoursPerDayByEmployee[] = $emp['total_hours'] / $emp['days_with_activity'];
                 }
             }
-            if (!empty($hoursPerDayByEmployee)) {
+            if (! empty($hoursPerDayByEmployee)) {
                 $averageHoursPerDayPerEmployee = round(array_sum($hoursPerDayByEmployee) / count($hoursPerDayByEmployee), 2);
             }
         }
@@ -248,7 +248,7 @@ class PunchStatisticsService
 
         $topEmployees = [];
         $bottomEmployees = [];
-        if (!empty($employeeStats)) {
+        if (! empty($employeeStats)) {
             usort($employeeStats, fn ($a, $b) => $b['total_hours'] <=> $a['total_hours']);
             $totalEmployeesCount = count($employeeStats);
             if ($totalEmployeesCount < 6) {
@@ -262,7 +262,7 @@ class PunchStatisticsService
                 $bottomCandidates = array_reverse($employeeStats);
                 $bottomEmployees = [];
                 foreach ($bottomCandidates as $emp) {
-                    if (!in_array($emp['employee_id'], $topEmployeeIds)) {
+                    if (! in_array($emp['employee_id'], $topEmployeeIds)) {
                         $bottomEmployees[] = $emp;
                         if (count($bottomEmployees) >= 3) {
                             break;
@@ -274,7 +274,7 @@ class PunchStatisticsService
 
         $mostActiveDays = [];
         $leastActiveDays = [];
-        if (!empty($dayActivityDetails)) {
+        if (! empty($dayActivityDetails)) {
             $daysArray = array_values($dayActivityDetails);
             foreach ($daysArray as &$day) {
                 $day['employees_count'] = count($day['employees']);
@@ -360,6 +360,7 @@ class PunchStatisticsService
         $dateEnd = $dateEnd->copy()->endOfDay();
         $periodLabel = $this->buildPeriodLabel($dateStart, $dateEnd);
         $period = $this->buildPeriodType($dateStart, $dateEnd);
+
         return $this->getEmptyResponse($periodLabel, $dateStart, $dateEnd, $period);
     }
 
@@ -411,7 +412,7 @@ class PunchStatisticsService
     {
         $daysDiff = $dateStart->diffInDays($dateEnd);
         if ($daysDiff <= 7) {
-            return $dateStart->format('d/m/Y') . ' - ' . $dateEnd->format('d/m/Y');
+            return $dateStart->format('d/m/Y').' - '.$dateEnd->format('d/m/Y');
         }
         if ($dateStart->isSameMonth($dateEnd) && $dateStart->day === 1 && $dateEnd->isLastOfMonth()) {
             $months = [
@@ -420,12 +421,14 @@ class PunchStatisticsService
                 9 => 'septiembre', 10 => 'octubre', 11 => 'noviembre', 12 => 'diciembre',
             ];
             $monthName = $months[$dateStart->month] ?? $dateStart->format('F');
-            return ucfirst($monthName) . ' ' . $dateStart->year;
+
+            return ucfirst($monthName).' '.$dateStart->year;
         }
         if ($dateStart->isSameYear($dateEnd) && $dateStart->dayOfYear === 1 && $dateEnd->isLastOfYear()) {
             return $dateStart->format('Y');
         }
-        return $dateStart->format('d/m/Y') . ' - ' . $dateEnd->format('d/m/Y');
+
+        return $dateStart->format('d/m/Y').' - '.$dateEnd->format('d/m/Y');
     }
 
     private function buildPeriodType(Carbon $dateStart, Carbon $dateEnd): string
@@ -436,6 +439,7 @@ class PunchStatisticsService
         if ($dateStart->isSameYear($dateEnd) && $dateStart->dayOfYear === 1 && $dateEnd->isLastOfYear()) {
             return 'year';
         }
+
         return 'custom';
     }
 }

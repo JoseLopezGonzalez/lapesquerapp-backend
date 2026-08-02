@@ -18,4 +18,3 @@ class IndexCrmAgendaSummaryRequest extends FormRequest
         ];
     }
 }
-

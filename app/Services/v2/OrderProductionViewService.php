@@ -13,8 +13,8 @@ class OrderProductionViewService
      * Vista de producción: pedidos de la fecha dada agrupados por producto.
      * Misma lógica que OrderController::productionView().
      *
-     * @param Carbon|null $date Fecha de carga (por defecto hoy)
-     * @param User|null $user Usuario actual (para filtrar por salesperson si es comercial)
+     * @param  Carbon|null  $date  Fecha de carga (por defecto hoy)
+     * @param  User|null  $user  Usuario actual (para filtrar por salesperson si es comercial)
      * @return array{data: array<int, array{id: int, name: string, orders: array<int, array>}>}
      */
     public static function getData(?Carbon $date = null, ?User $user = null): array
@@ -57,7 +57,7 @@ class OrderProductionViewService
                 $productId = $plannedDetail->product_id;
                 $productName = $plannedDetail->product->name ?? 'Producto sin nombre';
 
-                if (!isset($productsData[$productId])) {
+                if (! isset($productsData[$productId])) {
                     $productsData[$productId] = [
                         'id' => $productId,
                         'name' => $productName,
@@ -84,7 +84,7 @@ class OrderProductionViewService
                         }
                     }
 
-                    if ($palletHasProduct && !in_array($pallet->id, $palletIds)) {
+                    if ($palletHasProduct && ! in_array($pallet->id, $palletIds)) {
                         $palletIds[] = $pallet->id;
                     }
                 }

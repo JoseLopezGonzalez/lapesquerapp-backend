@@ -2,14 +2,14 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Esta migración:
      * 1. Migra los datos: palets con state_id=3 sin order_id → cambian a 4 (processed)
      * 2. Elimina la foreign key a pallet_states
@@ -17,7 +17,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasTable('pallets')) {
+        if (! Schema::hasTable('pallets')) {
             return;
         }
 
@@ -25,7 +25,7 @@ return new class extends Migration
         // Para sistemas multi-tenant, necesitamos eliminar la FK manualmente
         $connection = DB::connection();
         $driverName = $connection->getDriverName();
-        
+
         if ($driverName === 'pgsql') {
             // PostgreSQL: eliminar constraint por nombre
             // El nombre típico es: tenants_pallets_state_id_foreign
@@ -38,7 +38,7 @@ return new class extends Migration
                  AND contype = 'f'
                  AND conname LIKE '%state_id%'"
             );
-            
+
             foreach ($constraints as $constraint) {
                 DB::statement("ALTER TABLE pallets DROP CONSTRAINT IF EXISTS {$constraint->conname}");
             }
@@ -46,7 +46,7 @@ return new class extends Migration
             // MySQL u otros: usar Schema
             // Verificar si la columna se llama state_id o status
             $columnName = Schema::hasColumn('pallets', 'state_id') ? 'state_id' : 'status';
-            
+
             try {
                 Schema::table('pallets', function (Blueprint $table) use ($columnName) {
                     $table->dropForeign([$columnName]);
@@ -61,7 +61,7 @@ return new class extends Migration
         if (Schema::hasTable('pallets')) {
             // Verificar si la columna se llama state_id o status
             $columnName = Schema::hasColumn('pallets', 'state_id') ? 'state_id' : 'status';
-            
+
             DB::table('pallets')
                 ->where($columnName, 3)
                 ->whereNull('order_id')
@@ -74,7 +74,7 @@ return new class extends Migration
 
     /**
      * Reverse the migrations.
-     * 
+     *
      * NOTA: Esta migración es difícil de revertir completamente porque perdemos
      * la información de la tabla pallet_states original. Se recrea la tabla
      * pero los datos se pierden.

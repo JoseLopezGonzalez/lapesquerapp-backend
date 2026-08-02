@@ -18,7 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('category_id');
             $table->boolean('active')->default(true);
             $table->timestamps();
-            
+
             $table->foreign('category_id')->references('id')->on('product_categories')->onDelete('cascade');
         });
     }

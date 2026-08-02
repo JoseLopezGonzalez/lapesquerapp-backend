@@ -3,14 +3,13 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PalletBox extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     /* Fillable */
     protected $fillable = [
@@ -18,10 +17,8 @@ class PalletBox extends Model
         'pallet_id',
         'lot',
         'net_weight',
-        'article_id'
+        'article_id',
     ];
-
-
 
     public function box()
     {

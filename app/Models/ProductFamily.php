@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductFamily extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = [
         'name',

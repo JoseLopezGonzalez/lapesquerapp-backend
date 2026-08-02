@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\CancelCrmAgendaActionRequest;
 use App\Http\Requests\v2\IndexCrmAgendaRequest;
 use App\Http\Requests\v2\IndexCrmAgendaSummaryRequest;
-use App\Http\Requests\v2\ResolveNextActionRequest;
 use App\Http\Requests\v2\RescheduleCrmAgendaActionRequest;
+use App\Http\Requests\v2\ResolveNextActionRequest;
 use App\Http\Requests\v2\ShowCrmAgendaPendingRequest;
 use App\Http\Requests\v2\StoreCrmAgendaActionRequest;
 use App\Services\v2\CrmAgendaService;
@@ -139,4 +139,3 @@ class CrmAgendaController extends Controller
         ]);
     }
 }
-

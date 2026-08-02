@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Employee extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = [
         'name',
@@ -36,4 +36,3 @@ class Employee extends Model
         return $this->hasOne(PunchEvent::class)->latest('timestamp');
     }
 }
-

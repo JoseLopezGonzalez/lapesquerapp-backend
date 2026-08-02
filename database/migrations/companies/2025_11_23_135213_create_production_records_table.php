@@ -20,7 +20,7 @@ return new class extends Migration
             $table->timestamp('finished_at')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
-            
+
             // Índices para mejorar rendimiento
             $table->index('production_id');
             $table->index('parent_record_id');

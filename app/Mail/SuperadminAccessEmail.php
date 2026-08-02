@@ -21,7 +21,7 @@ class SuperadminAccessEmail extends Mailable
     {
         $appName = config('app.name', 'PesquerApp');
 
-        return $this->subject('Accede al Panel de Administración — ' . $appName)
+        return $this->subject('Accede al Panel de Administración — '.$appName)
             ->from(
                 config('mail.from.address', 'noreply@lapesquerapp.es'),
                 $appName

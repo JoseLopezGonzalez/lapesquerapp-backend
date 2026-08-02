@@ -41,12 +41,12 @@ class ProductionOutputConsumptionResource extends JsonResource
             'notes' => $this->notes,
             'costPerKg' => $costPerKg,
             'totalCost' => $consumedTotalCost,
-            
+
             // Información del output consumido
             'productionOutput' => $this->whenLoaded('productionOutput', function () {
                 return new ProductionOutputResource($this->productionOutput);
             }),
-            
+
             // Información del producto
             'product' => $this->when($productionOutputProduct, function () use ($productionOutputProduct) {
                 return [
@@ -54,12 +54,12 @@ class ProductionOutputConsumptionResource extends JsonResource
                     'name' => $productionOutputProduct->name,
                 ];
             }),
-            
+
             // Información del proceso que consume
             'productionRecord' => $this->whenLoaded('productionRecord', function () {
                 return new ProductionRecordResource($this->productionRecord);
             }),
-            
+
             // Información del proceso padre (del output)
             'parentRecord' => $this->when($parentRecord, function () use ($parentRecord, $parentProcess) {
                 return [
@@ -70,13 +70,13 @@ class ProductionOutputConsumptionResource extends JsonResource
                     ] : null,
                 ];
             }),
-            
+
             // Valores calculados
             'isComplete' => $this->isComplete(),
             'isPartial' => $this->isPartial(),
             'weightConsumptionPercentage' => round($this->weight_consumption_percentage, 2),
             'boxesConsumptionPercentage' => round($this->boxes_consumption_percentage, 2),
-            
+
             // Información del output original para referencia
             'outputTotalWeight' => $this->when($productionOutput, function () use ($productionOutput) {
                 return $productionOutput->weight_kg ?? 0;
@@ -90,7 +90,7 @@ class ProductionOutputConsumptionResource extends JsonResource
             'outputAvailableBoxes' => $this->when($productionOutput, function () use ($productionOutput) {
                 return $productionOutput->available_boxes ?? 0;
             }),
-            
+
             'createdAt' => $this->created_at?->toIso8601String(),
             'updatedAt' => $this->updated_at?->toIso8601String(),
         ];

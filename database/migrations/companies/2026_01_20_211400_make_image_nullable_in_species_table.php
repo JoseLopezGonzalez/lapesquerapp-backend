@@ -8,13 +8,13 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Hace el campo image nullable en la tabla species ya que no se maneja
      * en el controlador y puede causar errores si es requerido.
      */
     public function up(): void
     {
-        if (!Schema::hasTable('species')) {
+        if (! Schema::hasTable('species')) {
             return;
         }
 
@@ -28,7 +28,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (!Schema::hasTable('species')) {
+        if (! Schema::hasTable('species')) {
             return;
         }
 
@@ -39,4 +39,3 @@ return new class extends Migration
         });
     }
 };
-

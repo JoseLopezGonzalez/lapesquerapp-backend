@@ -3,16 +3,15 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Species extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
-    
-    protected $fillable = ['name', 'scientific_name', 'fao', 'image' , 'fishing_gear_id'];
+    use UsesTenantConnection;
+
+    protected $fillable = ['name', 'scientific_name', 'fao', 'image', 'fishing_gear_id'];
 
     public function toArrayAssoc()
     {
@@ -30,7 +29,7 @@ class Species extends Model
     /* $table->unsignedBigInteger('fishing_gear_id'); */
     public function fishingGear()
     {
-        return $this->belongsTo(FishingGear::class , 'fishing_gear_id');
+        return $this->belongsTo(FishingGear::class, 'fishing_gear_id');
     }
 
     // Relación con el modelo Production
@@ -44,5 +43,4 @@ class Species extends Model
     {
         return $this->hasMany(Product::class, 'species_id');
     }
-
 }

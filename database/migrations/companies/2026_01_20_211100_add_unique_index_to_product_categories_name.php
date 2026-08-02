@@ -8,19 +8,19 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Agrega constraint único en name para asegurar que no se puedan crear
      * múltiples categorías con el mismo nombre dentro del mismo tenant.
      */
     public function up(): void
     {
-        if (!Schema::hasTable('product_categories')) {
+        if (! Schema::hasTable('product_categories')) {
             return;
         }
 
         // Verificar si ya existe el constraint único en name
         $hasNameUnique = false;
-        
+
         try {
             $indexes = \DB::select("SHOW INDEX FROM product_categories WHERE Key_name != 'PRIMARY'");
             foreach ($indexes as $index) {
@@ -32,8 +32,8 @@ return new class extends Migration
         } catch (\Exception $e) {
             // Si falla la consulta, asumimos que no existe y lo creamos
         }
-        
-        if (!$hasNameUnique) {
+
+        if (! $hasNameUnique) {
             Schema::table('product_categories', function (Blueprint $table) {
                 try {
                     $table->unique('name');
@@ -49,7 +49,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (!Schema::hasTable('product_categories')) {
+        if (! Schema::hasTable('product_categories')) {
             return;
         }
 
@@ -62,4 +62,3 @@ return new class extends Migration
         });
     }
 };
-

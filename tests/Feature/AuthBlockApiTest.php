@@ -3,10 +3,10 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Models\CaptureZone;
 use App\Models\FieldOperator;
 use App\Models\FishingGear;
 use App\Models\Product;
-use App\Models\CaptureZone;
 use App\Models\Species;
 use App\Models\Tenant;
 use App\Models\User;
@@ -21,8 +21,8 @@ use Tests\TestCase;
  */
 class AuthBlockApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?string $token = null;
 
@@ -40,8 +40,8 @@ class AuthBlockApiTest extends TestCase
 
     private function createTenantAndUser(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'auth-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'auth-'.uniqid();
         Tenant::create([
             'name' => 'Test Tenant Auth',
             'subdomain' => $slug,
@@ -51,7 +51,7 @@ class AuthBlockApiTest extends TestCase
 
         $this->authUser = User::create([
             'name' => 'Test Admin Auth',
-            'email' => $slug . '@test.com',
+            'email' => $slug.'@test.com',
             'role' => Role::Administrador->value,
             'active' => true,
         ]);
@@ -64,7 +64,7 @@ class AuthBlockApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $this->token,
+            'Authorization' => 'Bearer '.$this->token,
             'Accept' => 'application/json',
         ];
     }
@@ -72,9 +72,10 @@ class AuthBlockApiTest extends TestCase
     private function authHeadersForUser(User $user): array
     {
         $token = $user->createToken('test')->plainTextToken;
+
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'application/json',
         ];
     }
@@ -132,7 +133,7 @@ class AuthBlockApiTest extends TestCase
     {
         $fieldUser = User::create([
             'name' => 'Field Auth',
-            'email' => 'field-auth-' . uniqid() . '@test.com',
+            'email' => 'field-auth-'.uniqid().'@test.com',
             'role' => Role::RepartidorAutoventa->value,
             'active' => true,
         ]);
@@ -185,7 +186,7 @@ class AuthBlockApiTest extends TestCase
     {
         $fieldUser = User::create([
             'name' => 'Field Product Auth',
-            'email' => 'field-product-auth-' . uniqid() . '@test.com',
+            'email' => 'field-product-auth-'.uniqid().'@test.com',
             'role' => Role::RepartidorAutoventa->value,
             'active' => true,
         ]);
@@ -282,7 +283,7 @@ class AuthBlockApiTest extends TestCase
 
     public function test_users_can_be_created_with_auth(): void
     {
-        $email = 'newuser-' . uniqid() . '@test.com';
+        $email = 'newuser-'.uniqid().'@test.com';
         $response = $this->withHeaders($this->authHeaders())
             ->postJson('/api/v2/users', [
                 'name' => 'New User',
@@ -299,7 +300,7 @@ class AuthBlockApiTest extends TestCase
     public function test_users_show_returns_200_with_auth(): void
     {
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/users/' . $this->authUser->id);
+            ->getJson('/api/v2/users/'.$this->authUser->id);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.id', $this->authUser->id);
@@ -309,13 +310,13 @@ class AuthBlockApiTest extends TestCase
     {
         $other = User::create([
             'name' => 'Other User',
-            'email' => 'other-' . uniqid() . '@test.com',
+            'email' => 'other-'.uniqid().'@test.com',
             'role' => Role::Operario->value,
             'active' => true,
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->putJson('/api/v2/users/' . $other->id, [
+            ->putJson('/api/v2/users/'.$other->id, [
                 'name' => 'Other User Updated',
             ]);
 
@@ -327,7 +328,7 @@ class AuthBlockApiTest extends TestCase
     public function test_users_destroy_returns_403_when_deleting_self(): void
     {
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/users/' . $this->authUser->id);
+            ->deleteJson('/api/v2/users/'.$this->authUser->id);
 
         $response->assertStatus(403);
         $this->authUser->refresh();
@@ -338,14 +339,14 @@ class AuthBlockApiTest extends TestCase
     {
         $other = User::create([
             'name' => 'To Delete',
-            'email' => 'todelete-' . uniqid() . '@test.com',
+            'email' => 'todelete-'.uniqid().'@test.com',
             'role' => Role::Operario->value,
             'active' => true,
         ]);
         $id = $other->id;
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/users/' . $id);
+            ->deleteJson('/api/v2/users/'.$id);
 
         $response->assertStatus(200);
         $trashed = User::withTrashed()->find($id);
@@ -377,7 +378,7 @@ class AuthBlockApiTest extends TestCase
     {
         $operario = User::create([
             'name' => 'Operario User',
-            'email' => 'operario-' . uniqid() . '@test.com',
+            'email' => 'operario-'.uniqid().'@test.com',
             'role' => Role::Operario->value,
             'active' => true,
         ]);
@@ -392,7 +393,7 @@ class AuthBlockApiTest extends TestCase
     {
         $user = User::create([
             'name' => 'Session User',
-            'email' => 'session-' . uniqid() . '@test.com',
+            'email' => 'session-'.uniqid().'@test.com',
             'role' => Role::Administrador->value,
             'active' => true,
         ]);
@@ -401,7 +402,7 @@ class AuthBlockApiTest extends TestCase
         $this->assertNotNull($accessToken);
 
         $response = $this->withHeaders($this->authHeadersForUser($user))
-            ->deleteJson('/api/v2/sessions/' . $accessToken->id);
+            ->deleteJson('/api/v2/sessions/'.$accessToken->id);
 
         $response->assertStatus(200);
         $this->assertNull(PersonalAccessToken::find($accessToken->id));
@@ -411,7 +412,7 @@ class AuthBlockApiTest extends TestCase
     {
         $sessionUser = User::create([
             'name' => 'Bulk Session User',
-            'email' => 'bulk-session-' . uniqid() . '@test.com',
+            'email' => 'bulk-session-'.uniqid().'@test.com',
             'role' => Role::Operario->value,
             'active' => true,
         ]);
@@ -436,7 +437,7 @@ class AuthBlockApiTest extends TestCase
     {
         $owner = User::create([
             'name' => 'Owner Session User',
-            'email' => 'owner-session-' . uniqid() . '@test.com',
+            'email' => 'owner-session-'.uniqid().'@test.com',
             'role' => Role::Operario->value,
             'active' => true,
         ]);
@@ -447,7 +448,7 @@ class AuthBlockApiTest extends TestCase
 
         $operario = User::create([
             'name' => 'No Permission Session User',
-            'email' => 'no-permission-session-' . uniqid() . '@test.com',
+            'email' => 'no-permission-session-'.uniqid().'@test.com',
             'role' => Role::Operario->value,
             'active' => true,
         ]);
@@ -460,5 +461,4 @@ class AuthBlockApiTest extends TestCase
         $response->assertStatus(403);
         $this->assertNotNull(PersonalAccessToken::find($ownerTokenId));
     }
-
 }

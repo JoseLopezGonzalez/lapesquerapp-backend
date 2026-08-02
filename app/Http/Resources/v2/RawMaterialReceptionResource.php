@@ -33,7 +33,7 @@ class RawMaterialReceptionResource extends JsonResource
                     }
                 }
             }
-            
+
             // Si hay palets cargados, buscar precios desde las cajas para combinaciones que no tienen línea de recepción
             // Esto cubre el caso donde hay cajas con lotes que no tienen línea de recepción o tienen precio null
             if ($this->relationLoaded('pallets')) {
@@ -44,7 +44,7 @@ class RawMaterialReceptionResource extends JsonResource
                             if ($box) {
                                 $key = "{$box->article_id}_{$box->lot}";
                                 // Solo agregar si no existe ya en el array (prioridad a líneas de recepción)
-                                if (!isset($prices[$key])) {
+                                if (! isset($prices[$key])) {
                                     // Obtener precio desde el accessor de la caja (que busca en la recepción)
                                     $boxPrice = $box->cost_per_kg;
                                     if ($boxPrice !== null) {
@@ -62,7 +62,7 @@ class RawMaterialReceptionResource extends JsonResource
                     }
                 }
             }
-            
+
             // Convertir el array asociativo a array indexado
             $prices = array_values($prices);
         }
@@ -89,7 +89,4 @@ class RawMaterialReceptionResource extends JsonResource
             'supplier_liquidation_id' => $this->supplier_liquidation_id,
         ];
     }
-
-
-    
 }

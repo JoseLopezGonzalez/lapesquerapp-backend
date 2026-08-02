@@ -37,7 +37,7 @@ class CustomerOrderHistoryService
             $year = (string) $row->year;
             $month = (int) $row->month;
 
-            if (!isset($availableMonthsByYear[$year])) {
+            if (! isset($availableMonthsByYear[$year])) {
                 $availableMonthsByYear[$year] = [];
             }
 
@@ -113,7 +113,7 @@ class CustomerOrderHistoryService
             foreach ($order->productDetails as $detail) {
                 $productId = $detail['product']['id'];
 
-                if (!isset($history[$productId])) {
+                if (! isset($history[$productId])) {
                     $history[$productId] = [
                         'product' => [
                             'id' => $detail['product']['id'],
@@ -148,7 +148,7 @@ class CustomerOrderHistoryService
                     'total' => round((float) $detail['total'], 2),
                 ];
 
-                if ($loadDate && (!$history[$productId]['last_order_date'] || strcmp($loadDate, $history[$productId]['last_order_date']) > 0)) {
+                if ($loadDate && (! $history[$productId]['last_order_date'] || strcmp($loadDate, $history[$productId]['last_order_date']) > 0)) {
                     $history[$productId]['last_order_date'] = $loadDate;
                 }
             }
@@ -162,7 +162,7 @@ class CustomerOrderHistoryService
      */
     private static function formatLoadDate($loadDate): ?string
     {
-        if (!$loadDate) {
+        if (! $loadDate) {
             return null;
         }
 
@@ -178,7 +178,7 @@ class CustomerOrderHistoryService
      */
     private static function getPreviousPeriodNetWeights(Customer $customer, ?array $previousPeriodDates): array
     {
-        if (!$previousPeriodDates) {
+        if (! $previousPeriodDates) {
             return [];
         }
 
@@ -238,12 +238,14 @@ class CustomerOrderHistoryService
             $dateFrom = normalizeDateToBusiness($request->date_from);
             $dateTo = normalizeDateToBusiness($request->date_to);
             $query->whereBetween('load_date', [$dateFrom, $dateTo]);
+
             return;
         }
 
         if ($request->has('year')) {
             $year = (int) $request->year;
             $query->whereYear('load_date', $year);
+
             return;
         }
 
@@ -254,7 +256,7 @@ class CustomerOrderHistoryService
             switch ($period) {
                 case 'month':
                     $query->whereYear('load_date', $now->year)
-                          ->whereMonth('load_date', $now->month);
+                        ->whereMonth('load_date', $now->month);
                     break;
                 case 'quarter':
                     $startOfQuarter = $now->copy()->startOfQuarter();
@@ -291,9 +293,10 @@ class CustomerOrderHistoryService
 
         if ($request->has('year')) {
             $previousYear = (int) $request->year - 1;
+
             return [
-                'from' => $previousYear . '-01-01 00:00:00',
-                'to' => $previousYear . '-12-31 23:59:59',
+                'from' => $previousYear.'-01-01 00:00:00',
+                'to' => $previousYear.'-12-31 23:59:59',
             ];
         }
 
@@ -302,18 +305,21 @@ class CustomerOrderHistoryService
             switch ($request->period) {
                 case 'month':
                     $prev = $now->copy()->subMonth();
+
                     return [
                         'from' => $prev->copy()->startOfMonth()->format('Y-m-d 00:00:00'),
                         'to' => $prev->copy()->endOfMonth()->format('Y-m-d 23:59:59'),
                     ];
                 case 'quarter':
                     $prev = $now->copy()->subQuarter();
+
                     return [
                         'from' => $prev->copy()->startOfQuarter()->format('Y-m-d 00:00:00'),
                         'to' => $prev->copy()->endOfQuarter()->format('Y-m-d 23:59:59'),
                     ];
                 case 'year':
                     $prev = $now->copy()->subYear();
+
                     return [
                         'from' => $prev->copy()->startOfYear()->format('Y-m-d 00:00:00'),
                         'to' => $prev->copy()->endOfYear()->format('Y-m-d 23:59:59'),

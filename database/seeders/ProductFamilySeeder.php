@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
-use App\Models\ProductFamily;
 use App\Models\ProductCategory;
+use App\Models\ProductFamily;
+use Illuminate\Database\Seeder;
 
 /**
  * Familias de producto de desarrollo (Fresco entero, Congelado eviscerado, etc.).
@@ -21,6 +20,7 @@ class ProductFamilySeeder extends Seeder
 
         if (! $frescoCategory || ! $congeladoCategory) {
             $this->command?->warn('ProductFamilySeeder: Ejecuta antes ProductCategorySeeder.');
+
             return;
         }
 
@@ -44,7 +44,7 @@ class ProductFamilySeeder extends Seeder
                 'category_id' => $frescoCategory->id,
                 'active' => true,
             ],
-            
+
             // Familias de productos congelados
             [
                 'name' => 'Congelado entero',

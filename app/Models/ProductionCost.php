@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductionCost extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = [
         'production_record_id',
@@ -34,8 +34,11 @@ class ProductionCost extends Model
      * Constantes para cost_type
      */
     const COST_TYPE_PRODUCTION = 'production';
+
     const COST_TYPE_LABOR = 'labor';
+
     const COST_TYPE_OPERATIONAL = 'operational';
+
     const COST_TYPE_PACKAGING = 'packaging';
 
     /**
@@ -167,16 +170,16 @@ class ProductionCost extends Model
                     $allRecords = $production->records()
                         ->with(['inputs', 'children', 'outputs'])
                         ->get();
-                    
+
                     $finalRecords = $allRecords->filter(function ($record) {
                         return $record->isFinal();
                     });
-                    
+
                     $finalOutputs = collect();
                     foreach ($finalRecords as $record) {
                         $finalOutputs = $finalOutputs->merge($record->outputs);
                     }
-                    
+
                     $totalWeight = $finalOutputs->sum('weight_kg');
                 }
             }

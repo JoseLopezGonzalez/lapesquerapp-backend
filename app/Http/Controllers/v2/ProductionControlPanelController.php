@@ -23,7 +23,7 @@ class ProductionControlPanelController extends Controller
 
         return response()->json([
             'message' => 'Panel de control de producciones obtenido correctamente.',
-            'data'    => $data,
+            'data' => $data,
         ]);
     }
 }

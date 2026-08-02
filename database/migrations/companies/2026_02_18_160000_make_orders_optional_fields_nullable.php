@@ -31,13 +31,13 @@ return new class extends Migration
             }
         }
 
-        DB::statement("ALTER TABLE orders
+        DB::statement('ALTER TABLE orders
             MODIFY payment_term_id BIGINT UNSIGNED NULL,
             MODIFY transport_id BIGINT UNSIGNED NULL,
             MODIFY billing_address TEXT NULL,
             MODIFY shipping_address TEXT NULL,
             MODIFY emails TEXT NULL
-        ");
+        ');
 
         Schema::table('orders', function (Blueprint $table) {
             if (Schema::hasTable('payment_terms')) {
@@ -66,13 +66,13 @@ return new class extends Migration
             $table->dropForeign(['transport_id']);
         });
 
-        DB::statement("ALTER TABLE orders
+        DB::statement('ALTER TABLE orders
             MODIFY payment_term_id BIGINT UNSIGNED NOT NULL,
             MODIFY transport_id BIGINT UNSIGNED NOT NULL,
             MODIFY billing_address TEXT NOT NULL,
             MODIFY shipping_address TEXT NOT NULL,
             MODIFY emails TEXT NOT NULL
-        ");
+        ');
 
         Schema::table('orders', function (Blueprint $table) {
             if (Schema::hasTable('payment_terms')) {

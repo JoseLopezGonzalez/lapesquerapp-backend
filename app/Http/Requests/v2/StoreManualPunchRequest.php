@@ -49,4 +49,3 @@ class StoreManualPunchRequest extends FormRequest
         ];
     }
 }
-

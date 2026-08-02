@@ -19,7 +19,7 @@ class RawMaterialFactory extends Factory
     public function definition(): array
     {
         return [
-            'id'    => Product::query()->value('id') ?? Product::factory()->create()->id,
+            'id' => Product::query()->value('id') ?? Product::factory()->create()->id,
             'fixed' => $this->faker->boolean(20),
             'alias' => $this->faker->optional(0.5)->words(2, true),
         ];

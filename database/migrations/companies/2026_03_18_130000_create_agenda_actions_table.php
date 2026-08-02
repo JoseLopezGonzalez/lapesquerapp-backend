@@ -51,4 +51,3 @@ return new class extends Migration
         Schema::dropIfExists('agenda_actions');
     }
 };
-

@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Tenant;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use App\Models\Tenant;
 
 class CompareMigrations extends Command
 {
@@ -21,17 +21,19 @@ class CompareMigrations extends Command
         $tenant1 = Tenant::where('subdomain', $tenant1Subdomain)->first();
         $tenant2 = Tenant::where('subdomain', $tenant2Subdomain)->first();
 
-        if (!$tenant1) {
+        if (! $tenant1) {
             $this->error("❌ No se encontró el tenant: {$tenant1Subdomain}");
+
             return Command::FAILURE;
         }
 
-        if (!$tenant2) {
+        if (! $tenant2) {
             $this->error("❌ No se encontró el tenant: {$tenant2Subdomain}");
+
             return Command::FAILURE;
         }
 
-        $this->info("📋 Comparando migraciones:");
+        $this->info('📋 Comparando migraciones:');
         $this->line("   Tenant 1: {$tenant1->name} ({$tenant1->database})");
         $this->line("   Tenant 2: {$tenant2->name} ({$tenant2->database})");
         $this->newLine();
@@ -53,22 +55,22 @@ class CompareMigrations extends Command
         $onlyIn2 = array_diff($migrations2, $migrations1);
         $inBoth = array_intersect($migrations1, $migrations2);
 
-        $this->info("📊 Resultados:");
-        $this->line("   {$tenant1->subdomain}: " . count($migrations1) . " migraciones");
-        $this->line("   {$tenant2->subdomain}: " . count($migrations2) . " migraciones");
-        $this->line("   Comunes: " . count($inBoth));
+        $this->info('📊 Resultados:');
+        $this->line("   {$tenant1->subdomain}: ".count($migrations1).' migraciones');
+        $this->line("   {$tenant2->subdomain}: ".count($migrations2).' migraciones');
+        $this->line('   Comunes: '.count($inBoth));
         $this->newLine();
 
-        if (!empty($onlyIn2)) {
-            $this->error("❌ Migraciones faltantes en {$tenant1->subdomain} (solo en {$tenant2->subdomain}) (" . count($onlyIn2) . "):");
+        if (! empty($onlyIn2)) {
+            $this->error("❌ Migraciones faltantes en {$tenant1->subdomain} (solo en {$tenant2->subdomain}) (".count($onlyIn2).'):');
             foreach ($onlyIn2 as $migration) {
                 $this->line("   - {$migration}");
             }
             $this->newLine();
         }
 
-        if (!empty($onlyIn1)) {
-            $this->warn("⚠️  Migraciones solo en {$tenant1->subdomain} (" . count($onlyIn1) . "):");
+        if (! empty($onlyIn1)) {
+            $this->warn("⚠️  Migraciones solo en {$tenant1->subdomain} (".count($onlyIn1).'):');
             foreach ($onlyIn1 as $migration) {
                 $this->line("   - {$migration}");
             }
@@ -76,7 +78,7 @@ class CompareMigrations extends Command
         }
 
         if (empty($onlyIn1) && empty($onlyIn2)) {
-            $this->info("✅ Ambos tenants tienen las mismas migraciones aplicadas");
+            $this->info('✅ Ambos tenants tienen las mismas migraciones aplicadas');
         }
 
         return Command::SUCCESS;
@@ -86,11 +88,12 @@ class CompareMigrations extends Command
     {
         try {
             $migrations = DB::table('migrations')->orderBy('id')->pluck('migration')->toArray();
+
             return $migrations;
         } catch (\Exception $e) {
             $this->error("❌ Error al obtener migraciones: {$e->getMessage()}");
+
             return [];
         }
     }
 }
-

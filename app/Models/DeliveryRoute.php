@@ -12,8 +12,11 @@ class DeliveryRoute extends Model
     use UsesTenantConnection;
 
     public const STATUS_PLANNED = 'planned';
+
     public const STATUS_IN_PROGRESS = 'in_progress';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     protected $table = 'routes';

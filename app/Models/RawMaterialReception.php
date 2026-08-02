@@ -3,32 +3,32 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class RawMaterialReception extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     protected $fillable = ['supplier_id', 'date', 'notes', 'declared_total_amount', 'declared_total_net_weight', 'creation_mode', 'supplier_liquidation_id'];
 
     // Constantes para creation_mode
     const CREATION_MODE_LINES = 'lines';
+
     const CREATION_MODE_PALLETS = 'pallets';
 
     protected $appends = ['total_amount', 'can_edit', 'cannot_edit_reason', 'locked_pallet_ids'];
 
     /* hacer numeros  declared_total_amount y declared_total_net_weight*/
-    
+
     /**
      * Boot del modelo - Validaciones y eventos
      */
     protected static function boot()
     {
         parent::boot();
-  
+
         // Validación antes de eliminar
         static::deleting(function ($reception) {
             foreach ($reception->pallets as $pallet) {
@@ -36,11 +36,11 @@ class RawMaterialReception extends Model
                 if ($pallet->order_id !== null) {
                     throw new \Exception("No se puede eliminar la recepción: el palet #{$pallet->id} está vinculado a un pedido");
                 }
-          
+
                 if ($pallet->status === Pallet::STATE_STORED) {
                     throw new \Exception("No se puede eliminar la recepción: el palet #{$pallet->id} está almacenado");
                 }
-          
+
                 // Validar que las cajas no estén en producción
                 foreach ($pallet->boxes as $palletBox) {
                     if ($palletBox->box->productionInputs()->exists()) {
@@ -79,19 +79,18 @@ class RawMaterialReception extends Model
         return $this->products->sum('net_weight');
     }
 
-
     /* GEnerar atributo especie segun la especie a la que pertenezca sus productos */
     public function getSpeciesAttribute()
     {
         if ($this->products->isEmpty()) {
             return null;
         }
-        
+
         $firstProduct = $this->products->first();
-        if (!$firstProduct->relationLoaded('product') || !$firstProduct->product) {
+        if (! $firstProduct->relationLoaded('product') || ! $firstProduct->product) {
             return null;
         }
-        
+
         return $firstProduct->product->species;
     }
 
@@ -135,5 +134,4 @@ class RawMaterialReception extends Model
 
         return $this->pallets->whereNotNull('order_id')->pluck('id')->all();
     }
-
 }

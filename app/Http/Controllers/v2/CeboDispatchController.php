@@ -23,7 +23,6 @@ class CeboDispatchController extends Controller
      * proveedor que contenga ese producto con price no nulo. Así cada línea puede tomar el precio de
      * la salida anterior que sí incluyera ese producto, no solo de "la última salida en general".
      *
-     * @param  int  $supplierId
      * @param  int[]  $productIds  IDs de producto a consultar
      * @param  int|null  $excludeDispatchId  Excluir este despacho (p. ej. el que se está editando en update)
      * @return array<int, float> product_id => price

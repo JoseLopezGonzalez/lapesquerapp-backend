@@ -3,7 +3,6 @@
 namespace App\Policies;
 
 use App\Enums\Role;
-use App\Models\Tax;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
@@ -21,6 +20,7 @@ class TaxPolicy
         if ($user->hasRole(Role::Comercial->value)) {
             return false;
         }
+
         return $user->hasAnyRole($this->allowedRoles());
     }
 

@@ -17,7 +17,7 @@ return new class extends Migration
         }
 
         Schema::table('raw_material_receptions', function (Blueprint $table) {
-            if (!Schema::hasColumn('raw_material_receptions', 'creation_mode')) {
+            if (! Schema::hasColumn('raw_material_receptions', 'creation_mode')) {
                 $table->string('creation_mode', 20)->nullable()->after('notes')->comment('Modo de creación: "lines" (por líneas) o "pallets" (por palets)');
             }
         });

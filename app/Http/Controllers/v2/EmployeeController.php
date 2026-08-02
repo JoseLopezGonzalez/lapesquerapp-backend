@@ -33,7 +33,7 @@ class EmployeeController extends Controller
 
         // Filtro por nombre
         if ($request->has('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
+            $query->where('name', 'like', '%'.$request->name.'%');
         }
 
         // Filtro por UID NFC
@@ -50,7 +50,7 @@ class EmployeeController extends Controller
         }
 
         $perPage = $request->input('perPage', 15);
-        
+
         return EmployeeResource::collection($query->paginate($perPage));
     }
 
@@ -65,7 +65,7 @@ class EmployeeController extends Controller
 
         // Filtro por nombre (opcional)
         if ($request->has('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
+            $query->where('name', 'like', '%'.$request->name.'%');
         }
 
         $query->orderBy('name', 'asc');
@@ -159,4 +159,3 @@ class EmployeeController extends Controller
         ]);
     }
 }
-

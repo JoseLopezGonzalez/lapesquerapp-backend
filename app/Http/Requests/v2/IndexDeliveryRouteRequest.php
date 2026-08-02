@@ -19,7 +19,7 @@ class IndexDeliveryRouteRequest extends FormRequest
             'fieldOperatorId' => 'nullable|integer|exists:tenant.field_operators,id',
             'salespersonId' => 'nullable|integer|exists:tenant.salespeople,id',
             'routeDate' => 'nullable|date',
-            'status' => 'nullable|string|in:' . implode(',', DeliveryRoute::validStatuses()),
+            'status' => 'nullable|string|in:'.implode(',', DeliveryRoute::validStatuses()),
             'perPage' => 'nullable|integer|min:1|max:100',
         ];
     }

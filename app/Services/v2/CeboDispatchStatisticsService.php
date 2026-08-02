@@ -10,15 +10,14 @@ class CeboDispatchStatisticsService
     /**
      * Obtiene datos de salidas de cebo agrupados por período (día, semana o mes)
      * con filtros opcionales por especie, familia o categoría.
-     * 
-     * @param string $dateFrom Fecha de inicio (formato: Y-m-d H:i:s)
-     * @param string $dateTo Fecha de fin (formato: Y-m-d H:i:s)
-     * @param string $valueType Tipo de valor: 'amount' o 'quantity'
-     * @param string $groupBy Agrupación: 'day', 'week' o 'month'
-     * @param int|null $speciesId ID de especie para filtrar
-     * @param int|null $familyId ID de familia para filtrar
-     * @param int|null $categoryId ID de categoría para filtrar
-     * @return \Illuminate\Support\Collection
+     *
+     * @param  string  $dateFrom  Fecha de inicio (formato: Y-m-d H:i:s)
+     * @param  string  $dateTo  Fecha de fin (formato: Y-m-d H:i:s)
+     * @param  string  $valueType  Tipo de valor: 'amount' o 'quantity'
+     * @param  string  $groupBy  Agrupación: 'day', 'week' o 'month'
+     * @param  int|null  $speciesId  ID de especie para filtrar
+     * @param  int|null  $familyId  ID de familia para filtrar
+     * @param  int|null  $categoryId  ID de categoría para filtrar
      */
     public static function getDispatchChartData(
         string $dateFrom,
@@ -40,7 +39,7 @@ class CeboDispatchStatisticsService
         $grouped = [];
 
         foreach ($dispatches as $dispatch) {
-            if (!$dispatch->date) {
+            if (! $dispatch->date) {
                 continue;
             }
 
@@ -65,22 +64,22 @@ class CeboDispatchStatisticsService
 
             foreach ($dispatch->products as $dispatchProduct) {
                 $product = $dispatchProduct->product;
-                
-                if (!$product) {
+
+                if (! $product) {
                     continue;
                 }
 
                 // Verificar filtros
-                $matchesSpecies = !$speciesId || ($product->species && $product->species->id == $speciesId);
-                $matchesFamily = !$familyId || ($product->family && $product->family->id == $familyId);
-                $matchesCategory = !$categoryId || (
-                    $product->family && 
-                    $product->family->category && 
+                $matchesSpecies = ! $speciesId || ($product->species && $product->species->id == $speciesId);
+                $matchesFamily = ! $familyId || ($product->family && $product->family->id == $familyId);
+                $matchesCategory = ! $categoryId || (
+                    $product->family &&
+                    $product->family->category &&
                     $product->family->category->id == $categoryId
                 );
 
                 // Si no cumple todos los filtros, saltar este producto
-                if (!$matchesSpecies || !$matchesFamily || !$matchesCategory) {
+                if (! $matchesSpecies || ! $matchesFamily || ! $matchesCategory) {
                     continue;
                 }
 
@@ -95,7 +94,7 @@ class CeboDispatchStatisticsService
 
             // Solo agregar si hay datos que cumplen los filtros
             if ($filteredQuantity > 0 || $filteredAmount > 0) {
-                if (!isset($grouped[$dispatchDate])) {
+                if (! isset($grouped[$dispatchDate])) {
                     $grouped[$dispatchDate] = [
                         'date' => $dispatchDate,
                         'amount' => 0,
@@ -110,11 +109,10 @@ class CeboDispatchStatisticsService
 
         return collect($grouped)
             ->sortKeys()
-            ->map(fn($item) => [
+            ->map(fn ($item) => [
                 'date' => $item['date'],
                 'value' => round($item[$valueType], 2),
             ])
             ->values();
     }
 }
-

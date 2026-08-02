@@ -12,7 +12,6 @@ class SalespersonListService
      * Lista comerciales con filtros y paginación.
      *
      * @param  Request  $request  Request con query params ya validados (IndexSalespersonRequest)
-     * @return LengthAwarePaginator
      */
     public static function list(Request $request): LengthAwarePaginator
     {
@@ -27,7 +26,7 @@ class SalespersonListService
         }
 
         if ($request->filled('name')) {
-            $query->where('name', 'like', '%' . $request->input('name') . '%');
+            $query->where('name', 'like', '%'.$request->input('name').'%');
         }
 
         $query->orderBy('name', 'asc');

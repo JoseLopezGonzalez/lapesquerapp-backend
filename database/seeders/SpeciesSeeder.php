@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Species;
 use App\Models\FishingGear;
+use App\Models\Species;
 use Illuminate\Database\Seeder;
 
 /**
@@ -17,8 +17,9 @@ class SpeciesSeeder extends Seeder
         $nasas = FishingGear::where('name', 'Nasas')->first();
         $gearId = $arrastre?->id ?? $nasas?->id ?? FishingGear::first()?->id;
 
-        if (!$gearId) {
+        if (! $gearId) {
             $this->command?->warn('SpeciesSeeder: No hay artes de pesca. Ejecuta antes FishingGearSeeder.');
+
             return;
         }
 

@@ -6,8 +6,8 @@ use App\Models\Order;
 use App\Models\OrderPlannedProductDetail;
 use App\Models\Product;
 use App\Models\Tax;
-use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
 
 /**
  * Líneas de pedido (order_planned_product_details).
@@ -25,6 +25,7 @@ class OrderPlannedProductDetailSeeder extends Seeder
 
         if ($orders->isEmpty() || $products->isEmpty()) {
             $this->command?->warn('OrderPlannedProductDetailSeeder: Ejecuta antes OrderSeeder y ProductSeeder.');
+
             return;
         }
 

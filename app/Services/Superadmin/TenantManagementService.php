@@ -23,7 +23,7 @@ class TenantManagementService
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('subdomain', 'like', "%{$search}%");
+                    ->orWhere('subdomain', 'like', "%{$search}%");
             });
         }
 
@@ -38,8 +38,8 @@ class TenantManagementService
      * - cancelled: puede reactivarse (solo si completó onboarding).
      */
     private const ALLOWED_TRANSITIONS = [
-        'pending'   => ['cancelled'],
-        'active'    => ['suspended', 'cancelled'],
+        'pending' => ['cancelled'],
+        'active' => ['suspended', 'cancelled'],
         'suspended' => ['active', 'cancelled'],
         'cancelled' => ['active'],
     ];
@@ -52,7 +52,7 @@ class TenantManagementService
         $current = $tenant->status ?? 'pending';
         $allowed = self::ALLOWED_TRANSITIONS[$current] ?? [];
 
-        if (!in_array($newStatus, $allowed, true)) {
+        if (! in_array($newStatus, $allowed, true)) {
             throw new \InvalidArgumentException(
                 "No se puede cambiar de '{$current}' a '{$newStatus}'."
             );
@@ -60,9 +60,9 @@ class TenantManagementService
 
         $onboardingComplete = ($tenant->onboarding_step ?? 0) >= TenantOnboardingService::TOTAL_STEPS;
 
-        if ($newStatus === 'active' && !$onboardingComplete) {
+        if ($newStatus === 'active' && ! $onboardingComplete) {
             throw new \InvalidArgumentException(
-                "No se puede activar un tenant que no ha completado el onboarding (paso {$tenant->onboarding_step}/" . TenantOnboardingService::TOTAL_STEPS . ').'
+                "No se puede activar un tenant que no ha completado el onboarding (paso {$tenant->onboarding_step}/".TenantOnboardingService::TOTAL_STEPS.').'
             );
         }
 
@@ -168,7 +168,7 @@ class TenantManagementService
         if (($tenant->onboarding_step ?? 0) < $minStep) {
             throw new \InvalidArgumentException(
                 "La base de datos del tenant '{$tenant->subdomain}' aún no está disponible. "
-                . "Onboarding en paso {$tenant->onboarding_step}/" . TenantOnboardingService::TOTAL_STEPS . '.'
+                ."Onboarding en paso {$tenant->onboarding_step}/".TenantOnboardingService::TOTAL_STEPS.'.'
             );
         }
     }
@@ -176,7 +176,7 @@ class TenantManagementService
     public function getDashboardStats(): array
     {
         $counts = Tenant::query()
-            ->selectRaw("status, COUNT(*) as total")
+            ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status')
             ->toArray();
@@ -210,10 +210,10 @@ class TenantManagementService
     {
         $deletableStatuses = ['cancelled', 'pending'];
 
-        if (!in_array($tenant->status, $deletableStatuses, true)) {
+        if (! in_array($tenant->status, $deletableStatuses, true)) {
             throw new \InvalidArgumentException(
                 "Solo se pueden eliminar tenants en estado 'cancelled' o 'pending'. "
-                . "Estado actual: '{$tenant->status}'. Cancela el tenant primero."
+                ."Estado actual: '{$tenant->status}'. Cancela el tenant primero."
             );
         }
 
@@ -228,7 +228,7 @@ class TenantManagementService
             $exists = DB::connection('mysql')
                 ->select('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?', [$dbName]);
 
-            if (!empty($exists)) {
+            if (! empty($exists)) {
                 DB::connection('mysql')->statement("DROP DATABASE `{$dbName}`");
                 $summary['database_dropped'] = true;
 

@@ -22,7 +22,7 @@ class PunchEventWriteService
             ? Employee::find($validated['employee_id'])
             : Employee::where('nfc_uid', $validated['uid'])->first();
 
-        if (!$employee) {
+        if (! $employee) {
             return ['success' => false, 'error' => 'EMPLOYEE_NOT_FOUND'];
         }
 
@@ -42,6 +42,7 @@ class PunchEventWriteService
                 'timestamp' => $timestamp,
             ]);
             DB::commit();
+
             return [
                 'success' => true,
                 'punchEvent' => $punchEvent,
@@ -50,6 +51,7 @@ class PunchEventWriteService
             ];
         } catch (\Throwable $e) {
             DB::rollBack();
+
             return ['success' => false, 'error' => 'PUNCH_REGISTRATION_FAILED'];
         }
     }
@@ -81,7 +83,7 @@ class PunchEventWriteService
         }
 
         $employee = Employee::find($validated['employee_id']);
-        if (!$employee) {
+        if (! $employee) {
             return [
                 'success' => false,
                 'userMessage' => 'El empleado especificado no existe.',
@@ -90,7 +92,7 @@ class PunchEventWriteService
         }
 
         $validationResult = $this->validatePunchSequence($employee, $validated['event_type'], $timestamp);
-        if (!$validationResult['valid']) {
+        if (! $validationResult['valid']) {
             return [
                 'success' => false,
                 'userMessage' => $validationResult['userMessage'],
@@ -120,9 +122,11 @@ class PunchEventWriteService
                 'timestamp' => $timestamp,
             ]);
             DB::commit();
+
             return ['success' => true, 'punchEvent' => $punchEvent];
         } catch (\Throwable $e) {
             DB::rollBack();
+
             return [
                 'success' => false,
                 'userMessage' => 'Ocurrió un error inesperado al registrar el fichaje.',
@@ -235,7 +239,7 @@ class PunchEventWriteService
                             try {
                                 $prevTimestamp = Carbon::parse($prevResult['punch']['timestamp'])->utc();
                                 $sameDay = $this->startOfDayFor($prevTimestamp)->eq($startOfDay);
-                                if ($sameDay && $prevTimestamp->lt($timestamp) && (!$lastPunchInBatchTimestamp || $prevTimestamp->gt($lastPunchInBatchTimestamp))) {
+                                if ($sameDay && $prevTimestamp->lt($timestamp) && (! $lastPunchInBatchTimestamp || $prevTimestamp->gt($lastPunchInBatchTimestamp))) {
                                     $lastPunchInBatch = $prevResult['punch'];
                                     $lastPunchInBatchTimestamp = $prevTimestamp;
                                 }
@@ -245,11 +249,11 @@ class PunchEventWriteService
                     }
 
                     $relevantLastPunch = $lastPunchInDb;
-                    if ($lastPunchInBatch && $lastPunchInBatchTimestamp && (!$relevantLastPunch || $lastPunchInBatchTimestamp->gt($relevantLastPunch->timestamp))) {
-                        $relevantLastPunch = (object)['event_type' => $lastPunchInBatch['event_type'], 'timestamp' => $lastPunchInBatchTimestamp];
+                    if ($lastPunchInBatch && $lastPunchInBatchTimestamp && (! $relevantLastPunch || $lastPunchInBatchTimestamp->gt($relevantLastPunch->timestamp))) {
+                        $relevantLastPunch = (object) ['event_type' => $lastPunchInBatch['event_type'], 'timestamp' => $lastPunchInBatchTimestamp];
                     }
 
-                    if (!$relevantLastPunch && ($punch['event_type'] ?? null) === PunchEvent::TYPE_OUT) {
+                    if (! $relevantLastPunch && ($punch['event_type'] ?? null) === PunchEvent::TYPE_OUT) {
                         throw new \Exception('El primer fichaje del día debe ser una entrada.');
                     }
                     if ($relevantLastPunch && $relevantLastPunch->event_type === $punch['event_type']) {
@@ -285,6 +289,7 @@ class PunchEventWriteService
 
             if ($failed > 0) {
                 DB::rollBack();
+
                 return [
                     'success' => false,
                     'rollback' => true,
@@ -310,6 +315,7 @@ class PunchEventWriteService
             ];
         } catch (\Throwable $e) {
             DB::rollBack();
+
             return [
                 'success' => false,
                 'exception' => true,
@@ -334,9 +340,10 @@ class PunchEventWriteService
             ->lockForUpdate()
             ->first();
 
-        if (!$lastEventSameDay || $lastEventSameDay->event_type === PunchEvent::TYPE_OUT) {
+        if (! $lastEventSameDay || $lastEventSameDay->event_type === PunchEvent::TYPE_OUT) {
             return PunchEvent::TYPE_IN;
         }
+
         return PunchEvent::TYPE_OUT;
     }
 
@@ -368,7 +375,7 @@ class PunchEventWriteService
             ->orderBy('timestamp', 'desc')
             ->first();
 
-        if (!$lastPunchSameDay) {
+        if (! $lastPunchSameDay) {
             // Primer fichaje del día: solo se permite entrada
             if ($eventType === PunchEvent::TYPE_OUT) {
                 return [
@@ -377,6 +384,7 @@ class PunchEventWriteService
                     'errors' => ['event_type' => ['El primer fichaje del día debe ser una entrada']],
                 ];
             }
+
             return ['valid' => true, 'userMessage' => '', 'errors' => []];
         }
 
@@ -388,6 +396,7 @@ class PunchEventWriteService
                     'errors' => ['event_type' => ['El último fichaje del empleado hoy es una entrada, no se puede registrar otra entrada']],
                 ];
             }
+
             return [
                 'valid' => false,
                 'userMessage' => 'No se puede registrar una salida sin una entrada previa',
@@ -407,11 +416,8 @@ class PunchEventWriteService
     }
 
     /**
-     * @param array $punch
-     * @param int $index
-     * @param array $allPunches
-     * @param array $validationResults [['index'=>int,'valid'=>bool], ...]
-     * @param \Illuminate\Support\Collection $employees
+     * @param  array  $validationResults  [['index'=>int,'valid'=>bool], ...]
+     * @param  \Illuminate\Support\Collection  $employees
      * @return array List of error strings
      */
     private function validateSinglePunchForBulk(array $punch, int $index, array $allPunches, array $validationResults, $employees): array
@@ -421,6 +427,7 @@ class PunchEventWriteService
             $timestamp = Carbon::parse($punch['timestamp'])->utc();
         } catch (\Exception $e) {
             $errors[] = 'El formato de fecha es inválido. Use formato ISO 8601.';
+
             return $errors;
         }
 
@@ -429,8 +436,9 @@ class PunchEventWriteService
         }
 
         $employee = $employees->get($punch['employee_id']);
-        if (!$employee) {
+        if (! $employee) {
             $errors[] = 'El empleado especificado no existe.';
+
             return $errors;
         }
 
@@ -452,7 +460,7 @@ class PunchEventWriteService
                     try {
                         $prevTimestamp = Carbon::parse($prevPunch['timestamp'])->utc();
                         $sameDay = $this->startOfDayFor($prevTimestamp)->eq($startOfDay);
-                        if ($sameDay && $prevTimestamp->lt($timestamp) && (!$lastPunchInBatchTimestamp || $prevTimestamp->gt($lastPunchInBatchTimestamp))) {
+                        if ($sameDay && $prevTimestamp->lt($timestamp) && (! $lastPunchInBatchTimestamp || $prevTimestamp->gt($lastPunchInBatchTimestamp))) {
                             $lastPunchInBatch = $prevPunch;
                             $lastPunchInBatchTimestamp = $prevTimestamp;
                         }
@@ -469,13 +477,13 @@ class PunchEventWriteService
             $relevantLastTimestamp = $lastPunchInDb->timestamp;
         }
         if ($lastPunchInBatch && $lastPunchInBatchTimestamp) {
-            if (!$relevantLastTimestamp || $lastPunchInBatchTimestamp->gt($relevantLastTimestamp)) {
-                $relevantLastPunch = (object)['event_type' => $lastPunchInBatch['event_type'], 'timestamp' => $lastPunchInBatchTimestamp];
+            if (! $relevantLastTimestamp || $lastPunchInBatchTimestamp->gt($relevantLastTimestamp)) {
+                $relevantLastPunch = (object) ['event_type' => $lastPunchInBatch['event_type'], 'timestamp' => $lastPunchInBatchTimestamp];
                 $relevantLastTimestamp = $lastPunchInBatchTimestamp;
             }
         }
 
-        if (!$relevantLastPunch) {
+        if (! $relevantLastPunch) {
             // Primer fichaje del día: solo se permite entrada
             if (($punch['event_type'] ?? null) === PunchEvent::TYPE_OUT) {
                 $errors[] = 'El primer fichaje del día debe ser una entrada.';
@@ -502,11 +510,11 @@ class PunchEventWriteService
         foreach ($validationResults as $prevResult) {
             $prevIndex = $prevResult['index'] ?? null;
             $prevValid = $prevResult['valid'] ?? false;
-            if ($prevIndex === null || $prevIndex >= $index || !$prevValid) {
+            if ($prevIndex === null || $prevIndex >= $index || ! $prevValid) {
                 continue;
             }
             $prevPunch = $allPunches[$prevIndex] ?? null;
-            if (!$prevPunch || ($prevPunch['employee_id'] ?? null) !== $punch['employee_id']) {
+            if (! $prevPunch || ($prevPunch['employee_id'] ?? null) !== $punch['employee_id']) {
                 continue;
             }
             try {

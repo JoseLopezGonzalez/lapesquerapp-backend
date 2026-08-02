@@ -30,6 +30,7 @@ class RouteServiceProvider extends ServiceProvider
             $tenant = $request->header('X-Tenant', 'default');
             $userOrIp = $request->user()?->id ?? $request->ip();
             $key = "{$tenant}|{$userOrIp}";
+
             return Limit::perMinute(500)->by($key);
         });
 

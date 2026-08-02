@@ -16,6 +16,7 @@ class UpdateProductFamilyRequest extends FormRequest
         if (! $family) {
             return false;
         }
+
         return $this->user()->can('update', ProductFamily::findOrFail($family));
     }
 
@@ -28,7 +29,7 @@ class UpdateProductFamilyRequest extends FormRequest
         $id = $id instanceof ProductFamily ? $id->id : $id;
 
         return [
-            'name' => 'sometimes|required|string|min:3|max:255|unique:tenant.product_families,name,' . $id,
+            'name' => 'sometimes|required|string|min:3|max:255|unique:tenant.product_families,name,'.$id,
             'description' => 'nullable|string|max:1000',
             'categoryId' => 'sometimes|required|exists:tenant.product_categories,id',
             'active' => 'boolean',
@@ -66,6 +67,7 @@ class UpdateProductFamilyRequest extends FormRequest
         if (array_key_exists('categoryId', $v)) {
             $data['category_id'] = $v['categoryId'];
         }
+
         return $data;
     }
 }

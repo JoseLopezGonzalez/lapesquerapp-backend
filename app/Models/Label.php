@@ -10,6 +10,7 @@ class Label extends Model
 {
     use HasFactory;
     use UsesTenantConnection;
+
     protected $fillable = ['name', 'format'];
 
     protected $casts = [

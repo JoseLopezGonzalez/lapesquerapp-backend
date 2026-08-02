@@ -17,9 +17,9 @@ class ProductCategoryFactory extends Factory
         $names = ['Pescado Fresco', 'Congelado', 'Semiconserva', 'Conserva', 'Marisco', 'Cefalópodo', 'Bivalvo', 'Crustáceo'];
 
         return [
-            'name'        => $this->faker->unique()->randomElement($names) . ' ' . $this->faker->numberBetween(1, 99),
+            'name' => $this->faker->unique()->randomElement($names).' '.$this->faker->numberBetween(1, 99),
             'description' => $this->faker->optional(0.6)->sentence(),
-            'active'      => true,
+            'active' => true,
         ];
     }
 

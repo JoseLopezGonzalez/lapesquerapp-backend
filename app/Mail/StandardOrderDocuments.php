@@ -11,8 +11,11 @@ class StandardOrderDocuments extends Mailable
     use Queueable, SerializesModels;
 
     public $order;
+
     public $subjectText;
+
     public $markdownTemplate; // Cambia según destinatario
+
     public $documents;
 
     public function __construct($order, $subjectText, $markdownTemplate, $documents)
@@ -31,10 +34,10 @@ class StandardOrderDocuments extends Mailable
         $fromName = $mailConfigService->getFromName();
 
         $email = $this->subject($this->subjectText)
-                      ->from($fromAddress, $fromName)
-                      ->markdown($this->markdownTemplate, [
-                          'order' => $this->order
-                      ]);
+            ->from($fromAddress, $fromName)
+            ->markdown($this->markdownTemplate, [
+                'order' => $this->order,
+            ]);
 
         foreach ($this->documents as $document) {
             $email->attach($document['path'], [

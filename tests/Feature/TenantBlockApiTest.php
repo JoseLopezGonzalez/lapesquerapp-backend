@@ -13,8 +13,8 @@ use Tests\TestCase;
  */
 class TenantBlockApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -24,7 +24,7 @@ class TenantBlockApiTest extends TestCase
 
     public function test_returns_200_with_tenant_data_when_subdomain_exists(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
         Tenant::create([
             'name' => 'Empresa Test S.L.',
             'subdomain' => 'empresa-test',
@@ -45,7 +45,7 @@ class TenantBlockApiTest extends TestCase
 
     public function test_returns_200_with_active_false_when_tenant_inactive(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
         Tenant::create([
             'name' => 'Empresa Inactiva',
             'subdomain' => 'inactiva',

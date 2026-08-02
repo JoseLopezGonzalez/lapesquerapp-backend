@@ -35,9 +35,9 @@ return new class extends Migration
     {
         $connection = Schema::getConnection()->getDatabaseName();
         $indexes = DB::select(
-            "SELECT 1 FROM information_schema.STATISTICS 
+            'SELECT 1 FROM information_schema.STATISTICS 
              WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ? 
-             LIMIT 1",
+             LIMIT 1',
             [$connection, $table, $column]
         );
 

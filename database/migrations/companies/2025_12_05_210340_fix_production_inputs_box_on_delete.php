@@ -8,14 +8,14 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Cambia onDelete('cascade') a onDelete('restrict') en box_id
      * para impedir eliminar cajas que están siendo usadas en producción.
      * La caja debe mantenerse para trazabilidad incluso si se elimina el input.
      */
     public function up(): void
     {
-        if (!Schema::hasTable('production_inputs')) {
+        if (! Schema::hasTable('production_inputs')) {
             return;
         }
 
@@ -27,7 +27,7 @@ return new class extends Migration
                 // La FK no existe, continuar
             }
         });
-        
+
         // Recrear con onDelete('restrict')
         Schema::table('production_inputs', function (Blueprint $table) {
             $table->foreign('box_id')
@@ -45,7 +45,7 @@ return new class extends Migration
         Schema::table('production_inputs', function (Blueprint $table) {
             // Eliminar la foreign key
             $table->dropForeign(['box_id']);
-            
+
             // Recrear con onDelete('cascade') (comportamiento original)
             $table->foreign('box_id')
                 ->references('id')

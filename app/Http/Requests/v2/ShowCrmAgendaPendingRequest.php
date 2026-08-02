@@ -19,4 +19,3 @@ class ShowCrmAgendaPendingRequest extends FormRequest
         ];
     }
 }
-

@@ -13,31 +13,32 @@ class UpdateProductRequest extends FormRequest
         if ($product instanceof Product) {
             return $this->user()->can('update', $product);
         }
-        if (!$product) {
+        if (! $product) {
             return false;
         }
+
         return $this->user()->can('update', Product::findOrFail($product));
     }
 
     protected function prepareForValidation(): void
     {
         $data = $this->all();
-        if (isset($data['species_id']) && !isset($data['speciesId'])) {
+        if (isset($data['species_id']) && ! isset($data['speciesId'])) {
             $data['speciesId'] = $data['species_id'];
         }
-        if (isset($data['capture_zone_id']) && !isset($data['captureZoneId'])) {
+        if (isset($data['capture_zone_id']) && ! isset($data['captureZoneId'])) {
             $data['captureZoneId'] = $data['capture_zone_id'];
         }
-        if (isset($data['family_id']) && !isset($data['familyId'])) {
+        if (isset($data['family_id']) && ! isset($data['familyId'])) {
             $data['familyId'] = $data['family_id'];
         }
-        if (isset($data['article_gtin']) && !isset($data['articleGtin'])) {
+        if (isset($data['article_gtin']) && ! isset($data['articleGtin'])) {
             $data['articleGtin'] = $data['article_gtin'];
         }
-        if (isset($data['box_gtin']) && !isset($data['boxGtin'])) {
+        if (isset($data['box_gtin']) && ! isset($data['boxGtin'])) {
             $data['boxGtin'] = $data['box_gtin'];
         }
-        if (isset($data['pallet_gtin']) && !isset($data['palletGtin'])) {
+        if (isset($data['pallet_gtin']) && ! isset($data['palletGtin'])) {
             $data['palletGtin'] = $data['pallet_gtin'];
         }
         foreach (['articleGtin', 'boxGtin', 'palletGtin'] as $key) {
@@ -57,13 +58,13 @@ class UpdateProductRequest extends FormRequest
         $id = $id instanceof Product ? $id->id : $id;
 
         return [
-            'name' => 'sometimes|required|string|min:3|max:255|unique:tenant.products,name,' . $id,
+            'name' => 'sometimes|required|string|min:3|max:255|unique:tenant.products,name,'.$id,
             'speciesId' => 'sometimes|required|exists:tenant.species,id',
             'captureZoneId' => 'sometimes|required|exists:tenant.capture_zones,id',
             'familyId' => 'nullable|exists:tenant.product_families,id',
-            'articleGtin' => 'nullable|string|regex:/^[0-9]{13}$/|size:13|unique:tenant.products,article_gtin,' . $id,
-            'boxGtin' => 'nullable|string|regex:/^[0-9]{14}$/|size:14|unique:tenant.products,box_gtin,' . $id,
-            'palletGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/|max:14|unique:tenant.products,pallet_gtin,' . $id,
+            'articleGtin' => 'nullable|string|regex:/^[0-9]{13}$/|size:13|unique:tenant.products,article_gtin,'.$id,
+            'boxGtin' => 'nullable|string|regex:/^[0-9]{14}$/|size:14|unique:tenant.products,box_gtin,'.$id,
+            'palletGtin' => 'nullable|string|regex:/^[0-9]{8,14}$/|max:14|unique:tenant.products,pallet_gtin,'.$id,
             'a3erp_code' => 'nullable|string|max:255',
             'facil_com_code' => 'nullable|string|max:255',
             'hsCode' => 'nullable|string|max:255',
@@ -112,6 +113,7 @@ class UpdateProductRequest extends FormRequest
                 $out[$dbKey] = $v[$key];
             }
         }
+
         return $out;
     }
 }

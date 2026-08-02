@@ -17,7 +17,7 @@ class OrderPalletFactory extends Factory
     public function definition(): array
     {
         return [
-            'order_id'  => Order::query()->value('id') ?? Order::factory(),
+            'order_id' => Order::query()->value('id') ?? Order::factory(),
             'pallet_id' => Pallet::query()->value('id') ?? Pallet::factory(),
         ];
     }

@@ -128,7 +128,7 @@ class AttachmentService
         }
 
         $disk = Storage::disk($attachment->disk);
-        $thumbPath = 'thumbs/' . $attachment->path;
+        $thumbPath = 'thumbs/'.$attachment->path;
 
         if (! $disk->exists($thumbPath)) {
             if (str_starts_with($attachment->mime_type, 'image/')) {
@@ -141,8 +141,8 @@ class AttachmentService
         return response()->stream(function () use ($disk, $thumbPath) {
             echo $disk->get($thumbPath);
         }, 200, [
-            'Content-Type'        => 'image/jpeg',
-            'Cache-Control'       => 'private, max-age=86400',
+            'Content-Type' => 'image/jpeg',
+            'Cache-Control' => 'private, max-age=86400',
             'Content-Disposition' => 'inline',
         ]);
     }
@@ -165,7 +165,7 @@ class AttachmentService
             ]);
         }
 
-        $thumbPath = 'thumbs/' . $attachment->path;
+        $thumbPath = 'thumbs/'.$attachment->path;
         if ($disk->exists($thumbPath)) {
             $disk->delete($thumbPath);
         }
@@ -306,7 +306,7 @@ class AttachmentService
 
         // Usar la extensión derivada del MIME, no la almacenada en BD (puede ser 'bin' en archivos antiguos)
         $ext = $this->extensionFromMime($attachment->mime_type);
-        $tmpOriginal = sys_get_temp_dir() . '/att_' . uniqid('', true) . '.' . $ext;
+        $tmpOriginal = sys_get_temp_dir().'/att_'.uniqid('', true).'.'.$ext;
         file_put_contents($tmpOriginal, $disk->get($attachment->path));
 
         $tmpPdf = null;
@@ -330,9 +330,9 @@ class AttachmentService
 
     private function pdfFirstPageToJpeg(string $pdfPath, int $maxDim): string
     {
-        $imagick = new \Imagick();
+        $imagick = new \Imagick;
         $imagick->setResolution(150, 150);
-        $imagick->readImage($pdfPath . '[0]');
+        $imagick->readImage($pdfPath.'[0]');
         $imagick->setImageBackgroundColor(new \ImagickPixel('white'));
         $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
         $imagick->setImageFormat('jpeg');
@@ -379,7 +379,7 @@ class AttachmentService
             abort(422, 'No se pudo convertir el documento Office a PDF.');
         }
 
-        $pdfPath = $outDir . DIRECTORY_SEPARATOR . pathinfo($filePath, PATHINFO_FILENAME) . '.pdf';
+        $pdfPath = $outDir.DIRECTORY_SEPARATOR.pathinfo($filePath, PATHINFO_FILENAME).'.pdf';
 
         if (! file_exists($pdfPath)) {
             Log::error('AttachmentService: LibreOffice produced no output PDF.', [

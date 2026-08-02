@@ -32,4 +32,3 @@ class PunchEventResource extends JsonResource
         ];
     }
 }
-

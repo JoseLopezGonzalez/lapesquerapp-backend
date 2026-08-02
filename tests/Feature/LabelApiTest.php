@@ -12,10 +12,11 @@ use Tests\TestCase;
 
 class LabelApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?string $token = null;
+
     private ?string $tenantSubdomain = null;
 
     protected function setUp(): void
@@ -28,8 +29,8 @@ class LabelApiTest extends TestCase
 
     private function createTenantAndUser(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'label-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'label-'.uniqid();
         Tenant::create([
             'name' => 'Test Tenant',
             'subdomain' => $slug,
@@ -39,7 +40,7 @@ class LabelApiTest extends TestCase
 
         $user = User::create([
             'name' => 'Test User',
-            'email' => $slug . '@test.com',
+            'email' => $slug.'@test.com',
             'password' => bcrypt('password'),
             'role' => Role::Administrador->value,
         ]);
@@ -52,7 +53,7 @@ class LabelApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $this->token,
+            'Authorization' => 'Bearer '.$this->token,
             'Accept' => 'application/json',
         ];
     }
@@ -78,7 +79,7 @@ class LabelApiTest extends TestCase
 
     public function test_can_create_label(): void
     {
-        $name = 'Etiqueta Test ' . uniqid();
+        $name = 'Etiqueta Test '.uniqid();
         $format = ['width' => 50, 'height' => 30];
 
         $response = $this->withHeaders($this->authHeaders())
@@ -97,12 +98,12 @@ class LabelApiTest extends TestCase
     public function test_can_show_label(): void
     {
         $label = Label::create([
-            'name' => 'Etiqueta Show ' . uniqid(),
+            'name' => 'Etiqueta Show '.uniqid(),
             'format' => ['test' => true],
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/labels/' . $label->id);
+            ->getJson('/api/v2/labels/'.$label->id);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.id', $label->id);
@@ -112,14 +113,14 @@ class LabelApiTest extends TestCase
     public function test_can_update_label(): void
     {
         $label = Label::create([
-            'name' => 'Etiqueta Update ' . uniqid(),
+            'name' => 'Etiqueta Update '.uniqid(),
             'format' => [],
         ]);
-        $newName = 'Etiqueta Actualizada ' . uniqid();
+        $newName = 'Etiqueta Actualizada '.uniqid();
         $newFormat = ['width' => 100];
 
         $response = $this->withHeaders($this->authHeaders())
-            ->putJson('/api/v2/labels/' . $label->id, [
+            ->putJson('/api/v2/labels/'.$label->id, [
                 'name' => $newName,
                 'format' => $newFormat,
             ]);
@@ -133,12 +134,12 @@ class LabelApiTest extends TestCase
     public function test_can_destroy_label(): void
     {
         $label = Label::create([
-            'name' => 'Etiqueta Destroy ' . uniqid(),
+            'name' => 'Etiqueta Destroy '.uniqid(),
             'format' => [],
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/labels/' . $label->id);
+            ->deleteJson('/api/v2/labels/'.$label->id);
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('labels', ['id' => $label->id], 'tenant');
@@ -147,33 +148,33 @@ class LabelApiTest extends TestCase
     public function test_can_duplicate_label(): void
     {
         $label = Label::create([
-            'name' => 'Etiqueta Original ' . uniqid(),
+            'name' => 'Etiqueta Original '.uniqid(),
             'format' => ['custom' => 'config'],
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->postJson('/api/v2/labels/' . $label->id . '/duplicate');
+            ->postJson('/api/v2/labels/'.$label->id.'/duplicate');
 
         $response->assertStatus(201);
         $response->assertJsonStructure(['message', 'data' => ['id', 'name', 'format']]);
-        $response->assertJsonPath('data.name', $label->name . ' (Copia)');
+        $response->assertJsonPath('data.name', $label->name.' (Copia)');
         $response->assertJsonPath('data.format', $label->format);
 
         $newId = $response->json('data.id');
         $this->assertNotEquals($label->id, $newId);
-        $this->assertDatabaseHas('labels', ['id' => $newId, 'name' => $label->name . ' (Copia)'], 'tenant');
+        $this->assertDatabaseHas('labels', ['id' => $newId, 'name' => $label->name.' (Copia)'], 'tenant');
     }
 
     public function test_duplicate_with_custom_name(): void
     {
         $label = Label::create([
-            'name' => 'Etiqueta Duplicar ' . uniqid(),
+            'name' => 'Etiqueta Duplicar '.uniqid(),
             'format' => [],
         ]);
-        $customName = 'Copia personalizada ' . uniqid();
+        $customName = 'Copia personalizada '.uniqid();
 
         $response = $this->withHeaders($this->authHeaders())
-            ->postJson('/api/v2/labels/' . $label->id . '/duplicate', [
+            ->postJson('/api/v2/labels/'.$label->id.'/duplicate', [
                 'name' => $customName,
             ]);
 
@@ -184,7 +185,7 @@ class LabelApiTest extends TestCase
 
     public function test_validation_rejects_duplicate_name_on_store(): void
     {
-        $name = 'Etiqueta Unica ' . uniqid();
+        $name = 'Etiqueta Unica '.uniqid();
         Label::create(['name' => $name, 'format' => []]);
 
         $response = $this->withHeaders($this->authHeaders())

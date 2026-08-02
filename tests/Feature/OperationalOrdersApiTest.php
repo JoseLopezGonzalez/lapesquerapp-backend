@@ -14,11 +14,11 @@ use App\Models\OrderPlannedProductDetail;
 use App\Models\PaymentTerm;
 use App\Models\Product;
 use App\Models\RouteStop;
+use App\Models\Species;
 use App\Models\Tax;
 use App\Models\Tenant;
 use App\Models\Transport;
 use App\Models\User;
-use App\Models\Species;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\Concerns\BuildsOperationsScenario;
@@ -27,19 +27,28 @@ use Tests\TestCase;
 
 class OperationalOrdersApiTest extends TestCase
 {
-    use RefreshDatabase;
-    use ConfiguresTenantConnection;
     use BuildsOperationsScenario;
+    use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private string $tenantSubdomain;
+
     private User $adminUser;
+
     private User $fieldUser;
+
     private FieldOperator $fieldOperator;
+
     private Customer $customer;
+
     private Product $product;
+
     private Product $extraProduct;
+
     private Tax $tax;
+
     private int $salespersonId;
+
     private string $customerName;
 
     protected function setUp(): void
@@ -48,8 +57,8 @@ class OperationalOrdersApiTest extends TestCase
         parent::setUp();
         $this->setUpTenantConnection();
 
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'operational-orders-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'operational-orders-'.uniqid();
         Tenant::create([
             'name' => 'Operational Orders Tenant',
             'subdomain' => $slug,
@@ -60,13 +69,13 @@ class OperationalOrdersApiTest extends TestCase
         $this->tenantSubdomain = $slug;
         $this->adminUser = User::create([
             'name' => 'Admin',
-            'email' => $slug . '-admin@test.com',
+            'email' => $slug.'-admin@test.com',
             'role' => Role::Administrador->value,
             'active' => true,
         ]);
         $this->fieldUser = User::create([
             'name' => 'Field User',
-            'email' => $slug . '-field@test.com',
+            'email' => $slug.'-field@test.com',
             'role' => Role::RepartidorAutoventa->value,
             'active' => true,
         ]);
@@ -78,7 +87,7 @@ class OperationalOrdersApiTest extends TestCase
         $salesCtx = $this->createSalesContext('OO');
         $this->salespersonId = $salesCtx['salesperson']->id;
 
-        $this->customerName = 'Cliente OO ' . Str::lower(Str::random(8));
+        $this->customerName = 'Cliente OO '.Str::lower(Str::random(8));
 
         $this->customer = Customer::create([
             'name' => $this->customerName,
@@ -97,24 +106,24 @@ class OperationalOrdersApiTest extends TestCase
         ]);
 
         $this->tax = Tax::firstOrCreate(
-            ['name' => 'IVA OO ' . Str::lower(Str::random(6))],
+            ['name' => 'IVA OO '.Str::lower(Str::random(6))],
             ['rate' => 21]
         );
         $fishingGear = FishingGear::firstOrCreate([
-            'name' => 'Arte OO ' . Str::lower(Str::random(6)),
+            'name' => 'Arte OO '.Str::lower(Str::random(6)),
         ]);
         $species = Species::create([
-            'name' => 'Especie OO ' . Str::lower(Str::random(6)),
+            'name' => 'Especie OO '.Str::lower(Str::random(6)),
             'scientific_name' => 'Species operational orders',
             'fao' => 'OO1',
             'image' => null,
             'fishing_gear_id' => $fishingGear->id,
         ]);
         $captureZone = CaptureZone::create([
-            'name' => 'Zona OO ' . Str::lower(Str::random(6)),
+            'name' => 'Zona OO '.Str::lower(Str::random(6)),
         ]);
         $this->product = Product::create([
-            'name' => 'Producto OO ' . Str::lower(Str::random(6)),
+            'name' => 'Producto OO '.Str::lower(Str::random(6)),
             'species_id' => $species->id,
             'capture_zone_id' => $captureZone->id,
             'article_gtin' => '8400000000001',
@@ -123,7 +132,7 @@ class OperationalOrdersApiTest extends TestCase
         ]);
 
         $this->extraProduct = Product::create([
-            'name' => 'Extra OO ' . Str::lower(Str::random(6)),
+            'name' => 'Extra OO '.Str::lower(Str::random(6)),
             'species_id' => $species->id,
             'capture_zone_id' => $captureZone->id,
             'article_gtin' => '8400000000002',
@@ -136,7 +145,7 @@ class OperationalOrdersApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $user->createToken('test')->plainTextToken,
+            'Authorization' => 'Bearer '.$user->createToken('test')->plainTextToken,
             'Accept' => 'application/json',
         ];
     }
@@ -200,7 +209,7 @@ class OperationalOrdersApiTest extends TestCase
         $this->assertNotContains($otherOrder->id, $returnedIds);
 
         $update = $this->withHeaders($this->headersFor($this->fieldUser))
-            ->putJson('/api/v2/field/orders/' . $order->id, [
+            ->putJson('/api/v2/field/orders/'.$order->id, [
                 'boxes' => [[
                     'productId' => $this->product->id,
                     'lot' => 'FIELD-LOT-1',
@@ -259,7 +268,7 @@ class OperationalOrdersApiTest extends TestCase
 
         // Create initial execution box
         $this->withHeaders($this->headersFor($this->fieldUser))
-            ->putJson('/api/v2/field/orders/' . $order->id, [
+            ->putJson('/api/v2/field/orders/'.$order->id, [
                 'boxes' => [[
                     'productId' => $this->product->id,
                     'lot' => 'DETAIL-LOT-1',
@@ -271,7 +280,7 @@ class OperationalOrdersApiTest extends TestCase
             ->assertStatus(200);
 
         $response = $this->withHeaders($this->headersFor($this->fieldUser))
-            ->getJson('/api/v2/field/orders/' . $order->id);
+            ->getJson('/api/v2/field/orders/'.$order->id);
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
@@ -292,7 +301,7 @@ class OperationalOrdersApiTest extends TestCase
         $order = $this->createAssignedOrder();
 
         $response = $this->withHeaders($this->headersFor($this->fieldUser))
-            ->putJson('/api/v2/field/orders/' . $order->id, [
+            ->putJson('/api/v2/field/orders/'.$order->id, [
                 'status' => 'finished',
             ]);
 
@@ -380,10 +389,10 @@ class OperationalOrdersApiTest extends TestCase
     {
         $order = $this->createAssignedOrder();
 
-        $gs1128 = 'IDEMP-GS1-' . \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(20));
+        $gs1128 = 'IDEMP-GS1-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(20));
 
         $this->withHeaders($this->headersFor($this->fieldUser))
-            ->putJson('/api/v2/field/orders/' . $order->id, [
+            ->putJson('/api/v2/field/orders/'.$order->id, [
                 'boxes' => [[
                     'productId' => $this->product->id,
                     'lot' => 'IDEMP-LOT-1',
@@ -395,7 +404,7 @@ class OperationalOrdersApiTest extends TestCase
             ->assertStatus(200);
 
         $detail = $this->withHeaders($this->headersFor($this->fieldUser))
-            ->getJson('/api/v2/field/orders/' . $order->id)
+            ->getJson('/api/v2/field/orders/'.$order->id)
             ->assertStatus(200)
             ->json('data');
 
@@ -403,7 +412,7 @@ class OperationalOrdersApiTest extends TestCase
 
         // Second sync includes the same box by id to keep it (and update weight).
         $this->withHeaders($this->headersFor($this->fieldUser))
-            ->putJson('/api/v2/field/orders/' . $order->id, [
+            ->putJson('/api/v2/field/orders/'.$order->id, [
                 'boxes' => [[
                     'id' => $box['id'],
                     'productId' => $this->product->id,
@@ -428,7 +437,7 @@ class OperationalOrdersApiTest extends TestCase
         $order = $this->createAssignedOrder();
 
         $this->withHeaders($this->headersFor($this->fieldUser))
-            ->putJson('/api/v2/field/orders/' . $order->id, [
+            ->putJson('/api/v2/field/orders/'.$order->id, [
                 'boxes' => [[
                     'productId' => $this->product->id,
                     'lot' => 'SYNC-LOT-1',
@@ -446,7 +455,7 @@ class OperationalOrdersApiTest extends TestCase
             ->assertStatus(200);
 
         $detail = $this->withHeaders($this->headersFor($this->fieldUser))
-            ->getJson('/api/v2/field/orders/' . $order->id)
+            ->getJson('/api/v2/field/orders/'.$order->id)
             ->assertStatus(200)
             ->json('data');
 
@@ -455,7 +464,7 @@ class OperationalOrdersApiTest extends TestCase
 
         // Sync: keep first (update weight), delete second by omitting it.
         $this->withHeaders($this->headersFor($this->fieldUser))
-            ->putJson('/api/v2/field/orders/' . $order->id, [
+            ->putJson('/api/v2/field/orders/'.$order->id, [
                 'boxes' => [[
                     'id' => $firstBox['id'],
                     'productId' => $this->product->id,
@@ -491,7 +500,7 @@ class OperationalOrdersApiTest extends TestCase
         $planned = OrderPlannedProductDetail::where('order_id', $order->id)->firstOrFail();
 
         $response = $this->withHeaders($this->headersFor($this->fieldUser))
-            ->putJson('/api/v2/field/orders/' . $order->id, [
+            ->putJson('/api/v2/field/orders/'.$order->id, [
                 'boxes' => [[
                     'productId' => $this->extraProduct->id,
                     'lot' => 'EXTRA-LOT-1',
@@ -579,7 +588,7 @@ class OperationalOrdersApiTest extends TestCase
     {
         $orphanFieldUser = User::create([
             'name' => 'Field Orphan',
-            'email' => 'field-orphan-' . uniqid() . '@test.com',
+            'email' => 'field-orphan-'.uniqid().'@test.com',
             'role' => Role::RepartidorAutoventa->value,
             'active' => true,
         ]);
@@ -599,7 +608,7 @@ class OperationalOrdersApiTest extends TestCase
     {
         $otherUser = User::create([
             'name' => 'Other Field User',
-            'email' => 'other-field-' . uniqid() . '@test.com',
+            'email' => 'other-field-'.uniqid().'@test.com',
             'role' => Role::RepartidorAutoventa->value,
             'active' => true,
         ]);

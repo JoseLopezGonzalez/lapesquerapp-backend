@@ -21,6 +21,7 @@ class CreateSuperadmin extends Command
         $existing = SuperadminUser::where('email', $email)->first();
         if ($existing) {
             $this->warn("Ya existe un superadmin con email {$email} (ID: {$existing->id}).");
+
             return Command::SUCCESS;
         }
 
@@ -29,7 +30,7 @@ class CreateSuperadmin extends Command
             'email' => $email,
         ]);
 
-        $this->info("Superadmin creado:");
+        $this->info('Superadmin creado:');
         $this->line("  ID: {$user->id}");
         $this->line("  Nombre: {$user->name}");
         $this->line("  Email: {$user->email}");

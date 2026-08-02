@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\v2;
 
-use App\Models\AgendaAction;
 use Illuminate\Foundation\Http\FormRequest;
 
 class IndexCrmAgendaRequest extends FormRequest
@@ -23,4 +22,3 @@ class IndexCrmAgendaRequest extends FormRequest
         ];
     }
 }
-

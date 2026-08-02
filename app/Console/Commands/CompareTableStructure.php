@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Tenant;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use App\Models\Tenant;
 
 class CompareTableStructure extends Command
 {
@@ -22,13 +22,15 @@ class CompareTableStructure extends Command
         $tenant1 = Tenant::where('subdomain', $tenant1Subdomain)->first();
         $tenant2 = Tenant::where('subdomain', $tenant2Subdomain)->first();
 
-        if (!$tenant1) {
+        if (! $tenant1) {
             $this->error("❌ No se encontró el tenant: {$tenant1Subdomain}");
+
             return Command::FAILURE;
         }
 
-        if (!$tenant2) {
+        if (! $tenant2) {
             $this->error("❌ No se encontró el tenant: {$tenant2Subdomain}");
+
             return Command::FAILURE;
         }
 
@@ -66,7 +68,7 @@ class CompareTableStructure extends Command
         $onlyIn2 = array_diff($columns2, $columns1);
         $inBoth = array_intersect($columns1, $columns2);
 
-        if (!empty($onlyIn1)) {
+        if (! empty($onlyIn1)) {
             $this->warn("⚠️  Columnas solo en {$tenant1->subdomain}:");
             foreach ($onlyIn1 as $col) {
                 $this->line("   - {$col}");
@@ -74,7 +76,7 @@ class CompareTableStructure extends Command
             $this->newLine();
         }
 
-        if (!empty($onlyIn2)) {
+        if (! empty($onlyIn2)) {
             $this->error("❌ Columnas faltantes en {$tenant1->subdomain} (solo en {$tenant2->subdomain}):");
             foreach ($onlyIn2 as $col) {
                 $this->line("   - {$col}");
@@ -95,6 +97,7 @@ class CompareTableStructure extends Command
             return DB::select("DESCRIBE `{$tableName}`");
         } catch (\Exception $e) {
             $this->error("❌ Error al obtener estructura: {$e->getMessage()}");
+
             return [];
         }
     }
@@ -102,13 +105,14 @@ class CompareTableStructure extends Command
     private function displayStructure(array $structure): void
     {
         if (empty($structure)) {
-            $this->warn("   ⚠️  Tabla no encontrada o vacía");
+            $this->warn('   ⚠️  Tabla no encontrada o vacía');
+
             return;
         }
 
         $this->table(
             ['Field', 'Type', 'Null', 'Key', 'Default', 'Extra'],
-            array_map(function($col) {
+            array_map(function ($col) {
                 return [
                     $col->Field,
                     $col->Type,
@@ -121,4 +125,3 @@ class CompareTableStructure extends Command
         );
     }
 }
-

@@ -2,14 +2,14 @@
 
 namespace Database\Seeders;
 
-use App\Models\Order;
 use App\Models\Customer;
+use App\Models\Incoterm;
+use App\Models\Order;
 use App\Models\PaymentTerm;
 use App\Models\Salesperson;
 use App\Models\Transport;
-use App\Models\Incoterm;
-use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
 
 /**
  * Pedidos de desarrollo (estados pending, finished, incident).
@@ -28,6 +28,7 @@ class OrderSeeder extends Seeder
         $customers = Customer::all();
         if ($customers->isEmpty()) {
             $this->command?->warn('OrderSeeder: Ejecuta antes CustomerSeeder.');
+
             return;
         }
 
@@ -39,6 +40,7 @@ class OrderSeeder extends Seeder
 
         if (! $paymentTerm || ! $salesperson || ! $transport || ! $incoterm) {
             $this->command?->warn('OrderSeeder: Faltan PaymentTerms, Salespeople, Transports o Incoterms.');
+
             return;
         }
 
@@ -49,7 +51,7 @@ class OrderSeeder extends Seeder
 
         $today = now()->startOfDay();
         $statuses = [Order::STATUS_PENDING, Order::STATUS_FINISHED, Order::STATUS_INCIDENT];
-        $buyerRefVariants = ['-', 'Cliente Nº127', 'Cliente Nº217', 'REF-' . $faker->numerify('####')];
+        $buyerRefVariants = ['-', 'Cliente Nº127', 'Cliente Nº217', 'REF-'.$faker->numerify('####')];
 
         $activeDates = [
             $today,

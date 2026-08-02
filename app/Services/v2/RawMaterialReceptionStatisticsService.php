@@ -10,15 +10,14 @@ class RawMaterialReceptionStatisticsService
     /**
      * Obtiene datos de recepciones de materia prima agrupados por período (día, semana o mes)
      * con filtros opcionales por especie, familia o categoría.
-     * 
-     * @param string $dateFrom Fecha de inicio (formato: Y-m-d H:i:s)
-     * @param string $dateTo Fecha de fin (formato: Y-m-d H:i:s)
-     * @param string $valueType Tipo de valor: 'amount' o 'quantity'
-     * @param string $groupBy Agrupación: 'day', 'week' o 'month'
-     * @param int|null $speciesId ID de especie para filtrar
-     * @param int|null $familyId ID de familia para filtrar
-     * @param int|null $categoryId ID de categoría para filtrar
-     * @return \Illuminate\Support\Collection
+     *
+     * @param  string  $dateFrom  Fecha de inicio (formato: Y-m-d H:i:s)
+     * @param  string  $dateTo  Fecha de fin (formato: Y-m-d H:i:s)
+     * @param  string  $valueType  Tipo de valor: 'amount' o 'quantity'
+     * @param  string  $groupBy  Agrupación: 'day', 'week' o 'month'
+     * @param  int|null  $speciesId  ID de especie para filtrar
+     * @param  int|null  $familyId  ID de familia para filtrar
+     * @param  int|null  $categoryId  ID de categoría para filtrar
      */
     public static function getReceptionChartData(
         string $dateFrom,
@@ -40,7 +39,7 @@ class RawMaterialReceptionStatisticsService
         $grouped = [];
 
         foreach ($receptions as $reception) {
-            if (!$reception->date) {
+            if (! $reception->date) {
                 continue;
             }
 
@@ -65,22 +64,22 @@ class RawMaterialReceptionStatisticsService
 
             foreach ($reception->products as $receptionProduct) {
                 $product = $receptionProduct->product;
-                
-                if (!$product) {
+
+                if (! $product) {
                     continue;
                 }
 
                 // Verificar filtros
-                $matchesSpecies = !$speciesId || ($product->species && $product->species->id == $speciesId);
-                $matchesFamily = !$familyId || ($product->family && $product->family->id == $familyId);
-                $matchesCategory = !$categoryId || (
-                    $product->family && 
-                    $product->family->category && 
+                $matchesSpecies = ! $speciesId || ($product->species && $product->species->id == $speciesId);
+                $matchesFamily = ! $familyId || ($product->family && $product->family->id == $familyId);
+                $matchesCategory = ! $categoryId || (
+                    $product->family &&
+                    $product->family->category &&
                     $product->family->category->id == $categoryId
                 );
 
                 // Si no cumple todos los filtros, saltar este producto
-                if (!$matchesSpecies || !$matchesFamily || !$matchesCategory) {
+                if (! $matchesSpecies || ! $matchesFamily || ! $matchesCategory) {
                     continue;
                 }
 
@@ -95,7 +94,7 @@ class RawMaterialReceptionStatisticsService
 
             // Solo agregar si hay datos que cumplen los filtros
             if ($filteredQuantity > 0 || $filteredAmount > 0) {
-                if (!isset($grouped[$receptionDate])) {
+                if (! isset($grouped[$receptionDate])) {
                     $grouped[$receptionDate] = [
                         'date' => $receptionDate,
                         'amount' => 0,
@@ -110,7 +109,7 @@ class RawMaterialReceptionStatisticsService
 
         return collect($grouped)
             ->sortKeys()
-            ->map(fn($item) => [
+            ->map(fn ($item) => [
                 'date' => $item['date'],
                 'value' => round($item[$valueType], 2),
             ])
@@ -122,14 +121,14 @@ class RawMaterialReceptionStatisticsService
      * Usado por el componente "Calibres diarios por especie" (gráfico + leyenda).
      * Si $speciesId es null, se agregan todas las especies (opción "Todas las especies").
      *
-     * @param string $date Fecha del día (formato: Y-m-d)
-     * @param int|null $speciesId ID de la especie (tenant), o null para todas
+     * @param  string  $date  Fecha del día (formato: Y-m-d)
+     * @param  int|null  $speciesId  ID de la especie (tenant), o null para todas
      * @return array{total_weight_kg: float, calibers: array<int, array{product_id: int, name: string, weight_kg: float, percentage: float}>}
      */
     public static function getDailyCalibersBySpecies(string $date, ?int $speciesId): array
     {
-        $dateFrom = $date . ' 00:00:00';
-        $dateTo = $date . ' 23:59:59';
+        $dateFrom = $date.' 00:00:00';
+        $dateTo = $date.' 23:59:59';
 
         $receptions = RawMaterialReception::with('products.product')
             ->whereBetween('date', [$dateFrom, $dateTo])
@@ -140,7 +139,7 @@ class RawMaterialReceptionStatisticsService
         foreach ($receptions as $reception) {
             foreach ($reception->products as $receptionProduct) {
                 $product = $receptionProduct->product;
-                if (!$product) {
+                if (! $product) {
                     continue;
                 }
                 if ($speciesId !== null && (int) $product->species_id !== $speciesId) {
@@ -148,7 +147,7 @@ class RawMaterialReceptionStatisticsService
                 }
 
                 $productId = (int) $product->id;
-                if (!isset($byProduct[$productId])) {
+                if (! isset($byProduct[$productId])) {
                     $byProduct[$productId] = [
                         'product_id' => $productId,
                         'name' => $product->name,
@@ -184,4 +183,3 @@ class RawMaterialReceptionStatisticsService
         ];
     }
 }
-

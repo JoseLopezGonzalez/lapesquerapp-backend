@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Mail\AccessEmail;
 use App\Models\SuperadminMagicLinkToken;
 use App\Models\SuperadminUser;
 use Illuminate\Support\Facades\Mail;
@@ -39,13 +38,13 @@ class SuperadminAuthService
 
         SuperadminMagicLinkToken::create([
             'email' => $user->email,
-            'token' => hash('sha256', $code . $user->email . now('UTC')->timestamp),
+            'token' => hash('sha256', $code.$user->email.now('UTC')->timestamp),
             'type' => SuperadminMagicLinkToken::TYPE_OTP,
             'otp_code' => $code,
             'expires_at' => $expiresAt,
         ]);
 
-        $magicLinkUrl = $frontendUrl . '/auth/verify?token=' . $token;
+        $magicLinkUrl = $frontendUrl.'/auth/verify?token='.$token;
 
         Mail::to($user->email)->send(
             new \App\Mail\SuperadminAccessEmail($user->email, $magicLinkUrl, $code, $this->expiresMinutes())

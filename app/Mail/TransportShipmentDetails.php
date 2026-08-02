@@ -2,13 +2,10 @@
 
 namespace App\Mail;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
 use Beganovich\Snappdf\Snappdf;
+use Illuminate\Bus\Queueable;
+use Illuminate\Mail\Mailable;
+use Illuminate\Queue\SerializesModels;
 
 class TransportShipmentDetails extends Mailable
 {
@@ -19,7 +16,7 @@ class TransportShipmentDetails extends Mailable
     /**
      * Create a new message instance.
      *
-     * @param mixed $order Los datos del pedido.
+     * @param  mixed  $order  Los datos del pedido.
      */
     public function __construct($order)
     {
@@ -29,9 +26,9 @@ class TransportShipmentDetails extends Mailable
     public function build()
     {
 
-        $snappdf = new Snappdf();
+        $snappdf = new Snappdf;
         $html = view('pdf.delivery_note', ['order' => $this->order])->render();
-        
+
         // Configure Chromium using centralized configuration
         $this->configureChromium($snappdf);
 
@@ -39,12 +36,10 @@ class TransportShipmentDetails extends Mailable
 
         /* NUEVO */
 
-
-
         /* $pdfContent = $snappdf->generate(); */
 
         // Guarda temporalmente el PDF para adjuntarlo
-        $pdfPath = storage_path('app/public/delivery-note-' . $this->order->id . '.pdf');
+        $pdfPath = storage_path('app/public/delivery-note-'.$this->order->id.'.pdf');
         file_put_contents($pdfPath, $pdfContent);
 
         // Obtener configuración de remitente del tenant
@@ -52,13 +47,13 @@ class TransportShipmentDetails extends Mailable
         $fromAddress = $mailConfigService->getFromAddress();
         $fromName = $mailConfigService->getFromName();
 
-        return $this->subject('Detalle mercancía ' . /* formated date */ date('d/m/Y', strtotime($this->order->load_date)) . ' - ' . $this->order->customer->name)
+        return $this->subject('Detalle mercancía '. /* formated date */ date('d/m/Y', strtotime($this->order->load_date)).' - '.$this->order->customer->name)
             ->from($fromAddress, $fromName)
             ->markdown('emails.orders.transport_details', [
                 'order' => $this->order,
             ])
             ->attach($pdfPath, [
-                'as' => 'Delivery-note-' . $this->order->formattedId . '.pdf',
+                'as' => 'Delivery-note-'.$this->order->formattedId.'.pdf',
                 'mime' => 'application/pdf',
             ]);
     }
@@ -66,9 +61,7 @@ class TransportShipmentDetails extends Mailable
     /**
      * Configure Chromium/Chrome path and arguments for PDF generation.
      *
-     * @param Snappdf $snappdf
-     * @param array $additionalArguments Additional arguments to add (optional)
-     * @return void
+     * @param  array  $additionalArguments  Additional arguments to add (optional)
      */
     private function configureChromium(Snappdf $snappdf, array $additionalArguments = []): void
     {
@@ -79,16 +72,16 @@ class TransportShipmentDetails extends Mailable
         // Apply margins from configuration
         $margins = config('pdf.chromium.margins', []);
         if (isset($margins['top'])) {
-            $snappdf->addChromiumArguments('--margin-top=' . $margins['top']);
+            $snappdf->addChromiumArguments('--margin-top='.$margins['top']);
         }
         if (isset($margins['right'])) {
-            $snappdf->addChromiumArguments('--margin-right=' . $margins['right']);
+            $snappdf->addChromiumArguments('--margin-right='.$margins['right']);
         }
         if (isset($margins['bottom'])) {
-            $snappdf->addChromiumArguments('--margin-bottom=' . $margins['bottom']);
+            $snappdf->addChromiumArguments('--margin-bottom='.$margins['bottom']);
         }
         if (isset($margins['left'])) {
-            $snappdf->addChromiumArguments('--margin-left=' . $margins['left']);
+            $snappdf->addChromiumArguments('--margin-left='.$margins['left']);
         }
 
         // Apply default arguments from configuration

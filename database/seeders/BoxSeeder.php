@@ -4,8 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\Box;
 use App\Models\Product;
-use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
 
 /**
  * Cajas de desarrollo (lot, gs1_128, pesos).
@@ -18,6 +18,7 @@ class BoxSeeder extends Seeder
     {
         if (Box::count() >= 30) {
             $this->command?->info('BoxSeeder: Ya existen suficientes cajas. Omitiendo creación.');
+
             return;
         }
 
@@ -26,6 +27,7 @@ class BoxSeeder extends Seeder
         $products = Product::all();
         if ($products->isEmpty()) {
             $this->command?->warn('BoxSeeder: Ejecuta antes ProductSeeder.');
+
             return;
         }
 
@@ -43,13 +45,13 @@ class BoxSeeder extends Seeder
             $useOcc = $faker->boolean(30);
             $lot = $faker->dateTimeBetween('-6 months', 'now')->format('dmy');
             if ($useOcc) {
-                $lot .= 'OCC' . $faker->numerify('#####');
+                $lot .= 'OCC'.$faker->numerify('#####');
             }
 
             // GS1-128 opcional: (01)GTIN(3100)peso_centésimas(10)lot. Fallback: GTIN-14 (984 + 11 dígitos).
-            $gtin = $product->article_gtin ?? $faker->numerify('984' . str_repeat('#', 11));
+            $gtin = $product->article_gtin ?? $faker->numerify('984'.str_repeat('#', 11));
             $weightCentesimas = (int) round($netWeight * 100);
-            $gs1_128 = "(01){$gtin}(3100)" . str_pad((string) $weightCentesimas, 6, '0', STR_PAD_LEFT) . "(10){$lot}";
+            $gs1_128 = "(01){$gtin}(3100)".str_pad((string) $weightCentesimas, 6, '0', STR_PAD_LEFT)."(10){$lot}";
 
             Box::create([
                 'article_id' => $product->id,

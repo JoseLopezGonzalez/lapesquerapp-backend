@@ -4,8 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\Employee;
 use App\Models\PunchEvent;
-use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
 
 /**
  * Eventos de fichaje de desarrollo — entorno tipo producción.
@@ -21,6 +21,7 @@ class PunchEventSeeder extends Seeder
         $employees = Employee::all();
         if ($employees->isEmpty()) {
             $this->command?->warn('PunchEventSeeder: Ejecuta antes EmployeeSeeder.');
+
             return;
         }
 

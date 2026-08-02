@@ -21,7 +21,7 @@ class OrphanStockController extends Controller
 
         return response()->json([
             'message' => 'Lotes huerfanos en stock obtenidos correctamente.',
-            'data'    => $data,
+            'data' => $data,
         ]);
     }
 }

@@ -20,8 +20,8 @@ class TenantMigrationRun extends Model
     ];
 
     protected $casts = [
-        'success'     => 'boolean',
-        'started_at'  => 'datetime',
+        'success' => 'boolean',
+        'started_at' => 'datetime',
         'finished_at' => 'datetime',
     ];
 

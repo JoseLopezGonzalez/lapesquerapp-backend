@@ -15,22 +15,22 @@ class StoreProductRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $data = $this->all();
-        if (isset($data['species_id']) && !isset($data['speciesId'])) {
+        if (isset($data['species_id']) && ! isset($data['speciesId'])) {
             $data['speciesId'] = $data['species_id'];
         }
-        if (isset($data['capture_zone_id']) && !isset($data['captureZoneId'])) {
+        if (isset($data['capture_zone_id']) && ! isset($data['captureZoneId'])) {
             $data['captureZoneId'] = $data['capture_zone_id'];
         }
-        if (isset($data['family_id']) && !isset($data['familyId'])) {
+        if (isset($data['family_id']) && ! isset($data['familyId'])) {
             $data['familyId'] = $data['family_id'];
         }
-        if (isset($data['article_gtin']) && !isset($data['articleGtin'])) {
+        if (isset($data['article_gtin']) && ! isset($data['articleGtin'])) {
             $data['articleGtin'] = $data['article_gtin'];
         }
-        if (isset($data['box_gtin']) && !isset($data['boxGtin'])) {
+        if (isset($data['box_gtin']) && ! isset($data['boxGtin'])) {
             $data['boxGtin'] = $data['box_gtin'];
         }
-        if (isset($data['pallet_gtin']) && !isset($data['palletGtin'])) {
+        if (isset($data['pallet_gtin']) && ! isset($data['palletGtin'])) {
             $data['palletGtin'] = $data['pallet_gtin'];
         }
         foreach (['articleGtin', 'boxGtin', 'palletGtin'] as $key) {

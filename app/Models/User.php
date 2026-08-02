@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -49,8 +48,7 @@ class User extends Authenticatable
     /**
      * Verificar si el usuario tiene un rol específico.
      *
-     * @param string|array $role Uno o más valores del enum (string).
-     * @return bool
+     * @param  string|array  $role  Uno o más valores del enum (string).
      */
     public function hasRole($role): bool
     {
@@ -60,20 +58,21 @@ class User extends Authenticatable
         if (is_array($role)) {
             return in_array($this->role, $role, true);
         }
+
         return $this->role === $role;
     }
 
     /**
      * Verificar si el usuario tiene al menos uno de los roles indicados.
      *
-     * @param array $roles Valores del enum (strings).
-     * @return bool
+     * @param  array  $roles  Valores del enum (strings).
      */
     public function hasAnyRole(array $roles): bool
     {
         if ($this->role === null) {
             return false;
         }
+
         return in_array($this->role, $roles, true);
     }
 
@@ -103,5 +102,4 @@ class User extends Authenticatable
             'updatedAt' => $this->updated_at,
         ];
     }
-    
 }

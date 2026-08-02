@@ -14,10 +14,10 @@ class OrderProfitabilitySummaryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'dateFrom'      => 'required|date',
-            'dateTo'        => 'required|date|after_or_equal:dateFrom',
-            'productIds'    => 'nullable|array',
-            'productIds.*'  => 'integer|exists:tenant.products,id',
+            'dateFrom' => 'required|date',
+            'dateTo' => 'required|date|after_or_equal:dateFrom',
+            'productIds' => 'nullable|array',
+            'productIds.*' => 'integer|exists:tenant.products,id',
         ];
     }
 }

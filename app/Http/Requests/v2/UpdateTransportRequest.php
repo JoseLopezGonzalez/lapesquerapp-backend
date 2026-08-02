@@ -28,8 +28,8 @@ class UpdateTransportRequest extends FormRequest
             : $transportRouteParam;
 
         return [
-            'name' => 'required|string|min:3|unique:tenant.transports,name,' . $id,
-            'vatNumber' => 'required|string|regex:/^[A-Z0-9]{8,12}$/|unique:tenant.transports,vat_number,' . $id,
+            'name' => 'required|string|min:3|unique:tenant.transports,name,'.$id,
+            'vatNumber' => 'required|string|regex:/^[A-Z0-9]{8,12}$/|unique:tenant.transports,vat_number,'.$id,
             'address' => 'required|string|min:10',
             'emails' => 'required|array|min:1',
             'emails.*' => 'email',

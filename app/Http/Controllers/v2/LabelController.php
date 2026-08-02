@@ -66,13 +66,13 @@ class LabelController extends Controller
     {
         $this->authorize('create', Label::class);
 
-        $defaultName = $label->name . ' (Copia)';
+        $defaultName = $label->name.' (Copia)';
         $newName = $request->validated()['name'] ?? $defaultName;
 
         if ($newName === $defaultName && Label::where('name', $newName)->exists()) {
             $counter = 1;
             do {
-                $newName = $label->name . ' (Copia ' . $counter . ')';
+                $newName = $label->name.' (Copia '.$counter.')';
                 $counter++;
             } while (Label::where('name', $newName)->exists() && $counter < 100);
         }

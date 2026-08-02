@@ -17,19 +17,19 @@ return new class extends Migration
 
         // Clean up invalid foreign key references before adding constraints (only if tables exist)
         if (Schema::hasTable('customers')) {
-            \DB::statement("UPDATE orders SET customer_id = NULL WHERE customer_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM customers WHERE customers.id = orders.customer_id)");
+            \DB::statement('UPDATE orders SET customer_id = NULL WHERE customer_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM customers WHERE customers.id = orders.customer_id)');
         }
         if (Schema::hasTable('payment_terms')) {
-            \DB::statement("UPDATE orders SET payment_term_id = NULL WHERE payment_term_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM payment_terms WHERE payment_terms.id = orders.payment_term_id)");
+            \DB::statement('UPDATE orders SET payment_term_id = NULL WHERE payment_term_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM payment_terms WHERE payment_terms.id = orders.payment_term_id)');
         }
         if (Schema::hasTable('salespersons')) {
-            \DB::statement("UPDATE orders SET salesperson_id = NULL WHERE salesperson_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM salespersons WHERE salespersons.id = orders.salesperson_id)");
+            \DB::statement('UPDATE orders SET salesperson_id = NULL WHERE salesperson_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM salespersons WHERE salespersons.id = orders.salesperson_id)');
         }
         if (Schema::hasTable('transports')) {
-            \DB::statement("UPDATE orders SET transport_id = NULL WHERE transport_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM transports WHERE transports.id = orders.transport_id)");
+            \DB::statement('UPDATE orders SET transport_id = NULL WHERE transport_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM transports WHERE transports.id = orders.transport_id)');
         }
         if (Schema::hasTable('incoterms')) {
-            \DB::statement("UPDATE orders SET incoterm_id = NULL WHERE incoterm_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM incoterms WHERE incoterms.id = orders.incoterm_id)");
+            \DB::statement('UPDATE orders SET incoterm_id = NULL WHERE incoterm_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM incoterms WHERE incoterms.id = orders.incoterm_id)');
         }
 
         // Get existing foreign key names

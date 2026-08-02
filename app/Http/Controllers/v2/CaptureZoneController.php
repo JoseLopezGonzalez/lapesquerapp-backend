@@ -28,13 +28,14 @@ class CaptureZoneController extends Controller
 
         /* name like */
         if ($request->has('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
+            $query->where('name', 'like', '%'.$request->name.'%');
         }
 
         /* order by name */
         $query->orderBy('name', 'asc');
 
         $perPage = $request->input('perPage', 12); // Default a 10 si no se proporciona
+
         return CaptureZoneResource::collection($query->paginate($perPage));
     }
 
@@ -78,7 +79,6 @@ class CaptureZoneController extends Controller
         ]);
     }
 
-
     /**
      * Show the form for editing the specified resource.
      */
@@ -95,7 +95,7 @@ class CaptureZoneController extends Controller
         $zone = CaptureZone::findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'required|string|min:3|max:255|unique:tenant.capture_zones,name,' . $id,
+            'name' => 'required|string|min:3|max:255|unique:tenant.capture_zones,name,'.$id,
         ], [
             'name.unique' => 'Ya existe una zona de captura con este nombre.',
         ]);
@@ -108,14 +108,13 @@ class CaptureZoneController extends Controller
         ]);
     }
 
-
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(string $id)
     {
         $zone = CaptureZone::findOrFail($id);
-        
+
         // Verificar si tiene productos asociados
         if ($zone->products()->count() > 0) {
             return response()->json([
@@ -143,7 +142,7 @@ class CaptureZoneController extends Controller
     {
         $ids = $request->input('ids', []);
 
-        if (!is_array($ids) || empty($ids)) {
+        if (! is_array($ids) || empty($ids)) {
             return response()->json([
                 'message' => 'No se proporcionaron IDs válidos',
                 'userMessage' => 'Debe proporcionar al menos un ID válido para eliminar.',
@@ -158,12 +157,14 @@ class CaptureZoneController extends Controller
             // Verificar si tiene productos asociados
             if ($zone->products()->count() > 0) {
                 $errors[] = "Zona '{$zone->name}' no se puede eliminar porque tiene productos asociados";
+
                 continue;
             }
 
             // Verificar si tiene producciones asociadas
             if ($zone->productions()->count() > 0) {
                 $errors[] = "Zona '{$zone->name}' no se puede eliminar porque tiene producciones asociadas";
+
                 continue;
             }
 
@@ -174,10 +175,10 @@ class CaptureZoneController extends Controller
         // Construir mensajes en lenguaje natural
         $message = "Se eliminaron {$deletedCount} zonas de captura con éxito";
         $userMessage = '';
-        
-        if (!empty($errors)) {
-            $message .= ". Errores: " . implode(', ', $errors);
-            
+
+        if (! empty($errors)) {
+            $message .= '. Errores: '.implode(', ', $errors);
+
             // Generar mensaje en lenguaje natural para el usuario
             if ($deletedCount === 0) {
                 // No se eliminó ninguna

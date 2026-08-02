@@ -11,9 +11,13 @@ class GenericOrderDocument extends Mailable
     use Queueable, SerializesModels;
 
     public $order;
+
     public $view;
+
     public $subjectText;
+
     public $documentName;
+
     public $attachmentPath; // ✅ Nueva propiedad
 
     public function __construct($order, $view, $subjectText, $documentName, $attachmentPath = null)
@@ -36,7 +40,7 @@ class GenericOrderDocument extends Mailable
             ->from($fromAddress, $fromName)
             ->markdown($this->view, [
                 'order' => $this->order,
-                'documentName' => $this->documentName
+                'documentName' => $this->documentName,
             ]);
 
         // ✅ Adjuntar si hay
@@ -50,4 +54,3 @@ class GenericOrderDocument extends Mailable
         return $email;
     }
 }
-

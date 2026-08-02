@@ -14,11 +14,11 @@ class SupplierFactory extends Factory
         $exportType = $this->faker->randomElement(['facilcom', 'a3erp']);
 
         return [
-            'name' => 'Proveedor ' . $this->faker->unique()->company(),
+            'name' => 'Proveedor '.$this->faker->unique()->company(),
             'type' => $this->faker->randomElement(['raw_material', '']),
             'contact_person' => $this->faker->name(),
             'phone' => $this->faker->phoneNumber(),
-            'emails' => $this->faker->companyEmail() . ';',
+            'emails' => $this->faker->companyEmail().';',
             'address' => $this->faker->address(),
             'cebo_export_type' => $exportType,
             'facil_com_code' => $this->faker->optional(0.75)->numerify('##'),

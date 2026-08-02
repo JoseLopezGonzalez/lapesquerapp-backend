@@ -11,13 +11,13 @@ use App\Http\Resources\v2\ProductionOutputConsumptionResource;
 use App\Models\ProductionOutputConsumption;
 use App\Models\ProductionRecord;
 use App\Services\Production\ProductionOutputConsumptionService;
-use Illuminate\Http\Request;
 
 class ProductionOutputConsumptionController extends Controller
 {
     public function __construct(
         private ProductionOutputConsumptionService $productionOutputConsumptionService
     ) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -40,6 +40,7 @@ class ProductionOutputConsumptionController extends Controller
         }
 
         $perPage = $request->input('perPage', 15);
+
         return ProductionOutputConsumptionResource::collection($query->paginate($perPage));
     }
 
@@ -124,7 +125,7 @@ class ProductionOutputConsumptionController extends Controller
             );
 
             return response()->json([
-                'message' => count($result['created']) . ' consumo(s) creado(s) correctamente.',
+                'message' => count($result['created']).' consumo(s) creado(s) correctamente.',
                 'data' => ProductionOutputConsumptionResource::collection($result['created']),
                 'errors' => $result['errors'],
             ], 201);
@@ -169,4 +170,3 @@ class ProductionOutputConsumptionController extends Controller
         }
     }
 }
-

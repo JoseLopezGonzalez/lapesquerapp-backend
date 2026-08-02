@@ -25,8 +25,8 @@ use Tests\TestCase;
  */
 class ProductosBlockApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?string $token = null;
 
@@ -57,8 +57,8 @@ class ProductosBlockApiTest extends TestCase
 
     private function createTenantAndUser(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'productos-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'productos-'.uniqid();
         Tenant::create([
             'name' => 'Test Tenant Productos',
             'subdomain' => $slug,
@@ -68,7 +68,7 @@ class ProductosBlockApiTest extends TestCase
 
         $user = User::create([
             'name' => 'Test User Productos',
-            'email' => $slug . '@test.com',
+            'email' => $slug.'@test.com',
             'password' => bcrypt('password'),
             'role' => Role::Administrador->value,
         ]);
@@ -81,7 +81,7 @@ class ProductosBlockApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $this->token,
+            'Authorization' => 'Bearer '.$this->token,
             'Accept' => 'application/json',
         ];
     }
@@ -108,7 +108,7 @@ class ProductosBlockApiTest extends TestCase
 
     public function test_product_category_can_be_created(): void
     {
-        $name = 'Categoría Test ' . uniqid();
+        $name = 'Categoría Test '.uniqid();
         $response = $this->withHeaders($this->authHeaders())
             ->postJson('/api/v2/product-categories', [
                 'name' => $name,
@@ -125,13 +125,13 @@ class ProductosBlockApiTest extends TestCase
     public function test_product_category_can_be_shown(): void
     {
         $category = ProductCategory::create([
-            'name' => 'Categoría Show ' . uniqid(),
+            'name' => 'Categoría Show '.uniqid(),
             'description' => 'Desc',
             'active' => true,
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/product-categories/' . $category->id);
+            ->getJson('/api/v2/product-categories/'.$category->id);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.id', $category->id);
@@ -141,14 +141,14 @@ class ProductosBlockApiTest extends TestCase
     public function test_product_category_can_be_updated(): void
     {
         $category = ProductCategory::create([
-            'name' => 'Categoría Update ' . uniqid(),
+            'name' => 'Categoría Update '.uniqid(),
             'description' => 'Desc',
             'active' => true,
         ]);
-        $newName = 'Categoría Actualizada ' . uniqid();
+        $newName = 'Categoría Actualizada '.uniqid();
 
         $response = $this->withHeaders($this->authHeaders())
-            ->putJson('/api/v2/product-categories/' . $category->id, [
+            ->putJson('/api/v2/product-categories/'.$category->id, [
                 'name' => $newName,
                 'description' => $category->description,
                 'active' => $category->active,
@@ -162,13 +162,13 @@ class ProductosBlockApiTest extends TestCase
     public function test_product_category_can_be_deleted_when_no_families(): void
     {
         $category = ProductCategory::create([
-            'name' => 'Categoría Destroy ' . uniqid(),
+            'name' => 'Categoría Destroy '.uniqid(),
             'description' => 'Desc',
             'active' => true,
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/product-categories/' . $category->id);
+            ->deleteJson('/api/v2/product-categories/'.$category->id);
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('product_categories', ['id' => $category->id], 'tenant');
@@ -177,18 +177,18 @@ class ProductosBlockApiTest extends TestCase
     public function test_product_category_destroy_returns_400_when_has_families(): void
     {
         $category = ProductCategory::create([
-            'name' => 'Categoría Con Familias ' . uniqid(),
+            'name' => 'Categoría Con Familias '.uniqid(),
             'description' => 'Desc',
             'active' => true,
         ]);
         ProductFamily::create([
-            'name' => 'Familia bajo categoría ' . uniqid(),
+            'name' => 'Familia bajo categoría '.uniqid(),
             'category_id' => $category->id,
             'active' => true,
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/product-categories/' . $category->id);
+            ->deleteJson('/api/v2/product-categories/'.$category->id);
 
         $response->assertStatus(400);
         $response->assertJsonFragment(['userMessage' => 'No se puede eliminar la categoría porque tiene familias asociadas']);
@@ -197,8 +197,8 @@ class ProductosBlockApiTest extends TestCase
 
     public function test_product_categories_destroy_multiple(): void
     {
-        $cat1 = ProductCategory::create(['name' => 'Cat Multi 1 ' . uniqid(), 'active' => true]);
-        $cat2 = ProductCategory::create(['name' => 'Cat Multi 2 ' . uniqid(), 'active' => true]);
+        $cat1 = ProductCategory::create(['name' => 'Cat Multi 1 '.uniqid(), 'active' => true]);
+        $cat2 = ProductCategory::create(['name' => 'Cat Multi 2 '.uniqid(), 'active' => true]);
 
         $response = $this->withHeaders($this->authHeaders())
             ->deleteJson('/api/v2/product-categories', ['ids' => [$cat1->id, $cat2->id]]);
@@ -233,10 +233,10 @@ class ProductosBlockApiTest extends TestCase
     public function test_product_family_can_be_created(): void
     {
         $category = ProductCategory::create([
-            'name' => 'Cat para Familia ' . uniqid(),
+            'name' => 'Cat para Familia '.uniqid(),
             'active' => true,
         ]);
-        $name = 'Familia Test ' . uniqid();
+        $name = 'Familia Test '.uniqid();
         $response = $this->withHeaders($this->authHeaders())
             ->postJson('/api/v2/product-families', [
                 'name' => $name,
@@ -253,15 +253,15 @@ class ProductosBlockApiTest extends TestCase
 
     public function test_product_family_can_be_shown(): void
     {
-        $category = ProductCategory::create(['name' => 'Cat Show ' . uniqid(), 'active' => true]);
+        $category = ProductCategory::create(['name' => 'Cat Show '.uniqid(), 'active' => true]);
         $family = ProductFamily::create([
-            'name' => 'Familia Show ' . uniqid(),
+            'name' => 'Familia Show '.uniqid(),
             'category_id' => $category->id,
             'active' => true,
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/product-families/' . $family->id);
+            ->getJson('/api/v2/product-families/'.$family->id);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.id', $family->id);
@@ -270,16 +270,16 @@ class ProductosBlockApiTest extends TestCase
 
     public function test_product_family_can_be_updated(): void
     {
-        $category = ProductCategory::create(['name' => 'Cat Upd ' . uniqid(), 'active' => true]);
+        $category = ProductCategory::create(['name' => 'Cat Upd '.uniqid(), 'active' => true]);
         $family = ProductFamily::create([
-            'name' => 'Familia Update ' . uniqid(),
+            'name' => 'Familia Update '.uniqid(),
             'category_id' => $category->id,
             'active' => true,
         ]);
-        $newName = 'Familia Actualizada ' . uniqid();
+        $newName = 'Familia Actualizada '.uniqid();
 
         $response = $this->withHeaders($this->authHeaders())
-            ->putJson('/api/v2/product-families/' . $family->id, [
+            ->putJson('/api/v2/product-families/'.$family->id, [
                 'name' => $newName,
                 'description' => $family->description,
                 'categoryId' => $category->id,
@@ -293,15 +293,15 @@ class ProductosBlockApiTest extends TestCase
 
     public function test_product_family_can_be_deleted_when_no_products(): void
     {
-        $category = ProductCategory::create(['name' => 'Cat Del ' . uniqid(), 'active' => true]);
+        $category = ProductCategory::create(['name' => 'Cat Del '.uniqid(), 'active' => true]);
         $family = ProductFamily::create([
-            'name' => 'Familia Destroy ' . uniqid(),
+            'name' => 'Familia Destroy '.uniqid(),
             'category_id' => $category->id,
             'active' => true,
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/product-families/' . $family->id);
+            ->deleteJson('/api/v2/product-families/'.$family->id);
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('product_families', ['id' => $family->id], 'tenant');
@@ -317,14 +317,14 @@ class ProductosBlockApiTest extends TestCase
             $this->markTestSkipped('Catalog not seeded (category, family, species, zone).');
         }
         $product = Product::create([
-            'name' => 'Producto bajo familia ' . uniqid(),
+            'name' => 'Producto bajo familia '.uniqid(),
             'species_id' => $species->id,
             'capture_zone_id' => $zone->id,
             'family_id' => $family->id,
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/product-families/' . $family->id);
+            ->deleteJson('/api/v2/product-families/'.$family->id);
 
         $response->assertStatus(400);
         $response->assertJsonFragment(['userMessage' => 'No se puede eliminar la familia porque tiene productos asociados']);
@@ -360,7 +360,7 @@ class ProductosBlockApiTest extends TestCase
         if (! $species || ! $zone) {
             $this->markTestSkipped('Species or CaptureZone not seeded.');
         }
-        $name = 'Producto Test ' . uniqid();
+        $name = 'Producto Test '.uniqid();
         $payload = [
             'name' => $name,
             'speciesId' => $species->id,
@@ -387,14 +387,14 @@ class ProductosBlockApiTest extends TestCase
             $this->markTestSkipped('Species or CaptureZone not seeded.');
         }
         $product = Product::create([
-            'name' => 'Producto Show ' . uniqid(),
+            'name' => 'Producto Show '.uniqid(),
             'species_id' => $species->id,
             'capture_zone_id' => $zone->id,
             'family_id' => $family?->id,
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->getJson('/api/v2/products/' . $product->id);
+            ->getJson('/api/v2/products/'.$product->id);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.id', $product->id);
@@ -411,15 +411,15 @@ class ProductosBlockApiTest extends TestCase
             $this->markTestSkipped('Species or CaptureZone not seeded.');
         }
         $product = Product::create([
-            'name' => 'Producto Update ' . uniqid(),
+            'name' => 'Producto Update '.uniqid(),
             'species_id' => $species->id,
             'capture_zone_id' => $zone->id,
             'family_id' => $family?->id,
         ]);
-        $newName = 'Producto Actualizado ' . uniqid();
+        $newName = 'Producto Actualizado '.uniqid();
 
         $response = $this->withHeaders($this->authHeaders())
-            ->putJson('/api/v2/products/' . $product->id, [
+            ->putJson('/api/v2/products/'.$product->id, [
                 'name' => $newName,
                 'speciesId' => $product->species_id,
                 'captureZoneId' => $product->capture_zone_id,
@@ -441,14 +441,14 @@ class ProductosBlockApiTest extends TestCase
             $this->markTestSkipped('Species or CaptureZone not seeded.');
         }
         $product = Product::create([
-            'name' => 'Producto Destroy ' . uniqid(),
+            'name' => 'Producto Destroy '.uniqid(),
             'species_id' => $species->id,
             'capture_zone_id' => $zone->id,
             'family_id' => $family?->id,
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/products/' . $product->id);
+            ->deleteJson('/api/v2/products/'.$product->id);
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('products', ['id' => $product->id], 'tenant');
@@ -464,7 +464,7 @@ class ProductosBlockApiTest extends TestCase
             $this->markTestSkipped('Species or CaptureZone not seeded.');
         }
         $product = Product::create([
-            'name' => 'Producto En Uso ' . uniqid(),
+            'name' => 'Producto En Uso '.uniqid(),
             'species_id' => $species->id,
             'capture_zone_id' => $zone->id,
             'family_id' => $family?->id,
@@ -478,7 +478,7 @@ class ProductosBlockApiTest extends TestCase
         ]);
 
         $response = $this->withHeaders($this->authHeaders())
-            ->deleteJson('/api/v2/products/' . $product->id);
+            ->deleteJson('/api/v2/products/'.$product->id);
 
         $response->assertStatus(400);
         $response->assertJsonFragment(['userMessage' => 'No se puede eliminar el producto porque está siendo utilizado en: cajas']);
@@ -495,13 +495,13 @@ class ProductosBlockApiTest extends TestCase
             $this->markTestSkipped('Species or CaptureZone not seeded.');
         }
         $p1 = Product::create([
-            'name' => 'Producto Multi 1 ' . uniqid(),
+            'name' => 'Producto Multi 1 '.uniqid(),
             'species_id' => $species->id,
             'capture_zone_id' => $zone->id,
             'family_id' => $family?->id,
         ]);
         $p2 = Product::create([
-            'name' => 'Producto Multi 2 ' . uniqid(),
+            'name' => 'Producto Multi 2 '.uniqid(),
             'species_id' => $species->id,
             'capture_zone_id' => $zone->id,
             'family_id' => $family?->id,

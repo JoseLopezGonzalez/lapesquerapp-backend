@@ -17,4 +17,3 @@ class FieldTaxController extends Controller
         return response()->json($taxes);
     }
 }
-

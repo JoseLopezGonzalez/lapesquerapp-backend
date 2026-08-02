@@ -16,8 +16,8 @@ use Tests\TestCase;
  */
 class SettingsBlockApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?string $token = null;
 
@@ -35,8 +35,8 @@ class SettingsBlockApiTest extends TestCase
 
     private function createTenantAndUser(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'settings-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'settings-'.uniqid();
         Tenant::create([
             'name' => 'Test Tenant Settings',
             'subdomain' => $slug,
@@ -46,7 +46,7 @@ class SettingsBlockApiTest extends TestCase
 
         $this->authUser = User::create([
             'name' => 'Test Admin Settings',
-            'email' => $slug . '@test.com',
+            'email' => $slug.'@test.com',
             'role' => Role::Administrador->value,
             'active' => true,
         ]);
@@ -59,7 +59,7 @@ class SettingsBlockApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $this->token,
+            'Authorization' => 'Bearer '.$this->token,
             'Accept' => 'application/json',
         ];
     }
@@ -67,9 +67,10 @@ class SettingsBlockApiTest extends TestCase
     private function authHeadersForUser(User $user): array
     {
         $token = $user->createToken('test')->plainTextToken;
+
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'application/json',
         ];
     }
@@ -88,7 +89,7 @@ class SettingsBlockApiTest extends TestCase
     {
         $operario = User::create([
             'name' => 'Operario Settings',
-            'email' => 'op-' . uniqid() . '@test.com',
+            'email' => 'op-'.uniqid().'@test.com',
             'role' => Role::Operario->value,
             'active' => true,
         ]);
@@ -141,7 +142,7 @@ class SettingsBlockApiTest extends TestCase
     {
         $operario = User::create([
             'name' => 'Operario Update',
-            'email' => 'opup-' . uniqid() . '@test.com',
+            'email' => 'opup-'.uniqid().'@test.com',
             'role' => Role::Operario->value,
             'active' => true,
         ]);

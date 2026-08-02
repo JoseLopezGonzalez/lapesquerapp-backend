@@ -21,7 +21,7 @@ class UpdatePaymentTermRequest extends FormRequest
         $id = $this->route('payment_term')?->getKey();
 
         return [
-            'name' => 'required|string|max:255|unique:tenant.payment_terms,name,' . $id,
+            'name' => 'required|string|max:255|unique:tenant.payment_terms,name,'.$id,
         ];
     }
 

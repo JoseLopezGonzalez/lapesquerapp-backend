@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -26,12 +26,12 @@ return new class extends Migration
         ];
 
         foreach ($tables as $tableName => $columns) {
-            if (!Schema::hasTable($tableName)) {
+            if (! Schema::hasTable($tableName)) {
                 continue;
             }
 
             foreach ($columns as $column) {
-                if (!Schema::hasColumn($tableName, $column)) {
+                if (! Schema::hasColumn($tableName, $column)) {
                     continue;
                 }
 
@@ -53,13 +53,13 @@ return new class extends Migration
     {
         $connection = Schema::getConnection()->getDatabaseName();
         $indexes = DB::select(
-            "SELECT 1 FROM information_schema.STATISTICS 
+            'SELECT 1 FROM information_schema.STATISTICS 
              WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ? 
-             LIMIT 1",
+             LIMIT 1',
             [$connection, $table, $column]
         );
 
-        return !empty($indexes);
+        return ! empty($indexes);
     }
 
     /**
@@ -77,7 +77,7 @@ return new class extends Migration
         ];
 
         foreach ($drops as $tableName => $columns) {
-            if (!Schema::hasTable($tableName)) {
+            if (! Schema::hasTable($tableName)) {
                 continue;
             }
 

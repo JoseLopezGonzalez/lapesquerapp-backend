@@ -19,28 +19,28 @@ class CheckFeatureFlag
      */
     public function handle(Request $request, Closure $next, string $flagKey): Response
     {
-        if (!app()->bound('currentTenant') || !app('currentTenant')) {
+        if (! app()->bound('currentTenant') || ! app('currentTenant')) {
             return response()->json([
-                'message'     => 'Contexto de tenant no encontrado.',
+                'message' => 'Contexto de tenant no encontrado.',
                 'userMessage' => 'Acceso no permitido.',
             ], 403);
         }
 
         $subdomain = app('currentTenant');
-        $tenant    = Tenant::where('subdomain', $subdomain)->first();
+        $tenant = Tenant::where('subdomain', $subdomain)->first();
 
-        if (!$tenant) {
+        if (! $tenant) {
             return response()->json([
-                'message'     => 'Tenant no encontrado.',
+                'message' => 'Tenant no encontrado.',
                 'userMessage' => 'Acceso no permitido.',
             ], 403);
         }
 
-        if (!$this->service->isEnabled($tenant, $flagKey)) {
+        if (! $this->service->isEnabled($tenant, $flagKey)) {
             return response()->json([
-                'message'     => "La funcionalidad '{$flagKey}' no está disponible en tu plan.",
+                'message' => "La funcionalidad '{$flagKey}' no está disponible en tu plan.",
                 'userMessage' => 'Esta funcionalidad no está incluida en tu plan actual. Contacta con tu administrador para actualizar.',
-                'flag'        => $flagKey,
+                'flag' => $flagKey,
             ], 403);
         }
 

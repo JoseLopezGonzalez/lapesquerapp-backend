@@ -87,6 +87,7 @@ class TenantCompanySettingsSeeder extends Seeder
                     is_array($currentValue) ? $currentValue : [],
                     $defaultValue
                 );
+
                 continue;
             }
 

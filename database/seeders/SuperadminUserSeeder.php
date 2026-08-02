@@ -15,7 +15,7 @@ class SuperadminUserSeeder extends Seeder
     private const SUPERADMINS = [
         [
             'email' => 'tijito4@gmail.com',
-            'name'  => 'Superadmin',
+            'name' => 'Superadmin',
         ],
     ];
 

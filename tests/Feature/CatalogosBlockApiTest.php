@@ -20,10 +20,11 @@ use Tests\TestCase;
  */
 class CatalogosBlockApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?string $token = null;
+
     private ?string $tenantSubdomain = null;
 
     protected function setUp(): void
@@ -36,8 +37,8 @@ class CatalogosBlockApiTest extends TestCase
 
     private function createTenantAndUser(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'catalogos-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'catalogos-'.uniqid();
         Tenant::create([
             'name' => 'Test Tenant Catalogos',
             'subdomain' => $slug,
@@ -47,7 +48,7 @@ class CatalogosBlockApiTest extends TestCase
 
         $user = User::create([
             'name' => 'Test User Catalogos',
-            'email' => $slug . '@test.com',
+            'email' => $slug.'@test.com',
             'password' => bcrypt('password'),
             'role' => Role::Administrador->value,
         ]);
@@ -60,7 +61,7 @@ class CatalogosBlockApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $this->token,
+            'Authorization' => 'Bearer '.$this->token,
             'Accept' => 'application/json',
         ];
     }

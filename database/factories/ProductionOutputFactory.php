@@ -16,7 +16,7 @@ class ProductionOutputFactory extends Factory
         return [
             'production_record_id' => ProductionRecord::query()->value('id') ?? ProductionRecord::factory(),
             'product_id' => Product::query()->value('id') ?? Product::factory(),
-            'lot_id' => 'OUT-' . $this->faker->bothify('#####'),
+            'lot_id' => 'OUT-'.$this->faker->bothify('#####'),
             'boxes' => $this->faker->numberBetween(0, 20),
             'weight_kg' => $this->faker->randomFloat(2, 5, 250),
         ];

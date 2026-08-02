@@ -19,9 +19,9 @@ class StoredPalletFactory extends Factory
         return [
             'pallet_id' => Pallet::query()->where('status', Pallet::STATE_STORED)->value('id')
                 ?? Pallet::factory()->stored(),
-            'store_id'  => Store::query()->where('type', 'interno')->value('id')
+            'store_id' => Store::query()->where('type', 'interno')->value('id')
                 ?? Store::factory(),
-            'position'  => $this->faker->optional(0.8)->numberBetween(1, 50),
+            'position' => $this->faker->optional(0.8)->numberBetween(1, 50),
         ];
     }
 

@@ -2,25 +2,25 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Agrega la foreign key para reception_id en pallets.
      * Esta migración se ejecuta después de que existan ambas tablas.
      */
     public function up(): void
     {
-        if (!Schema::hasTable('pallets') || !Schema::hasTable('raw_material_receptions')) {
+        if (! Schema::hasTable('pallets') || ! Schema::hasTable('raw_material_receptions')) {
             return;
         }
 
         // Verificar si la columna existe
-        if (!Schema::hasColumn('pallets', 'reception_id')) {
+        if (! Schema::hasColumn('pallets', 'reception_id')) {
             return;
         }
 
@@ -63,7 +63,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (!Schema::hasTable('pallets')) {
+        if (! Schema::hasTable('pallets')) {
             return;
         }
 
@@ -78,15 +78,15 @@ return new class extends Migration
                     AND COLUMN_NAME = 'reception_id' 
                     AND REFERENCED_TABLE_NAME IS NOT NULL
                 ");
-                
-                if (!empty($foreignKeys)) {
+
+                if (! empty($foreignKeys)) {
                     $constraintName = $foreignKeys[0]->CONSTRAINT_NAME;
                     $table->dropForeign([$constraintName]);
                 }
             } catch (\Exception $e) {
                 // La FK no existe, continuar
             }
-            
+
             // Eliminar el índice
             try {
                 $table->dropIndex(['reception_id']);

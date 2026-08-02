@@ -5,8 +5,8 @@ namespace Database\Seeders;
 use App\Models\Product;
 use App\Models\RawMaterialReception;
 use App\Models\RawMaterialReceptionProduct;
-use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
 
 /**
  * Líneas de producto de recepciones de materia prima — entorno tipo producción.
@@ -24,6 +24,7 @@ class RawMaterialReceptionProductSeeder extends Seeder
 
         if ($receptions->isEmpty() || $products->isEmpty()) {
             $this->command?->warn('RawMaterialReceptionProductSeeder: Ejecuta antes RawMaterialReceptionSeeder y ProductSeeder.');
+
             return;
         }
 
@@ -52,7 +53,7 @@ class RawMaterialReceptionProductSeeder extends Seeder
 
             $netWeight = $faker->randomFloat(2, 0.7, 105);
             $lot = $faker->boolean(70)
-                ? $faker->dateTimeBetween('-4 months', 'now')->format('dmy') . $faker->optional(0.25)->passthrough('OCC' . $faker->numerify('#####'))
+                ? $faker->dateTimeBetween('-4 months', 'now')->format('dmy').$faker->optional(0.25)->passthrough('OCC'.$faker->numerify('#####'))
                 : null;
 
             RawMaterialReceptionProduct::create([

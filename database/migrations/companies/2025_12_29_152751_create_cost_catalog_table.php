@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Crea la tabla cost_catalog para almacenar el catálogo de costes comunes.
      * Esto evita inconsistencias en nombres y facilita el análisis.
      */
@@ -25,30 +25,30 @@ return new class extends Migration
 
         Schema::create('cost_catalog', function (Blueprint $table) {
             $table->id();
-            
+
             // Nombre del coste (único)
             $table->string('name')->unique();
-            
+
             // Tipo de coste (categoría)
             $table->enum('cost_type', [
                 'production',    // Costes de producción (maquinaria, energía, etc.)
                 'labor',         // Costes de personal
                 'operational',   // Costes operativos (mantenimiento, servicios, etc.)
-                'packaging'      // Costes de envases
+                'packaging',      // Costes de envases
             ]);
-            
+
             // Descripción del coste
             $table->text('description')->nullable();
-            
+
             // Unidad por defecto (total o per_kg)
             // Indica cómo se suele especificar este coste
             $table->enum('default_unit', ['total', 'per_kg'])->default('total');
-            
+
             // Si está activo (permite desactivar costes sin eliminar)
             $table->boolean('is_active')->default(true);
-            
+
             $table->timestamps();
-            
+
             // Índices
             $table->index('cost_type');
             $table->index('is_active');

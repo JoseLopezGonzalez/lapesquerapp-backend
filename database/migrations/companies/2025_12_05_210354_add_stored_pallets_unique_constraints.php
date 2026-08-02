@@ -8,19 +8,19 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Agrega constraint único en pallet_id para asegurar que un palet
      * solo puede estar almacenado en un almacén a la vez.
      */
     public function up(): void
     {
-        if (!Schema::hasTable('stored_pallets')) {
+        if (! Schema::hasTable('stored_pallets')) {
             return;
         }
 
         // Verificar si ya existe el constraint único en pallet_id usando SQL directo
         $hasPalletUnique = false;
-        
+
         try {
             $indexes = \DB::select("SHOW INDEX FROM stored_pallets WHERE Key_name != 'PRIMARY'");
             foreach ($indexes as $index) {
@@ -32,10 +32,10 @@ return new class extends Migration
         } catch (\Exception $e) {
             // Si falla la consulta, asumimos que no existe y lo creamos
         }
-        
+
         Schema::table('stored_pallets', function (Blueprint $table) use ($hasPalletUnique) {
             // Agregar constraint único en pallet_id si no existe
-            if (!$hasPalletUnique) {
+            if (! $hasPalletUnique) {
                 try {
                     $table->unique('pallet_id');
                 } catch (\Exception $e) {

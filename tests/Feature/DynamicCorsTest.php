@@ -10,8 +10,8 @@ use Tests\TestCase;
 
 class DynamicCorsTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -81,7 +81,7 @@ class DynamicCorsTest extends TestCase
 
     public function test_cors_cache_is_invalidated_on_status_change(): void
     {
-        $sub = 'corscache-' . uniqid();
+        $sub = 'corscache-'.uniqid();
         $tenant = Tenant::create([
             'name' => 'CORS Test',
             'subdomain' => $sub,

@@ -57,7 +57,7 @@ class TenantMailConfigService
 
         // Si faltan campos obligatorios, usar el mailer del sistema (.env) como fallback.
         // Esto permite el primer acceso del administrador antes de configurar el SMTP del tenant.
-        if (!empty($missingFields)) {
+        if (! empty($missingFields)) {
             return;
         }
 
@@ -77,8 +77,7 @@ class TenantMailConfigService
     /**
      * Obtiene la configuración del tenant, tratando strings vacíos como no configurado.
      *
-     * @param string $key
-     * @param mixed $default
+     * @param  mixed  $default
      * @return mixed
      */
     private function getTenantSetting(string $key, $default = null)
@@ -97,7 +96,6 @@ class TenantMailConfigService
      * Obtiene el email remitente configurado del tenant.
      * En local/testing sin config del tenant, usa config('mail.from.address') (ej. .env).
      *
-     * @return string
      * @throws MailConfigurationException
      */
     public function getFromAddress(): string
@@ -106,7 +104,7 @@ class TenantMailConfigService
 
         if (empty($fromAddress)) {
             $systemFrom = (string) config('mail.from.address', '');
-            if (!empty($systemFrom)) {
+            if (! empty($systemFrom)) {
                 return $systemFrom;
             }
 
@@ -119,22 +117,19 @@ class TenantMailConfigService
     /**
      * Obtiene el nombre remitente configurado del tenant.
      * En local/testing sin config del tenant, usa config('mail.from.name') o nombre de empresa.
-     *
-     * @return string
      */
     public function getFromName(): string
     {
         $fromName = $this->getTenantSetting('company.mail.from_name');
-        if (!empty($fromName)) {
+        if (! empty($fromName)) {
             return $fromName;
         }
 
         $companyName = $this->getTenantSetting('company.name');
-        if (!empty($companyName)) {
+        if (! empty($companyName)) {
             return $companyName;
         }
 
         return (string) config('app.name', 'PesquerApp');
     }
 }
-

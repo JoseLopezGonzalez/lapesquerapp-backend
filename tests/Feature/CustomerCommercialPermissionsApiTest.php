@@ -15,17 +15,22 @@ use Tests\TestCase;
 
 class CustomerCommercialPermissionsApiTest extends TestCase
 {
-    use RefreshDatabase;
-    use ConfiguresTenantConnection;
     use BuildsOperationsScenario;
+    use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private string $tenantSubdomain;
+
     private User $commercialUser;
+
     private string $commercialToken;
+
     private Salesperson $commercialSalesperson;
 
     private Salesperson $otherSalesperson;
+
     private FieldOperator $fieldOperator;
+
     private array $salesContext;
 
     protected function setUp(): void
@@ -34,8 +39,8 @@ class CustomerCommercialPermissionsApiTest extends TestCase
         parent::setUp();
         $this->setUpTenantConnection();
 
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'commercial-customer-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'commercial-customer-'.uniqid();
         Tenant::create([
             'name' => 'Test Tenant Commercial Customer',
             'subdomain' => $slug,
@@ -46,23 +51,23 @@ class CustomerCommercialPermissionsApiTest extends TestCase
 
         $this->commercialUser = User::create([
             'name' => 'Comercial',
-            'email' => $slug . '-comercial@test.com',
+            'email' => $slug.'-comercial@test.com',
             'role' => Role::Comercial->value,
             'active' => true,
         ]);
         $this->commercialToken = $this->commercialUser->createToken('test')->plainTextToken;
 
         $this->commercialSalesperson = Salesperson::create([
-            'name' => 'Salesperson Comercial ' . uniqid(),
+            'name' => 'Salesperson Comercial '.uniqid(),
             'user_id' => $this->commercialUser->id,
         ]);
 
         $this->otherSalesperson = Salesperson::create([
-            'name' => 'Salesperson Otro ' . uniqid(),
+            'name' => 'Salesperson Otro '.uniqid(),
         ]);
 
         $this->fieldOperator = FieldOperator::create([
-            'name' => 'Repartidor ' . uniqid(),
+            'name' => 'Repartidor '.uniqid(),
         ]);
 
         $this->salesContext = $this->createSalesContext('CommercialPermissions');
@@ -72,7 +77,7 @@ class CustomerCommercialPermissionsApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $this->commercialToken,
+            'Authorization' => 'Bearer '.$this->commercialToken,
             'Accept' => 'application/json',
         ];
     }
@@ -87,12 +92,12 @@ class CustomerCommercialPermissionsApiTest extends TestCase
             'transport_id' => $ctx['transport']->id,
         ]);
 
-        $newName = 'Cliente Comercial Update ' . uniqid();
+        $newName = 'Cliente Comercial Update '.uniqid();
 
         $response = $this->withHeaders($this->headersForCommercial())
-            ->putJson('/api/v2/customers/' . $customer->id, [
+            ->putJson('/api/v2/customers/'.$customer->id, [
                 'name' => $newName,
-                'vatNumber' => 'B' . uniqid(),
+                'vatNumber' => 'B'.uniqid(),
                 'billing_address' => 'Dir fact',
                 'shipping_address' => 'Dir env',
                 'transportation_notes' => 'Notas transporte',
@@ -120,8 +125,8 @@ class CustomerCommercialPermissionsApiTest extends TestCase
         ]);
 
         $response = $this->withHeaders($this->headersForCommercial())
-            ->putJson('/api/v2/customers/' . $customer->id, [
-                'name' => 'Intento Update ' . uniqid(),
+            ->putJson('/api/v2/customers/'.$customer->id, [
+                'name' => 'Intento Update '.uniqid(),
             ]);
 
         $response->assertStatus(403);
@@ -138,7 +143,7 @@ class CustomerCommercialPermissionsApiTest extends TestCase
         ]);
 
         $response = $this->withHeaders($this->headersForCommercial())
-            ->putJson('/api/v2/customers/' . $customer->id, [
+            ->putJson('/api/v2/customers/'.$customer->id, [
                 'name' => $customer->name,
                 'vatNumber' => $customer->vat_number,
                 'billing_address' => $customer->billing_address,
@@ -166,7 +171,7 @@ class CustomerCommercialPermissionsApiTest extends TestCase
         ]);
 
         $response = $this->withHeaders($this->headersForCommercial())
-            ->putJson('/api/v2/customers/' . $customer->id . '/assignment', [
+            ->putJson('/api/v2/customers/'.$customer->id.'/assignment', [
                 'field_operator_id' => $this->fieldOperator->id,
                 'operational_status' => 'alta_operativa',
                 'salesperson_id' => $this->otherSalesperson->id,
@@ -180,4 +185,3 @@ class CustomerCommercialPermissionsApiTest extends TestCase
         $this->assertSame('alta_operativa', $customer->operational_status);
     }
 }
-

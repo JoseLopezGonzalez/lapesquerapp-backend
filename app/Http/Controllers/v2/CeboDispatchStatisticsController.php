@@ -39,8 +39,8 @@ class CeboDispatchStatisticsController extends Controller
 
         $validated = $request->validated();
 
-        $dateFrom = $validated['dateFrom'] . ' 00:00:00';
-        $dateTo = $validated['dateTo'] . ' 23:59:59';
+        $dateFrom = $validated['dateFrom'].' 00:00:00';
+        $dateTo = $validated['dateTo'].' 23:59:59';
         $valueType = $validated['valueType'];
         $groupBy = $validated['groupBy'] ?? 'day';
 
@@ -57,4 +57,3 @@ class CeboDispatchStatisticsController extends Controller
         return response()->json($results);
     }
 }
-

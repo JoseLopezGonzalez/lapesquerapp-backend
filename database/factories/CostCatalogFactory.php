@@ -12,7 +12,7 @@ class CostCatalogFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'Coste ' . $this->faker->unique()->word(),
+            'name' => 'Coste '.$this->faker->unique()->word(),
             'cost_type' => $this->faker->randomElement([
                 CostCatalog::COST_TYPE_PRODUCTION,
                 CostCatalog::COST_TYPE_LABOR,

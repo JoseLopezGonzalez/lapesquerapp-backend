@@ -2,11 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Tenant;
 use App\Support\TenantSeedDataset;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
-use App\Models\Tenant;
+use Illuminate\Support\Facades\DB;
 
 class SeedTenants extends Command
 {
@@ -61,6 +61,7 @@ class SeedTenants extends Command
         }
 
         $this->info('🎉 Seeders finalizados para todos los tenants.');
+
         return Command::SUCCESS;
     }
 }

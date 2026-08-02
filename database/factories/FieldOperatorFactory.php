@@ -15,7 +15,7 @@ class FieldOperatorFactory extends Factory
     {
         return [
             'name' => $this->faker->name(),
-            'emails' => $this->faker->safeEmail() . ';',
+            'emails' => $this->faker->safeEmail().';',
             'user_id' => null,
         ];
     }

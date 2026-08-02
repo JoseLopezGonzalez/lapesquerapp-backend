@@ -24,21 +24,21 @@ trait BuildsOperationsScenario
      */
     protected function createTenantAndAdminUser(string $prefix = 'ops'): array
     {
-        $database = config('database.connections.' . config('database.default') . '.database')
+        $database = config('database.connections.'.config('database.default').'.database')
             ?? env('DB_DATABASE', 'testing');
-        $slug = $prefix . '-' . uniqid();
+        $slug = $prefix.'-'.uniqid();
 
         Tenant::create([
-            'name'      => 'Test Tenant ' . strtoupper($prefix),
+            'name' => 'Test Tenant '.strtoupper($prefix),
             'subdomain' => $slug,
-            'database'  => $database,
-            'status'    => 'active',
+            'database' => $database,
+            'status' => 'active',
         ]);
 
         $user = User::create([
-            'name'   => 'Test Admin',
-            'email'  => $slug . '@test.com',
-            'role'   => Role::Administrador->value,
+            'name' => 'Test Admin',
+            'email' => $slug.'@test.com',
+            'role' => Role::Administrador->value,
             'active' => true,
         ]);
 
@@ -56,27 +56,27 @@ trait BuildsOperationsScenario
         $label = $suffix ?: 'Ops';
 
         $country = Country::query()->firstOrCreate(
-            ['name' => 'España ' . $label],
-            ['name' => 'España ' . $label]
+            ['name' => 'España '.$label],
+            ['name' => 'España '.$label]
         );
 
         $paymentTerm = PaymentTerm::query()->firstOrCreate(
-            ['name' => 'Contado ' . $label],
-            ['name' => 'Contado ' . $label]
+            ['name' => 'Contado '.$label],
+            ['name' => 'Contado '.$label]
         );
 
         $transport = Transport::query()->firstOrCreate(
-            ['name' => 'Transporte ' . $label],
+            ['name' => 'Transporte '.$label],
             [
-                'vat_number' => 'B' . substr(uniqid(), -7),
-                'address'    => 'Calle Puerto 1',
-                'emails'     => 'transporte.' . strtolower($label) . '@pesquerapp.test',
+                'vat_number' => 'B'.substr(uniqid(), -7),
+                'address' => 'Calle Puerto 1',
+                'emails' => 'transporte.'.strtolower($label).'@pesquerapp.test',
             ]
         );
 
         $salesperson = Salesperson::query()->firstOrCreate(
-            ['name' => 'Comercial ' . $label],
-            ['name' => 'Comercial ' . $label]
+            ['name' => 'Comercial '.$label],
+            ['name' => 'Comercial '.$label]
         );
 
         return compact('country', 'paymentTerm', 'transport', 'salesperson');
@@ -89,9 +89,9 @@ trait BuildsOperationsScenario
     {
         return Customer::factory()->create([
             'payment_term_id' => $context['paymentTerm']->id,
-            'salesperson_id'  => $context['salesperson']->id,
-            'country_id'      => $context['country']->id,
-            'transport_id'    => $context['transport']->id,
+            'salesperson_id' => $context['salesperson']->id,
+            'country_id' => $context['country']->id,
+            'transport_id' => $context['transport']->id,
         ]);
     }
 
@@ -101,10 +101,10 @@ trait BuildsOperationsScenario
     protected function createOrderForTest(Customer $customer, array $context): Order
     {
         return Order::factory()->create([
-            'customer_id'     => $customer->id,
+            'customer_id' => $customer->id,
             'payment_term_id' => $context['paymentTerm']->id,
-            'salesperson_id'  => $context['salesperson']->id,
-            'transport_id'    => $context['transport']->id,
+            'salesperson_id' => $context['salesperson']->id,
+            'transport_id' => $context['transport']->id,
         ]);
     }
 }

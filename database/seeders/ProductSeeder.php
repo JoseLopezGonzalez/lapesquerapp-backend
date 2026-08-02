@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
-use App\Models\Product;
-use App\Models\Species;
 use App\Models\CaptureZone;
+use App\Models\Product;
 use App\Models\ProductFamily;
-use Illuminate\Database\Seeder;
+use App\Models\Species;
 use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
 
 /**
  * Productos de desarrollo (nombre, especie, zona captura, familia).
@@ -36,6 +36,7 @@ class ProductSeeder extends Seeder
 
         if ($species->isEmpty() || $zones->isEmpty()) {
             $this->command?->warn('ProductSeeder: Ejecuta antes SpeciesSeeder y CaptureZonesSeeder.');
+
             return;
         }
 
@@ -74,9 +75,9 @@ class ProductSeeder extends Seeder
                     'species_id' => $row['species_id'],
                     'capture_zone_id' => $zone->id,
                     'family_id' => $familyId,
-                    'article_gtin' => $faker->optional(0.7)->numerify('84' . str_repeat('#', 11)),
+                    'article_gtin' => $faker->optional(0.7)->numerify('84'.str_repeat('#', 11)),
                     // GTIN de caja: GTIN-14 (14 dígitos), prefijo 984 típico España para cajas (GS1).
-                    'box_gtin' => $faker->optional(0.7)->numerify('984' . str_repeat('#', 11)),
+                    'box_gtin' => $faker->optional(0.7)->numerify('984'.str_repeat('#', 11)),
                     'pallet_gtin' => null,
                     'facil_com_code' => $faker->optional(0.4)->numerify('##'),
                     'a3erp_code' => $faker->optional(0.3)->numerify('10###'),
@@ -88,6 +89,7 @@ class ProductSeeder extends Seeder
         $currentCount = Product::count();
         if ($currentCount >= 25) {
             $this->command?->info('ProductSeeder: Ya existen suficientes productos. Omitiendo productos extra.');
+
             return;
         }
         $extraProducts = [
@@ -109,7 +111,7 @@ class ProductSeeder extends Seeder
                     'species_id' => $speciesId,
                     'capture_zone_id' => $zone->id,
                     'family_id' => $familyId,
-                    'article_gtin' => $faker->optional(0.6)->numerify('84' . str_repeat('#', 11)),
+                    'article_gtin' => $faker->optional(0.6)->numerify('84'.str_repeat('#', 11)),
                     'box_gtin' => null,
                     'pallet_gtin' => null,
                     'facil_com_code' => null,

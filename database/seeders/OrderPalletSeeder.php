@@ -19,6 +19,7 @@ class OrderPalletSeeder extends Seeder
         $palletsWithOrder = Pallet::whereNotNull('order_id')->get();
         if ($palletsWithOrder->isEmpty()) {
             $this->command?->info('OrderPalletSeeder: No hay palés con pedido; omitiendo.');
+
             return;
         }
 

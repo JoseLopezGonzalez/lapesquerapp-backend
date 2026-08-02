@@ -13,6 +13,7 @@ class UpdateCeboDispatchRequest extends FormRequest
         if ($dispatch instanceof CeboDispatch) {
             return $this->user()->can('update', $dispatch);
         }
+
         return $this->user()->can('update', CeboDispatch::findOrFail((int) $dispatch));
     }
 

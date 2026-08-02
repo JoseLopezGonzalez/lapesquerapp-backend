@@ -14,9 +14,10 @@ class UpdateEmployeeRequest extends FormRequest
     public function rules(): array
     {
         $id = $this->route('employee') ?? $this->route('id');
+
         return [
             'name' => 'sometimes|required|string|max:255',
-            'nfc_uid' => 'sometimes|required|string|unique:tenant.employees,nfc_uid,' . $id,
+            'nfc_uid' => 'sometimes|required|string|unique:tenant.employees,nfc_uid,'.$id,
         ];
     }
 

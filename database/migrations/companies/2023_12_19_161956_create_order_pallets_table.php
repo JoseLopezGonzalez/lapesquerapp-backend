@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('order_pallets', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained(); // Clave foránea a la tabla orders
-            $table->foreignId('pallet_id')->constrained('pallets'); // Clave foránea a la tabla pallets    
+            $table->foreignId('pallet_id')->constrained('pallets'); // Clave foránea a la tabla pallets
             $table->timestamps();
         });
     }

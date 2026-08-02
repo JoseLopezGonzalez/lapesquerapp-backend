@@ -7,7 +7,6 @@ use App\Http\Requests\v2\DestroyMultipleSessionsRequest;
 use App\Http\Requests\v2\IndexSessionRequest;
 use App\Http\Resources\v2\SessionResource;
 use App\Sanctum\PersonalAccessToken;
-use Illuminate\Http\Request;
 
 class SessionController extends Controller
 {
@@ -38,10 +37,10 @@ class SessionController extends Controller
     {
         $token = PersonalAccessToken::find($id);
 
-        if (!$token) {
+        if (! $token) {
             return response()->json([
                 'message' => 'Sesión no encontrada.',
-                'userMessage' => 'La sesión especificada no existe o ya fue cerrada.'
+                'userMessage' => 'La sesión especificada no existe o ya fue cerrada.',
             ], 404);
         }
 

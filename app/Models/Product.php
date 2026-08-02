@@ -3,23 +3,14 @@
 namespace App\Models;
 
 use App\Traits\UsesTenantConnection;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
-use App\Models\Species;
-use App\Models\CaptureZone;
-
-use App\Models\ProductFamily;
-use App\Models\Box;
-use App\Models\OrderPlannedProductDetail;
-use App\Models\ProductionOutput;
 use Illuminate\Validation\ValidationException;
 
 class Product extends Model
 {
-    use UsesTenantConnection;
     use HasFactory;
+    use UsesTenantConnection;
 
     //protected $table = 'products';
     /* fillable */
@@ -46,8 +37,6 @@ class Product extends Model
     {
         return $this->belongsTo(CaptureZone::class, 'capture_zone_id'); // No se bien porque no indica que el id es el que relaciona las tablas
     }
-
-
 
     public function family()
     {
@@ -104,6 +93,7 @@ class Product extends Model
     public function isInUse(): bool
     {
         $blocked = $this->deletionBlockedBy();
+
         return $blocked['boxes'] || $blocked['orders'] || $blocked['production'];
     }
 
@@ -124,21 +114,17 @@ class Product extends Model
             }
 
             // Validar species_id y capture_zone_id requeridos
-            if (!$product->species_id) {
+            if (! $product->species_id) {
                 throw ValidationException::withMessages([
                     'species_id' => 'El campo species_id es requerido.',
                 ]);
             }
 
-            if (!$product->capture_zone_id) {
+            if (! $product->capture_zone_id) {
                 throw ValidationException::withMessages([
                     'capture_zone_id' => 'El campo capture_zone_id es requerido.',
                 ]);
             }
         });
     }
-
-
-
-
 }

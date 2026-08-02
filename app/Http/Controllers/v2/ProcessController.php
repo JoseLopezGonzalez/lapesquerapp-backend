@@ -22,7 +22,7 @@ class ProcessController extends Controller
             $query->where('type', $request->type);
         }
         if ($request->filled('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
+            $query->where('name', 'like', '%'.$request->name.'%');
         }
 
         $query->orderBy('name', 'asc');

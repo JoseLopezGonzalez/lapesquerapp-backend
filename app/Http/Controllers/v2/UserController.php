@@ -87,6 +87,7 @@ class UserController extends Controller
 
         $user->tokens()->delete();
         $user->delete();
+
         return response()->json(['message' => 'Usuario eliminado correctamente.']);
     }
 
@@ -99,7 +100,7 @@ class UserController extends Controller
         $user = User::findOrFail($id);
         $this->authorize('update', $user);
 
-        if (!$user->active) {
+        if (! $user->active) {
             return response()->json([
                 'message' => 'Acción no autorizada.',
                 'userMessage' => 'No se puede reenviar la invitación a un usuario desactivado.',
@@ -110,6 +111,7 @@ class UserController extends Controller
             $sent = app(MagicLinkService::class)->sendMagicLinkToUser($user);
         } catch (\Throwable $e) {
             report($e);
+
             return response()->json([
                 'message' => 'No se pudo enviar el correo. Compruebe la configuración de email del tenant.',
             ], 500);
@@ -132,6 +134,7 @@ class UserController extends Controller
         $this->authorize('viewOptions', User::class);
 
         $users = User::where('active', true)->select('id', 'name')->get();
+
         return response()->json($users);
     }
 }

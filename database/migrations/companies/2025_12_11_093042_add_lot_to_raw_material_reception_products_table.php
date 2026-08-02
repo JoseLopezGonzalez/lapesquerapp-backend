@@ -19,7 +19,7 @@ return new class extends Migration
 
         Schema::table('raw_material_reception_products', function (Blueprint $table) {
             // Verificar si la columna ya existe antes de crearla
-            if (!Schema::hasColumn('raw_material_reception_products', 'lot')) {
+            if (! Schema::hasColumn('raw_material_reception_products', 'lot')) {
                 $table->string('lot')->nullable()->after('product_id');
             }
         });

@@ -15,10 +15,11 @@ use Tests\TestCase;
  */
 class PdfExtractionApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     private ?string $token = null;
+
     private ?string $tenantSubdomain = null;
 
     protected function setUp(): void
@@ -31,8 +32,8 @@ class PdfExtractionApiTest extends TestCase
 
     private function createTenantAndUser(): void
     {
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
-        $slug = 'pdf-extract-' . uniqid();
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
+        $slug = 'pdf-extract-'.uniqid();
         Tenant::create([
             'name' => 'Test Tenant PdfExtract',
             'subdomain' => $slug,
@@ -42,7 +43,7 @@ class PdfExtractionApiTest extends TestCase
 
         $user = User::create([
             'name' => 'Test User PdfExtract',
-            'email' => $slug . '@test.com',
+            'email' => $slug.'@test.com',
             'password' => bcrypt('password'),
             'role' => Role::Administrador->value,
         ]);
@@ -55,7 +56,7 @@ class PdfExtractionApiTest extends TestCase
     {
         return [
             'X-Tenant' => $this->tenantSubdomain,
-            'Authorization' => 'Bearer ' . $this->token,
+            'Authorization' => 'Bearer '.$this->token,
             'Accept' => 'application/json',
         ];
     }
@@ -87,7 +88,7 @@ class PdfExtractionApiTest extends TestCase
             ], [
                 'Accept' => 'application/json',
                 'X-Tenant' => $this->tenantSubdomain,
-                'Authorization' => 'Bearer ' . $this->token,
+                'Authorization' => 'Bearer '.$this->token,
             ]);
 
         $response->assertUnprocessable()
@@ -103,7 +104,7 @@ class PdfExtractionApiTest extends TestCase
             ], [
                 'Accept' => 'application/json',
                 'X-Tenant' => $this->tenantSubdomain,
-                'Authorization' => 'Bearer ' . $this->token,
+                'Authorization' => 'Bearer '.$this->token,
             ]);
 
         $response->assertUnprocessable()
@@ -112,5 +113,4 @@ class PdfExtractionApiTest extends TestCase
                 'userMessage' => 'El archivo PDF no pudo ser leído. Verifique que sea un PDF válido.',
             ]);
     }
-
 }

@@ -7,7 +7,6 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
 class Kernel extends ConsoleKernel
 {
-
     protected $commands = [
         \App\Console\Commands\MigrateTenants::class,
         \App\Console\Commands\DetectSuspiciousActivity::class,
@@ -27,13 +26,12 @@ class Kernel extends ConsoleKernel
         $schedule->command('superadmin:prune-logs')->dailyAt('04:00');
     }
 
-
     /**
      * Register the commands for the application.
      */
     protected function commands(): void
     {
-        $this->load(__DIR__ . '/Commands');
+        $this->load(__DIR__.'/Commands');
 
         require base_path('routes/console.php');
     }

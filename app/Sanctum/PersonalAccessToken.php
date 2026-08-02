@@ -2,8 +2,8 @@
 
 namespace App\Sanctum;
 
-use Laravel\Sanctum\PersonalAccessToken as SanctumPersonalAccessToken;
 use App\Traits\UsesTenantConnection;
+use Laravel\Sanctum\PersonalAccessToken as SanctumPersonalAccessToken;
 
 class PersonalAccessToken extends SanctumPersonalAccessToken
 {

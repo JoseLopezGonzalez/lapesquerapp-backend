@@ -15,13 +15,12 @@ use App\Sanctum\PersonalAccessToken;
 use App\Services\PunchCalendarService;
 use App\Services\PunchDashboardService;
 use App\Services\PunchEventListService;
-use App\Services\PunchStatisticsService;
 use App\Services\PunchEventWriteService;
+use App\Services\PunchStatisticsService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class PunchController extends Controller
 {
@@ -31,8 +30,7 @@ class PunchController extends Controller
         private PunchStatisticsService $statisticsService,
         private PunchEventListService $listService,
         private PunchEventWriteService $writeService
-    ) {
-    }
+    ) {}
 
     /**
      * Display a listing of the resource.
@@ -67,7 +65,7 @@ class PunchController extends Controller
      * Detecta automáticamente si es un fichaje manual (con timestamp y event_type) o NFC.
      *
      * @unauthenticated Ruta pública para dispositivos NFC (fuera del grupo auth:sanctum).
-     * @param \Illuminate\Http\Request $request
+     *
      * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
@@ -77,6 +75,7 @@ class PunchController extends Controller
             // Es un fichaje manual, requiere autenticación
             // Intentar autenticar manualmente si hay token en el header
             $this->authenticateManualRequest($request);
+
             return $this->storeManual($request);
         }
 
@@ -93,13 +92,14 @@ class PunchController extends Controller
 
         $result = $this->writeService->storeFromNfc($validated);
 
-        if (!($result['success'] ?? false)) {
+        if (! ($result['success'] ?? false)) {
             if (($result['error'] ?? '') === 'EMPLOYEE_NOT_FOUND') {
                 return response()->json([
                     'message' => 'Empleado no encontrado.',
                     'error' => 'EMPLOYEE_NOT_FOUND',
                 ], 404);
             }
+
             return response()->json([
                 'message' => 'Error al registrar el fichaje.',
                 'error' => 'PUNCH_REGISTRATION_FAILED',
@@ -164,7 +164,7 @@ class PunchController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'message' => 'Error al actualizar el evento de fichaje.',
                 'error' => 'PUNCH_UPDATE_FAILED',
@@ -226,7 +226,7 @@ class PunchController extends Controller
     {
         $this->authorize('viewAny', PunchEvent::class);
 
-        if (!$request->has('date_start') || !$request->has('date_end')) {
+        if (! $request->has('date_start') || ! $request->has('date_end')) {
             return response()->json([
                 'message' => 'Los parámetros date_start y date_end son requeridos.',
                 'userMessage' => 'Debe proporcionar las fechas de inicio y fin del período.',
@@ -269,7 +269,6 @@ class PunchController extends Controller
         ]);
     }
 
-
     /**
      * Remove the specified resource from storage.
      */
@@ -306,15 +305,13 @@ class PunchController extends Controller
 
     /**
      * Crear un fichaje manual individual.
-     * 
-     * @param \Illuminate\Http\Request $request
+     *
      * @return \Illuminate\Http\JsonResponse
      */
     /**
      * Autenticar manualmente una request si tiene token Bearer.
      * Esto es necesario porque la ruta es pública pero los fichajes manuales requieren auth.
      *
-     * @param \Illuminate\Http\Request $request
      * @return void
      */
     private function authenticateManualRequest(Request $request)
@@ -340,7 +337,7 @@ class PunchController extends Controller
 
     public function storeManual(Request $request)
     {
-        if (!$request->user()) {
+        if (! $request->user()) {
             return response()->json([
                 'message' => 'Error al crear fichaje',
                 'userMessage' => 'Los fichajes manuales requieren autenticación.',
@@ -357,8 +354,9 @@ class PunchController extends Controller
 
         $result = $this->writeService->storeManual($validated);
 
-        if (!($result['success'] ?? false)) {
+        if (! ($result['success'] ?? false)) {
             $status = isset($result['errors']) ? 422 : 500;
+
             return response()->json([
                 'message' => 'Error al crear fichaje',
                 'userMessage' => $result['userMessage'] ?? 'Error al registrar el fichaje.',
@@ -386,7 +384,7 @@ class PunchController extends Controller
      */
     public function bulkValidate(BulkValidatePunchesRequest $request)
     {
-        if (!$request->user()) {
+        if (! $request->user()) {
             return response()->json([
                 'message' => 'Error al validar fichajes',
                 'userMessage' => 'La validación de fichajes manuales requiere autenticación.',
@@ -406,7 +404,7 @@ class PunchController extends Controller
      */
     public function bulkStore(BulkStorePunchesRequest $request)
     {
-        if (!$request->user()) {
+        if (! $request->user()) {
             return response()->json([
                 'message' => 'Error al crear fichajes masivos',
                 'userMessage' => 'La creación de fichajes manuales requiere autenticación.',
@@ -457,4 +455,3 @@ class PunchController extends Controller
         ], 201);
     }
 }
-

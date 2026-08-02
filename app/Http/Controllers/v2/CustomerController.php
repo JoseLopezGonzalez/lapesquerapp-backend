@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\v2;
 
-use App\Http\Controllers\Controller;
 use App\Enums\Role;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\DestroyMultipleCustomersRequest;
 use App\Http\Requests\v2\IndexCustomerRequest;
 use App\Http\Requests\v2\StoreCustomerRequest;
@@ -44,12 +44,12 @@ class CustomerController extends Controller
 
         $allEmails = [];
         foreach ($validated['emails'] ?? [] as $email) {
-            $allEmails[] = trim($email) . ';';
+            $allEmails[] = trim($email).';';
         }
         foreach ($validated['ccEmails'] ?? [] as $ccEmail) {
-            $allEmails[] = 'CC:' . trim($ccEmail) . ';';
+            $allEmails[] = 'CC:'.trim($ccEmail).';';
         }
-        $validated['emails'] = !empty($allEmails) ? implode("\n", $allEmails) : null;
+        $validated['emails'] = ! empty($allEmails) ? implode("\n", $allEmails) : null;
         unset($validated['ccEmails']);
 
         $data = [
@@ -72,7 +72,7 @@ class CustomerController extends Controller
         ];
 
         $customer = Customer::create($data);
-        $customer->alias = "Cliente Nº " . $customer->id;
+        $customer->alias = 'Cliente Nº '.$customer->id;
         $customer->save();
 
         return response()->json([
@@ -115,12 +115,12 @@ class CustomerController extends Controller
 
         $allEmails = [];
         foreach ($validated['emails'] ?? [] as $email) {
-            $allEmails[] = trim($email) . ';';
+            $allEmails[] = trim($email).';';
         }
         foreach ($validated['ccEmails'] ?? [] as $ccEmail) {
-            $allEmails[] = 'CC:' . trim($ccEmail) . ';';
+            $allEmails[] = 'CC:'.trim($ccEmail).';';
         }
-        $validated['emails'] = !empty($allEmails) ? implode("\n", $allEmails) : null;
+        $validated['emails'] = ! empty($allEmails) ? implode("\n", $allEmails) : null;
         unset($validated['ccEmails']);
 
         $data = [
@@ -142,7 +142,7 @@ class CustomerController extends Controller
         ];
 
         $customer->update($data);
-        $customer->alias = "Cliente Nº " . $customer->id;
+        $customer->alias = 'Cliente Nº '.$customer->id;
         $customer->save();
 
         return response()->json([
@@ -184,7 +184,7 @@ class CustomerController extends Controller
             return response()->json([
                 'message' => 'No se puede eliminar el cliente porque está en uso',
                 'details' => 'El cliente está siendo utilizado en pedidos',
-                'userMessage' => 'No se puede eliminar el cliente porque está siendo utilizado en pedidos'
+                'userMessage' => 'No se puede eliminar el cliente porque está siendo utilizado en pedidos',
             ], 400);
         }
 
@@ -210,14 +210,14 @@ class CustomerController extends Controller
             }
         }
 
-        if (!empty($inUse)) {
+        if (! empty($inUse)) {
             $message = 'No se pueden eliminar algunos clientes porque están en uso: ';
-            $details = array_map(fn ($item) => $item['name'] . ' (usado en pedidos)', $inUse);
+            $details = array_map(fn ($item) => $item['name'].' (usado en pedidos)', $inUse);
 
             return response()->json([
                 'message' => 'No se pueden eliminar algunos clientes porque están en uso',
                 'details' => implode(', ', $details),
-                'userMessage' => $message . implode(', ', array_column($inUse, 'name'))
+                'userMessage' => $message.implode(', ', array_column($inUse, 'name')),
             ], 400);
         }
 

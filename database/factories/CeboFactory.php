@@ -19,7 +19,7 @@ class CeboFactory extends Factory
     public function definition(): array
     {
         return [
-            'id'    => Product::query()->value('id') ?? Product::factory()->create()->id,
+            'id' => Product::query()->value('id') ?? Product::factory()->create()->id,
             'fixed' => $this->faker->boolean(30),
         ];
     }

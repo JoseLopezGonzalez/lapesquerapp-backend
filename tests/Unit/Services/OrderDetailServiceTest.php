@@ -14,8 +14,8 @@ use Tests\TestCase;
 
 class OrderDetailServiceTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {

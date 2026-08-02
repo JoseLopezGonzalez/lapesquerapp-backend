@@ -8,14 +8,14 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Cambia onDelete('cascade') a onDelete('set null') en parent_record_id
      * para que los hijos se conviertan en raíz cuando se elimina el padre,
      * manteniendo la trazabilidad.
      */
     public function up(): void
     {
-        if (!Schema::hasTable('production_records')) {
+        if (! Schema::hasTable('production_records')) {
             return;
         }
 
@@ -27,7 +27,7 @@ return new class extends Migration
                 // La FK no existe, continuar
             }
         });
-        
+
         // Recrear con onDelete('set null')
         Schema::table('production_records', function (Blueprint $table) {
             $table->foreign('parent_record_id')
@@ -45,7 +45,7 @@ return new class extends Migration
         Schema::table('production_records', function (Blueprint $table) {
             // Eliminar la foreign key
             $table->dropForeign(['parent_record_id']);
-            
+
             // Recrear con onDelete('cascade') (comportamiento original)
             $table->foreign('parent_record_id')
                 ->references('id')

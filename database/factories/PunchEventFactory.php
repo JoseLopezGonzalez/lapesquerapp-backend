@@ -18,9 +18,9 @@ class PunchEventFactory extends Factory
     {
         return [
             'employee_id' => Employee::query()->value('id') ?? Employee::factory(),
-            'event_type'  => $this->faker->randomElement([PunchEvent::TYPE_IN, PunchEvent::TYPE_OUT]),
-            'device_id'   => $this->faker->optional(0.6)->numerify('DEVICE-###'),
-            'timestamp'   => Carbon::now()->subDays($this->faker->numberBetween(0, 30))
+            'event_type' => $this->faker->randomElement([PunchEvent::TYPE_IN, PunchEvent::TYPE_OUT]),
+            'device_id' => $this->faker->optional(0.6)->numerify('DEVICE-###'),
+            'timestamp' => Carbon::now()->subDays($this->faker->numberBetween(0, 30))
                 ->setTime($this->faker->numberBetween(6, 21), $this->faker->numberBetween(0, 59)),
         ];
     }

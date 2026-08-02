@@ -17,8 +17,8 @@ use Tests\TestCase;
 
 class OrdersRouteIntegrityApiTest extends TestCase
 {
-    use RefreshDatabase;
     use ConfiguresTenantConnection;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -26,10 +26,10 @@ class OrdersRouteIntegrityApiTest extends TestCase
         parent::setUp();
         $this->setUpTenantConnection();
 
-        $database = config('database.connections.' . config('database.default') . '.database') ?? env('DB_DATABASE', 'testing');
+        $database = config('database.connections.'.config('database.default').'.database') ?? env('DB_DATABASE', 'testing');
         Tenant::create([
             'name' => 'Orders Route Integrity Tenant',
-            'subdomain' => 'orders-route-integrity-' . uniqid(),
+            'subdomain' => 'orders-route-integrity-'.uniqid(),
             'database' => $database,
             'status' => 'active',
         ]);
@@ -39,14 +39,14 @@ class OrdersRouteIntegrityApiTest extends TestCase
     {
         $adminUser = User::create([
             'name' => 'Admin',
-            'email' => 'admin-' . uniqid() . '@test.com',
+            'email' => 'admin-'.uniqid().'@test.com',
             'role' => Role::Administrador->value,
             'active' => true,
         ]);
 
         $fieldUser = User::create([
             'name' => 'Field',
-            'email' => 'field-' . uniqid() . '@test.com',
+            'email' => 'field-'.uniqid().'@test.com',
             'role' => Role::RepartidorAutoventa->value,
             'active' => true,
         ]);

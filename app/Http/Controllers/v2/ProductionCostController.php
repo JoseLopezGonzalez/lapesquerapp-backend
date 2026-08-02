@@ -19,6 +19,7 @@ class ProductionCostController extends Controller
     public function __construct(
         private ProductionLotLockService $lotLock,
     ) {}
+
     /**
      * Display a listing of the resource.
      */

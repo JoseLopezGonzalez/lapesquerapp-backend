@@ -28,11 +28,12 @@ class ProductCategoryListService
             $query->whereIn('id', $request->ids);
         }
         if ($request->has('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
+            $query->where('name', 'like', '%'.$request->name.'%');
         }
         if ($request->has('active')) {
             $query->where('active', $request->boolean('active'));
         }
+
         return $query;
     }
 }

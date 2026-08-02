@@ -18,7 +18,7 @@ class InfraestructuraApiTest extends TestCase
         // assert it responds with JSON and does not require auth or tenant.
         $this->assertTrue(
             in_array($response->getStatusCode(), [200, 500]),
-            'Health endpoint should return 200 or 500, got ' . $response->getStatusCode()
+            'Health endpoint should return 200 or 500, got '.$response->getStatusCode()
         );
     }
 }

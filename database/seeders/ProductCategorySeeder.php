@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\ProductCategory;
+use Illuminate\Database\Seeder;
 
 /**
  * Categorías de producto de desarrollo (Fresco, Congelado).

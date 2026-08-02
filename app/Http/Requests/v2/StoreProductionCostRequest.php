@@ -45,18 +45,21 @@ class StoreProductionCostRequest extends FormRequest
             $pi = $this->input('production_id');
             if (empty($pr) && empty($pi)) {
                 $validator->errors()->add('production_record_id', 'Debe especificarse production_record_id o production_id.');
+
                 return;
             }
-            if (!empty($pr) && !empty($pi)) {
+            if (! empty($pr) && ! empty($pi)) {
                 $validator->errors()->add('production_record_id', 'Solo uno de production_record_id o production_id debe estar presente.');
+
                 return;
             }
             $tc = $this->input('total_cost');
             $cpk = $this->input('cost_per_kg');
             $hasTc = $tc !== null && $tc !== '';
             $hasCpk = $cpk !== null && $cpk !== '';
-            if (!$hasTc && !$hasCpk) {
+            if (! $hasTc && ! $hasCpk) {
                 $validator->errors()->add('total_cost', 'Se debe especificar O bien total_cost O bien cost_per_kg.');
+
                 return;
             }
             if ($hasTc && $hasCpk) {

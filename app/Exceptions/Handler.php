@@ -3,16 +3,14 @@
 namespace App\Exceptions;
 
 use App\Models\TenantErrorLog;
-use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
-use Throwable;
-
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
-use App\Exceptions\DomainValidationException;
+use Throwable;
 
 class Handler extends ExceptionHandler
 {
@@ -87,7 +85,7 @@ class Handler extends ExceptionHandler
             // ModelNotFoundException → 404 (route model binding o findOrFail fallidos)
             if ($exception instanceof ModelNotFoundException) {
                 return response()->json([
-                    'message'     => 'Recurso no encontrado.',
+                    'message' => 'Recurso no encontrado.',
                     'userMessage' => 'El recurso solicitado no existe o ha sido eliminado.',
                 ], 404);
             }
@@ -112,18 +110,18 @@ class Handler extends ExceptionHandler
                 $errorMessage = $exception->getMessage();
                 $errorCode = $exception->getCode();
                 $sqlState = $exception->errorInfo[0] ?? null;
-                
+
                 // Detectar violación de clave única
                 // MySQL: código 1062, SQLSTATE 23000
                 // PostgreSQL: código 23505, SQLSTATE 23505
-                if ($errorCode == 23000 || $errorCode == '23000' || 
+                if ($errorCode == 23000 || $errorCode == '23000' ||
                     $errorCode == 1062 || $errorCode == '1062' ||
                     $sqlState == '23000' || $sqlState == '23505' ||
                     stripos($errorMessage, 'Duplicate entry') !== false ||
                     stripos($errorMessage, 'UNIQUE constraint') !== false ||
                     stripos($errorMessage, 'duplicate key value') !== false ||
                     stripos($errorMessage, 'unique constraint') !== false) {
-                    
+
                     $userMessage = $this->formatUniqueConstraintViolationForUser($errorMessage, $request);
 
                     return response()->json([
@@ -132,7 +130,7 @@ class Handler extends ExceptionHandler
                         'error' => $errorMessage, // Detalles técnicos para programadores
                     ], 422); // 422 Unprocessable Entity
                 }
-                
+
                 // Otros errores de base de datos (foreign key, not null, etc.)
                 $userMessage = $this->formatQueryExceptionForUser($errorMessage, $request);
 
@@ -164,89 +162,92 @@ class Handler extends ExceptionHandler
 
     /**
      * Formatea los errores de validación en un mensaje legible para el usuario
-     * 
-     * @param array $errors Array de errores de validación
+     *
+     * @param  array  $errors  Array de errores de validación
      * @return string Mensaje en lenguaje natural
      */
     private function formatValidationErrorsForUser(array $errors): string
     {
         $messages = [];
-        
+
         // Primero, intentar usar los mensajes personalizados directamente
         foreach ($errors as $field => $fieldErrors) {
             foreach ($fieldErrors as $error) {
                 // Si el mensaje ya está en lenguaje natural (no es un mensaje técnico de Laravel),
                 // usarlo directamente
-                if (!$this->isTechnicalErrorMessage($error)) {
-                    if (!in_array($error, $messages)) {
+                if (! $this->isTechnicalErrorMessage($error)) {
+                    if (! in_array($error, $messages)) {
                         $messages[] = $error;
                     }
+
                     continue;
                 }
-                
+
                 // Si es un mensaje técnico, intentar traducirlo
                 $translated = $this->translateErrorMessage($error, $field);
-                if ($translated && !in_array($translated, $messages)) {
+                if ($translated && ! in_array($translated, $messages)) {
                     $messages[] = $translated;
                 }
             }
         }
-        
+
         // Si tenemos mensajes personalizados, usarlos
-        if (!empty($messages)) {
+        if (! empty($messages)) {
             // Si hay un solo error, devolverlo directamente
             if (count($messages) === 1) {
                 return $messages[0];
             }
-            
+
             // Si hay múltiples errores, combinarlos
             if (count($messages) > 1) {
                 $lastMessage = array_pop($messages);
-                return implode('. ', $messages) . ' y ' . $lastMessage;
+
+                return implode('. ', $messages).' y '.$lastMessage;
             }
         }
-        
+
         // Si no hay mensajes personalizados, usar la lógica de categorización
         $groupedErrors = [];
-        
+
         foreach ($errors as $field => $fieldErrors) {
             $category = $this->getFieldCategory($field);
             $errorType = $this->getErrorType($fieldErrors[0]);
-            
-            if (!isset($groupedErrors[$category])) {
+
+            if (! isset($groupedErrors[$category])) {
                 $groupedErrors[$category] = [];
             }
-            
-            if (!isset($groupedErrors[$category][$errorType])) {
+
+            if (! isset($groupedErrors[$category][$errorType])) {
                 $groupedErrors[$category][$errorType] = 0;
             }
-            
+
             $groupedErrors[$category][$errorType]++;
         }
-        
+
         // Generar mensajes genéricos por categoría
         $genericMessages = [];
-        
+
         foreach ($groupedErrors as $category => $errorTypes) {
             foreach ($errorTypes as $errorType => $count) {
                 $message = $this->getGenericErrorMessage($category, $errorType);
-                if ($message && !in_array($message, $genericMessages)) {
+                if ($message && ! in_array($message, $genericMessages)) {
                     $genericMessages[] = $message;
                 }
             }
         }
-        
+
         // Si hay un solo error, devolverlo directamente
         if (count($genericMessages) === 1) {
             return $genericMessages[0];
         }
-        
+
         // Si hay múltiples errores, combinarlos
         if (count($genericMessages) > 1) {
             $lastMessage = array_pop($genericMessages);
-            return implode('. ', $genericMessages) . ' y ' . $lastMessage;
+
+            return implode('. ', $genericMessages).' y '.$lastMessage;
         }
-        
+
         return 'Hay errores en los datos enviados.';
     }
 
@@ -279,11 +280,11 @@ class Handler extends ExceptionHandler
 
         return null;
     }
-    
+
     /**
      * Verifica si un mensaje de error es técnico (de Laravel) o ya está en lenguaje natural
-     * 
-     * @param string $error Mensaje de error
+     *
+     * @param  string  $error  Mensaje de error
      * @return bool true si es técnico, false si ya está en lenguaje natural
      */
     private function isTechnicalErrorMessage(string $error): bool
@@ -302,13 +303,13 @@ class Handler extends ExceptionHandler
             '/^Uno o más/i',
             '/^El formato debe/i', // "El formato debe ser un objeto o array"
         ];
-        
+
         foreach ($naturalLanguagePatterns as $pattern) {
             if (preg_match($pattern, $error)) {
                 return false; // Ya está en lenguaje natural
             }
         }
-        
+
         // Patrones de mensajes técnicos de Laravel
         $technicalPatterns = [
             '/^The .+ field is required\.?$/i',
@@ -322,13 +323,13 @@ class Handler extends ExceptionHandler
             '/^The .+ must be at least/i',
             '/^The .+ must be an? .+\.?$/i',
         ];
-        
+
         foreach ($technicalPatterns as $pattern) {
             if (preg_match($pattern, $error)) {
                 return true;
             }
         }
-        
+
         // Si contiene palabras técnicas comunes y empieza con "The", probablemente es técnico
         $technicalKeywords = ['field', 'must be', 'format', 'selected', 'does not exist', 'has already been taken'];
         foreach ($technicalKeywords as $keyword) {
@@ -336,14 +337,14 @@ class Handler extends ExceptionHandler
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /**
      * Obtiene la categoría del campo (prices, details, pallets, etc.)
-     * 
-     * @param string $field Nombre del campo
+     *
+     * @param  string  $field  Nombre del campo
      * @return string Categoría del campo
      */
     private function getFieldCategory(string $field): string
@@ -352,34 +353,34 @@ class Handler extends ExceptionHandler
         if (preg_match('/^prices\./', $field)) {
             return 'prices';
         }
-        
+
         // Campos de detalles
         if (preg_match('/^details\./', $field)) {
             return 'details';
         }
-        
+
         // Campos de palets
         if (preg_match('/^pallets\./', $field)) {
             return 'pallets';
         }
-        
+
         // Campo supplier.id
         if (preg_match('/^supplier\.id$/', $field)) {
             return 'supplier.id';
         }
-        
+
         // Campos simples
         if (preg_match('/^(date|notes|declaredTotalAmount|declaredTotalNetWeight)$/', $field)) {
             return $field;
         }
-        
+
         return 'other';
     }
-    
+
     /**
      * Obtiene el tipo de error (required, invalid, etc.)
-     * 
-     * @param string $error Mensaje de error
+     *
+     * @param  string  $error  Mensaje de error
      * @return string Tipo de error
      */
     private function getErrorType(string $error): string
@@ -387,31 +388,31 @@ class Handler extends ExceptionHandler
         if (preg_match('/field is required\.?$/i', $error) || stripos($error, 'required') !== false) {
             return 'required';
         }
-        
+
         if (preg_match('/must be (?:a|an) number\.?$/i', $error)) {
             return 'number';
         }
-        
+
         if (preg_match('/must be (?:a|an) integer\.?$/i', $error)) {
             return 'integer';
         }
-        
+
         if (preg_match('/must be (?:a|an) valid date\.?$/i', $error)) {
             return 'date';
         }
-        
+
         if (preg_match('/is invalid\.?$/i', $error) || preg_match('/does not exist\.?$/i', $error)) {
             return 'invalid';
         }
-        
+
         return 'other';
     }
-    
+
     /**
      * Genera un mensaje genérico basado en la categoría y tipo de error
-     * 
-     * @param string $category Categoría del campo
-     * @param string $errorType Tipo de error
+     *
+     * @param  string  $category  Categoría del campo
+     * @param  string  $errorType  Tipo de error
      * @return string|null Mensaje genérico o null si no hay mensaje
      */
     private function getGenericErrorMessage(string $category, string $errorType): ?string
@@ -459,16 +460,15 @@ class Handler extends ExceptionHandler
                 'integer' => 'Algún dato numérico no es válido',
             ],
         ];
-        
+
         return $messages[$category][$errorType] ?? $messages['other'][$errorType] ?? 'Hay errores en los datos enviados';
     }
-    
-    
+
     /**
      * Traduce el mensaje de error a lenguaje natural
-     * 
-     * @param string $error Mensaje de error técnico
-     * @param string $field Nombre del campo
+     *
+     * @param  string  $error  Mensaje de error técnico
+     * @param  string  $field  Nombre del campo
      * @return string Mensaje de error en lenguaje natural
      */
     private function translateErrorMessage(string $error, string $field): string
@@ -478,76 +478,76 @@ class Handler extends ExceptionHandler
         if (preg_match('/field is required\.?$/i', $error)) {
             return 'Este campo es obligatorio';
         }
-        
+
         // "The prices.1.price must be a number." -> "Debe ser un número"
         if (preg_match('/must be (?:a|an) number\.?$/i', $error)) {
             return 'Debe ser un número';
         }
-        
+
         // "The prices.1.price must be an integer." -> "Debe ser un número entero"
         if (preg_match('/must be (?:a|an) integer\.?$/i', $error)) {
             return 'Debe ser un número entero';
         }
-        
+
         // "The prices.1.price must be a valid date." -> "Debe ser una fecha válida"
         if (preg_match('/must be (?:a|an) valid date\.?$/i', $error)) {
             return 'Debe ser una fecha válida';
         }
-        
+
         // "The prices.1.price must be a string." -> "Debe ser texto"
         if (preg_match('/must be (?:a|an) string\.?$/i', $error)) {
             return 'Debe ser texto';
         }
-        
+
         // "The prices.1.price must be an array." -> "Debe ser una lista"
         if (preg_match('/must be (?:a|an) array\.?$/i', $error)) {
             return 'Debe ser una lista';
         }
-        
+
         // "The selected prices.1.price is invalid." -> "El valor seleccionado no es válido"
         if (preg_match('/selected .+ is invalid\.?$/i', $error)) {
             return 'El valor seleccionado no es válido';
         }
-        
+
         // "The prices.1.price does not exist." -> "No existe"
         if (preg_match('/does not exist\.?$/i', $error)) {
             return 'No existe';
         }
-        
+
         // "The name has already been taken." -> "Ya existe un registro con este valor"
         if (preg_match('/has already been taken\.?$/i', $error)) {
             return 'Ya existe un registro con este valor';
         }
-        
+
         // "The prices.1.price must be at least :min." -> "Debe ser al menos X"
         if (preg_match('/must be at least (.+?)\.?$/i', $error, $matches)) {
-            return 'Debe ser al menos ' . $matches[1];
+            return 'Debe ser al menos '.$matches[1];
         }
-        
+
         // "The prices.1.price must be greater than :min." -> "Debe ser mayor que X"
         if (preg_match('/must be greater than (.+?)\.?$/i', $error, $matches)) {
-            return 'Debe ser mayor que ' . $matches[1];
+            return 'Debe ser mayor que '.$matches[1];
         }
-        
+
         // "The prices.1.price must be less than :max." -> "Debe ser menor que X"
         if (preg_match('/must be less than (.+?)\.?$/i', $error, $matches)) {
-            return 'Debe ser menor que ' . $matches[1];
+            return 'Debe ser menor que '.$matches[1];
         }
-        
+
         // Si el mensaje contiene "required", traducirlo
         if (stripos($error, 'required') !== false) {
             return 'Este campo es obligatorio';
         }
-        
+
         // Si no se puede traducir, devolver el mensaje original
         return $error;
     }
 
     /**
      * Formatea el mensaje de excepción genérica para el usuario
-     * 
-     * @param string $errorMessage Mensaje de error técnico
-     * @param \Illuminate\Http\Request|null $request Request para obtener contexto
+     *
+     * @param  string  $errorMessage  Mensaje de error técnico
+     * @param  \Illuminate\Http\Request|null  $request  Request para obtener contexto
      * @return string Mensaje en lenguaje natural
      */
     private function formatExceptionMessageForUser(string $errorMessage, $request = null): string
@@ -559,22 +559,23 @@ class Handler extends ExceptionHandler
             }
             // Extraer el mensaje después del prefijo
             $message = trim(str_ireplace('RECEPTION_LINES_MODE:', '', $errorMessage));
+
             return $message ?: 'No se puede modificar la recepción porque hay materia prima siendo usada en producción';
         }
-        
+
         // Detectar violaciones de clave foránea relacionadas con cajas y producción
-        if (stripos($errorMessage, 'Integrity constraint violation') !== false || 
+        if (stripos($errorMessage, 'Integrity constraint violation') !== false ||
             stripos($errorMessage, 'foreign key constraint fails') !== false) {
-            
+
             // Detectar si es una violación relacionada con boxes y production_inputs
-            if (stripos($errorMessage, 'production_inputs') !== false && 
+            if (stripos($errorMessage, 'production_inputs') !== false &&
                 stripos($errorMessage, 'boxes') !== false) {
-                
+
                 // Verificar si el error viene de una recepción de materia prima
                 $isReceptionContext = $request && (
                     $request->is('api/v2/raw-material-receptions/*')
                 );
-                
+
                 if ($isReceptionContext) {
                     // Intentar obtener el ID de la recepción de la ruta
                     $receptionId = null;
@@ -583,7 +584,7 @@ class Handler extends ExceptionHandler
                     } elseif (preg_match('/raw-material-receptions\/(\d+)/', $request->path(), $matches)) {
                         $receptionId = $matches[1];
                     }
-                    
+
                     // Si tenemos el ID, verificar el tipo de recepción
                     if ($receptionId) {
                         try {
@@ -595,26 +596,28 @@ class Handler extends ExceptionHandler
                             // Si falla la consulta, continuar con el mensaje genérico
                         }
                     }
-                    
+
                     // Si es contexto de recepción pero no sabemos el tipo, usar mensaje genérico
                     return 'No se puede modificar la recepción porque hay materia prima siendo usada en producción';
                 }
-                
+
                 // Si no es contexto de recepción, usar mensaje específico de cajas
                 // Intentar extraer el ID de la caja si está en el mensaje
                 if (preg_match('/where `id` = (\d+)/i', $errorMessage, $matches)) {
                     $boxId = $matches[1];
+
                     return "No se puede eliminar la caja #{$boxId} porque está siendo usada en producción";
                 }
+
                 return 'No se puede eliminar la caja porque está siendo usada en producción';
             }
-            
+
             // Otras violaciones de clave foránea genéricas
             if (stripos($errorMessage, 'Cannot delete or update a parent row') !== false) {
                 return 'No se puede realizar esta operación porque hay datos relacionados que dependen de este registro';
             }
         }
-        
+
         // Mensajes comunes de excepciones del sistema
         if (stripos($errorMessage, 'cajas usadas') !== false || stripos($errorMessage, 'cajas siendo usadas') !== false) {
             if (stripos($errorMessage, 'agregado un nuevo producto') !== false) {
@@ -638,68 +641,69 @@ class Handler extends ExceptionHandler
             if (stripos($errorMessage, 'modificar la caja') !== false) {
                 return 'No se puede modificar la caja porque está siendo usada en producción';
             }
+
             return 'No se puede realizar esta operación porque hay cajas usadas en producción';
         }
-        
+
         // Si no se puede traducir, devolver un mensaje genérico en lenguaje natural
         return 'Ocurrió un error al procesar la solicitud. Por favor, verifica los datos e intenta nuevamente.';
     }
 
     /**
      * Formatea el mensaje de excepción de base de datos (QueryException) para el usuario
-     * 
-     * @param string $errorMessage Mensaje de error técnico
-     * @param \Illuminate\Http\Request|null $request Request para obtener contexto
+     *
+     * @param  string  $errorMessage  Mensaje de error técnico
+     * @param  \Illuminate\Http\Request|null  $request  Request para obtener contexto
      * @return string Mensaje en lenguaje natural
      */
     private function formatQueryExceptionForUser(string $errorMessage, $request = null): string
     {
         // Detectar violaciones de clave foránea
-        if (stripos($errorMessage, 'Integrity constraint violation') !== false || 
+        if (stripos($errorMessage, 'Integrity constraint violation') !== false ||
             stripos($errorMessage, 'foreign key constraint fails') !== false ||
             stripos($errorMessage, 'Cannot delete or update a parent row') !== false) {
-            
+
             return $this->formatExceptionMessageForUser($errorMessage, $request);
         }
-        
+
         // Detectar errores de campo no nulo
         if (stripos($errorMessage, 'cannot be null') !== false ||
             stripos($errorMessage, 'Column') !== false && stripos($errorMessage, 'cannot be null') !== false) {
             return 'Faltan datos obligatorios. Por favor, completa todos los campos requeridos.';
         }
-        
+
         // Detectar errores de tabla no encontrada
         if (stripos($errorMessage, "doesn't exist") !== false ||
             stripos($errorMessage, 'Table') !== false && stripos($errorMessage, "doesn't exist") !== false) {
             return 'Ocurrió un error en la base de datos. Por favor, contacta al administrador.';
         }
-        
+
         // Detectar errores de conexión
         if (stripos($errorMessage, 'Connection') !== false ||
             stripos($errorMessage, 'SQLSTATE[HY000]') !== false) {
             return 'No se pudo conectar con la base de datos. Por favor, intenta nuevamente más tarde.';
         }
-        
+
         // Mensaje genérico para otros errores de base de datos
         return 'Ocurrió un error al guardar los datos. Por favor, verifica la información e intenta nuevamente.';
     }
 
     /**
      * Formatea el mensaje de violación de clave única para el usuario
-     * 
-     * @param string $errorMessage Mensaje de error técnico
-     * @param \Illuminate\Http\Request|null $request Request para obtener contexto
+     *
+     * @param  string  $errorMessage  Mensaje de error técnico
+     * @param  \Illuminate\Http\Request|null  $request  Request para obtener contexto
      * @return string Mensaje en lenguaje natural
      */
     private function formatUniqueConstraintViolationForUser(string $errorMessage, $request = null): string
     {
         // Detectar violaciones específicas por tabla y campo
-        
+
         // Etiquetas (labels)
         if (stripos($errorMessage, 'labels') !== false && stripos($errorMessage, 'name') !== false) {
             return 'Ya existe una etiqueta con este nombre.';
         }
-        
+
         // Productos (products)
         if (stripos($errorMessage, 'products') !== false) {
             if (stripos($errorMessage, 'name') !== false) {
@@ -715,32 +719,32 @@ class Handler extends ExceptionHandler
                 return 'Ya existe un producto con este GTIN de palet.';
             }
         }
-        
+
         // Clientes (customers)
         if (stripos($errorMessage, 'customers') !== false && stripos($errorMessage, 'name') !== false) {
             return 'Ya existe un cliente con este nombre.';
         }
-        
+
         // Usuarios (users)
         if (stripos($errorMessage, 'users') !== false && stripos($errorMessage, 'email') !== false) {
             return 'Ya existe un usuario con este correo electrónico.';
         }
-        
+
         // Zonas de captura (capture_zones)
         if (stripos($errorMessage, 'capture_zones') !== false && stripos($errorMessage, 'name') !== false) {
             return 'Ya existe una zona de captura con este nombre.';
         }
-        
+
         // Categorías de productos (product_categories)
         if (stripos($errorMessage, 'product_categories') !== false && stripos($errorMessage, 'name') !== false) {
             return 'Ya existe una categoría de producto con este nombre.';
         }
-        
+
         // Familias de productos (product_families)
         if (stripos($errorMessage, 'product_families') !== false && stripos($errorMessage, 'name') !== false) {
             return 'Ya existe una familia de producto con este nombre.';
         }
-        
+
         // Especies (species)
         if (stripos($errorMessage, 'species') !== false) {
             if (stripos($errorMessage, 'name') !== false) {
@@ -753,7 +757,7 @@ class Handler extends ExceptionHandler
                 return 'Ya existe una especie con este código FAO.';
             }
         }
-        
+
         // Transportes (transports)
         if (stripos($errorMessage, 'transports') !== false) {
             if (stripos($errorMessage, 'name') !== false) {
@@ -763,36 +767,36 @@ class Handler extends ExceptionHandler
                 return 'Ya existe un transporte con este NIF/CIF.';
             }
         }
-        
+
         // Incoterms
         if (stripos($errorMessage, 'incoterms') !== false && stripos($errorMessage, 'code') !== false) {
             return 'Ya existe un incoterm con este código.';
         }
-        
+
         // Países (countries)
         if (stripos($errorMessage, 'countries') !== false && stripos($errorMessage, 'name') !== false) {
             return 'Ya existe un país con este nombre.';
         }
-        
+
         // Términos de pago (payment_terms)
         if (stripos($errorMessage, 'payment_terms') !== false && stripos($errorMessage, 'name') !== false) {
             return 'Ya existe un término de pago con este nombre.';
         }
-        
+
         // Comerciales (salespeople)
         if (stripos($errorMessage, 'salespeople') !== false && stripos($errorMessage, 'name') !== false) {
             return 'Ya existe un comercial con este nombre.';
         }
-        
+
         // Almacenes (stores)
         if (stripos($errorMessage, 'stores') !== false && stripos($errorMessage, 'name') !== false) {
             return 'Ya existe un almacén con este nombre.';
         }
-        
+
         // Intentar extraer el nombre del campo del mensaje de error
         if (preg_match("/Duplicate entry.*for key ['\"]?(\w+)['\"]?/i", $errorMessage, $matches)) {
             $keyName = $matches[1];
-            
+
             // Si el nombre de la clave contiene el nombre del campo, usarlo
             if (stripos($keyName, 'name') !== false) {
                 return 'Ya existe un registro con este nombre.';
@@ -801,16 +805,16 @@ class Handler extends ExceptionHandler
                 return 'Ya existe un registro con este correo electrónico.';
             }
         }
-        
+
         // Mensaje genérico si no se puede identificar específicamente
         return 'Ya existe un registro con estos datos. Por favor, verifica que no estés duplicando información.';
     }
 
     /**
      * Formatea el mensaje de excepción HTTP para el usuario
-     * 
-     * @param int $statusCode Código de estado HTTP
-     * @param string|null $message Mensaje original de la excepción
+     *
+     * @param  int  $statusCode  Código de estado HTTP
+     * @param  string|null  $message  Mensaje original de la excepción
      * @return string Mensaje en lenguaje natural
      */
     private function formatHttpExceptionMessage(int $statusCode, ?string $message = null): string
@@ -832,9 +836,10 @@ class Handler extends ExceptionHandler
                 return 'El servicio no está disponible temporalmente. Por favor, intenta nuevamente más tarde.';
             default:
                 // Si el mensaje original ya está en lenguaje natural, usarlo
-                if ($message && !$this->isTechnicalErrorMessage($message)) {
+                if ($message && ! $this->isTechnicalErrorMessage($message)) {
                     return $message;
                 }
+
                 return 'Ocurrió un error al procesar la solicitud.';
         }
     }
@@ -847,11 +852,11 @@ class Handler extends ExceptionHandler
     private function logTenantError($request, Throwable $exception): void
     {
         try {
-            if (!$request->is('api/*')) {
+            if (! $request->is('api/*')) {
                 return;
             }
 
-            if (!app()->bound('currentTenant') || !app('currentTenant')) {
+            if (! app()->bound('currentTenant') || ! app('currentTenant')) {
                 return;
             }
 
@@ -859,13 +864,13 @@ class Handler extends ExceptionHandler
             $tenant = \App\Models\Tenant::where('subdomain', $tenantSubdomain)->first();
 
             TenantErrorLog::on('mysql')->create([
-                'tenant_id'     => $tenant?->id,
-                'user_id'       => $request->user()?->id,
-                'method'        => $request->method(),
-                'url'           => substr($request->fullUrl(), 0, 1000),
-                'error_class'   => get_class($exception),
+                'tenant_id' => $tenant?->id,
+                'user_id' => $request->user()?->id,
+                'method' => $request->method(),
+                'url' => substr($request->fullUrl(), 0, 1000),
+                'error_class' => get_class($exception),
                 'error_message' => substr($exception->getMessage(), 0, 10000),
-                'occurred_at'   => now('UTC'),
+                'occurred_at' => now('UTC'),
             ]);
         } catch (\Throwable) {
             // Never break error rendering

@@ -15,7 +15,7 @@ class PunchDashboardService
     /**
      * Obtener datos completos del dashboard para una fecha.
      *
-     * @param \Carbon\Carbon|null $date Fecha del día (por defecto hoy)
+     * @param  \Carbon\Carbon|null  $date  Fecha del día (por defecto hoy)
      * @return array{message: string, data: array}
      */
     public function getData(?Carbon $date = null): array
@@ -194,7 +194,7 @@ class PunchDashboardService
     /**
      * Último evento de fichaje por empleado (solo Eloquent, sin DB::connection).
      *
-     * @param \Illuminate\Support\Collection<int, int> $employeeIds
+     * @param  \Illuminate\Support\Collection<int, int>  $employeeIds
      * @return \Illuminate\Support\Collection<int, \App\Models\PunchEvent>
      */
     private function getLastEventsByEmployee(Collection $employeeIds): Collection
@@ -248,9 +248,9 @@ class PunchDashboardService
                     ->where('timestamp', '>', $inEvent->timestamp)
                     ->whereBetween('timestamp', [$eventDate, $eventDateEnd])
                     ->exists();
-                if (!$hasOut) {
-                    $key = $employeeId . '_' . $eventDate->format('Y-m-d') . '_entry';
-                    if (!isset($missingPunches[$key])) {
+                if (! $hasOut) {
+                    $key = $employeeId.'_'.$eventDate->format('Y-m-d').'_entry';
+                    if (! isset($missingPunches[$key])) {
                         $daysAgo = now()->startOfDay()->diffInDays($eventDate);
                         $missingPunches[$key] = [
                             'employeeId' => $employee->id,
@@ -287,9 +287,9 @@ class PunchDashboardService
                     ->where('timestamp', '<', $outEvent->timestamp)
                     ->whereBetween('timestamp', [$eventDate, $eventDateEnd])
                     ->exists();
-                if (!$hasIn) {
-                    $key = $employeeId . '_' . $eventDate->format('Y-m-d') . '_exit';
-                    if (!isset($missingPunches[$key])) {
+                if (! $hasIn) {
+                    $key = $employeeId.'_'.$eventDate->format('Y-m-d').'_exit';
+                    if (! isset($missingPunches[$key])) {
                         $daysAgo = now()->startOfDay()->diffInDays($eventDate);
                         $missingPunches[$key] = [
                             'employeeId' => $employee->id,
@@ -325,6 +325,7 @@ class PunchDashboardService
         if ($hours > 0) {
             return "{$hours}h";
         }
+
         return "{$mins}m";
     }
 }
