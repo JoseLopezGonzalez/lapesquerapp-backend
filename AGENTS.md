@@ -8,6 +8,9 @@ convención (GitHub Copilot, otros CLIs agénticos). No dupliques reglas aquí �
 
 - **§19 Contrato OpenAPI de la API** — Laravel es la fuente de verdad del contrato; reglas
   obligatorias antes de tocar rutas, Form Requests, Resources o controladores de `v2/*`.
+- **`docs/api-contract/API_CONTRACT_MASTER_PLAN.md`** — plan maestro y fuente de seguimiento del
+  contrato: fases, deuda contractual (`API-CONTRACT-XXX`), decisiones y próxima acción
+  recomendada. Léelo antes de trabajar en cualquier cosa relacionada con el contrato de la API.
 - **`docs/api-contract.md`** — cómo generar, verificar y publicar el contrato OpenAPI.
 - **§18 Workflow de Evolución** — proceso de 7 pasos para evolucionar un bloque funcional.
 
