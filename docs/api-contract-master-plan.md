@@ -815,36 +815,40 @@ API de este repositorio:
 
 ## Próxima acción recomendada
 
-**Tarea**: Cerrar la **Fase 0 — Activación real** (§6). El mecanismo del pipeline está confirmado
-en verde de extremo a extremo (`contract:test` 8/8; `contract:check` limpio de ruido de nulabilidad
-tras el fix de la sesión anterior). Lo que queda pendiente ya no es infraestructura del contrato en
-sí, sino cerrar el círculo de CI y una decisión de negocio ya identificada. Detalle completo en
-`docs/audits/laravel-evolution-log.md` → entrada "[2026-08-02] API Contract — Fase 0: CI
-desacoplada de la suite completa, API-CONTRACT-004 resuelto en generación limpia". Quedan 3 pasos
-concretos:
+**Tarea**: Cerrar la **Fase 0 — Activación real** (§6). El mecanismo del pipeline está **confirmado
+en verde de extremo a extremo en CI real**, no solo en local: tras corregir un bug de env vars en
+`.github/workflows/api-contract.yml` (los pasos posteriores a "Prepare .env" no re-declaraban
+`DB_CONNECTION`/`DB_PORT`/`DB_USERNAME`/`DB_PASSWORD`, heredando valores de `.env.example` que no
+coincidían con el servicio MySQL efímero) y sanear `.env.example` (tenía un host/puerto/password que
+parecía una credencial real, no un placeholder — el usuario no ha podido confirmar si sigue viva,
+queda pendiente por su cuenta, fuera de este repositorio), el run de CI `30767675459` (commit
+`16a0c32a`) mostró: "Central migrations" y "Seed demo tenant" en `success` **por primera vez en la
+historia de este workflow**, y el job llega vivo hasta "Check OpenAPI contract..." — que falla ahí,
+consistente con API-CONTRACT-001 (no se ha podido leer el log exacto de ese paso por falta de
+permisos de admin en la API de GitHub, pero coincide en comando y condiciones con la verificación
+local que dio 23 `BREAKING` en `GET /api/v2/orders`). Detalle completo en
+`docs/audits/laravel-evolution-log.md`, entradas "[2026-08-02] API Contract — Fase 0: `.env.example`
+con credencial no-placeholder..." y "...confirmación real en CI tras el fix de env vars". Queda 1
+paso concreto para poder marcar la fase `Completada`:
 
-1. **Confirmar con el usuario el `git push`** del cambio en `.github/workflows/api-contract.yml`
-   (se quitó `needs: tests` del job `api-contract`, con aprobación explícita del usuario, porque
-   ese job nunca había llegado a ejecutarse en ningún run de `main`: siempre quedaba `skipped` por
-   el job "Tests + Pint", que falla por API-CONTRACT-016, deuda no relacionada con el contrato).
-2. **Verificar el resultado real del job `api-contract` ya desacoplado** tras el push (vía la API
-   pública de GitHub Actions, sin necesidad de `gh` CLI — ver el comando usado en la entrada del
-   evolution log). **Expectativa realista, no un fallo de esta intervención**: es probable que siga
-   en rojo, porque CI usa `contract:check --fail-on-any` y una generación limpia reproduce 23
-   `BREAKING` en `GET /api/v2/orders` (API-CONTRACT-001, no determinismo de `OrderListService` —
-   confirmado empíricamente esta sesión, ya no solo teórico).
-3. **Decidir con el usuario el tratamiento de API-CONTRACT-001** antes de que el job de contrato
-   pueda quedar en verde de forma sostenida: adelantar su resolución (parte de Fase 7), fijar el
-   parámetro de query que Scribe usa para capturar `GET /v2/orders` de forma estable (cambio en
-   `config/scribe_public.php`, no en lógica de negocio), o aceptar temporalmente el ruido — no
-   decidirlo unilateralmente (protocolo §10, regla 5).
+1. **Decidir con el usuario el tratamiento de API-CONTRACT-001** antes de que el job de contrato
+   pueda quedar en verde de forma sostenida (CI usa `contract:check --fail-on-any`): adelantar su
+   resolución (parte de Fase 7), fijar el parámetro de query que Scribe usa para capturar
+   `GET /v2/orders` de forma estable (cambio en `config/scribe_public.php`, no en lógica de
+   negocio), o aceptar temporalmente el ruido documentándolo — no decidirlo unilateralmente
+   (protocolo §10, regla 5).
 
 **Por qué es el siguiente paso**: Todo lo demás en este plan (piloto de catálogos, normalización,
-migración de serializadores) asume un pipeline que funciona de extremo a extremo — eso ya está
-confirmado, incluyendo que el diff de nulabilidad (API-CONTRACT-004) que preocupaba al final de la
-sesión anterior ya no aparece. Lo único que falta para cerrar Fase 0 del todo es el círculo de CI
-(push + resultado real) y una decisión explícita sobre API-CONTRACT-001, que ya no es una sospecha
-sino el único bloqueo empírico confirmado para un contrato reproducible.
+migración de serializadores) asume un pipeline que funciona de extremo a extremo, incluido en CI —
+eso ya está confirmado empíricamente, no solo por lectura de código. Lo único que falta para cerrar
+Fase 0 del todo es una decisión explícita sobre API-CONTRACT-001, que ya no es una sospecha teórica
+sino el único bloqueo confirmado (dos veces, en local y en CI) para que el contrato quede
+reproducible.
+
+**Pendiente fuera de este agente**: el usuario debe confirmar si el host/password que tenía
+`.env.example` (`94.143.137.84`, puerto `3308`) era una credencial real de producción y, si lo era,
+rotarla en el servidor — sanear el fichero no deshace una posible exposición ya ocurrida en el
+historial de git desde 2026-03-26.
 
 **Importante para quien retome esto — generación local**: nunca generar el contrato contra la base
 de datos de desarrollo compartida (`pesquerapp`); usar una BD desechable como replica CI
@@ -859,5 +863,5 @@ validado en esta sesión. Queda una BD desechable adicional en el contenedor MyS
 (`contract_fixture_20260802`) por si se quiere reutilizar sin volver a migrar desde cero.
 
 **Documento a actualizar al terminar**: Este mismo archivo — cambia el `Estado` de la Fase 0 en
-§6 a `Completada` (o documenta el siguiente gap si algo queda abierto), y actualiza
-`docs/api-contract-current-status.md` con el resultado del push/CI.
+§6 a `Completada` una vez se decida y aplique el tratamiento de API-CONTRACT-001, y actualiza
+`docs/api-contract-current-status.md` en consecuencia.

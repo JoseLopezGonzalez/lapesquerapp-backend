@@ -5,6 +5,45 @@ Cada entrada sigue el formato definido en `docs/prompts/01_Laravel incremental e
 
 ---
 
+## [2026-08-02] API Contract — Fase 0: confirmación real en CI tras el fix de env vars
+
+**Prioridad**: Alta | **Complejidad**: Baja | **Estado**: 🔄 Fase 0 — mecanismo confirmado en verde end-to-end en CI real; único bloqueo restante es una decisión de negocio ya identificada (API-CONTRACT-001)
+
+Confirmación tras pushear el commit `16a0c32a` (saneo de `.env.example` + env vars explícitas por
+paso). Run de CI `30767675459` (commit `16a0c32a`):
+
+- Job "Tests + Pint": sigue en `failure` en "Run test suite" — esperado, API-CONTRACT-016 (no
+  tocado, fuera de alcance).
+- Job "OpenAPI contract (generate + check)": **ya no se salta ningún paso**. "Central migrations" y
+  "Seed demo tenant + admin fixture" pasan a `success` por primera vez en la historia de este
+  workflow (antes fallaban por el bug de env vars documentado en la entrada anterior). El job llega
+  vivo hasta "Check OpenAPI contract is up to date and free of breaking changes" y falla ahí.
+
+No ha sido posible descargar el log completo de ese paso (la API de logs de Actions devuelve 403
+"Must have admin rights to Repository" sin `gh` CLI autenticado como admin), pero dado que: (a) es
+exactamente el mismo comando (`contract:check --fail-on-any`) contra una BD igual de desechable y
+recién migrada/sembrada que la usada en la verificación local de la entrada "CI desacoplada..."; y
+(b) esa verificación local dio como único resultado 23 `BREAKING` concentrados en `GET
+/api/v2/orders` (API-CONTRACT-001) sin ningún otro hallazgo — es prácticamente seguro que este fallo
+de CI es el mismo problema, ya trazado, no uno nuevo. Queda como confirmación pendiente (no
+verificable sin acceso de admin al repo) para quien retome esto.
+
+**Conclusión práctica de Fase 0**: el objetivo mecánico ("confirmar que el pipeline funciona de
+extremo a extremo en un entorno real, incluido CI") está cumplido. Lo único que impide marcar la
+fase `Completada` es una decisión de negocio ya identificada y no nueva: qué hacer con
+API-CONTRACT-001 para que el gate de CI (`--fail-on-any`) pueda quedar en verde de forma sostenida.
+
+### Next
+
+1. Decidir con el usuario el tratamiento de API-CONTRACT-001 (adelantar su resolución, fijar el
+   parámetro de ejemplo que usa Scribe para `GET /v2/orders`, o aceptar el ruido documentándolo).
+2. Con esa decisión tomada y aplicada (o explícitamente aplazada con justificación), marcar Fase 0
+   como `Completada` en el plan maestro.
+3. Confirmar por separado (fuera de este agente) si la credencial de `.env.example` de la entrada
+   anterior era real y rotarla si corresponde.
+
+---
+
 ## [2026-08-02] API Contract — Fase 0: `.env.example` con credencial no-placeholder + CI sin overrides completos de DB
 
 **Prioridad**: Crítica (posible secreto expuesto) | **Complejidad**: Baja | **Estado**: ✅ Corregido en esta sesión, pendiente confirmación de rotación por el usuario
