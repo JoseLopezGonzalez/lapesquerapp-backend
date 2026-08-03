@@ -257,10 +257,14 @@ class ProductionCostResolver
         $pallet = $box->pallet;
         if ($pallet && $pallet->reception_id) {
             $reception = $pallet->reception;
-            $receptionProduct = $reception?->products()
-                ->where('product_id', $box->article_id)
-                ->where('lot', $box->lot)
-                ->first();
+            $receptionProduct = $reception?->relationLoaded('products')
+                ? $reception->products->first(
+                    fn ($product) => (int) $product->product_id === (int) $box->article_id && $product->lot === $box->lot
+                )
+                : $reception?->products()
+                    ->where('product_id', $box->article_id)
+                    ->where('lot', $box->lot)
+                    ->first();
 
             if ($receptionProduct?->price !== null) {
                 return (float) $receptionProduct->price;

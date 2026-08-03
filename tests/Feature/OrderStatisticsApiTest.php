@@ -705,6 +705,165 @@ class OrderStatisticsApiTest extends TestCase
         );
     }
 
+    public function test_profitability_summary_rejects_range_over_60_days(): void
+    {
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/statistics/orders/profitability-summary?'.http_build_query([
+                'dateFrom' => '2026-01-01',
+                'dateTo' => '2026-08-03',
+            ]));
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['dateTo']);
+    }
+
+    public function test_profitability_products_rejects_range_over_60_days(): void
+    {
+        $response = $this->withHeaders($this->authHeaders())
+            ->getJson('/api/v2/statistics/orders/profitability-products?'.http_build_query([
+                'dateFrom' => '2026-01-01',
+                'dateTo' => '2026-08-03',
+            ]));
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['dateTo']);
+    }
+
+    public function test_can_create_and_poll_profitability_summary_stat_job_for_large_range(): void
+    {
+        $species = Species::factory()->create([
+            'fishing_gear_id' => FishingGear::factory()->create()->id,
+        ]);
+
+        $product = Product::factory()->create([
+            'name' => 'Merluza stat job test',
+            'species_id' => $species->id,
+            'capture_zone_id' => CaptureZone::factory()->create()->id,
+            'family_id' => ProductFamily::factory()->create()->id,
+        ]);
+
+        $reception = RawMaterialReception::factory()->create();
+        $order = Order::factory()->finished()->create([
+            'entry_date' => '2026-03-10',
+            'load_date' => '2026-03-15',
+        ]);
+
+        OrderPlannedProductDetail::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'unit_price' => 5.0,
+        ]);
+
+        $pallet = Pallet::factory()->create([
+            'order_id' => $order->id,
+            'reception_id' => $reception->id,
+            'status' => Pallet::STATE_SHIPPED,
+        ]);
+
+        RawMaterialReceptionProduct::factory()->create([
+            'reception_id' => $reception->id,
+            'product_id' => $product->id,
+            'lot' => 'LOT-STATJOB-001',
+            'price' => 3.0,
+        ]);
+
+        $box = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-STATJOB-001',
+            'net_weight' => 10.0,
+            'gross_weight' => 10.5,
+        ]);
+
+        PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $box->id]);
+
+        $createResponse = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/statistics/orders/profitability-summary/jobs', [
+                'dateFrom' => '2026-01-01',
+                'dateTo' => '2026-08-03',
+            ]);
+
+        $createResponse->assertStatus(202)
+            ->assertJsonPath('type', 'summary')
+            ->assertJsonStructure(['id', 'status', 'filters', 'result']);
+
+        $jobId = $createResponse->json('id');
+
+        $statusResponse = $this->withHeaders($this->authHeaders())
+            ->getJson("/api/v2/statistics/orders/profitability-summary/jobs/{$jobId}");
+
+        $statusResponse->assertStatus(200)
+            ->assertJsonPath('status', 'finished')
+            ->assertJsonPath('result.totalRevenue', 50)
+            ->assertJsonPath('result.totalCost', 30);
+    }
+
+    public function test_can_create_and_poll_profitability_products_stat_job_for_large_range(): void
+    {
+        $species = Species::factory()->create([
+            'fishing_gear_id' => FishingGear::factory()->create()->id,
+        ]);
+
+        $product = Product::factory()->create([
+            'name' => 'Merluza products stat job test',
+            'species_id' => $species->id,
+            'capture_zone_id' => CaptureZone::factory()->create()->id,
+            'family_id' => ProductFamily::factory()->create()->id,
+        ]);
+
+        $reception = RawMaterialReception::factory()->create();
+        $order = Order::factory()->finished()->create([
+            'entry_date' => '2026-03-10',
+            'load_date' => '2026-03-15',
+        ]);
+
+        OrderPlannedProductDetail::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'unit_price' => 5.0,
+        ]);
+
+        $pallet = Pallet::factory()->create([
+            'order_id' => $order->id,
+            'reception_id' => $reception->id,
+            'status' => Pallet::STATE_SHIPPED,
+        ]);
+
+        RawMaterialReceptionProduct::factory()->create([
+            'reception_id' => $reception->id,
+            'product_id' => $product->id,
+            'lot' => 'LOT-PRODSTATJOB-001',
+            'price' => 3.0,
+        ]);
+
+        $box = Box::factory()->create([
+            'article_id' => $product->id,
+            'lot' => 'LOT-PRODSTATJOB-001',
+            'net_weight' => 10.0,
+            'gross_weight' => 10.5,
+        ]);
+
+        PalletBox::create(['pallet_id' => $pallet->id, 'box_id' => $box->id]);
+
+        $createResponse = $this->withHeaders($this->authHeaders())
+            ->postJson('/api/v2/statistics/orders/profitability-products/jobs', [
+                'dateFrom' => '2026-01-01',
+                'dateTo' => '2026-08-03',
+            ]);
+
+        $createResponse->assertStatus(202)
+            ->assertJsonPath('type', 'products');
+
+        $jobId = $createResponse->json('id');
+
+        $statusResponse = $this->withHeaders($this->authHeaders())
+            ->getJson("/api/v2/statistics/orders/profitability-products/jobs/{$jobId}");
+
+        $statusResponse->assertStatus(200)
+            ->assertJsonPath('status', 'finished')
+            ->assertJsonPath('result.products.0.product.id', $product->id)
+            ->assertJsonPath('result.products.0.totalRevenue', 50);
+    }
+
     public function test_reception_chart_data_requires_authentication(): void
     {
         $response = $this->withHeaders([

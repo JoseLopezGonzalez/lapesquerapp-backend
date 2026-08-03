@@ -201,9 +201,291 @@ regenéralos — el runtime real de la API no cambia, solo la precisión del tip
 
 ---
 
-## Sprint 4 (pendiente)
+## Sprint 4 — 2026-08-03 (Rentabilidad: fix 500 en rangos grandes + flujo asíncrono)
 
-*Se actualizará cuando se implementen los cambios de Sprint 4.*
+### Resumen de cambios visibles al frontend
+
+| Cambio | Tipo | Endpoints afectados | Acción requerida |
+|---|---|---|---|
+| Límite de 60 días en la consulta síncrona | **Breaking** (nueva validación) | `GET .../profitability-summary`, `GET .../profitability-products` | Sí — ver §1 y §3 |
+| Nuevos endpoints asíncronos (dispatch + polling) | Nuevo | `POST/GET .../profitability-summary/jobs`, `POST/GET .../profitability-products/jobs` | Sí — implementar el flujo para rangos > 60 días |
+| Fix de rendimiento interno (N+1 en coste de trazabilidad) | Interno | Los mismos 4 endpoints de arriba | Ninguna, pero explica por qué antes tardaba/fallaba |
+
+### Contexto — por qué cambia esto
+
+`GET /api/v2/statistics/orders/profitability-summary` y `GET /api/v2/statistics/orders/profitability-products`
+estaban devolviendo **500 Internal Server Error** cuando se consultaban con rangos de fechas amplios
+(ej. `dateFrom=2026-01-01&dateTo=2026-08-03`, ~7 meses). Causa: por cada caja del pedido se lanzaba
+una consulta SQL adicional para resolver su coste de trazabilidad (N+1), y con rangos grandes el
+volumen de queries agotaba el `memory_limit`/`max_execution_time` por defecto de PHP-FPM antes de
+poder responder.
+
+Se aplicaron dos cambios:
+
+1. **Fix del N+1** (interno, transparente): la respuesta ahora es mucho más rápida para el mismo volumen de datos. No requiere cambios en el frontend.
+2. **Límite de rango + flujo asíncrono** (requiere cambios en el frontend): en vez de dejar que una consulta grande siga arriesgándose a agotar los límites de una petición HTTP síncrona, la API ahora **rechaza rangos > 60 días** en los endpoints síncronos y ofrece un **flujo asíncrono equivalente al que ya existe para la exportación Excel** (`POST .../export-jobs` + polling), sin límite de rango, porque corre en un worker de cola en background con límites ampliados (memoria 2048M, hasta 30 min de ejecución).
+
+No se usó un límite de días "adivinado" como solución definitiva: el límite de 60 días es solo la
+frontera entre "resuélvelo al instante" y "resuélvelo en background". El dato real que importa es
+el volumen de pedidos/cajas del tenant en ese rango, no los días en sí — por eso el flujo asíncrono
+no tiene ningún tope y es la vía recomendada para cualquier consulta que no sea "los últimos 1-2 meses".
+
+---
+
+### 1. `GET /api/v2/statistics/orders/profitability-summary` — ahora limitado a 60 días (breaking)
+
+**Sin cambios**: query params (`dateFrom`, `dateTo`, `productIds[]` opcional), headers, forma de la respuesta 200.
+
+**Nuevo**: si `dateTo - dateFrom > 60 días`, la API responde **422** en vez de intentar resolver la consulta.
+
+**Respuesta 422** (nueva):
+```json
+{
+  "message": "Error de validación.",
+  "userMessage": "El rango de fechas no puede superar 60 días. Para periodos más amplios, usa la consulta asíncrona.",
+  "code": "VALIDATION_ERROR",
+  "errors": {
+    "dateTo": [
+      "El rango de fechas no puede superar 60 días. Para periodos más amplios, usa la consulta asíncrona."
+    ]
+  }
+}
+```
+
+**Respuesta 200** (sin cambios de forma, para referencia):
+```json
+{
+  "period": { "from": "2026-03-01", "to": "2026-03-31" },
+  "ordersCount": 1,
+  "totalRevenue": 75,
+  "totalCost": 30,
+  "grossMargin": 45,
+  "marginPercentage": 60,
+  "coveredBoxes": 1,
+  "uncoveredBoxes": 1,
+  "costCoverageBoxesPct": 50,
+  "salePriceAlert": {
+    "active": false,
+    "boxesWithoutSalePrice": 0,
+    "hint": null
+  }
+}
+```
+
+---
+
+### 2. `GET /api/v2/statistics/orders/profitability-products` — mismo límite de 60 días (breaking)
+
+Idéntico al anterior: mismos query params (`dateFrom`, `dateTo` — **sin** `productIds`, este endpoint nunca lo soportó), mismo 422 si el rango supera 60 días (mismo texto de mensaje).
+
+**Respuesta 200** (sin cambios de forma, para referencia):
+```json
+{
+  "period": { "from": "2026-03-01", "to": "2026-03-31" },
+  "products": [
+    {
+      "product": { "id": 8, "name": "Merluza fresca" },
+      "totalWeightKg": 7.52,
+      "totalRevenue": 99.41,
+      "totalCost": 30.08,
+      "grossMargin": 69.33,
+      "marginPercentage": 69.74,
+      "revenuePerKg": 13.2194,
+      "costPerKg": 4.0,
+      "marginPerKg": 9.2194,
+      "ordersCount": 1
+    }
+  ]
+}
+```
+
+---
+
+### 3. Flujo asíncrono — nuevo, para rangos > 60 días
+
+Cuatro endpoints nuevos, dos pares `POST` (crear job) + `GET` (consultar estado/resultado), uno
+por cada consulta. **Mismo patrón que ya usáis para `POST .../profitability-summary/export-jobs`**
+(descarga de Excel): si ya tenéis ese polling implementado, es el mismo código con otra URL y sin
+paso de descarga de fichero (el resultado es JSON, no un Excel).
+
+| Acción | Método + ruta |
+|---|---|
+| Crear job de resumen | `POST /api/v2/statistics/orders/profitability-summary/jobs` |
+| Consultar job de resumen | `GET /api/v2/statistics/orders/profitability-summary/jobs/{id}` |
+| Crear job de desglose por producto | `POST /api/v2/statistics/orders/profitability-products/jobs` |
+| Consultar job de desglose por producto | `GET /api/v2/statistics/orders/profitability-products/jobs/{id}` |
+
+**Headers**: los mismos de siempre (`X-Tenant`, `Authorization: Bearer {token}`, `Accept: application/json`).
+
+#### 3.1 Crear el job
+
+`POST /api/v2/statistics/orders/profitability-summary/jobs`
+
+Body (idéntico a los query params del endpoint síncrono, pero como JSON body):
+```json
+{
+  "dateFrom": "2026-01-01",
+  "dateTo": "2026-08-03",
+  "productIds": []
+}
+```
+`productIds` es opcional y solo aplica al job de **summary**. El job de **products** solo acepta `dateFrom`/`dateTo` (igual que su equivalente síncrono).
+
+`POST /api/v2/statistics/orders/profitability-products/jobs`:
+```json
+{
+  "dateFrom": "2026-01-01",
+  "dateTo": "2026-08-03"
+}
+```
+
+**No hay límite de rango en estos dos endpoints** — a diferencia de los síncronos, aceptan cualquier `dateFrom`/`dateTo` válido (`dateTo >= dateFrom`).
+
+**Respuesta 202** (ambos endpoints, misma forma — el campo `type` indica cuál es):
+```json
+{
+  "id": "5648482e-d2bb-4dd9-a559-b072883195fe",
+  "type": "summary",
+  "status": "pending",
+  "filters": { "dateFrom": "2026-01-01", "dateTo": "2026-08-03", "productIds": [] },
+  "result": null,
+  "errorMessage": null,
+  "createdAt": "2026-08-03T09:18:43+02:00",
+  "startedAt": null,
+  "finishedAt": null
+}
+```
+
+`id` es el identificador a usar para el polling (es un UUID, no el `id` autoincremental interno).
+
+#### 3.2 Consultar el estado / obtener el resultado (polling)
+
+`GET /api/v2/statistics/orders/profitability-summary/jobs/{id}` (o el equivalente de `profitability-products`).
+
+`status` puede ser: `pending` → `processing` → `finished` (éxito) o `failed` (error).
+
+**Mientras está en proceso**:
+```json
+{
+  "id": "5648482e-d2bb-4dd9-a559-b072883195fe",
+  "type": "summary",
+  "status": "processing",
+  "filters": { "dateFrom": "2026-01-01", "dateTo": "2026-08-03", "productIds": [] },
+  "result": null,
+  "errorMessage": null,
+  "createdAt": "2026-08-03T09:18:43+02:00",
+  "startedAt": "2026-08-03T09:18:44+02:00",
+  "finishedAt": null
+}
+```
+
+**Cuando termina bien** (`status: "finished"`) — `result` contiene **exactamente la misma forma que
+la respuesta 200 del endpoint síncrono equivalente** (§1 para `summary`, §2 para `products`):
+```json
+{
+  "id": "5648482e-d2bb-4dd9-a559-b072883195fe",
+  "type": "summary",
+  "status": "finished",
+  "filters": { "dateFrom": "2026-01-01", "dateTo": "2026-08-03", "productIds": [] },
+  "result": {
+    "period": { "from": "2026-01-01", "to": "2026-08-03" },
+    "ordersCount": 6,
+    "totalRevenue": 122.35,
+    "totalCost": null,
+    "grossMargin": null,
+    "marginPercentage": null,
+    "coveredBoxes": 0,
+    "uncoveredBoxes": 8,
+    "costCoverageBoxesPct": 0,
+    "salePriceAlert": {
+      "active": true,
+      "boxesWithoutSalePrice": 6,
+      "hint": "6 cajas sin precio unitario (€/kg) en la previsión del pedido."
+    }
+  },
+  "errorMessage": null,
+  "createdAt": "2026-08-03T09:18:43+02:00",
+  "startedAt": "2026-08-03T09:18:44+02:00",
+  "finishedAt": "2026-08-03T09:18:44+02:00"
+}
+```
+
+**Si falla** (`status: "failed"`) — `result` es `null` y `errorMessage` trae el detalle (mensaje técnico, no pensado para mostrar tal cual al usuario; mostrar un mensaje genérico tipo "No se pudo calcular la rentabilidad, inténtalo de nuevo"):
+```json
+{
+  "status": "failed",
+  "result": null,
+  "errorMessage": "SQLSTATE[...]: ...",
+  "finishedAt": "2026-08-03T09:18:44+02:00"
+}
+```
+
+**404**: si el `id` no existe, o si se consulta un UUID de un job de `summary` contra la ruta de `products` (o viceversa) — cada ruta de consulta solo devuelve jobs de su propio tipo.
+
+#### 3.3 Recomendación de implementación
+
+- **Decidir el flujo en el cliente antes de llamar a la API**, sin depender de que el síncrono
+  devuelva 422: calculad la diferencia en días entre `dateFrom`/`dateTo` al cambiar el selector de
+  fechas del dashboard. Si es `≤ 60` días, llamad al endpoint síncrono existente (`GET
+  .../profitability-summary` / `GET .../profitability-products`) tal cual ya lo hacéis hoy — misma
+  respuesta, más rápido que antes gracias al fix del N+1. Si es `> 60` días, usad el flujo async.
+- **Manejar igualmente el 422** como red de seguridad (por si hay algún desajuste de reloj/timezone
+  entre cliente y servidor en el cálculo de días), haciendo fallback automático al flujo async si
+  llega un 422 con `errors.dateTo` en la respuesta.
+- **Intervalo de polling recomendado**: 1.5–2s. En la práctica, los jobs de summary/products
+  terminan en 1-3 segundos incluso con varios meses de datos (el fix del N+1 los hace muy rápidos);
+  el límite duro del worker es de 30 minutos, pero un tiempo de espera razonable en el cliente antes
+  de mostrar "esto está tardando más de lo normal" es de **20-30 segundos** (10-15 intentos de
+  polling).
+- **UI**: mostrar un estado de carga mientras `status` sea `pending`/`processing` (idéntico a como
+  ya se maneja para la exportación Excel), y el resultado o el error cuando `status` sea
+  `finished`/`failed`.
+
+**Pseudocódigo del flujo completo**:
+```ts
+async function fetchProfitabilitySummary(dateFrom: string, dateTo: string, productIds: number[] = []) {
+  const days = daysBetween(dateFrom, dateTo);
+
+  if (days <= 60) {
+    const res = await api.get('/statistics/orders/profitability-summary', {
+      params: { dateFrom, dateTo, productIds },
+    });
+    if (res.status === 200) return res.data;
+    if (res.status !== 422) throw res; // 422 -> cae al flujo async de abajo
+  }
+
+  const { id } = await api.post('/statistics/orders/profitability-summary/jobs', {
+    dateFrom, dateTo, productIds,
+  }).then(r => r.data);
+
+  return pollUntilFinished(`/statistics/orders/profitability-summary/jobs/${id}`);
+}
+
+async function pollUntilFinished(url: string, { intervalMs = 1800, maxAttempts = 15 } = {}) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const job = await api.get(url).then(r => r.data);
+
+    if (job.status === 'finished') return job.result;
+    if (job.status === 'failed') throw new Error(job.errorMessage ?? 'No se pudo calcular la rentabilidad');
+
+    await sleep(intervalMs);
+  }
+
+  throw new Error('El cálculo está tardando más de lo esperado. Inténtalo de nuevo en unos minutos.');
+}
+```
+
+`profitability-products` sigue el mismo patrón, cambiando la URL y sin el parámetro `productIds`.
+
+---
+
+### 4. Sin cambios (para evitar confusión)
+
+- **`POST/GET .../profitability-summary/export-jobs/*`** (descarga de Excel de auditoría): sin
+  cambios de comportamiento visibles. Internamente ya no hereda por error el límite de 60 días (un
+  bug introducido y corregido durante el mismo desarrollo, nunca llegó a desplegarse) — sigue
+  aceptando cualquier rango, como siempre.
+- **`GET .../profitability-summary/export`** (descarga síncrona de Excel): sin cambios.
 
 ---
 

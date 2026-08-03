@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\v2;
 
-class OrderProfitabilitySummaryExportJobRequest extends OrderProfitabilitySummaryRequest
+class OrderProfitabilitySummaryStatJobRequest extends OrderProfitabilitySummaryRequest
 {
     public function rules(): array
     {
@@ -10,7 +10,6 @@ class OrderProfitabilitySummaryExportJobRequest extends OrderProfitabilitySummar
         // a diferencia de OrderProfitabilitySummaryRequest, que sí se resuelve de forma síncrona.
         return array_merge(parent::rules(), [
             'dateTo' => 'required|date|after_or_equal:dateFrom',
-            'onlyMissingCosts' => 'nullable|boolean',
         ]);
     }
 }

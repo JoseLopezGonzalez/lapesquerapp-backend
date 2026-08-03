@@ -5,12 +5,16 @@ namespace App\Http\Controllers\v2;
 use App\Exports\v2\OrderProfitabilitySummaryAuditExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\v2\OrderProfitabilityProductsRequest;
+use App\Http\Requests\v2\OrderProfitabilityProductsStatJobRequest;
 use App\Http\Requests\v2\OrderProfitabilitySummaryExportJobRequest;
 use App\Http\Requests\v2\OrderProfitabilitySummaryRequest;
+use App\Http\Requests\v2\OrderProfitabilitySummaryStatJobRequest;
 use App\Http\Requests\v2\OrderProfitabilityTimelineRequest;
 use App\Jobs\GenerateOrderProfitabilitySummaryExport;
+use App\Jobs\GenerateOrderProfitabilityStat;
 use App\Models\Order;
 use App\Models\OrderProfitabilityExportJob;
+use App\Models\OrderProfitabilityStatJob;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\v2\OrderProfitabilityStatsService;
@@ -138,6 +142,87 @@ class OrderProfitabilityStatsController extends Controller
                 $v['dateTo']
             )
         );
+    }
+
+    public function createSummaryStatJob(OrderProfitabilitySummaryStatJobRequest $request): JsonResponse
+    {
+        $this->authorize('viewAny', Order::class);
+
+        $v = $request->validated();
+        $statJob = $this->createStatJob(OrderProfitabilityStatJob::TYPE_SUMMARY, $request->user(), [
+            'dateFrom' => $v['dateFrom'],
+            'dateTo' => $v['dateTo'],
+            'productIds' => $v['productIds'] ?? [],
+        ]);
+
+        return response()->json($this->statJobPayload($statJob->refresh()), 202);
+    }
+
+    public function showSummaryStatJob(string $uuid): JsonResponse
+    {
+        $this->authorize('viewAny', Order::class);
+
+        $statJob = OrderProfitabilityStatJob::where('uuid', $uuid)
+            ->where('type', OrderProfitabilityStatJob::TYPE_SUMMARY)
+            ->firstOrFail();
+
+        return response()->json($this->statJobPayload($statJob));
+    }
+
+    public function createProductsStatJob(OrderProfitabilityProductsStatJobRequest $request): JsonResponse
+    {
+        $this->authorize('viewAny', Order::class);
+
+        $v = $request->validated();
+        $statJob = $this->createStatJob(OrderProfitabilityStatJob::TYPE_PRODUCTS, $request->user(), [
+            'dateFrom' => $v['dateFrom'],
+            'dateTo' => $v['dateTo'],
+        ]);
+
+        return response()->json($this->statJobPayload($statJob->refresh()), 202);
+    }
+
+    public function showProductsStatJob(string $uuid): JsonResponse
+    {
+        $this->authorize('viewAny', Order::class);
+
+        $statJob = OrderProfitabilityStatJob::where('uuid', $uuid)
+            ->where('type', OrderProfitabilityStatJob::TYPE_PRODUCTS)
+            ->firstOrFail();
+
+        return response()->json($this->statJobPayload($statJob));
+    }
+
+    private function createStatJob(string $type, ?User $user, array $filters): OrderProfitabilityStatJob
+    {
+        $tenant = Tenant::where('subdomain', app('currentTenant'))->firstOrFail();
+
+        $statJob = OrderProfitabilityStatJob::create([
+            'uuid' => (string) Str::uuid(),
+            'type' => $type,
+            'created_by_user_id' => $user?->id,
+            'status' => OrderProfitabilityStatJob::STATUS_PENDING,
+            'filters' => $filters,
+        ]);
+
+        GenerateOrderProfitabilityStat::dispatch($tenant->id, $statJob->id);
+
+        return $statJob;
+    }
+
+    private function statJobPayload(OrderProfitabilityStatJob $statJob): array
+    {
+        return [
+            'id' => $statJob->uuid,
+            'type' => $statJob->type,
+            'status' => $statJob->status,
+            'filters' => $statJob->filters,
+            'result' => $statJob->result,
+            'errorMessage' => $statJob->error_message,
+            'createdAt' => $statJob->created_at?->toIso8601String(),
+            'startedAt' => $statJob->started_at?->toIso8601String(),
+            'finishedAt' => $statJob->finished_at?->toIso8601String(),
+        ];
     }
 
     private function exportJobPayload(OrderProfitabilityExportJob $exportJob): array

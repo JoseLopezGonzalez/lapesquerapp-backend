@@ -386,7 +386,11 @@ Route::group(['prefix' => 'v2', 'as' => 'v2.', 'middleware' => ['tenant']], func
         Route::post('statistics/orders/profitability-summary/export-jobs', [OrderProfitabilityStatsController::class, 'createExportJob'])->name('v2.statistics.orders.profitability_summary.export_jobs.store');
         Route::get('statistics/orders/profitability-summary/export-jobs/{uuid}', [OrderProfitabilityStatsController::class, 'showExportJob'])->name('v2.statistics.orders.profitability_summary.export_jobs.show');
         Route::get('statistics/orders/profitability-summary/export-jobs/{uuid}/download', [OrderProfitabilityStatsController::class, 'downloadExportJob'])->name('v2.statistics.orders.profitability_summary.export_jobs.download');
+        Route::post('statistics/orders/profitability-summary/jobs', [OrderProfitabilityStatsController::class, 'createSummaryStatJob'])->name('v2.statistics.orders.profitability_summary.jobs.store');
+        Route::get('statistics/orders/profitability-summary/jobs/{uuid}', [OrderProfitabilityStatsController::class, 'showSummaryStatJob'])->name('v2.statistics.orders.profitability_summary.jobs.show');
         Route::get('statistics/orders/profitability-products', [OrderProfitabilityStatsController::class, 'byProduct'])->name('v2.statistics.orders.profitability_products');
+        Route::post('statistics/orders/profitability-products/jobs', [OrderProfitabilityStatsController::class, 'createProductsStatJob'])->name('v2.statistics.orders.profitability_products.jobs.store');
+        Route::get('statistics/orders/profitability-products/jobs/{uuid}', [OrderProfitabilityStatsController::class, 'showProductsStatJob'])->name('v2.statistics.orders.profitability_products.jobs.show');
 
         Route::get('cost-regularization/sales/missing-cost-boxes', [CostRegularizationController::class, 'salesMissingCostBoxes'])->name('v2.cost_regularization.sales.missing_cost_boxes');
         Route::get('cost-regularization/stock/missing-cost-boxes', [CostRegularizationController::class, 'stockMissingCostBoxes'])->name('v2.cost_regularization.stock.missing_cost_boxes');
